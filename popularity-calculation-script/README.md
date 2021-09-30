@@ -44,7 +44,7 @@ pytest
 3. Run the script
 
 ```bash
-python src/script.py
+python src/popularity_scraper.py
 ```
 
 4. To view output, open the `output.csv` file.

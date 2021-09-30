@@ -5,9 +5,10 @@ from urllib.request import urlopen
 import pandas as pd
 
 
-class OpenZim:
-    def __init__(self, url: str) -> None:
+class PopularityScraper:
+    def __init__(self, url: str, filename: str) -> None:
         self.url = url
+        self.filename = filename
         self.df = pd.DataFrame()
 
     def download_data_from_kiwix_url(self, label="download.kiwix.org") -> dict:
@@ -90,19 +91,21 @@ class OpenZim:
             )
             self.df.at[index, "score"] = format(score, ".2f")
 
-    def write_to_csv(self, filename="output.csv"):
+    def write_to_csv(self):
         header = ["rank", "score", "zim"]
-        self.df.to_csv(filename, encoding="utf-8", index=False, columns=header)
+        self.df.to_csv(self.filename, encoding="utf-8", index=False, columns=header)
+
+    def run(self):
+        self.download_data_from_kiwix_url()
+        self.remove_nonzim_data_from_df()
+        self.add_zim_name_column()
+        self.group_and_sort_df()
+        self.add_rank_column()
+        self.add_score_column()
+        self.write_to_csv()
 
 
 if __name__ == "__main__":
-    # get the data
     url = f"https://stats.kiwix.org/index.php?date=2001-01-01,2021-09-19&expanded=1&filter_limit=-1&format=JSON&idSite=2&method=Actions.getDownloads&module=API&period=range&token_auth=anonymous"
-    open_zim = OpenZim(url=url)
-    open_zim.download_data_from_kiwix_url()
-    open_zim.remove_nonzim_data_from_df()
-    open_zim.add_zim_name_column()
-    open_zim.group_and_sort_df()
-    open_zim.add_rank_column()
-    open_zim.add_score_column()
-    open_zim.write_to_csv()
+    popularity_scraper = PopularityScraper(url=url, filename="output.csv")
+    popularity_scraper.run()

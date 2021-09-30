@@ -1,9 +1,9 @@
 import pandas as pd
-from src.script import OpenZim
+from src.popularity_scraper import PopularityScraper
 
 
 def test_extract_zim_name_from_label():
-    oz = OpenZim("")
+    oz = PopularityScraper("", "output.csv")
     label1 = "\/zim\/wikipedia\/wikipedia_ar_all_maxi_2021-03.zim.torrent"
     assert "wikipedia_ar_all_maxi" == oz.extract_zim_name_from_label(label1)
 
@@ -33,7 +33,7 @@ def test_remove_nonzim_data_from_df():
             "/f.zim.torrent",
         ]
     }
-    oz = OpenZim("")
+    oz = PopularityScraper("", "output.csv")
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
@@ -61,7 +61,7 @@ def test_add_zim_name_column():
             "c_c",
         ],
     }
-    oz = OpenZim("")
+    oz = PopularityScraper("", "output.csv")
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
@@ -92,7 +92,7 @@ def test_group_and_sort_df_grouping():
         ],
     }
 
-    oz = OpenZim("")
+    oz = PopularityScraper("", "output.csv")
     oz.df = pd.DataFrame(data=test_input_data_dict)
     oz.group_and_sort_df()
 
@@ -110,7 +110,7 @@ def test_test_group_and_sort_df_sorting():
         ],
     }
 
-    oz = OpenZim("")
+    oz = PopularityScraper("", "output.csv")
     oz.df = pd.DataFrame(data=test_input_data_dict)
     oz.group_and_sort_df()
     assert oz.df["zim"].to_list() == ["a", "c", "b", "d"]
