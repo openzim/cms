@@ -1,17 +1,22 @@
 import pandas as pd
-from src.popularity_scraper import PopularityScraper
+from src.popularity_scraper import PopularityCalculator
 
 
 def test_extract_zim_name_from_label():
-    oz = PopularityScraper("", "output.csv")
     label1 = "\/zim\/wikipedia\/wikipedia_ar_all_maxi_2021-03.zim.torrent"
-    assert "wikipedia_ar_all_maxi" == oz.extract_zim_name_from_label(label1)
+    assert "wikipedia_ar_all_maxi" == PopularityCalculator.extract_zim_name_from_label(
+        label1
+    )
 
     label2 = "\/zim\/wikipedia\/wikipedia_ar_all_maxi_2021-04.zim.torrent.extra"
-    assert "wikipedia_ar_all_maxi" == oz.extract_zim_name_from_label(label2)
+    assert "wikipedia_ar_all_maxi" == PopularityCalculator.extract_zim_name_from_label(
+        label2
+    )
 
     label3 = "/zim/wikipedia_es_all.zim.torrent"
-    assert "wikipedia_es_all" == oz.extract_zim_name_from_label(label3)
+    assert "wikipedia_es_all" == PopularityCalculator.extract_zim_name_from_label(
+        label3
+    )
 
 
 def test_remove_nonzim_data_from_df():
@@ -33,11 +38,11 @@ def test_remove_nonzim_data_from_df():
             "/f.zim.torrent",
         ]
     }
-    oz = PopularityScraper("", "output.csv")
+    oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
-    oz.remove_nonzim_data_from_df()
+    oz._PopularityCalculator__remove_nonzim_data_from_df()
 
     # then
     desired_df = pd.DataFrame(data=test_desired_output_data_dict)
@@ -61,11 +66,11 @@ def test_add_zim_name_column():
             "c_c",
         ],
     }
-    oz = PopularityScraper("", "output.csv")
+    oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
-    oz.add_zim_name_column()
+    oz._PopularityCalculator__add_zim_name_column()
 
     # then
     desired_df = pd.DataFrame(data=test_desired_output_data_dict)
@@ -92,9 +97,9 @@ def test_group_and_sort_df_grouping():
         ],
     }
 
-    oz = PopularityScraper("", "output.csv")
+    oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
-    oz.group_and_sort_df()
+    oz._PopularityCalculator__group_and_sort_df()
 
     assert int(oz.df.loc[oz.df["zim"] == "a"]["nb_visits"]) == 5
 
@@ -110,7 +115,7 @@ def test_test_group_and_sort_df_sorting():
         ],
     }
 
-    oz = PopularityScraper("", "output.csv")
+    oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
-    oz.group_and_sort_df()
+    oz._PopularityCalculator__group_and_sort_df()
     assert oz.df["zim"].to_list() == ["a", "c", "b", "d"]
