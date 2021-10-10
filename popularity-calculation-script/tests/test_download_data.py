@@ -7,7 +7,7 @@ def test_get_data_from_url_check_non_empty():
     oz = PopularityCalculator(url)
 
     # when
-    oz._PopularityCalculator__download_data_from_url()
+    oz._download_data_from_url()
 
     # then
     # check if the DatFrame has any content or not

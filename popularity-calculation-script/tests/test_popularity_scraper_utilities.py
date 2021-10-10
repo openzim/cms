@@ -42,7 +42,7 @@ def test_remove_nonzim_data_from_df():
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
-    oz._PopularityCalculator__remove_nonzim_data_from_df()
+    oz._remove_nonzim_data_from_df()
 
     # then
     desired_df = pd.DataFrame(data=test_desired_output_data_dict)
@@ -70,7 +70,7 @@ def test_add_zim_name_column():
     oz.df = pd.DataFrame(data=test_input_data_dict)
 
     # when
-    oz._PopularityCalculator__add_zim_name_column()
+    oz._add_zim_name_column()
 
     # then
     desired_df = pd.DataFrame(data=test_desired_output_data_dict)
@@ -99,7 +99,7 @@ def test_group_and_sort_df_grouping():
 
     oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
-    oz._PopularityCalculator__group_and_sort_df()
+    oz._group_and_sort_df()
 
     assert int(oz.df.loc[oz.df["zim"] == "a"]["nb_visits"]) == 5
 
@@ -117,5 +117,5 @@ def test_test_group_and_sort_df_sorting():
 
     oz = PopularityCalculator("")
     oz.df = pd.DataFrame(data=test_input_data_dict)
-    oz._PopularityCalculator__group_and_sort_df()
+    oz._group_and_sort_df()
     assert oz.df["zim"].to_list() == ["a", "c", "b", "d"]
