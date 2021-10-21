@@ -19,7 +19,7 @@ class PopularityCalculator:
 
     def _remove_nonzim_data_from_df(self):
         # clean the data; remove rows that don't have "zim" substring in  label
-        ## refer: https://stackoverflow.com/a/17097777
+        # see: https://stackoverflow.com/a/17097777
         self.df = self.df.drop(
             self.df[~self.df.label.str.endswith(".zim.torrent")].index
         )
@@ -43,8 +43,7 @@ class PopularityCalculator:
             if "-" in label_keywords_list[-1]:
                 label_keywords_list.pop()
             return "_".join(label_keywords_list)
-        else:
-            return ""
+        return ""
 
     def _group_and_sort_df(self):
         # group data by label, and sum the numeric values
