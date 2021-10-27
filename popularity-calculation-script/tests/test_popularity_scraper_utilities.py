@@ -3,12 +3,12 @@ from src.popularity_scraper import PopularityCalculator
 
 
 def test_extract_zim_name_from_label():
-    label1 = "\/zim\/wikipedia\/wikipedia_ar_all_maxi_2021-03.zim.torrent"
+    label1 = r"/zim/wikipedia/wikipedia_ar_all_maxi_2021-03.zim.torrent"
     assert "wikipedia_ar_all_maxi" == PopularityCalculator.extract_zim_name_from_label(
         label1
     )
 
-    label2 = "\/zim\/wikipedia\/wikipedia_ar_all_maxi_2021-04.zim.torrent.extra"
+    label2 = r"/zim/wikipediar/wikipedia_ar_all_maxi_2021-04.zim.torrent.extra"
     assert "wikipedia_ar_all_maxi" == PopularityCalculator.extract_zim_name_from_label(
         label2
     )

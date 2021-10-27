@@ -48,4 +48,3 @@ python src/popularity_scraper.py
 ```
 
 4. To view output, open the `output.csv` file.
-
