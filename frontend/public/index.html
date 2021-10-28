@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>openZIM CMS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" type="image/svg+xml" href="<%= BASE_URL %>assets/logo.svg" />
+  <script type="application/javascript">
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "<%= BASE_URL %>environ.json", false);
+      if (xhr.overrideMimeType)
+        xhr.overrideMimeType("application/json");
+      xhr.send();
+      try {
+        if (xhr.status != 200 || xhr.readyState != 4)
+          throw "Connection Error";
+        window.environ = JSON.parse(xhr.responseText);
+      } catch (exc) { console.error("Failed to load file ", xhr.responseURL, exc); }
+    </script>
+</head>
+<body>
+    <noscript>
+      <h1>openZIM CMS is javascript-only!</h1>
+        <p>We're sorry but openZIM CMS doesn't work properly without JavaScript enabled.</p>
+        <p>Please enable it to continue or <a href="https://api.cms.openzim.org">use the API</a>.</p>
+    </noscript>
+    <div id="app" class="container"></div>
+  </body>
+</html>
