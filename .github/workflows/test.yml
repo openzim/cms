@@ -1,0 +1,33 @@
+name: Tests
+
+on: [push, pull_request]
+
+env:
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+jobs:
+  tests-coverage:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+          architecture: x64
+
+      - name: Run tests
+        run: |
+          pip install -U pip invoke toml
+          cd backend
+          invoke install-deps --package test
+          invoke test --args "-v"
+          pwd
+
+      - name: Upload coverage report to codecov
+        run: |
+          pwd
+          ls -l
+          cd backend
+          ls -l
+          invoke upload-coverage

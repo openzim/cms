@@ -1,0 +1,30 @@
+[build-system]
+requires = ["wheel", "setuptools", "toml"]
+build-backend = "setuptools.build_meta"
+
+[dependencies]
+runtime = [
+    "fastapi[all]>=0.70.0,<1.0"
+]
+test = [
+    "pytest >=6.2.4,<7.0.0",
+    "pytest-cov >=2.12.0,<4.0.0",
+    "coverage >=6.0.2,<7.0",
+]
+dev = [
+    "black >=21.9b0,<22",
+    "isort >=5.9.3,<6.0",
+    "pre-commit >=2.15.0,<3.0",
+    "flake8 >=<4.0.1,<5.0",
+    "uvicorn[standard] >=0.12.0,<0.16.0",
+]
+
+[tool.isort]
+profile = "black"
+known_third_party = ["fastapi", "pydantic", "starlette"]
+
+[tool.black]
+target-version = ['py36', 'py37', 'py38', 'py39']
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "../tests"]
