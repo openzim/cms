@@ -14,10 +14,11 @@ jobs:
       - name: Build and push
         uses: openzim/docker-publish-action@v6
         with:
-          image-name: openzim/cms-api
-          on-master: latest
           restrict-to: openzim/cms
-          registries: docker.io
+          image-name: openzim/cms-api
+          context: backend
+          on-master: latest
+          registries: ghcr.io
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
@@ -30,10 +31,11 @@ jobs:
       - name: Build and push
         uses: openzim/docker-publish-action@v6
         with:
-          image-name: openzim/cms-api
-          on-master: latest
           restrict-to: openzim/cms
-          registries: docker.io
+          image-name: openzim/cms-ui
+          context: frontend
+          on-master: latest
+          registries: ghcr.io
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
