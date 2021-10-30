@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build and push
-        uses: openzim/docker-publish-action@v6
+        uses: openzim/docker-publish-action@v7
         with:
           restrict-to: openzim/cms
           image-name: openzim/cms-api
@@ -22,6 +22,7 @@ jobs:
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+          webhook: https://api.sloppy.io/v1/apps/cms/services/backend/apps/api/deploy?user=${{ secrets.SLOPPY_USERNAME }}&auth=${{ secrets.SLOPPY_AUTH_TOKEN }}
 
   build-and-push-ui:
     name: Deploy UI Docker Image
@@ -29,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build and push
-        uses: openzim/docker-publish-action@v6
+        uses: openzim/docker-publish-action@v7
         with:
           restrict-to: openzim/cms
           image-name: openzim/cms-ui
@@ -39,3 +40,4 @@ jobs:
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+          webhook: https://api.sloppy.io/v1/apps/cms/services/frontend/apps/ui/deploy?user=${{ secrets.SLOPPY_USERNAME }}&auth=${{ secrets.SLOPPY_AUTH_TOKEN }}
