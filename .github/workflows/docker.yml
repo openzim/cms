@@ -1,0 +1,39 @@
+name: Docker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push-api:
+    name: Deploy API Docker Image
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and push
+        uses: openzim/docker-publish-action@v6
+        with:
+          image-name: openzim/cms-api
+          on-master: latest
+          restrict-to: openzim/cms
+          registries: docker.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+  build-and-push-ui:
+    name: Deploy UI Docker Image
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and push
+        uses: openzim/docker-publish-action@v6
+        with:
+          image-name: openzim/cms-api
+          on-master: latest
+          restrict-to: openzim/cms
+          registries: docker.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
