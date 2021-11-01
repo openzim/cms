@@ -1,17 +1,28 @@
 <template>
-  <img alt="openZIM logo" :src="publicPath + 'assets/logo.svg'" />
-  <p><TestAPI /></p>
+  <main>
+    <NavBar />
+    <router-view class="container" />
+  </main>
 </template>
 
 <script>
+import axios from 'axios';
 
-import TestAPI from './components/TestAPI.vue'
+import Constants from './constants.js'
+import NavBar from './components/NavBar.vue'
 
 export default {
   name: 'App',
-  components: {TestAPI},
+  components: {NavBar},
   computed: {
-    publicPath() { return process.env.BASE_URL; },  // for static files linking
+    axios() { // prefixed axios object with API url
+      let headers = {};
+      return axios.create({
+        baseURL: Constants.backend_api,
+        headers: headers,
+        paramsSerializer: Constants.params_serializer,
+      });
+    }
   },
 }
 </script>
@@ -22,10 +33,5 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
-  margin: 1em;
 }
-img {
-    width: 10em;
-  }
 </style>
