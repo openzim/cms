@@ -4,10 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [dependencies]
 runtime = [
-    "fastapi[all]>=0.70.0,<1.0"
+    "fastapi[all] >=0.70.0,<1.0",
+    "databases >=0.5.3,<1.0",
+    "aiomysql >=0.0.21,<1.0",
+    "ormar >= 0.10.22,<1.0",
 ]
 test = [
     "pytest >=6.2.4,<7.0.0",
+    "pytest-asyncio >=0.16.0,<1.0",
     "pytest-cov >=2.12.0,<4.0.0",
     "coverage >=6.0.2,<7.0",
 ]
@@ -17,6 +21,7 @@ dev = [
     "pre-commit >=2.15.0,<3.0",
     "flake8 >=<4.0.1,<5.0",
     "uvicorn[standard] >=0.12.0,<0.16.0",
+    "aiosqlite >= 0.17.0,<1.0",
 ]
 
 [tool.isort]

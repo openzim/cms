@@ -3,6 +3,7 @@ import os
 import pathlib
 import platform
 import sys
+import tempfile
 import urllib.request
 
 from invoke import task
@@ -32,7 +33,7 @@ def install_deps(c, package=deps_options[0]):
     packages = []
     manifest = toml.load("pyproject.toml")
     # include deps from required package and previous ones in list
-    for option in deps_options[: deps_options.index("test") + 1]:
+    for option in deps_options[: deps_options.index(package) + 1]:
         packages += manifest["dependencies"][option]
 
     c.run(
@@ -50,12 +51,20 @@ def test(c, args="", path=""):
 
     args: additional pytest args to pass. ex: -x -v
     path: sub-folder or test file to test to limit scope"""
+    db_path = pathlib.Path(
+        tempfile.NamedTemporaryFile(suffix=".db", prefix="test_", delete=False).name
+    )
     with c.cd("src"):
-        c.run(
-            f"python -m pytest --cov=backend --cov-report term-missing {args} "
-            f"../tests{'/' + path if path else ''}",
-            pty=True,
-        )
+        try:
+            c.run(
+                f"python -m pytest --cov=backend --cov-report term-missing {args} "
+                f"../tests{'/' + path if path else ''}",
+                pty=True,
+                env={"DATABASE_URL": f"sqlite:///{db_path.resolve()}"},
+            )
+        finally:
+            if db_path.exists():
+                db_path.unlink()
         c.run("coverage xml", pty=True)
 
 
