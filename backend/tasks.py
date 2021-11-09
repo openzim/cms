@@ -111,3 +111,29 @@ def serve(c, args=""):
     """run devel HTTP server locally. Use --args to specify additional uvicorn args"""
     with c.cd("src"):
         c.run(f"python -m uvicorn backend.main:app --reload {args}", pty=True)
+
+
+@task
+def alembic(c, args=""):
+    with c.cd("src"):
+        c.run(f"python -m alembic {args}")
+
+
+@task
+def db_upgrade(c, rev="head"):
+    c.run(f'invoke alembic --args "upgrade {rev}"')
+
+
+@task
+def db_downgrade(c, rev="-1"):
+    c.run(f'invoke alembic --args "downgrade {rev}"')
+
+
+@task
+def db_list(c):
+    c.run('invoke alembic --args "history -i"')
+
+
+@task
+def db_gen(c):
+    c.run('invoke alembic --args "revision --autogenerate -m unnamed"')
