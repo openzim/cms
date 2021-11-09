@@ -3,6 +3,7 @@ import os
 import pathlib
 import platform
 import sys
+import tempfile
 import urllib.request
 
 from invoke import task
@@ -32,7 +33,7 @@ def install_deps(c, package=deps_options[0]):
     packages = []
     manifest = toml.load("pyproject.toml")
     # include deps from required package and previous ones in list
-    for option in deps_options[: deps_options.index("test") + 1]:
+    for option in deps_options[: deps_options.index(package) + 1]:
         packages += manifest["dependencies"][option]
 
     c.run(
@@ -50,12 +51,20 @@ def test(c, args="", path=""):
 
     args: additional pytest args to pass. ex: -x -v
     path: sub-folder or test file to test to limit scope"""
+    db_path = pathlib.Path(
+        tempfile.NamedTemporaryFile(suffix=".db", prefix="test_", delete=False).name
+    )
     with c.cd("src"):
-        c.run(
-            f"python -m pytest --cov=backend --cov-report term-missing {args} "
-            f"../tests{'/' + path if path else ''}",
-            pty=True,
-        )
+        try:
+            c.run(
+                f"python -m pytest --cov=backend --cov-report term-missing {args} "
+                f"../tests{'/' + path if path else ''}",
+                pty=True,
+                env={"DATABASE_URL": f"sqlite:///{db_path.resolve()}"},
+            )
+        finally:
+            if db_path.exists():
+                db_path.unlink()
         c.run("coverage xml", pty=True)
 
 
@@ -102,3 +111,29 @@ def serve(c, args=""):
     """run devel HTTP server locally. Use --args to specify additional uvicorn args"""
     with c.cd("src"):
         c.run(f"python -m uvicorn backend.main:app --reload {args}", pty=True)
+
+
+@task
+def alembic(c, args=""):
+    with c.cd("src"):
+        c.run(f"python -m alembic {args}")
+
+
+@task
+def db_upgrade(c, rev="head"):
+    c.run(f'invoke alembic --args "upgrade {rev}"')
+
+
+@task
+def db_downgrade(c, rev="-1"):
+    c.run(f'invoke alembic --args "downgrade {rev}"')
+
+
+@task
+def db_list(c):
+    c.run('invoke alembic --args "history -i"')
+
+
+@task
+def db_gen(c):
+    c.run('invoke alembic --args "revision --autogenerate -m unnamed"')

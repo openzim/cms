@@ -11,10 +11,15 @@
 
 ```sh
 pip install -U invoke toml  # only once
-invoke install-deps --package dev serve
+invoke install-deps --package dev db-upgrade serve
 ```
 
+### Constants
+
 - CORS is configured through `$ALLOWED_ORIGINS` with localhost fallback (see code)
+- Database is configured through `$DATABASE_URL` with fallback to `sqlite:///dev.db`
+
+See `constants.py`
 
 ### Guidelines
 
