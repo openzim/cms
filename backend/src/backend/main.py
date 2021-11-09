@@ -3,19 +3,15 @@
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 import datetime
-import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from backend import __description__, __title__, __version__
+from backend.constants import BackendConf
 
 PREFIX = "/v1"
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost|http://localhost:8000|http://localhost:8080",  # devel fallback
-).split("|")
 
 app = FastAPI(title=__title__, description=__description__, version=__version__)
 
@@ -30,7 +26,7 @@ api = FastAPI(title=__title__, description=__description__, version=__version__)
 
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=BackendConf.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
