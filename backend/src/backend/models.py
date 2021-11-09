@@ -145,6 +145,9 @@ class Book(ormar.Model, EntryMixin):
     # /!\ does not command whether included in exports or not.
     obsolete: bool = ormar.Boolean(default=False)
 
+    # not sure yet if should be Optional or not
+    title: Optional[Title] = ormar.ForeignKey(Title, related_name="books")
+
 
 class MetadataMixin:
     """ZIM Metadata
