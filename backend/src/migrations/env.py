@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine
 
-from backend.models import BaseMeta, Language
+from backend.models import Language, database
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -31,7 +31,7 @@ def run_migrations_offline():
 
     """
     context.configure(
-        url=str(BaseMeta.database.url),
+        url=str(database.url),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -52,7 +52,7 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    engine = create_engine(str(BaseMeta.database.url))
+    engine = create_engine(str(database.url))
     with engine.connect() as connection:
         context.configure(
             connection=connection,

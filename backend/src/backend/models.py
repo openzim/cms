@@ -20,9 +20,12 @@ ILLUSTRATION_PATTERN: str = (
 )
 
 
+database = databases.Database(BackendConf.database_url)
+
+
 class BaseMeta(ormar.ModelMeta):
     metadata = sqlalchemy.MetaData()
-    database = databases.Database(BackendConf.database_url)
+    database = database
 
 
 class Language(ormar.Model):
@@ -128,7 +131,7 @@ class Book(ormar.Model, EntryMixin):
     languages: Optional[List[Language]] = ormar.ManyToMany(
         Language, related_name="books"
     )
-    tags: Optional[BookTag] = ormar.ManyToMany(BookTag, related_name="books")
+    tags: Optional[List[BookTag]] = ormar.ManyToMany(BookTag, related_name="books")
 
     # non-metadata exposed info built from Reader::getArticleCount()
     article_count: int = ormar.Integer()

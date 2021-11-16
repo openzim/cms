@@ -34,7 +34,7 @@ async def test_language():
 @pytest.mark.asyncio
 async def test_book_create(book_dict):
     book = await Book.objects.create(
-        id=book_dict["uuid"],
+        id=book_dict["id"],
         counter=book_dict["counter"],
         period=book_dict["period"],
         article_count=book_dict["article_count"],
@@ -43,7 +43,7 @@ async def test_book_create(book_dict):
         url=book_dict["url"],
         zimcheck=book_dict["zimcheck"],
     )
-    assert book.id.hex == book_dict["uuid"]
+    assert str(book.id) == book_dict["id"]
     assert book.counter == book_dict["counter"]
     assert book.period == datetime.date.fromisoformat(book_dict["period"])
     assert book.article_count == book_dict["article_count"]
