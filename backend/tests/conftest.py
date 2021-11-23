@@ -30,13 +30,31 @@ async def language_fra(book_dict):
 @pytest.fixture(scope="function")
 def book_dict():
     return {
-        "uuid": uuid.uuid4().hex,
+        "id": str(uuid.uuid4()),
         "period": "2021-02-08",
         "counter": {"text/html": 1, "image/png": 1},
         "article_count": 2,
         "media_count": 1,
         "size": 2048,
         "url": "https://mirror.download.kiwix.org/zim/other/test.zim",
+        "metadata": {
+            "Counter": "text/plain=10;text/css=22;application/javascript=23;"
+            "image/png=1;text/html=2567;image/webp=719;image/svg+xml;"
+            " charset=utf-8; "
+            'profile="https://www.mediawiki.org/wiki/Specs/SVG/1.0.0"=1',
+            "Creator": "Wikipedia",
+            "Date": "2021-11-05",
+            "Description": "offline version of Wikipedia in Ganda",
+            "Flavour": "maxi",
+            "Language": "lug,eng,ara",
+            "Name": "wikipedia_lg_all",
+            "Publisher": "Kiwix",
+            "Scraper": "mwoffliner 1.11.10",
+            "Tags": "wikipedia;_category:wikipedia;_pictures:yes;"
+            "_videos:no;_details:yes;_ftindex:yes",
+            "Title": "Wikipedia",
+            "Illustration_48x48": "UklGRv4GAABXRUJQVlA4WAoAAAAQAAAALwAALwAAQUxQSC",
+        },
         "zimcheck": {
             "zimcheck_version": "3.0.0",
             "checks": [
@@ -64,7 +82,7 @@ def book_dict():
 @pytest.mark.asyncio
 async def book(book_dict):
     book = await Book.objects.create(
-        id=book_dict["uuid"],
+        id=book_dict["id"],
         counter=book_dict["counter"],
         period=book_dict["period"],
         article_count=book_dict["article_count"],
