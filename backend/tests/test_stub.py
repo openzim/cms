@@ -50,8 +50,7 @@ def test_test_endpoint_invalid_input():
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint(book_dict, base64_png):
-    book_dict["metadata"]["Illustration_48x48"] = base64_png
+async def test_books_add_endpoint(book_dict):
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -66,8 +65,7 @@ async def test_books_add_endpoint(book_dict, base64_png):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_metadata(book_dict, base64_png):
-    book_dict["metadata"]["Illustration_48x48"] = base64_png
+async def test_books_add_endpoint_save_book_metadata(book_dict):
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -90,8 +88,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict, base64_png):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_tags(book_dict, base64_png):
-    book_dict["metadata"]["Illustration_48x48"] = base64_png
+async def test_books_add_endpoint_save_book_tags(book_dict):
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -108,8 +105,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict, base64_png):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_languages(book_dict, base64_png):
-    book_dict["metadata"]["Illustration_48x48"] = base64_png
+async def test_books_add_endpoint_save_languages(book_dict):
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
