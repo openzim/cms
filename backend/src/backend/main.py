@@ -74,8 +74,6 @@ async def add_book(book_payload: BookAddSchema):
     if ident:
         # if valid ident
         title = await Title.objects.get_or_create(ident=ident)
-    else:
-        title = None
 
     book = await Book.objects.create(
         id=book_payload.id,
@@ -86,7 +84,7 @@ async def add_book(book_payload: BookAddSchema):
         size=book_payload.size,
         url=book_payload.url,
         zimcheck=book_payload.zimcheck,
-        title=title,
+        title=title if ident else None,
     )
 
     for metadata_name, value in book_payload.metadata.items():

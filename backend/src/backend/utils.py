@@ -6,16 +6,7 @@ def get_ident_from_name(name: str) -> str:
     # or the combination of language codes.
     # return pattern should be {project-name}_{lang}_{classifier}
 
-    if name.startswith("wik"):
-        lang_codes = name.split("_")[1].split("-")
-        try:
-            for lang in lang_codes:
-                find_language_names(lang)
-            return name
-        except AttributeError:
-            return ""
-
-    elif "khan-academy" in name:
+    if "khan-academy" in name:
         # input example:
         # khan-academy-videos_ar_playlist-PLlLMVkrxknErJ44BvGjhtfYxU80a9q4ii
         lang_codes = name.split("_")[1].split("-")
@@ -26,4 +17,12 @@ def get_ident_from_name(name: str) -> str:
         except AttributeError:
             return ""
 
-    return ""
+    else:
+        # this takes care of all the wiki sources
+        lang_codes = name.split("_")[1].split("-")
+        try:
+            for lang in lang_codes:
+                find_language_names(lang)
+            return name
+        except AttributeError:
+            return ""
