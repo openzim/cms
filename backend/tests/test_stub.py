@@ -126,3 +126,13 @@ async def test_books_add_endpoint_save_languages(book_dict):
     assert set(language.native for language in book.languages) == set(
         ["Luganda (Yuganda)", "العربية (مصر)", "English (United States)"]
     )
+
+
+@pytest.mark.asyncio
+async def test_add_book_title(book_dict):
+    response = client.post("/v1/books/add/", json=book_dict)
+    assert response.status_code == 201
+    assert response.headers.get("Content-Type") == "application/json"
+    book = await Book.objects.get(id=book_dict["id"])
+    assert book.title is not None
+    assert book.title.ident == "wikipedia_lg_all"

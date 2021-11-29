@@ -19,9 +19,11 @@ from backend.models import (
     BookMetadata,
     BookTag,
     Language,
+    Title,
     database,
 )
 from backend.schemas import BookAddSchema
+from backend.utils import get_ident_from_name
 
 PREFIX = "/v1"
 
@@ -68,6 +70,13 @@ async def test(timestamp: int):
 async def add_book(book_payload: BookAddSchema):
     """API endpoint to receive Book addition requests and add to database"""
 
+    ident = get_ident_from_name(book_payload.metadata["Name"])
+    if ident:
+        # if valid ident
+        title = await Title.objects.get_or_create(ident=ident)
+    else:
+        title = None
+
     book = await Book.objects.create(
         id=book_payload.id,
         counter=book_payload.counter,
@@ -77,6 +86,7 @@ async def add_book(book_payload: BookAddSchema):
         size=book_payload.size,
         url=book_payload.url,
         zimcheck=book_payload.zimcheck,
+        title=title,
     )
 
     for metadata_name, value in book_payload.metadata.items():
