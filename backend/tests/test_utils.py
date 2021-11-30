@@ -41,3 +41,16 @@ async def test_title_reconciliation_wikipedia_incorrect_lang(book_name):
 )
 async def test_unknown_project(book_name):
     assert get_ident_from_name(book_name) == book_name
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "book_name",
+    [
+        "tutorial-wikipedia",
+        "wikipedia",
+    ],
+)
+async def test_extracting_lang(book_name):
+    with pytest.raises(ValueError, match="Can't find language code"):
+        assert get_ident_from_name(book_name)
