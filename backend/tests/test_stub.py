@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 import backend
 from backend.main import PREFIX, app
-from backend.models import KIND_ILLUSTRATION, KIND_TEXT, Book, BookMetadata
+from backend.models import KIND_ILLUSTRATION, KIND_TEXT, Book, BookMetadata, Title
 
 client = TestClient(app)
 
@@ -133,6 +133,48 @@ async def test_add_book_title(book_dict):
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
-    book = await Book.objects.get(id=book_dict["id"])
+
+    book = (
+        await Book.objects.select_related("title")
+        .fields("id", "title")
+        .get(id=book_dict["id"])
+    )
     assert book.title is not None
     assert book.title.ident == "wikipedia_lg_all"
+
+
+@pytest.mark.asyncio
+async def test_add_book_title_save_languages(book_dict):
+    response = client.post("/v1/books/add/", json=book_dict)
+    assert response.status_code == 201
+    assert response.headers.get("Content-Type") == "application/json"
+
+    book = (
+        await Book.objects.select_related("title")
+        .fields("id", "title")
+        .get(id=book_dict["id"])
+    )
+    title = await Title.objects.select_related("languages").get(ident=book.title.ident)
+    assert set(language.name for language in title.languages) == set(
+        ["Ganda (Uganda)", "Arabic (Egypt)", "English (United States)"]
+    )
+    assert set(language.native for language in title.languages) == set(
+        ["Luganda (Yuganda)", "العربية (مصر)", "English (United States)"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_book_title_save_tags(book_dict):
+    response = client.post("/v1/books/add/", json=book_dict)
+    assert response.status_code == 201
+    assert response.headers.get("Content-Type") == "application/json"
+
+    book = (
+        await Book.objects.select_related("title")
+        .fields("id", "title")
+        .get(id=book_dict["id"])
+    )
+    title = await Title.objects.select_related("tags").get(ident=book.title.ident)
+    assert set(tag.name for tag in title.tags) == set(
+        book_dict["metadata"]["Tags"].split(";")
+    )
