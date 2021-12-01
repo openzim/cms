@@ -82,53 +82,52 @@ async def add_book(book_payload: BookAddSchema):
         zimcheck=book_payload.zimcheck,
     )
 
-    title = await Title.objects.get_or_create(
-        ident=get_ident_from_name(book_payload.metadata["Name"])
-    )
+    for metadata_name, value in book_payload.metadata.items():
+        if metadata_name.startswith("Illustration_"):
+            await BookMetadata.objects.create(
+                book=book.id,
+                name=metadata_name,
+                bin_value=base64.standard_b64decode(value),
+                kind=KIND_ILLUSTRATION,
+            )
+        else:
+            await BookMetadata.objects.create(
+                book=book.id,
+                name=metadata_name,
+                value=value,
+                kind=KIND_TEXT,
+            )
+
+    try:
+        title = await Title.objects.get_or_create(
+            ident=get_ident_from_name(book_payload.metadata["Name"])
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Exception: {exc}") from exc
+
     await book.update(title=title)
 
-    for metadata_name, value in book_payload.metadata.items():
-        if metadata_name.startswith("Illustration_"):
-            await BookMetadata.objects.create(
-                book=book.id,
-                name=metadata_name,
-                bin_value=base64.standard_b64decode(value),
-                kind=KIND_ILLUSTRATION,
-            )
-        else:
-            await BookMetadata.objects.create(
-                book=book.id,
-                name=metadata_name,
-                value=value,
-                kind=KIND_TEXT,
-            )
-
-    for metadata_name, value in book_payload.metadata.items():
-        if metadata_name.startswith("Illustration_"):
-            await TitleMetadata.objects.create(
-                title=title.ident,
-                name=metadata_name,
-                bin_value=base64.standard_b64decode(value),
-                kind=KIND_ILLUSTRATION,
-            )
-        else:
-            await TitleMetadata.objects.create(
-                title=title.ident,
-                name=metadata_name,
-                value=value,
-                kind=KIND_TEXT,
-            )
+    for metadata in await BookMetadata.objects.all(book=book.id):
+        await TitleMetadata.objects.create(
+            title=title.ident,
+            name=metadata.name,
+            bin_value=metadata.bin_value,
+            value=metadata.value,
+            kind=metadata.kind,
+        )
 
     for tag_name in book_payload.metadata["Tags"].split(";"):
         book_tag = await BookTag.objects.get_or_create(name=tag_name)
         await book.tags.add(book_tag)
-        if not tag_name.startswith("_") or "_category" in tag_name:
+        if not tag_name.startswith(
+            ("_sw", "_ftindex", "_pictures", "_videos", "_details")
+        ):
             await title.tags.add(book_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
-        lang_dict = find_language_names(lang_code)
+        native_name, english_name = find_language_names(lang_code)
         language = await Language.objects.get_or_create(
-            code=lang_code, name=lang_dict[1], native=lang_dict[0]
+            code=lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)
         await title.languages.add(language)

@@ -58,7 +58,7 @@ def test_test_endpoint_invalid_input():
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -79,7 +79,7 @@ async def test_books_add_endpoint(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_metadata(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -103,7 +103,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_tags(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -121,7 +121,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_languages(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -146,7 +146,7 @@ async def test_books_add_endpoint_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -162,7 +162,7 @@ async def test_add_book_title(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_languages(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -183,7 +183,7 @@ async def test_add_book_title_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_tags(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -201,7 +201,7 @@ async def test_add_book_title_save_tags(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_metadata(book_dict):
-    await TitleMetadata.objects.delete(each=True)
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -227,3 +227,13 @@ async def test_add_book_title_save_metadata(book_dict):
         else:
             assert metadata.kind == KIND_TEXT
             assert metadata.value == book_dict["metadata"][metadata.name]
+
+
+@pytest.mark.asyncio
+async def test_add_book_title_raise_httpexception_for_title(book_dict):
+    # updating book_dict with incorrect language code
+    book_dict["metadata"]["Name"] = "wikipedia_zz_all"
+    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    response = client.post("/v1/books/add/", json=book_dict)
+    assert response.status_code == 400
+    assert response.headers.get("Content-Type") == "application/json"
