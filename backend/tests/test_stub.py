@@ -4,6 +4,7 @@ import math
 
 import pytest
 from fastapi.testclient import TestClient
+from ormar.exceptions import NoMatch
 
 import backend
 from backend.main import PREFIX, app
@@ -58,7 +59,7 @@ def test_test_endpoint_invalid_input():
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -79,7 +80,7 @@ async def test_books_add_endpoint(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_metadata(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -103,7 +104,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_tags(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -121,7 +122,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_languages(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -146,7 +147,7 @@ async def test_books_add_endpoint_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -162,7 +163,7 @@ async def test_add_book_title(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_languages(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -183,7 +184,7 @@ async def test_add_book_title_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_tags(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -201,7 +202,7 @@ async def test_add_book_title_save_tags(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_metadata(book_dict):
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -233,7 +234,13 @@ async def test_add_book_title_save_metadata(book_dict):
 async def test_add_book_title_raise_httpexception_for_title(book_dict):
     # updating book_dict with incorrect language code
     book_dict["metadata"]["Name"] = "wikipedia_zz_all"
-    await TitleMetadata.objects.delete(title="wikipedia_lg_all")
+    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 400
     assert response.headers.get("Content-Type") == "application/json"
+
+    with pytest.raises(NoMatch):
+        await Book.objects.get(id=book_dict["id"])
+
+    with pytest.raises(NoMatch):
+        await Title.objects.get(ident=book_dict["metadata"]["Name"])

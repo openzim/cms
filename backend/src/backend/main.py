@@ -4,6 +4,7 @@
 
 import base64
 import datetime
+import re
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,6 +72,16 @@ async def test(timestamp: int):
 async def add_book(book_payload: BookAddSchema):
     """API endpoint to receive Book addition requests and add to database"""
 
+    try:
+        title = await Title.objects.get_or_create(
+            ident=get_ident_from_name(book_payload.metadata["Name"])
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Name metadata. Unable to build Title identifier: {exc}",
+        ) from exc
+
     book = await Book.objects.create(
         id=book_payload.id,
         counter=book_payload.counter,
@@ -81,6 +92,8 @@ async def add_book(book_payload: BookAddSchema):
         url=book_payload.url,
         zimcheck=book_payload.zimcheck,
     )
+
+    await book.update(title=title)
 
     for metadata_name, value in book_payload.metadata.items():
         if metadata_name.startswith("Illustration_"):
@@ -98,16 +111,7 @@ async def add_book(book_payload: BookAddSchema):
                 kind=KIND_TEXT,
             )
 
-    try:
-        title = await Title.objects.get_or_create(
-            ident=get_ident_from_name(book_payload.metadata["Name"])
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Exception: {exc}") from exc
-
-    await book.update(title=title)
-
-    for metadata in await BookMetadata.objects.all(book=book.id):
+    for metadata in await book.metadata.all():
         await TitleMetadata.objects.create(
             title=title.ident,
             name=metadata.name,
@@ -119,9 +123,7 @@ async def add_book(book_payload: BookAddSchema):
     for tag_name in book_payload.metadata["Tags"].split(";"):
         book_tag = await BookTag.objects.get_or_create(name=tag_name)
         await book.tags.add(book_tag)
-        if not tag_name.startswith(
-            ("_sw", "_ftindex", "_pictures", "_videos", "_details")
-        ):
+        if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
             await title.tags.add(book_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
