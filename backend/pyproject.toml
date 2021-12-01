@@ -10,7 +10,7 @@ runtime = [
     "ormar >=0.10.22,<1.0",
     "alembic >=1.7.4,<2.0",
     "aiosqlite >= 0.17.0,<1.0",
-    "zimscraperlib >= 1.4.0,<2.0",
+    "zimscraperlib >= 1.4.1,<2.0",
 ]
 test = [
     "pytest >=6.2.4,<7.0.0",
