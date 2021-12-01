@@ -27,7 +27,7 @@ async def test_title_reconciliation_wikipedia(book_name):
     ],
 )
 async def test_title_reconciliation_wikipedia_incorrect_lang(book_name):
-    with pytest.raises(ValueError, match="is not a valid ISO language code"):
+    with pytest.raises(ValueError, match="Invalid language code"):
         get_ident_from_name(book_name)
 
 
@@ -53,4 +53,4 @@ async def test_unknown_project(book_name):
 )
 async def test_extracting_lang(book_name):
     with pytest.raises(ValueError, match="Can't find language code"):
-        assert get_ident_from_name(book_name)
+        get_ident_from_name(book_name)

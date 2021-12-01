@@ -8,7 +8,7 @@ import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from zimscraperlib.i18n import get_language_details
+from zimscraperlib.i18n import find_language_names
 
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
@@ -20,6 +20,7 @@ from backend.models import (
     BookTag,
     Language,
     Title,
+    TitleMetadata,
     database,
 )
 from backend.schemas import BookAddSchema
@@ -81,6 +82,11 @@ async def add_book(book_payload: BookAddSchema):
         zimcheck=book_payload.zimcheck,
     )
 
+    title = await Title.objects.get_or_create(
+        ident=get_ident_from_name(book_payload.metadata["Name"])
+    )
+    await book.update(title=title)
+
     for metadata_name, value in book_payload.metadata.items():
         if metadata_name.startswith("Illustration_"):
             await BookMetadata.objects.create(
@@ -97,25 +103,37 @@ async def add_book(book_payload: BookAddSchema):
                 kind=KIND_TEXT,
             )
 
-    title = await Title.objects.get_or_create(
-        ident=get_ident_from_name(book_payload.metadata["Name"])
-    )
-    await book.update(title=title)
+    for metadata_name, value in book_payload.metadata.items():
+        if metadata_name.startswith("Illustration_"):
+            await TitleMetadata.objects.create(
+                title=title.ident,
+                name=metadata_name,
+                bin_value=base64.standard_b64decode(value),
+                kind=KIND_ILLUSTRATION,
+            )
+        else:
+            await TitleMetadata.objects.create(
+                title=title.ident,
+                name=metadata_name,
+                value=value,
+                kind=KIND_TEXT,
+            )
 
     for tag_name in book_payload.metadata["Tags"].split(";"):
         book_tag = await BookTag.objects.get_or_create(name=tag_name)
         await book.tags.add(book_tag)
-        await title.tags.add(book_tag)
+        if not tag_name.startswith("_") or "_category" in tag_name:
+            await title.tags.add(book_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
-        lang_dict = get_language_details(lang_code)
+        lang_dict = find_language_names(lang_code)
         language = await Language.objects.get_or_create(
-            code=lang_code, name=lang_dict["english"], native=lang_dict["native"]
+            code=lang_code, name=lang_dict[1], native=lang_dict[0]
         )
         await book.languages.add(language)
         await title.languages.add(language)
 
-    return {"msg": "ok", "ident": book.title.ident}
+    return {"msg": "ok", "uuid": str(book.id), "title": book.title.ident}
 
 
 app.mount(PREFIX, api)

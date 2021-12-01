@@ -7,7 +7,14 @@ from fastapi.testclient import TestClient
 
 import backend
 from backend.main import PREFIX, app
-from backend.models import KIND_ILLUSTRATION, KIND_TEXT, Book, BookMetadata, Title
+from backend.models import (
+    KIND_ILLUSTRATION,
+    KIND_TEXT,
+    Book,
+    BookMetadata,
+    Title,
+    TitleMetadata,
+)
 
 client = TestClient(app)
 
@@ -51,11 +58,17 @@ def test_test_endpoint_invalid_input():
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
 
     book = await Book.objects.get(id=book_dict["id"])
+    assert response.json() == {
+        "msg": "ok",
+        "uuid": str(book.id),
+        "title": book.title.ident,
+    }
     assert str(book.id) == book_dict["id"]
     assert book.counter == book_dict["counter"]
     assert book.period == datetime.date.fromisoformat(book_dict["period"])
@@ -66,6 +79,7 @@ async def test_books_add_endpoint(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_metadata(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -89,6 +103,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_book_tags(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -106,6 +121,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict):
 
 @pytest.mark.asyncio
 async def test_books_add_endpoint_save_languages(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -130,6 +146,7 @@ async def test_books_add_endpoint_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -145,6 +162,7 @@ async def test_add_book_title(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_languages(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -165,6 +183,7 @@ async def test_add_book_title_save_languages(book_dict):
 
 @pytest.mark.asyncio
 async def test_add_book_title_save_tags(book_dict):
+    await TitleMetadata.objects.delete(each=True)
     response = client.post("/v1/books/add/", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -176,5 +195,35 @@ async def test_add_book_title_save_tags(book_dict):
     )
     title = await Title.objects.select_related("tags").get(ident=book.title.ident)
     assert set(tag.name for tag in title.tags) == set(
-        book_dict["metadata"]["Tags"].split(";")
+        ["wikipedia", "_category:wikipedia"]
     )
+
+
+@pytest.mark.asyncio
+async def test_add_book_title_save_metadata(book_dict):
+    await TitleMetadata.objects.delete(each=True)
+    response = client.post("/v1/books/add/", json=book_dict)
+    assert response.status_code == 201
+    assert response.headers.get("Content-Type") == "application/json"
+
+    book = (
+        await Book.objects.select_related("title")
+        .fields("id", "title")
+        .get(id=book_dict["id"])
+    )
+
+    title_metadata = await TitleMetadata.objects.fields("id", "metadata").all(
+        title=book.title.ident
+    )
+
+    assert len(title_metadata) == len(book_dict["metadata"])
+    for metadata in title_metadata:
+        if metadata.name.startswith("Illustration"):
+            assert metadata.kind == KIND_ILLUSTRATION
+            assert metadata.bin_value == base64.standard_b64decode(
+                book_dict["metadata"][metadata.name]
+            )
+            assert metadata.value == ""
+        else:
+            assert metadata.kind == KIND_TEXT
+            assert metadata.value == book_dict["metadata"][metadata.name]
