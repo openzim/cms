@@ -244,3 +244,24 @@ async def test_add_book_title_raise_httpexception_for_title(book_dict):
 
     with pytest.raises(NoMatch):
         await Title.objects.get(ident=book_dict["metadata"]["Name"])
+
+
+@pytest.mark.asyncio
+async def test_titles_endpoint_get_list_single_title(title):
+    assert len(await Title.objects.all()) == 1
+
+    response = client.get("/v1/titles/")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {"titles": [{"ident": title.ident}]}
+
+
+@pytest.mark.asyncio
+async def test_titles_endpoint_get_title(title_with_data):
+    response = client.get(f"/v1/titles/{title_with_data.ident}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "ident": title_with_data.ident,
+        "languages": [{"code": "eng"}, {"code": "fra"}],
+        "tags": [{"name": "wikipedia"}],
+    }

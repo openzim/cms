@@ -2,13 +2,21 @@ import uuid
 
 import pytest
 
-from backend.models import Book, Language, Title, setup
+from backend.models import BaseMeta, Book, BookTag, Language, Title, database, setup
 
 
 @pytest.fixture(autouse=True, scope="session")
 def database_url():
     setup()
     yield
+
+
+@pytest.fixture(autouse=True, scope="function")
+async def clear_database():
+    yield
+    # more info: https://stackoverflow.com/a/11234195
+    for table in reversed(BaseMeta.metadata.sorted_tables):
+        await database.execute(table.delete())
 
 
 @pytest.fixture(scope="function")
@@ -164,6 +172,22 @@ async def title(title_dict):
 async def title_with_language(title, language_eng):
     await title.languages.add(language_eng)
     yield title
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_with_data(title, language_eng, language_fra, book_tag):
+    await title.languages.add(language_eng)
+    await title.languages.add(language_fra)
+    await title.tags.add(book_tag)
+    yield title
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def book_tag():
+    tag = await BookTag.objects.create(name="wikipedia")
+    yield tag
 
 
 @pytest.fixture(scope="module")

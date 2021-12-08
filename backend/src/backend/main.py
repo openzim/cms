@@ -24,7 +24,7 @@ from backend.models import (
     TitleMetadata,
     database,
 )
-from backend.schemas import BookAddSchema
+from backend.schemas import BookAddSchema, TitleSendSchema, TitlesListSendSchema
 from backend.utils import get_ident_from_name
 
 PREFIX = "/v1"
@@ -135,6 +135,20 @@ async def add_book(book_payload: BookAddSchema):
         await title.languages.add(language)
 
     return {"msg": "ok", "uuid": str(book.id), "title": book.title.ident}
+
+
+@database.transaction()
+@api.get("/titles/", status_code=200, response_model=TitlesListSendSchema)
+async def receive_titles():
+    titles = await Title.objects.select_all().all()
+    return {"titles": titles}
+
+
+@database.transaction()
+@api.get("/titles/{ident}", status_code=200, response_model=TitleSendSchema)
+async def receive_title(ident: str):
+    title = await Title.objects.select_related(["languages", "tags"]).get(ident=ident)
+    return title
 
 
 app.mount(PREFIX, api)
