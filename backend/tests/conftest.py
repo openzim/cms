@@ -11,12 +11,12 @@ def database_url():
     yield
 
 
-@pytest.fixture(autouse=True, scope="function")
+@pytest.fixture(scope="function")
 async def clear_database():
-    yield
     # more info: https://stackoverflow.com/a/11234195
     for table in reversed(BaseMeta.metadata.sorted_tables):
         await database.execute(table.delete())
+    yield
 
 
 @pytest.fixture(scope="function")
@@ -176,9 +176,8 @@ async def title_with_language(title, language_eng):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def title_with_data(title, language_eng, language_fra, book_tag):
+async def title_with_data(title, language_eng, book_tag):
     await title.languages.add(language_eng)
-    await title.languages.add(language_fra)
     await title.tags.add(book_tag)
     yield title
 

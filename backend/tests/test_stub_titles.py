@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_titles_endpoint_get_list_single_title(title):
+async def test_titles_endpoint_get_list_single_title(clear_database, title):
     assert len(await Title.objects.all()) == 1
 
     response = client.get("/v1/titles/")
@@ -23,6 +23,6 @@ async def test_titles_endpoint_get_title(title_with_data):
     assert response.status_code == 200
     assert response.json() == {
         "ident": title_with_data.ident,
-        "languages": [{"code": "eng"}, {"code": "fra"}],
+        "languages": [{"code": "eng"}],
         "tags": [{"name": "wikipedia"}],
     }
