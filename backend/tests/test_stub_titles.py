@@ -9,12 +9,16 @@ client = TestClient(app)
 
 @pytest.mark.asyncio
 async def test_titles_endpoint_get_list_single_title(clear_database, title):
-    assert len(await Title.objects.all()) == 1
-
     response = client.get("/v1/titles/")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
-    assert response.json() == {"titles": [{"ident": title.ident}]}
+    title = await Title.objects.get()
+    assert response.json() == {
+        "items": [{"ident": title.ident}],
+        "total": len(await Title.objects.all()),
+        "page": 1,
+        "size": 50,
+    }
 
 
 @pytest.mark.asyncio

@@ -19,10 +19,7 @@ class BookAddSchema(BaseModel):
 
 
 class TitlesListSendSchema(BaseModel):
-    class TitleSendSchema(BaseModel):
-        ident: str
-
-    titles: List[TitleSendSchema]
+    ident: str
 
 
 class TitleSendSchema(BaseModel):

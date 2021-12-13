@@ -38,8 +38,8 @@ async def root():
     return "Hello World"
 
 
+api.include_router(router=books.router)
 api.include_router(router=test.router)
 api.include_router(router=titles.router)
-api.include_router(router=books.router)
 
 app.mount(PREFIX, api)

@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from fastapi_pagination import Page, Params, paginate
 
 from backend.models import Title, database
 from backend.schemas import TitleSendSchema, TitlesListSendSchema
@@ -10,10 +11,12 @@ router = APIRouter(
 
 
 @database.transaction()
-@router.get("", status_code=200, tags=["titles"], response_model=TitlesListSendSchema)
-async def list_titles():
+@router.get(
+    "", status_code=200, tags=["titles"], response_model=Page[TitlesListSendSchema]
+)
+async def list_titles(params: Params = Depends()):
     titles = await Title.objects.fields("ident").all()
-    return {"titles": titles}
+    return paginate(titles, params)
 
 
 @database.transaction()
