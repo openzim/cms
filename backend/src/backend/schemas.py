@@ -23,12 +23,7 @@ class TitlesListSendSchema(BaseModel):
 
 
 class TitleSendSchema(BaseModel):
-    class LanguageSendSchema(BaseModel):
-        code: str
-
-    class BookTagSendSchema(BaseModel):
-        name: str
-
     ident: str
-    languages: List[LanguageSendSchema]
-    tags: List[BookTagSendSchema]
+    languages: List[str]
+    tags: List[str]
+    metadata: Dict[str, Any]

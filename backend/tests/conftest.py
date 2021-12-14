@@ -1,8 +1,20 @@
+import base64
 import uuid
 
 import pytest
 
-from backend.models import BaseMeta, Book, BookTag, Language, Title, database, setup
+from backend.models import (
+    KIND_ILLUSTRATION,
+    KIND_TEXT,
+    BaseMeta,
+    Book,
+    BookTag,
+    Language,
+    Title,
+    TitleMetadata,
+    database,
+    setup,
+)
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -94,7 +106,7 @@ def book_dict():
                 "+q4SkA4SIRGNKVTAAQ98iO89uMrFIa3ps8SNBcE//SR/7ZkjOp6rvcxkPqekPnMN7/42LU"
                 "tGqlHjsOV16/y5dMvtCODz4ZjQkc95j+EobjEnTnbVhba1DVIDD5HfKvccCmn9Nfxra0hb"
                 "r1NGFnFPRAqa3QMMfmxAQrcJCLb1kdULbGJvxlrjvONBwDnQ0en9tR6GM31gslK145z1Yt"
-                "Hs91N/RKEgP/x2Pc+lY9VeYqBDz1rqiJ41SxVy6nuOyUqeJIMRAAAAA=="
+                "Hs91N/RKEgP/x2Pc+lY9VeYqBDz1rqiJ41SxVy6nuOyUqeJIMRAAAAA="
             ),
         },
         "zimcheck": {
@@ -176,9 +188,26 @@ async def title_with_language(title, language_eng):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def title_with_data(title, language_eng, book_tag):
+async def title_with_data(title, language_eng, book_tag, book_dict):
     await title.languages.add(language_eng)
     await title.tags.add(book_tag)
+
+    # using book_dict to add metadata to the title, for testing
+    for metadata_name, value in book_dict["metadata"].items():
+        if metadata_name.startswith("Illustration_"):
+            await TitleMetadata.objects.create(
+                title=title.ident,
+                name=metadata_name,
+                bin_value=base64.standard_b64decode(value),
+                kind=KIND_ILLUSTRATION,
+            )
+        else:
+            await TitleMetadata.objects.create(
+                title=title.ident,
+                name=metadata_name,
+                value=value,
+                kind=KIND_TEXT,
+            )
     yield title
 
 

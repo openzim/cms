@@ -22,11 +22,12 @@ async def test_titles_endpoint_get_list_single_title(clear_database, title):
 
 
 @pytest.mark.asyncio
-async def test_titles_endpoint_get_title(title_with_data):
+async def test_titles_endpoint_get_title(title_with_data, book_dict):
     response = client.get(f"/v1/titles/{title_with_data.ident}")
     assert response.status_code == 200
     assert response.json() == {
         "ident": title_with_data.ident,
-        "languages": [{"code": "eng"}],
-        "tags": [{"name": "wikipedia"}],
+        "languages": [lang.code for lang in title_with_data.languages],
+        "tags": [tag.name for tag in title_with_data.tags],
+        "metadata": book_dict["metadata"],
     }
