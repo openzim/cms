@@ -12,6 +12,7 @@ from backend.models import (
     Language,
     Title,
     TitleMetadata,
+    TitleTag,
     database,
     setup,
 )
@@ -188,9 +189,16 @@ async def title_with_language(title, language_eng):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def title_with_data(title, language_eng, book_tag, book_dict):
+async def title_tag():
+    tag = await TitleTag.objects.create(name="wikipedia")
+    yield tag
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_with_data(title, language_eng, title_tag, book_dict):
     await title.languages.add(language_eng)
-    await title.tags.add(book_tag)
+    await title.tags.add(title_tag)
 
     # using book_dict to add metadata to the title, for testing
     for metadata_name, value in book_dict["metadata"].items():

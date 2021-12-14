@@ -111,7 +111,7 @@ class Title(ormar.Model, EntryMixin):
     languages: Optional[List[Language]] = ormar.ManyToMany(
         Language, related_name="titles"
     )
-    tags: Optional[List[BookTag]] = ormar.ManyToMany(BookTag, related_name="titles")
+    tags: Optional[List[TitleTag]] = ormar.ManyToMany(TitleTag, related_name="titles")
 
 
 class Book(ormar.Model, EntryMixin):

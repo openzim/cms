@@ -13,6 +13,7 @@ from backend.models import (
     Language,
     Title,
     TitleMetadata,
+    TitleTag,
     database,
 )
 from backend.schemas import BookAddSchema
@@ -81,7 +82,8 @@ async def create_book(book_payload: BookAddSchema):
         book_tag = await BookTag.objects.get_or_create(name=tag_name)
         await book.tags.add(book_tag)
         if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
-            await title.tags.add(book_tag)
+            title_tag = await TitleTag.objects.get_or_create(name=tag_name)
+            await title.tags.add(title_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)
