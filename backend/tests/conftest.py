@@ -185,6 +185,10 @@ async def title(title_dict):
 async def title_with_language(title, language_eng):
     await title.languages.add(language_eng)
     yield title
+    await title.languages.clear()
+    await title.tags.clear()
+    await title.metadata.clear()
+    await title.delete()
 
 
 @pytest.fixture(scope="function")

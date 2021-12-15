@@ -119,6 +119,10 @@ async def test_title_create():
         ident=ident,
     )
     assert title.ident == ident
+    await title.languages.clear()
+    await title.tags.clear()
+    await title.metadata.clear()
+    await title.delete()
 
 
 @pytest.mark.asyncio

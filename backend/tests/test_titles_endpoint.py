@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app
-from backend.models import Title
 
 client = TestClient(app)
 
@@ -12,7 +11,6 @@ async def test_titles_endpoint_get_list_single_title(clear_database, title):
     response = client.get("/v1/titles/")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
-    title = await Title.objects.get()
     assert response.json() == {
         "items": [{"ident": title.ident}],
         "total": 1,
