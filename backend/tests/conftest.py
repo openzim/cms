@@ -25,8 +25,20 @@ def database_url():
 
 
 @pytest.fixture(scope="function")
+async def clear_titles():
+    yield
+    await Title.objects.delete(each=True)
+
+
+@pytest.fixture(scope="function")
+async def clear_title_tags():
+    yield
+    await TitleTag.objects.delete(each=True)
+
+
+@pytest.fixture(scope="function")
 async def clear_book_dict(book_dict):
-    # removes metadata, tags, languages, title and book created from the book_dict
+    """removes metadata, tags, languages, title and book created from the book_dict"""
     yield
 
     book = await Book.objects.get(id=book_dict["id"])
@@ -40,6 +52,13 @@ async def clear_book_dict(book_dict):
     await title.tags.clear(keep_reversed=False)
     await title.metadata.clear(keep_reversed=False)
     await title.delete()
+
+    await BookTag.objects.filter(
+        name__in=book_dict["metadata"]["Tags"].split(";")
+    ).delete()
+    await TitleTag.objects.filter(
+        name__in=book_dict["metadata"]["Tags"].split(";")
+    ).delete()
 
 
 @pytest.fixture(scope="function")
@@ -221,7 +240,7 @@ async def title_tag():
 @pytest.mark.asyncio
 async def title_with_data(title, language_eng, title_tag, book_dict):
     await title.languages.add(language_eng)
-    await title.tags.add(title_tag)
+    # await title.tags.add(title_tag)
 
     # using book_dict to add metadata to the title, for testing
     for metadata_name, value in book_dict["metadata"].items():

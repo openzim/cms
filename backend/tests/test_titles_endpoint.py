@@ -7,7 +7,7 @@ client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_titles_endpoint_get_list_single_title(clear_database, title):
+async def test_titles_endpoint_get_list_single_title(title):
     response = client.get("/v1/titles/")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
