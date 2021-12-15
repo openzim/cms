@@ -3,7 +3,7 @@ import base64
 from fastapi import APIRouter, Depends
 from fastapi_pagination import Page, Params, paginate
 
-from backend.models import Title, TitleMetadata, database
+from backend.models import KIND_ILLUSTRATION, Title, database
 from backend.schemas import TitleSendSchema, TitlesListSendSchema
 
 router = APIRouter(
@@ -27,18 +27,17 @@ async def list_titles(params: Params = Depends()):
 )
 async def get_title(ident: str):
     title = await Title.objects.select_all().get(ident=ident)
-    title_metadata = await TitleMetadata.objects.fields("id", "metadata").all(
-        title=title.ident
-    )
 
     return {
         "ident": title.ident,
         "languages": [lang.code for lang in title.languages],
         "tags": [tag.name for tag in title.tags],
         "metadata": {
-            (elem.name): (
-                elem.value if elem.value else base64.standard_b64encode(elem.bin_value)
+            item.name: (
+                base64.standard_b64encode(item.bin_value)
+                if item.kind == KIND_ILLUSTRATION
+                else item.value
             )
-            for elem in title_metadata
+            for item in await title.metadata.all()
         },
     }
