@@ -192,6 +192,7 @@ async def title_with_language(title, language_eng):
 async def title_tag():
     tag = await TitleTag.objects.create(name="wikipedia")
     yield tag
+    await tag.delete()
 
 
 @pytest.fixture(scope="function")
@@ -217,6 +218,11 @@ async def title_with_data(title, language_eng, title_tag, book_dict):
                 kind=KIND_TEXT,
             )
     yield title
+    await title.languages.clear()
+    await title.tags.clear()
+    await title.books.clear()
+    await title.metadata.clear()
+    await title.delete()
 
 
 @pytest.fixture(scope="function")
@@ -224,6 +230,7 @@ async def title_with_data(title, language_eng, title_tag, book_dict):
 async def book_tag():
     tag = await BookTag.objects.create(name="wikipedia")
     yield tag
+    await tag.delete()
 
 
 @pytest.fixture(scope="module")

@@ -15,7 +15,7 @@ async def test_titles_endpoint_get_list_single_title(clear_database, title):
     title = await Title.objects.get()
     assert response.json() == {
         "items": [{"ident": title.ident}],
-        "total": len(await Title.objects.all()),
+        "total": 1,
         "page": 1,
         "size": 50,
     }

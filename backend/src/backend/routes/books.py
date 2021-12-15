@@ -49,9 +49,8 @@ async def create_book(book_payload: BookAddSchema):
         size=book_payload.size,
         url=book_payload.url,
         zimcheck=book_payload.zimcheck,
+        title=title,
     )
-
-    await book.update(title=title)
 
     for metadata_name, value in book_payload.metadata.items():
         if metadata_name.startswith("Illustration_"):
