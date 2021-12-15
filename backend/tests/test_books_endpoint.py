@@ -19,8 +19,7 @@ client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_add_endpoint(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -40,8 +39,7 @@ async def test_books_add_endpoint(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_metadata(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_add_endpoint_save_book_metadata(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -64,8 +62,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_tags(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_add_endpoint_save_book_tags(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -82,8 +79,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_languages(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_add_endpoint_save_languages(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -107,8 +103,7 @@ async def test_books_add_endpoint_save_languages(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_title(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -123,8 +118,7 @@ async def test_books_title(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_languages(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_title_save_languages(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -144,8 +138,7 @@ async def test_books_title_save_languages(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_tags(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_title_save_tags(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -162,8 +155,7 @@ async def test_books_title_save_tags(book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_metadata(book_dict):
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
+async def test_books_title_save_metadata(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"

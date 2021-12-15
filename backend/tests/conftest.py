@@ -25,6 +25,24 @@ def database_url():
 
 
 @pytest.fixture(scope="function")
+async def clear_book_dict(book_dict):
+    # removes metadata, tags, languages, title and book created from the book_dict
+    yield
+
+    book = await Book.objects.get(id=book_dict["id"])
+    await book.languages.clear(keep_reversed=False)
+    await book.tags.clear(keep_reversed=False)
+    await book.metadata.clear(keep_reversed=False)
+    await book.delete()
+
+    title = await Title.objects.get(ident=book.title.ident)
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear(keep_reversed=False)
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
 async def clear_database():
     # more info: https://stackoverflow.com/a/11234195
     for table in reversed(BaseMeta.metadata.sorted_tables):
