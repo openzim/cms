@@ -6,14 +6,12 @@ import pytest
 from backend.models import (
     KIND_ILLUSTRATION,
     KIND_TEXT,
-    BaseMeta,
     Book,
     BookTag,
     Language,
     Title,
     TitleMetadata,
     TitleTag,
-    database,
     setup,
 )
 
@@ -42,12 +40,13 @@ async def clear_book_dict(book_dict):
     yield
 
     book = await Book.objects.get(id=book_dict["id"])
+    title = await Title.objects.get(ident=book.title.ident)
+
     await book.languages.clear(keep_reversed=False)
     await book.tags.clear(keep_reversed=False)
     await book.metadata.clear(keep_reversed=False)
     await book.delete()
 
-    title = await Title.objects.get(ident=book.title.ident)
     await title.languages.clear(keep_reversed=False)
     await title.tags.clear(keep_reversed=False)
     await title.metadata.clear(keep_reversed=False)
@@ -59,14 +58,6 @@ async def clear_book_dict(book_dict):
     await TitleTag.objects.filter(
         name__in=book_dict["metadata"]["Tags"].split(";")
     ).delete()
-
-
-@pytest.fixture(scope="function")
-async def clear_database():
-    # more info: https://stackoverflow.com/a/11234195
-    for table in reversed(BaseMeta.metadata.sorted_tables):
-        await database.execute(table.delete())
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -222,10 +213,6 @@ async def title(title_dict):
 async def title_with_language(title, language_eng):
     await title.languages.add(language_eng)
     yield title
-    await title.languages.clear()
-    await title.tags.clear()
-    await title.metadata.clear()
-    await title.delete()
 
 
 @pytest.fixture(scope="function")
@@ -240,7 +227,7 @@ async def title_tag():
 @pytest.mark.asyncio
 async def title_with_data(title, language_eng, title_tag, book_dict):
     await title.languages.add(language_eng)
-    # await title.tags.add(title_tag)
+    await title.tags.add(title_tag)
 
     # using book_dict to add metadata to the title, for testing
     for metadata_name, value in book_dict["metadata"].items():
@@ -261,7 +248,6 @@ async def title_with_data(title, language_eng, title_tag, book_dict):
     yield title
     await title.languages.clear()
     await title.tags.clear()
-    await title.books.clear()
     await title.metadata.clear()
     await title.delete()
 
