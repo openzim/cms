@@ -3,17 +3,24 @@ import { createRouter, createWebHistory } from 'vue-router'
 import NotFound from './views/NotFound.vue'
 import SupportUs from './views/SupportUs.vue'
 import TitlesListing from './views/TitlesListing.vue'
+import TitleDetail from './views/TitleDetail.vue'
+
 
 const routes = [
   {
     path: '/',
     name: 'home',
-    redirect: {name: 'titles'},
+    redirect: { name: 'titles' },
   },
   {
     path: '/titles',
     name: 'titles',
     component: TitlesListing,
+  },
+  {
+    path: '/titles/:ident',
+    name: 'title',
+    component: TitleDetail,
   },
   {
     path: '/support-us',

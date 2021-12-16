@@ -2,21 +2,45 @@
   <div>
     <table class="table">
       <thead>
-        <tr><th>ID</th><th>Title</th><th>Description</th></tr>
+        <tr>
+          <th>Title</th>
+        </tr>
       </thead>
-      <tbody>
-        <tr><td>1ED522CE-CF0E-4878-8B7D-FC59818B050F</td><td>Sample</td><td>n/a</td></tr>
+      <tbody v-if="data">
+        <tr v-for="title in data.items" v-bind:key="title.ident">
+          <td>
+            <router-link :to="{ name: 'title', params: { ident: title.ident } }">
+              {{ title.ident }}
+            </router-link>
+          </td>
+        </tr>
       </tbody>
     </table>
-    <TestAPI />
   </div>
 </template>
 
 <script>
-import TestAPI from '../components/TestAPI.vue'
+  import Common from "../Common.mixin.js";
 
-export default {
-  name: 'TitlesListing',
-  components: {TestAPI},
-}
+  export default {
+    name: "TitlesListing",
+    mixins: [Common],
+    data() {
+      return {
+        data: null,
+      };
+    },
+    created() {
+      let parent = this;
+      this.startLoading();
+
+      let url = "/titles";
+
+      parent.triggered = true;
+      this.queryAPI("GET", url).then(function (response) {
+        parent.data = response.data;
+        parent.endLoading();
+      });
+    },
+  };
 </script>
