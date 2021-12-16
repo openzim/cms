@@ -7,7 +7,10 @@
         </tr>
       </thead>
       <tbody v-if="data">
-        <tr v-for="title in data.items" v-bind:key="title.ident">
+        <tr
+          v-for="title in data.items"
+          :key="title.ident"
+        >
           <td>
             <router-link :to="{ name: 'title', params: { ident: title.ident } }">
               {{ title.ident }}
@@ -20,27 +23,27 @@
 </template>
 
 <script>
-  import Common from "../Common.mixin.js";
+import Common from '../Common.mixin.js'
 
-  export default {
-    name: "TitlesListing",
-    mixins: [Common],
-    data() {
-      return {
-        data: null,
-      };
-    },
-    created() {
-      let parent = this;
-      this.startLoading();
+export default {
+  name: 'TitlesListing',
+  mixins: [Common],
+  data () {
+    return {
+      data: null
+    }
+  },
+  created () {
+    const parent = this
+    this.startLoading()
 
-      let url = "/titles";
+    const url = '/titles'
 
-      parent.triggered = true;
-      this.queryAPI("GET", url).then(function (response) {
-        parent.data = response.data;
-        parent.endLoading();
-      });
-    },
-  };
+    parent.triggered = true
+    this.queryAPI('GET', url).then(function (response) {
+      parent.data = response.data
+      parent.endLoading()
+    })
+  }
+}
 </script>

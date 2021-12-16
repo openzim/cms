@@ -3,13 +3,13 @@ import { createStore } from 'vuex'
 const store = createStore({
   state () {
     return {
-      loading: false,
+      loading: false
     }
   },
   mutations: {
     setLoading (state, value) { // toggle GUI loader
-      state.loading = value;
-    },
+      state.loading = value
+    }
   }
 })
 

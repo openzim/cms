@@ -5,40 +5,39 @@ import SupportUs from './views/SupportUs.vue'
 import TitlesListing from './views/TitlesListing.vue'
 import TitleDetail from './views/TitleDetail.vue'
 
-
 const routes = [
   {
     path: '/',
     name: 'home',
-    redirect: { name: 'titles' },
+    redirect: { name: 'titles' }
   },
   {
     path: '/titles',
     name: 'titles',
-    component: TitlesListing,
+    component: TitlesListing
   },
   {
     path: '/titles/:ident',
     name: 'title',
-    component: TitleDetail,
+    component: TitleDetail
   },
   {
     path: '/support-us',
     name: 'support-us',
-    component: SupportUs,
+    component: SupportUs
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound
-  },
+  }
 ]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
-  linkActiveClass: "active",
-  linkExactActiveClass: "exact-active",
+  linkActiveClass: 'active',
+  linkExactActiveClass: 'exact-active'
 })
 
 export default router

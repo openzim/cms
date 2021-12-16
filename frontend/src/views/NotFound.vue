@@ -12,6 +12,6 @@ import BackButton from '../components/BackButton.vue'
 
 export default {
   name: 'NotFound',
-  components: {BackButton},
+  components: { BackButton }
 }
 </script>

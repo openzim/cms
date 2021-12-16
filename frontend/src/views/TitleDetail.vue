@@ -53,7 +53,10 @@
           <tr>
             <td>Illustration_48x48</td>
             <td>
-              <img v-bind:src="'data:image/png;base64,' + data.metadata.Illustration_48x48" alt="base64 image" />
+              <img
+                :src="'data:image/png;base64,' + data.metadata.Illustration_48x48"
+                alt="base64 image"
+              >
             </td>
           </tr>
         </tbody>
@@ -63,29 +66,29 @@
 </template>
 
 <script>
-  import Common from "../Common.mixin.js";
+import Common from '../Common.mixin.js'
 
-  export default {
-    name: "TitleDetail",
-    mixins: [Common],
-    data() {
-      return {
-        data: null,
-      };
-    },
-    created() {
-      let parent = this;
-      this.startLoading();
+export default {
+  name: 'TitleDetail',
+  mixins: [Common],
+  data () {
+    return {
+      data: null
+    }
+  },
+  created () {
+    const parent = this
+    this.startLoading()
 
-      let url = `/titles/${this.$route.params.ident}`;
+    const url = `/titles/${this.$route.params.ident}`
 
-      console.log(`url: ${url}`);
+    console.log(`url: ${url}`)
 
-      parent.triggered = true;
-      this.queryAPI("GET", url).then(function (response) {
-        parent.data = response.data;
-        parent.endLoading();
-      });
-    },
-  };
+    parent.triggered = true
+    this.queryAPI('GET', url).then(function (response) {
+      parent.data = response.data
+      parent.endLoading()
+    })
+  }
+}
 </script>
