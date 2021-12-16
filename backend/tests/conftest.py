@@ -43,7 +43,8 @@ async def clear_book_dict(book_dict):
 
     if book.title:
         title = await Title.objects.get(ident=book.title.ident)
-        await title.languages.clear(keep_reversed=False)
+        for language in await title.languages.all():
+            await language.delete()
         await title.tags.clear(keep_reversed=False)
         await title.metadata.clear(keep_reversed=False)
         await title.books.clear()
