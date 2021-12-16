@@ -25,7 +25,7 @@ async def test_titles_endpoint_get_title(title_with_data, book_dict):
     assert response.status_code == 200
     assert response.json() == {
         "ident": title_with_data.ident,
-        "languages": ["eng"],
-        "tags": ["wikipedia"],
+        "languages": [lang.code for lang in title_with_data.languages],
+        "tags": [tag.name for tag in title_with_data.tags],
         "metadata": book_dict["metadata"],
     }
