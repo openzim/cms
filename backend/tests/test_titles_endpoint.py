@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -23,9 +25,15 @@ async def test_titles_endpoint_get_list_single_title(title):
 async def test_titles_endpoint_get_title(title_with_data, book_dict):
     response = client.get(f"/v1/titles/{title_with_data.ident}")
     assert response.status_code == 200
+
+    tags = []
+    for tag_name in book_dict["metadata"]["Tags"].split(";"):
+        if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
+            tags.append(tag_name)
+
     assert response.json() == {
         "ident": title_with_data.ident,
-        "languages": [lang.code for lang in title_with_data.languages],
-        "tags": [tag.name for tag in title_with_data.tags],
+        "languages": sorted(book_dict["metadata"]["Language"].split(",")),
+        "tags": sorted(tags),
         "metadata": book_dict["metadata"],
     }
