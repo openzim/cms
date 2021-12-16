@@ -40,17 +40,19 @@ async def clear_book_dict(book_dict):
     yield
 
     book = await Book.objects.get(id=book_dict["id"])
-    title = await Title.objects.get(ident=book.title.ident)
+
+    if book.title:
+        title = await Title.objects.get(ident=book.title.ident)
+        await title.languages.clear(keep_reversed=False)
+        await title.tags.clear(keep_reversed=False)
+        await title.metadata.clear(keep_reversed=False)
+        await title.books.clear()
+        await title.delete()
 
     await book.languages.clear(keep_reversed=False)
     await book.tags.clear(keep_reversed=False)
     await book.metadata.clear(keep_reversed=False)
     await book.delete()
-
-    await title.languages.clear(keep_reversed=False)
-    await title.tags.clear(keep_reversed=False)
-    await title.metadata.clear(keep_reversed=False)
-    await title.delete()
 
     await BookTag.objects.filter(
         name__in=book_dict["metadata"]["Tags"].split(";")
@@ -62,7 +64,7 @@ async def clear_book_dict(book_dict):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def language_eng(book_dict):
+async def language_eng():
     lang = await Language.objects.create(code="eng", name="English", native="English")
     yield lang
     await lang.delete()
@@ -70,7 +72,7 @@ async def language_eng(book_dict):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def language_fra(book_dict):
+async def language_fra():
     lang = await Language.objects.create(code="fra", name="French", native="Français")
     yield lang
     await lang.delete()
@@ -78,7 +80,7 @@ async def language_fra(book_dict):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def language_lug(book_dict):
+async def language_lug():
     lang = await Language.objects.create(
         code="lug", name="Ganda (Uganda)", native="Luganda (Yuganda)"
     )
@@ -88,7 +90,7 @@ async def language_lug(book_dict):
 
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
-async def language_ara(book_dict):
+async def language_ara():
     lang = await Language.objects.create(
         code="ara", name="Arabic (Egypt)", native="العربية (مصر)"
     )
@@ -195,9 +197,9 @@ async def book(book_dict):
         zimcheck=book_dict["zimcheck"],
     )
     yield book
-    await book.languages.clear()
+    await book.languages.clear(keep_reversed=False)
     await book.tags.clear()
-    await book.metadata.clear()
+    await book.metadata.clear(keep_reversed=False)
     await book.delete()
 
 
@@ -222,9 +224,9 @@ async def title(title_dict):
         ident=title_dict["ident"],
     )
     yield title
-    await title.languages.clear()
+    await title.languages.clear(keep_reversed=False)
     await title.tags.clear()
-    await title.metadata.clear()
+    await title.metadata.clear(keep_reversed=False)
     await title.delete()
 
 
@@ -273,9 +275,9 @@ async def title_with_data(
                 kind=KIND_TEXT,
             )
     yield title
-    await title.languages.clear()
-    await title.tags.clear()
-    await title.metadata.clear()
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear(keep_reversed=False)
+    await title.metadata.clear(keep_reversed=False)
     await title.delete()
     await category_tag.delete()
 
