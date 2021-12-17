@@ -4,6 +4,7 @@ import NotFound from './views/NotFound.vue'
 import SupportUs from './views/SupportUs.vue'
 import TitlesListing from './views/TitlesListing.vue'
 import TitleDetail from './views/TitleDetail.vue'
+import BookDetail from './views/BookDetail'
 
 const routes = [
   {
@@ -20,6 +21,12 @@ const routes = [
     path: '/titles/:ident',
     name: 'title',
     component: TitleDetail,
+    props: true
+  },
+  {
+    path: '/books/:id',
+    name: 'books',
+    component: BookDetail,
     props: true
   },
   {
