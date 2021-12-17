@@ -18,7 +18,6 @@ from backend.models import (
 
 @pytest.mark.asyncio
 async def test_language():
-    await Language.objects.delete(each=True)
     assert await Language.objects.count() == 0
     lang = await Language.objects.create(code="bam", name="Bamanakan", native="Bambara")
     assert lang.code == "bam"
@@ -26,13 +25,14 @@ async def test_language():
     assert lang.native == "Bambara"
     with pytest.raises(Exception):
         await Language.objects.create(code="bam", name="Bamanakan", native="Bambara")
+    await lang.delete()
 
 
 ######
 # Book CRUD
 ######
 @pytest.mark.asyncio
-async def test_book_create(book_dict):
+async def test_book_create(book_dict, clear_book_dict):
     book = await Book.objects.create(
         id=book_dict["id"],
         counter=book_dict["counter"],
@@ -74,18 +74,20 @@ async def test_book_languages(book_with_language, language_fra):
     assert (await book_with_language.language).code == "eng"
     await book_with_language.languages.add(language_fra)
     assert await book_with_language.languages.count() == 2
-    await book_with_language.languages.clear()
+    await book_with_language.languages.clear(keep_reversed=False)
     assert await book_with_language.languages.count() == 0
 
 
 @pytest.mark.asyncio
 async def test_book_tag_create():
-    await BookTag.objects.delete(each=True)
     tag = await BookTag.objects.create(name="wikipedia")
     assert not tag.private
     tag = await BookTag.objects.create(name="_sw:yes")
     assert tag.private
     assert await BookTag.objects.count() == 2
+
+    await BookTag.objects.delete(name="wikipedia")
+    await BookTag.objects.delete(name="_sw:yes")
 
 
 @pytest.mark.asyncio
@@ -113,7 +115,7 @@ async def test_book_illustrations(book, base64_png):
 # Title CRUD
 ######
 @pytest.mark.asyncio
-async def test_title_create():
+async def test_title_create(clear_titles):
     ident = "wikipedia_bm_test"
     title = await Title.objects.create(
         ident=ident,
@@ -135,13 +137,12 @@ async def test_title_languages(title_with_language, language_fra):
     assert (await title_with_language.language).code == "eng"
     await title_with_language.languages.add(language_fra)
     assert await title_with_language.languages.count() == 2
-    await title_with_language.languages.clear()
+    await title_with_language.languages.clear(keep_reversed=False)
     assert await title_with_language.languages.count() == 0
 
 
 @pytest.mark.asyncio
-async def test_title_tag_create():
-    await TitleTag.objects.delete(each=True)
+async def test_title_tag_create(clear_title_tags):
     tag = await TitleTag.objects.create(name="wikipedia")
     assert not tag.private
     tag = await TitleTag.objects.create(name="_sw:yes")

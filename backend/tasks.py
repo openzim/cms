@@ -51,19 +51,25 @@ def test(c, args="", path=""):
 
     args: additional pytest args to pass. ex: -x -v
     path: sub-folder or test file to test to limit scope"""
-    db_path = pathlib.Path(
-        tempfile.NamedTemporaryFile(suffix=".db", prefix="test_", delete=False).name
-    )
+    custom_db_url = os.getenv("TEST_DATABASE_URL")
+    if not custom_db_url:
+        db_path = pathlib.Path(
+            tempfile.NamedTemporaryFile(suffix=".db", prefix="test_", delete=False).name
+        )
     with c.cd("src"):
         try:
             c.run(
                 f"python -m pytest --cov=backend --cov-report term-missing {args} "
                 f"../tests{'/' + path if path else ''}",
                 pty=True,
-                env={"DATABASE_URL": f"sqlite:///{db_path.resolve()}"},
+                env={
+                    "DATABASE_URL": custom_db_url
+                    if custom_db_url
+                    else f"sqlite:///{db_path.resolve()}"
+                },
             )
         finally:
-            if db_path.exists():
+            if not custom_db_url and db_path.exists():
                 db_path.unlink()
         c.run("coverage xml", pty=True)
 
