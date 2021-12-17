@@ -16,6 +16,10 @@ export default {
     },
     endLoading () {
       this.$store.commit('setLoading', false)
+    },
+    standardErrorHandling (error) {
+      console.error(error)
+      this.error = error
     }
   },
   computed: {
