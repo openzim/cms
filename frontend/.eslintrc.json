@@ -10,7 +10,7 @@
         "standard"
     ],
     "parserOptions": {
-        "ecmaVersion": 13
+        "ecmaVersion": 12
     },
     "plugins": [
         "vue"

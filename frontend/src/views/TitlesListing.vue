@@ -6,9 +6,9 @@
           <th>Title</th>
         </tr>
       </thead>
-      <tbody v-if="data">
+      <tbody v-if="titles">
         <tr
-          v-for="title in data.items"
+          v-for="title in titles"
           :key="title.ident"
         >
           <td>
@@ -30,7 +30,7 @@ export default {
   mixins: [Common],
   data () {
     return {
-      data: null
+      titles: null
     }
   },
   created () {
@@ -39,9 +39,8 @@ export default {
 
     const url = '/titles'
 
-    parent.triggered = true
     this.queryAPI('GET', url).then(function (response) {
-      parent.data = response.data
+      parent.titles = response.data.items
       parent.endLoading()
     })
   }

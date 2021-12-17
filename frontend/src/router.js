@@ -19,7 +19,8 @@ const routes = [
   {
     path: '/titles/:ident',
     name: 'title',
-    component: TitleDetail
+    component: TitleDetail,
+    props: true
   },
   {
     path: '/support-us',
