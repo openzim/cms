@@ -93,3 +93,27 @@ async def create_book(book_payload: BookAddSchema):
         await title.languages.add(language)
 
     return {"msg": "ok", "uuid": str(book.id), "title": book.title.ident}
+
+
+@database.transaction()
+@router.get("/{id}", response_model=BookAddSchema)
+async def get_book(id: str):
+    book = await Book.objects.select_all().get(id=id)
+    return {
+        "id": book.id,
+        "period": book.period,
+        "counter": book.counter,
+        "article_count": book.article_count,
+        "media_count": book.media_count,
+        "size": book.size,
+        "url": book.url,
+        "zimcheck": book.zimcheck,
+        "metadata": {
+            item.name: (
+                base64.standard_b64encode(item.bin_value)
+                if item.kind == KIND_ILLUSTRATION
+                else item.value
+            )
+            for item in await book.metadata.all()
+        },
+    }

@@ -7,6 +7,7 @@ from backend.models import (
     KIND_ILLUSTRATION,
     KIND_TEXT,
     Book,
+    BookMetadata,
     BookTag,
     Language,
     Title,
@@ -209,6 +210,28 @@ async def book(book_dict):
 async def book_with_language(book, language_eng):
     await book.languages.add(language_eng)
     yield book
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def book_with_metadata(book, book_dict):
+    for metadata_name, value in book_dict["metadata"].items():
+        if metadata_name.startswith("Illustration_"):
+            await BookMetadata.objects.create(
+                book=book.id,
+                name=metadata_name,
+                bin_value=base64.standard_b64decode(value),
+                kind=KIND_ILLUSTRATION,
+            )
+        else:
+            await BookMetadata.objects.create(
+                book=book.id,
+                name=metadata_name,
+                value=value,
+                kind=KIND_TEXT,
+            )
+    yield book
+    await book.metadata.clear(keep_reversed=False)
 
 
 @pytest.fixture(scope="function")
