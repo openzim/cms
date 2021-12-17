@@ -27,3 +27,4 @@ class TitleSendSchema(BaseModel):
     languages: List[str]
     tags: List[str]
     metadata: Dict[str, Any]
+    books: List[uuid.UUID]

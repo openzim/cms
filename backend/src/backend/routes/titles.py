@@ -40,4 +40,5 @@ async def get_title(ident: str):
             )
             for item in await title.metadata.all()
         },
+        "books": [book.id for book in title.books],
     }

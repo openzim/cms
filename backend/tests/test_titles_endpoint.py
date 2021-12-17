@@ -22,7 +22,7 @@ async def test_titles_endpoint_get_list_single_title(title):
 
 
 @pytest.mark.asyncio
-async def test_titles_endpoint_get_title(title_with_data, book_dict):
+async def test_titles_endpoint_get_title_with_data(title_with_data, book_dict):
     response = client.get(f"/v1/titles/{title_with_data.ident}")
     assert response.status_code == 200
 
@@ -36,4 +36,18 @@ async def test_titles_endpoint_get_title(title_with_data, book_dict):
         "languages": sorted(book_dict["metadata"]["Language"].split(",")),
         "tags": sorted(tags),
         "metadata": book_dict["metadata"],
+        "books": [book_dict["id"]],
+    }
+
+
+@pytest.mark.asyncio
+async def test_titles_endpoint_get_title_with_no_data(title):
+    response = client.get(f"/v1/titles/{title.ident}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "ident": title.ident,
+        "languages": [],
+        "tags": [],
+        "metadata": {},
+        "books": [],
     }
