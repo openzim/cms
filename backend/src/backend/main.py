@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
-from backend.routes import books, test, titles
+from backend.routes import books, titles
 
 PREFIX = "/v1"
 
@@ -39,7 +39,6 @@ async def root():
 
 
 api.include_router(router=books.router)
-api.include_router(router=test.router)
 api.include_router(router=titles.router)
 
 app.mount(PREFIX, api)
