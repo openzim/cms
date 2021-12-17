@@ -4,20 +4,27 @@
   - displayed based on store's loading status -->
 
 <template>
-  <span v-if="should_display" class="main-loader">
-    <font-awesome-icon icon="spinner" size="lg" spin />
+  <span
+    v-if="should_display"
+    class="main-loader"
+  >
+    <font-awesome-icon
+      icon="spinner"
+      size="lg"
+      spin
+    />
   </span>
 </template>
 
 <script type="text/javascript">
-  export default {
-    name: 'Loading',
-    computed: {
-      should_display() {
-        return this.$store.state.loading;
-      },
+export default {
+  name: 'LoadingIndicator',
+  computed: {
+    should_display () {
+      return this.$store.state.loading
     }
   }
+}
 </script>
 
 <style type="text/css" scoped>
