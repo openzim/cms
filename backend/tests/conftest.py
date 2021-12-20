@@ -271,7 +271,13 @@ async def title_tag():
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
 async def title_with_data(
-    title, language_eng, language_lug, language_ara, title_tag, book_dict, book
+    title,
+    language_eng,
+    language_lug,
+    language_ara,
+    title_tag,
+    book_dict,
+    book_with_metadata,
 ):
     await title.languages.add(language_lug)
     await title.languages.add(language_eng)
@@ -297,7 +303,7 @@ async def title_with_data(
                 value=value,
                 kind=KIND_TEXT,
             )
-    await title.books.add(book)
+    await title.books.add(book_with_metadata)
     yield title
     await title.languages.clear(keep_reversed=False)
     await title.tags.clear(keep_reversed=False)

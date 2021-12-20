@@ -36,7 +36,7 @@ async def test_get_title_with_data(title_with_data, book_dict):
         "languages": sorted(book_dict["metadata"]["Language"].split(",")),
         "tags": sorted(tags),
         "metadata": book_dict["metadata"],
-        "books": [book_dict["id"]],
+        "books": [{"id": book_dict["id"], "name": book_dict["metadata"]["Name"]}],
     }
 
 

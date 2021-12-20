@@ -23,8 +23,12 @@ class TitlesListSendSchema(BaseModel):
 
 
 class TitleSendSchema(BaseModel):
+    class Books(BaseModel):
+        id: uuid.UUID
+        name: str
+
     ident: str
     languages: List[str]
     tags: List[str]
     metadata: Dict[str, Any]
-    books: List[uuid.UUID]
+    books: List[Books]
