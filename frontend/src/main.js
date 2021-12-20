@@ -23,6 +23,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 // matomo (stats.kiwix.org)
 import VueMatomo from 'vue-matomo'
 
+import filters from './filters'
+
 const app = createApp(App)
 app.use(router)
 app.use(store)
@@ -36,6 +38,7 @@ app.use(VueMatomo, {
   trackerFileName: 'matomo',
   router: router
 })
+app.config.globalProperties.$filters = filters
 
 // Sugar extensions
 // import Sugar from 'sugar'
