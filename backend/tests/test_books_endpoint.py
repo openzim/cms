@@ -204,7 +204,4 @@ async def test_get_book_info(book_with_metadata, book_dict):
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
 
-    # removing this key because we don't have this in the receiving schema
-    del book_dict["obsolete"]
-
     assert response.json() == book_dict

@@ -181,7 +181,6 @@ def book_dict():
             "status": True,
             "logs": [],
         },
-        "obsolete": False,
     }
 
 
