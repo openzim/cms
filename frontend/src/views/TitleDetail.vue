@@ -44,7 +44,9 @@
           </tr>
           <tr>
             <td>Counter</td>
-            <td>{{ title_metadata.Counter }}</td>
+            <td class="text-break">
+              {{ title_metadata.Counter }}
+            </td>
           </tr>
           <tr>
             <td>Scraper</td>
@@ -61,13 +63,17 @@
           </tr>
           <tr>
             <td>Books</td>
-            <td
-              v-for="book in title_books"
-              :key="book"
-            >
-              <router-link :to="{ name: 'books', params: { id: book } }">
-                {{ book }}
-              </router-link>
+            <td>
+              <ul
+                v-for="book in title_books"
+                :key="book"
+              >
+                <li>
+                  <router-link :to="{ name: 'books', params: { id: book.id } }">
+                    {{ book.name }} &mdash; {{ book.id }}
+                  </router-link>
+                </li>
+              </ul>
             </td>
           </tr>
         </tbody>

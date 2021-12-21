@@ -18,14 +18,8 @@
           <tr>
             <td>Counter</td>
             <td>
-              <pre>
-              {{ book.counter }}
-              </pre>
+              <pre>{{ book.counter }}</pre>
             </td>
-          </tr>
-          <tr>
-            <td>Metadata</td>
-            <td>{{ book.metadata }}</td>
           </tr>
           <tr>
             <td>Period</td>
@@ -39,6 +33,35 @@
             <td>Url</td>
             <td>
               <a href="{{ book.url }}">{{ book.url }}</a>
+            </td>
+          </tr>
+          <tr>
+            <td>Metadata</td>
+            <td>
+              <table>
+                <tbody>
+                  <tr
+                    v-for="(value, key) in book.metadata"
+                    :key="value"
+                  >
+                    <td>
+                      {{ key }}
+                    </td>
+                    <td v-if="key === 'Illustration_48x48'">
+                      <img
+                        :src="'data:image/png;base64,' + value"
+                        alt="base64 image"
+                      >
+                    </td>
+                    <td
+                      v-else
+                      class="text-break"
+                    >
+                      {{ value }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </td>
           </tr>
           <tr>
