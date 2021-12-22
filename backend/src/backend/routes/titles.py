@@ -28,12 +28,6 @@ async def list_titles(params: Params = Depends()):
 async def get_title(ident: str):
     title = await Title.objects.select_all().get(ident=ident)
 
-    books = []
-    if title.books:
-        for book in title.books:
-            name = await book.metadata.get(name="Name")
-            books.append({"id": book.id, "name": name.value})
-
     return {
         "ident": title.ident,
         "languages": [lang.code for lang in title.languages],
@@ -46,5 +40,7 @@ async def get_title(ident: str):
             )
             for item in await title.metadata.all()
         },
-        "books": books,
+        "books": [
+            {"id": book.id, "name": await book.book_name()} for book in title.books
+        ],
     }

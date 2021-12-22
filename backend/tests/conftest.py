@@ -101,7 +101,7 @@ async def language_ara():
 
 
 @pytest.fixture(scope="function")
-def book_dict():
+def book_dict(base64_png):
     return {
         "id": str(uuid.uuid4()),
         "period": "2021-02-08",
@@ -126,41 +126,7 @@ def book_dict():
             "Tags": "wikipedia;_category:wikipedia;_pictures:yes;"
             "_videos:no;_details:yes;_ftindex:yes",
             "Title": "Wikipedia",
-            "Illustration_48x48": (
-                "UklGRv4GAABXRUJQVlA4WAoAAAAQAAAALwAALwAAQUxQSCcEAAABoHRt2yFJHtDzfV+U2r"
-                "0fcgkMYJBq7DiDHD12/nT2a/7QOSYQhZi1Li9mgIICWjFp56WnJPkpiVwHHYDBFHrsCw2N"
-                "mt+FiFJ63oUl0ltoaJSaPeGfF4SRjkYQ1paT0QoQlq+XIloFeq8ZCLnwAE0Snx+8hE9oZC"
-                "CC3ZHcaXQoa/mCQ8VxDVbs6rMPGz395TKAwrQpe/pIfyN5IuRdgN2+l9JEmhUMJQRCzH+E"
-                "cz/TIj/8fPf3UE8pHTyjCyEKPv8TCp0aDJAptkjDUev97FKEfEboNoCM5WEwr/GTt/9ZLT"
-                "yUFEL/YrkSTiTgKl2hm2g/fZCPVkgKo3F5DZEVMv9KK0Kh/eAmkiJCicbytyxQ4TQK36cn"
-                "FKs61GEwqg9PioGHancqzAiJCkURi8e31T0U+FNCIUiIhQG87YSTKSST+kxAoWBenxRBjq"
-                "Qva/aIXJKpb/5fbj3KabfJ/FQYWDwbbkc7kTBhE1upIiySEi7AkdCchwh55IcCLC+5ngV2"
-                "1LZODluug/BV/Ro8SlNDjy5L+oLGYrogEIyIuF0PBt0L6b+lSJAgRuvw2bTTQqPCElhSJR"
-                "S0fFYRGtFqtHpPVxgdxeX7ttCIXqHtc1oJjSShli/aQSFIjRo/kdYTEQkREfEs+WN1aASr"
-                "WnlW9JaT8J6riXfrskEjaA1UGXvQ/p+vLcyoBG8UkCRIYf/e5PoeYmv/zk4tBigFIJUIQq"
-                "0gBSF67VqHGtgqkBKIVk1xo+tUaQTuGcqYqlz5Y/Vcls0IBSWhutjdFKKQUopRQU4DhhFL"
-                "8r3Ohw6BhubYXRTIq9BwJBQAauW4l1DzZX1cYVqlEgxwFKpevUbphtcwV6lTLWa5e+QyoW"
-                "VmUVM1IWbKvrQIa7BuCq4MQd8amzJvzt82f7OpFeYVnDWyf4FS3UdmmVao27BaMzK3QqXy"
-                "5pBhQBlrsUc3pynb+wqbFiWD7UG513UoHfn2Y3QpicaTWvcF2OnxGJu3yWbYcJhw9m6B3f"
-                "iFuFJaNGoMqQXPOzo/2ANPHtu6H+hMYD0HgyivfMlPNgDugQjVon0Xk9Cu4ovjXfiF6dZt"
-                "bHY8RYyu2GjmpSM9C/Sej+4LYlV1hts5GRMeBiUVCviz5U6NAztzZ8icgR74CmbPnzZEKe"
-                "LqbHlTF82FuAKFnQhw0mggLQAnNfwbhUAVmjXJZ9A6q0HuJo6JjVUGRsc4iO3UPKMyJsbE"
-                "gdQKoJG+2Z5BzXo1rJhrRbNmzap06Zh0xSV25RpVxIDBrWo0bRn884datWqDAUfPZpVHdZ"
-                "8cgmfSd27TS+XYexHVSmgcUmto8d2mp0844DO05vPqZ3P+gQAFZQOCCwAgAAcA0AnQEqMA"
-                "wAD5tNJZIpCKiISOJAIANiWcAwmTB/HZ7fnltMl3ll9nNJmW47JcWKtsbvox51NQjpHegB"
-                "l6STZLEG/J8WQninb4Q9N2VXOpwAdUhO6XoMxUb9ehmU4bxEk6Xq5Aunep9rgb3uJcL3aa"
-                "AAA/v4wZ8Gf+lfZEfR8b3SpM8GiTuETXEW0Bcl5DaFdXml9LAzmQZxjKBmu9++4f+auweA"
-                "TVYRrHSpUi3yAy5ktQAoy39kvTjGikiuKUUCH4SS3SgimJjuZe3Y0iRq+gKPj04fIPxjd4"
-                "zYbDEkMnlnv2A9fZ6rF5DDjpMnk7s4rfbCm2M6rjvxVi9DOIBI8BNayLc8soCz0SbcMk+p"
-                "gGXDliHjuGeFZbWxNC1HCaldCi8QdpmGqIeMIOVL6DIwWuyik3IGmI8Q3sDsF6YXooA3hQ"
-                "tQL6yZc18DssAY20K9IUchGYIxb77jLmXTCARBzihpHoEwuK4KvmpNEPaERfTdh35iSKdj"
-                "e6/wgUA7/RAcIBuxLWab7Mh4nlWz+zxHZCpVVm2lG41gDSdmWBH7Ubx/GVRs6mNW0j73xf"
-                "JU1mXPhodYNdoTnCCQOo5dLlb0ShpDp8pNdmw3X0qKHLjW+kH2NS/mwdrOq27LIsWTHTkj"
-                "+q4SkA4SIRGNKVTAAQ98iO89uMrFIa3ps8SNBcE//SR/7ZkjOp6rvcxkPqekPnMN7/42LU"
-                "tGqlHjsOV16/y5dMvtCODz4ZjQkc95j+EobjEnTnbVhba1DVIDD5HfKvccCmn9Nfxra0hb"
-                "r1NGFnFPRAqa3QMMfmxAQrcJCLb1kdULbGJvxlrjvONBwDnQ0en9tR6GM31gslK145z1Yt"
-                "Hs91N/RKEgP/x2Pc+lY9VeYqBDz1rqiJ41SxVy6nuOyUqeJIMRAAAAA="
-            ),
+            "Illustration_48x48": base64_png,
         },
         "zimcheck": {
             "zimcheck_version": "3.0.0",
@@ -311,14 +277,6 @@ async def title_with_data(
     await title.books.clear()
     await title.delete()
     await category_tag.delete()
-
-
-@pytest.fixture(scope="function")
-@pytest.mark.asyncio
-async def book_tag():
-    tag = await BookTag.objects.create(name="wikipedia")
-    yield tag
-    await tag.delete()
 
 
 @pytest.fixture(scope="module")

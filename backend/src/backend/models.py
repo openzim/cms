@@ -147,6 +147,9 @@ class Book(ormar.Model, EntryMixin):
     # not sure yet if should be Optional or not
     title: Optional[Title] = ormar.ForeignKey(Title, related_name="books")
 
+    async def book_name(self) -> str:
+        return (await self.metadata.get(name="Name")).value
+
 
 class MetadataMixin:
     """ZIM Metadata
