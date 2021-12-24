@@ -18,17 +18,19 @@ class BookAddSchema(BaseModel):
     zimcheck: Dict[str, Any]
 
 
+class BooksListSendSchema(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
 class TitlesListSendSchema(BaseModel):
     ident: str
 
 
 class TitleSendSchema(BaseModel):
-    class Books(BaseModel):
-        id: uuid.UUID
-        name: str
 
     ident: str
     languages: List[str]
     tags: List[str]
     metadata: Dict[str, Any]
-    books: List[Books]
+    books: List[BooksListSendSchema]

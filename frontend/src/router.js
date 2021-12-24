@@ -5,6 +5,7 @@ import SupportUs from './views/SupportUs.vue'
 import TitlesListing from './views/TitlesListing.vue'
 import TitleDetail from './views/TitleDetail.vue'
 import BookDetail from './views/BookDetail'
+import BookListing from './views/BookListing'
 
 const routes = [
   {
@@ -24,8 +25,13 @@ const routes = [
     props: true
   },
   {
-    path: '/books/:id',
+    path: '/books',
     name: 'books',
+    component: BookListing
+  },
+  {
+    path: '/books/:id',
+    name: 'book',
     component: BookDetail,
     props: true
   },

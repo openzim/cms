@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="container">
     <table
       v-if="titles"
       class="table"

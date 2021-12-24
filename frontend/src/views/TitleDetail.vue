@@ -69,7 +69,7 @@
                 :key="book"
               >
                 <li>
-                  <router-link :to="{ name: 'books', params: { id: book.id } }">
+                  <router-link :to="{ name: 'book', params: { id: book.id } }">
                     {{ book.name }} &mdash; {{ book.id }}
                   </router-link>
                 </li>
