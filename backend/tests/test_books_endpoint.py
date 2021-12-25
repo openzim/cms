@@ -19,7 +19,7 @@ client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint(book_dict, clear_book_dict):
+async def test_add_book(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -39,7 +39,7 @@ async def test_books_add_endpoint(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_metadata(book_dict, clear_book_dict):
+async def test_add_metadata(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -62,7 +62,7 @@ async def test_books_add_endpoint_save_book_metadata(book_dict, clear_book_dict)
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_book_tags(book_dict, clear_book_dict):
+async def test_add_book_tags(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -79,7 +79,7 @@ async def test_books_add_endpoint_save_book_tags(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_add_endpoint_save_languages(book_dict, clear_book_dict):
+async def test_save_languages(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -103,7 +103,7 @@ async def test_books_add_endpoint_save_languages(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title(book_dict, clear_book_dict):
+async def test_add_title(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -118,7 +118,7 @@ async def test_books_title(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_languages(book_dict, clear_book_dict):
+async def test_add_languages(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -138,7 +138,7 @@ async def test_books_title_save_languages(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_tags(book_dict, clear_book_dict):
+async def test_add_title_tags(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -155,7 +155,7 @@ async def test_books_title_save_tags(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_save_metadata(book_dict, clear_book_dict):
+async def test_add_title_metadata(book_dict, clear_book_dict):
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -184,10 +184,9 @@ async def test_books_title_save_metadata(book_dict, clear_book_dict):
 
 
 @pytest.mark.asyncio
-async def test_books_title_raise_httpexception_for_title(book_dict):
+async def test_raise_httpexception_for_incorrect_title(book_dict):
     # updating book_dict with incorrect language code
     book_dict["metadata"]["Name"] = "wikipedia_zz_all"
-    await TitleMetadata.objects.delete(title=book_dict["metadata"]["Name"])
     response = client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 400
     assert response.headers.get("Content-Type") == "application/json"
@@ -197,3 +196,12 @@ async def test_books_title_raise_httpexception_for_title(book_dict):
 
     with pytest.raises(NoMatch):
         await Title.objects.get(ident=book_dict["metadata"]["Name"])
+
+
+@pytest.mark.asyncio
+async def test_get_book_info(book_with_metadata, book_dict):
+    response = client.get(f"/v1/books/{book_dict['id']}")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+
+    assert response.json() == book_dict

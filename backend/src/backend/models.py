@@ -144,12 +144,11 @@ class Book(ormar.Model, EntryMixin):
     url: pydantic.HttpUrl = ormar.String(max_length=2083)
     zimcheck: pydantic.Json = ormar.JSON()
 
-    # whether this book should be retired (individual book flag)
-    # /!\ does not command whether included in exports or not.
-    obsolete: bool = ormar.Boolean(default=False)
-
     # not sure yet if should be Optional or not
     title: Optional[Title] = ormar.ForeignKey(Title, related_name="books")
+
+    async def book_name(self) -> str:
+        return (await self.metadata.get(name="Name")).value
 
 
 class MetadataMixin:
