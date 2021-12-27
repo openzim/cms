@@ -1,3 +1,5 @@
+import asyncio
+
 from backend.models import Title, database
 
 
@@ -13,6 +15,7 @@ async def load_fixture():
     await Title.objects.create(ident="wikipedia_lt_test")
     await Title.objects.create(ident="wikipedia_ml_test")
     await Title.objects.create(ident="wikipedia_no_test")
+    print(await Title.objects.filter().count(), "titles in DB")
 
 
-load_fixture()
+asyncio.run(load_fixture())
