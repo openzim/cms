@@ -115,12 +115,13 @@ async def test_book_illustrations(book, base64_png):
 # Title CRUD
 ######
 @pytest.mark.asyncio
-async def test_title_create(clear_titles):
+async def test_title_create():
     ident = "wikipedia_bm_test"
     title = await Title.objects.create(
         ident=ident,
     )
     assert title.ident == ident
+    await title.delete()
 
 
 @pytest.mark.asyncio
@@ -142,12 +143,15 @@ async def test_title_languages(title_with_language, language_fra):
 
 
 @pytest.mark.asyncio
-async def test_title_tag_create(clear_title_tags):
-    tag = await TitleTag.objects.create(name="wikipedia")
-    assert not tag.private
-    tag = await TitleTag.objects.create(name="_sw:yes")
-    assert tag.private
+async def test_title_tag_create():
+    tag_1 = await TitleTag.objects.create(name="wikipedia")
+    assert not tag_1.private
+    tag_2 = await TitleTag.objects.create(name="_sw:yes")
+    assert tag_2.private
     assert await TitleTag.objects.count() == 2
+
+    await tag_1.delete()
+    await tag_2.delete()
 
 
 @pytest.mark.asyncio
