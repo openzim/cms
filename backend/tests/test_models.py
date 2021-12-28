@@ -49,6 +49,7 @@ async def test_book_create(book_dict, clear_book_dict):
     assert book.article_count == book_dict["article_count"]
     assert book.size == book_dict["size"]
     assert book.zimcheck == book_dict["zimcheck"]
+    assert await book.book_name() == ""
 
 
 @pytest.mark.asyncio
