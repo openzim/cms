@@ -143,3 +143,9 @@ def db_list(c):
 @task
 def db_gen(c):
     c.run('invoke alembic --args "revision --autogenerate -m unnamed"')
+
+
+@task
+def load_demo_fixture(c):
+    with c.cd("src"):
+        c.run(f"{sys.executable} ./demo/data.py", env={"PYTHONPATH": "."})
