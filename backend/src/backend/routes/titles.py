@@ -19,12 +19,19 @@ router = APIRouter(
     "", status_code=200, tags=["titles"], response_model=Page[TitlesListSendSchema]
 )
 async def list_titles(params: Params = Depends(), lang: str = None):
-    titles = (
-        await Title.objects.select_related("languages")
-        .filter(languages__code=lang)
-        .all()
-    )
-    return paginate(titles, params)
+    if lang:
+
+        return paginate(
+            (
+                await Title.objects.select_related("languages")
+                .filter(languages__code=lang)
+                .fields("ident")
+                .all()
+            ),
+            params,
+        )
+    else:
+        return paginate(await Title.objects.fields("ident").all(), params)
 
 
 @database.transaction()
