@@ -18,8 +18,12 @@ router = APIRouter(
 @router.get(
     "", status_code=200, tags=["titles"], response_model=Page[TitlesListSendSchema]
 )
-async def list_titles(params: Params = Depends()):
-    titles = await Title.objects.fields("ident").all()
+async def list_titles(params: Params = Depends(), lang: str = None):
+    titles = (
+        await Title.objects.select_related("languages")
+        .filter(languages__code=lang)
+        .all()
+    )
     return paginate(titles, params)
 
 

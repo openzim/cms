@@ -332,3 +332,45 @@ def base64_png():
         "r1NGFnFPRAqa3QMMfmxAQrcJCLb1kdULbGJvxlrjvONBwDnQ0en9tR6GM31gslK145z1YtW"
         "Hs91N/RKEgP/x2Pc+lY9VeYqBDz1rqiJ41SxVy6nuOyUqeJIMRAAAAA=="
     )
+
+
+@pytest.fixture(scope="function")
+def title_ara_dict():
+    return {
+        "ident": "wikipedia_ar_all",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_ara(title_ara_dict, language_ara):
+    title = await Title.objects.create(
+        ident=title_ara_dict["ident"],
+    )
+    await title.languages.add(language_ara)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
+def title_fra_dict():
+    return {
+        "ident": "wikipedia_fr_all",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_fra(title_fra_dict, language_fra):
+    title = await Title.objects.create(
+        ident=title_fra_dict["ident"],
+    )
+    await title.languages.add(language_fra)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()

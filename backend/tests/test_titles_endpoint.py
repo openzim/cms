@@ -55,3 +55,36 @@ async def test_get_book_missing(client):
     assert response.headers.get("Content-Type") == "application/json"
 
     assert response.json() == {"message": "Title with ID “missing” not found"}
+
+
+async def test_filter_titles_by_language_get_eng(
+    title_dict, title_with_language, title_fra
+):
+    """Creating two titles: title and title_fra. We're trying to fetch all Titles
+    in Franch Language."""
+    response = client.get("/v1/titles?lang=eng")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [{"ident": title_dict["ident"]}],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_filter_titles_by_language_get_fra(
+    title_fra_dict, title_with_language, title_fra
+):
+    """Creating two titles: title and title_fra. We're trying to fetch all Titles
+    in Franch Language."""
+    response = client.get("/v1/titles?lang=fra")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [{"ident": title_fra_dict["ident"]}],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
