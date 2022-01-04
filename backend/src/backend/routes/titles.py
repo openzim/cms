@@ -20,7 +20,30 @@ router = APIRouter(
 )
 async def list_titles(params: Params = Depends(), lang: str = None):
     if lang:
+        if "|" in lang:
+            # union of languages
+            return paginate(
+                (
+                    await Title.objects.select_related("languages")
+                    .filter(languages__code__in=lang.split("|"))
+                    .fields("ident")
+                    .all()
+                ),
+                params,
+            )
+        elif "," in lang:
+            # intersection of languages
+            return paginate(
+                (
+                    await Title.objects.select_related("languages")
+                    .filter((Title.languages == "fra") & (Title.languages == "eng"))
+                    .fields("ident")
+                    .all()
+                ),
+                params,
+            )
 
+        # when single language code is given
         return paginate(
             (
                 await Title.objects.select_related("languages")
@@ -30,8 +53,7 @@ async def list_titles(params: Params = Depends(), lang: str = None):
             ),
             params,
         )
-    else:
-        return paginate(await Title.objects.fields("ident").all(), params)
+    return paginate(await Title.objects.fields("ident").all(), params)
 
 
 @database.transaction()

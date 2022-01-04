@@ -88,3 +88,41 @@ async def test_filter_titles_by_language_get_fra(
         "page": 1,
         "size": 50,
     }
+
+
+@pytest.mark.asyncio
+async def test_filter_titles_by_language_get_fra_or_eng(
+    title_with_language, title_fra, title_ara, title_fra_dict, title_dict
+):
+    """we're creating three Titles with different languages: eng, fra, ara
+    But we're only fetching titles whi have languages either 'eng' OR 'fra'
+    """
+    response = client.get("/v1/titles?lang=fra|eng")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {"ident": title_dict["ident"]},
+            {"ident": title_fra_dict["ident"]},
+        ],
+        "total": 2,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_filter_titles_by_language_get_fra_and_eng(
+    title_fra_eng_dict, title_fra_eng, title_with_language, title_fra, title_ara
+):
+    """Testing the AND operation on languages. Only fetch Titles that have both
+    English and French in its languages"""
+    response = client.get("/v1/titles?lang=fra,eng")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [{"ident": title_fra_eng_dict["ident"]}],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }

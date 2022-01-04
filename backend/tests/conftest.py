@@ -374,3 +374,25 @@ async def title_fra(title_fra_dict, language_fra):
     await title.tags.clear()
     await title.metadata.clear(keep_reversed=False)
     await title.delete()
+
+
+@pytest.fixture(scope="function")
+def title_fra_eng_dict():
+    return {
+        "ident": "wikipedia_fr-eng_nopic",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_fra_eng(title_fra_eng_dict, language_fra, language_eng):
+    title = await Title.objects.create(
+        ident=title_fra_eng_dict["ident"],
+    )
+    await title.languages.add(language_fra)
+    await title.languages.add(language_eng)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
