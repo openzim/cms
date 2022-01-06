@@ -5,7 +5,12 @@ from fastapi.responses import JSONResponse
 from fastapi_pagination import Page, Params, paginate
 from ormar.exceptions import NoMatch
 
-from backend.models import KIND_ILLUSTRATION, Title, database
+from backend.models import (
+    KIND_ILLUSTRATION,
+    Title,
+    database,
+    get_matched_m2m_combination,
+)
 from backend.schemas import Message, TitleSendSchema, TitlesListSendSchema
 
 router = APIRouter(
@@ -33,10 +38,15 @@ async def list_titles(params: Params = Depends(), lang: str = None):
             )
         elif "," in lang:
             # intersection of languages
+            idents = await get_matched_m2m_combination(
+                items=lang.split(","), on="title-language"
+            )
+            # we could directly paginate the idents from line above but in other use
+            # cases we'd probably cast and filter on it
             return paginate(
                 (
                     await Title.objects.select_related("languages")
-                    .filter((Title.languages == "fra") & (Title.languages == "eng"))
+                    .filter(ident__in=idents)
                     .fields("ident")
                     .all()
                 ),
