@@ -8,6 +8,7 @@ from backend.models import (
     Book,
     BookMetadata,
     Title,
+    TitleMetadata,
     database,
 )
 
@@ -120,32 +121,41 @@ async def load_fixture():
         title = await Title.objects.create(ident=f"wikipedia_{lang_code}_all")
         titles.append(title)
 
-    book_1 = await Book.objects.create(
-        id=book_dict["id"],
-        counter=book_dict["counter"],
-        period=book_dict["period"],
-        article_count=book_dict["article_count"],
-        media_count=book_dict["media_count"],
-        size=book_dict["size"],
-        url=book_dict["url"],
-        zimcheck=book_dict["zimcheck"],
-        title=titles[0],
-    )
+        book = await Book.objects.create(
+            id=str(uuid.uuid4()),
+            counter=book_dict["counter"],
+            period=book_dict["period"],
+            article_count=book_dict["article_count"],
+            media_count=book_dict["media_count"],
+            size=book_dict["size"],
+            url=book_dict["url"],
+            zimcheck=book_dict["zimcheck"],
+            title=title,
+        )
 
-    for metadata_name, value in book_dict["metadata"].items():
-        if metadata_name.startswith("Illustration_"):
-            await BookMetadata.objects.create(
-                book=book_1.id,
-                name=metadata_name,
-                bin_value=base64.standard_b64decode(value),
-                kind=KIND_ILLUSTRATION,
-            )
-        else:
-            await BookMetadata.objects.create(
-                book=book_1.id,
-                name=metadata_name,
-                value=value,
-                kind=KIND_TEXT,
+        for metadata_name, value in book_dict["metadata"].items():
+            if metadata_name.startswith("Illustration_"):
+                await BookMetadata.objects.create(
+                    book=book.id,
+                    name=metadata_name,
+                    bin_value=base64.standard_b64decode(value),
+                    kind=KIND_ILLUSTRATION,
+                )
+            else:
+                await BookMetadata.objects.create(
+                    book=book.id,
+                    name=metadata_name,
+                    value=value,
+                    kind=KIND_TEXT,
+                )
+
+        for metadata in await book.metadata.all():
+            await TitleMetadata.objects.create(
+                title=title.ident,
+                name=metadata.name,
+                bin_value=metadata.bin_value,
+                value=metadata.value,
+                kind=metadata.kind,
             )
 
     # add multiple books to a title
