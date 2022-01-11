@@ -1,14 +1,20 @@
 import asyncio
 import base64
+import re
 import uuid
+
+from zimscraperlib.i18n import find_language_names
 
 from backend.models import (
     KIND_ILLUSTRATION,
     KIND_TEXT,
     Book,
     BookMetadata,
+    BookTag,
+    Language,
     Title,
     TitleMetadata,
+    TitleTag,
     database,
 )
 
@@ -16,7 +22,7 @@ from backend.models import (
 @database.transaction()
 async def load_fixture():
 
-    languages = [
+    lang_codes = [
         "lg",
         "hi",
         "zh",
@@ -117,7 +123,7 @@ async def load_fixture():
     }
 
     titles = []
-    for lang_code in languages:
+    for lang_code in lang_codes:
         title = await Title.objects.create(ident=f"wikipedia_{lang_code}_all")
         titles.append(title)
 
@@ -133,6 +139,15 @@ async def load_fixture():
             title=title,
         )
 
+        # create Languages, and add to the Book and Title
+        native_name, english_name = find_language_names(lang_code)
+        language = await Language.objects.get_or_create(
+            code=lang_code, name=english_name, native=native_name
+        )
+        await book.languages.add(language)
+        await title.languages.add(language)
+
+        # add metadata to the Book
         for metadata_name, value in book_dict["metadata"].items():
             if metadata_name.startswith("Illustration_"):
                 await BookMetadata.objects.create(
@@ -148,7 +163,7 @@ async def load_fixture():
                     value=value,
                     kind=KIND_TEXT,
                 )
-
+        # use Book MEtadata to add to the Title
         for metadata in await book.metadata.all():
             await TitleMetadata.objects.create(
                 title=title.ident,
@@ -157,6 +172,16 @@ async def load_fixture():
                 value=metadata.value,
                 kind=metadata.kind,
             )
+
+        # add tags
+        for tag_name in book_dict["metadata"]["Tags"].split(";"):
+            book_tag = await BookTag.objects.get_or_create(name=tag_name)
+            await book.tags.add(book_tag)
+            if not re.match(
+                r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name
+            ):
+                title_tag = await TitleTag.objects.get_or_create(name=tag_name)
+                await title.tags.add(title_tag)
 
     # add multiple books to a title
     for _ in range(3):
@@ -172,8 +197,12 @@ async def load_fixture():
             title=titles[1],
         )
 
-    print(await Book.objects.filter().count(), f"books in {database.url}")
-    print(await Title.objects.filter().count(), f"titles in {database.url}")
+    print(f"Database URL: {database.url}")
+    print(await Book.objects.filter().count(), "books")
+    print(await Title.objects.filter().count(), "titles")
+    print(await Language.objects.filter().count(), "languages")
+    print(await TitleTag.objects.filter().count(), "TitleTags")
+    print(await BookTag.objects.filter().count(), "BookTags")
 
 
 asyncio.run(load_fixture())
