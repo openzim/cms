@@ -6,59 +6,24 @@
     <div>
       <table class="table table-hover">
         <tbody v-if="title_metadata">
-          <tr>
-            <td>Name</td>
-            <td>{{ ident }}</td>
-          </tr>
-          <tr>
-            <td>Title</td>
-            <td>{{ title_metadata.Title }}</td>
-          </tr>
-          <tr>
-            <td>Creator</td>
-            <td>{{ title_metadata.Creator }}</td>
-          </tr>
-          <tr>
-            <td>Publisher</td>
-            <td>{{ title_metadata.Publisher }}</td>
-          </tr>
-          <tr>
-            <td>Date</td>
-            <td>{{ title_metadata.Date }}</td>
-          </tr>
-          <tr>
-            <td>Description</td>
-            <td>{{ title_metadata.Description }}</td>
-          </tr>
-          <tr>
-            <td>Flavour</td>
-            <td>{{ title_metadata.Flavour }}</td>
-          </tr>
-          <tr>
-            <td>Language</td>
-            <td>{{ title_metadata.Language }}</td>
-          </tr>
-          <tr>
-            <td>Tags</td>
-            <td>{{ title_metadata.Tags }}</td>
-          </tr>
-          <tr>
-            <td>Counter</td>
-            <td class="text-break">
-              {{ title_metadata.Counter }}
-            </td>
-          </tr>
-          <tr>
-            <td>Scraper</td>
-            <td>{{ title_metadata.Scraper }}</td>
-          </tr>
-          <tr>
-            <td>Illustration_48x48</td>
+          <tr
+            v-for="(value, key) in title_metadata"
+            :key="value"
+          >
             <td>
+              {{ key }}
+            </td>
+            <td v-if="key.startsWith('Illustration_')">
               <img
-                :src="'data:image/png;base64,' + title_metadata.Illustration_48x48"
+                :src="'data:image/png;base64,' + value"
                 alt="base64 image"
               >
+            </td>
+            <td
+              v-else
+              class="text-break"
+            >
+              {{ value }}
             </td>
           </tr>
           <tr>
