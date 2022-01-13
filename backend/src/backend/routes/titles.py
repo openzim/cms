@@ -68,15 +68,22 @@ async def list_titles(
             ),
             params,
         )
+
+    if with_languages and with_tags:
+        return paginate(
+            await Title.objects.select_all().all(),
+            params,
+        )
+
     if with_languages:
         return paginate(
-            await Title.objects.select_related("languages").fields(["languages"]).all(),
+            await Title.objects.select_related("languages").all(),
             params,
         )
 
     if with_tags:
         return paginate(
-            await Title.objects.select_related("tags").fields(["tags"]).all(),
+            await Title.objects.select_related("tags").all(),
             params,
         )
 

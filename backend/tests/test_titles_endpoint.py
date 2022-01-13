@@ -213,3 +213,34 @@ async def test_get_list_of_titles_with_tags_without_languages(title_with_data):
         "page": 1,
         "size": 50,
     }
+
+
+@pytest.mark.asyncio
+async def test_get_list_of_titles_with_languages_and_tags(title_with_data):
+    response = client.get("/v1/titles?with_languages=true&with_tags=true")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_with_data.ident,
+                "languages": [
+                    {
+                        "code": "ara",
+                        "name": "Arabic (Egypt)",
+                        "native": "العربية (مصر)",
+                    },
+                    {"code": "eng", "name": "English", "native": "English"},
+                    {
+                        "code": "lug",
+                        "name": "Ganda (Uganda)",
+                        "native": "Luganda (Yuganda)",
+                    },
+                ],
+                "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
+            },
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
