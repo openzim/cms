@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pydantic
 from pydantic import BaseModel
@@ -35,8 +35,9 @@ class BooksListSendSchema(BaseModel):
 
 class TitlesListSendSchema(BaseModel):
     ident: str
-    languages: List[LanguageGetSchema] = []
-    tags: List[TagGetSchema] = []
+    languages: Optional[List[LanguageGetSchema]] = None
+    tags: Optional[List[TagGetSchema]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class TitleSendSchema(BaseModel):

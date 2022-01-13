@@ -10,9 +10,9 @@ async def test_get_list_of_titles_single_title(client, title):
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_ara.ident, "languages": [], "tags": []},
-            {"ident": title.ident, "languages": [], "tags": []},
-            {"ident": title_fra.ident, "languages": [], "tags": []},
+            {"ident": title_ara.ident},
+            {"ident": title.ident},
+            {"ident": title_fra.ident},
         ],
         "total": 3,
         "page": 1,
@@ -40,17 +40,17 @@ async def test_get_list_of_titles_with_languages(
                         "native": "العربية (مصر)",
                     },
                 ],
-                "tags": [],
+                # "tags": [],
             },
             {
                 "ident": title_with_language.ident,
                 "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                "tags": [],
+                # "tags": [],
             },
             {
                 "ident": title_fra.ident,
                 "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                "tags": [],
+                # "tags": [],
             },
         ],
         "total": 3,
@@ -110,8 +110,8 @@ async def test_filter_titles_by_language_get_eng(
         "items": [
             {
                 "ident": title_dict["ident"],
-                "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                "tags": [],
+                # "languages": [],
+                # "tags": [],
             }
         ],
         "total": 1,
@@ -131,8 +131,8 @@ async def test_filter_titles_by_language_get_fra(
         "items": [
             {
                 "ident": title_fra_dict["ident"],
-                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                "tags": [],
+                # "languages": [],
+                # "tags": [],
             }
         ],
         "total": 1,
@@ -155,13 +155,17 @@ async def test_filter_titles_by_language_get_fra_or_eng(
         "items": [
             {
                 "ident": title_dict["ident"],
-                "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                "tags": [],
+                # "languages": [
+                #     {"code": "eng", "name": "English", "native": "English"},
+                # ],
+                # "tags": [],
             },
             {
                 "ident": title_fra_dict["ident"],
-                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                "tags": [],
+                # "languages": [
+                #     {"code": "fra", "name": "French", "native": "Français"},
+                # ],
+                # "tags": [],
             },
         ],
         "total": 2,
@@ -183,11 +187,11 @@ async def test_filter_titles_by_language_get_fra_and_eng(
         "items": [
             {
                 "ident": title_fra_eng_dict["ident"],
-                "languages": [
-                    {"code": "eng", "name": "English", "native": "English"},
-                    {"code": "fra", "name": "French", "native": "Français"},
-                ],
-                "tags": [],
+                # "languages": [
+                #     {"code": "eng", "name": "English", "native": "English"},
+                #     {"code": "fra", "name": "French", "native": "Français"},
+                # ],
+                # "tags": [],
             }
         ],
         "total": 1,
@@ -205,7 +209,7 @@ async def test_get_list_of_titles_with_tags_without_languages(title_with_data):
         "items": [
             {
                 "ident": title_with_data.ident,
-                "languages": [],
+                # "languages": [],
                 "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
             },
         ],
@@ -238,6 +242,27 @@ async def test_get_list_of_titles_with_languages_and_tags(title_with_data):
                     },
                 ],
                 "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
+            },
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_title_with_specific_metadata(title_with_data, title_dict, book_dict):
+    response = client.get("/v1/titles?with_metadata=Title,Publisher")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_dict["ident"],
+                "metadata": {
+                    "Title": book_dict["metadata"]["Title"],
+                    "Publisher": book_dict["metadata"]["Publisher"],
+                },
             },
         ],
         "total": 1,

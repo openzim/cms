@@ -28,6 +28,7 @@ async def list_titles(
     lang: str = None,
     with_languages: bool = False,
     with_tags: bool = False,
+    with_metadata: str = None,
 ):
     if lang:
         if "|" in lang:
@@ -84,6 +85,27 @@ async def list_titles(
     if with_tags:
         return paginate(
             await Title.objects.select_related("tags").all(),
+            params,
+        )
+
+    if with_metadata:
+        metadata_keys = with_metadata.split(",")
+
+        titles = await Title.objects.select_related("metadata").fields("metadata").all()
+        response = [
+            {
+                "ident": title.ident,
+                "metadata": {
+                    metadata.name: metadata.value
+                    for metadata in title.metadata
+                    if metadata.name in metadata_keys
+                },
+            }
+            for title in titles
+        ]
+
+        return paginate(
+            response,
             params,
         )
 
