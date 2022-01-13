@@ -2,6 +2,8 @@ import base64
 import re
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
+from ormar.exceptions import NoMatch
 from zimscraperlib.i18n import find_language_names
 
 from backend.models import (
@@ -16,7 +18,7 @@ from backend.models import (
     TitleTag,
     database,
 )
-from backend.schemas import BookAddSchema
+from backend.schemas import BookAddSchema, Message
 from backend.utils import get_ident_from_name
 
 router = APIRouter(
@@ -96,9 +98,21 @@ async def create_book(book_payload: BookAddSchema):
 
 
 @database.transaction()
-@router.get("/{id}", response_model=BookAddSchema)
+@router.get(
+    "/{id}",
+    responses={
+        404: {"model": Message, "description": "Requested Title not found"},
+        200: {"model": BookAddSchema, "description": "The requested Title"},
+    },
+)
 async def get_book(id: str):
-    book = await Book.objects.select_all().get(id=id)
+    try:
+        book = await Book.objects.select_all().get(id=id)
+    except NoMatch:
+        return JSONResponse(
+            status_code=404, content={"message": f"Title with ID “{id}” not found"}
+        )
+
     return {
         "id": book.id,
         "period": book.period,

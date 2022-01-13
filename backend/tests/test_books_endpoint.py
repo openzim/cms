@@ -205,3 +205,12 @@ async def test_get_book_info(book_with_metadata, book_dict):
     assert response.headers.get("Content-Type") == "application/json"
 
     assert response.json() == book_dict
+
+
+@pytest.mark.asyncio
+async def test_get_book_missing():
+    response = client.get("/v1/books/missing")
+    assert response.status_code == 404
+    assert response.headers.get("Content-Type") == "application/json"
+
+    assert response.json() == {"message": "Title with ID “missing” not found"}
