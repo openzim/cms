@@ -34,3 +34,7 @@ class TitleSendSchema(BaseModel):
     tags: List[str]
     metadata: Dict[str, Any]
     books: List[BooksListSendSchema]
+
+
+class Message(BaseModel):
+    message: str
