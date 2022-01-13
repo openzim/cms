@@ -23,7 +23,11 @@ router = APIRouter(
 @router.get(
     "", status_code=200, tags=["titles"], response_model=Page[TitlesListSendSchema]
 )
-async def list_titles(params: Params = Depends(), lang: str = None):
+async def list_titles(
+    params: Params = Depends(),
+    lang: str = None,
+    with_languages: bool = False,
+):
     if lang:
         if "|" in lang:
             # union of languages
@@ -63,7 +67,13 @@ async def list_titles(params: Params = Depends(), lang: str = None):
             ),
             params,
         )
-    return paginate(await Title.objects.fields("ident").all(), params)
+    if with_languages:
+        return paginate(
+            await Title.objects.select_all().fields(["languages"]).all(),
+            params,
+        )
+
+    return paginate(await Title.objects.fields(["ident"]).all(), params)
 
 
 @database.transaction()

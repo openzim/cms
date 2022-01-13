@@ -1,9 +1,15 @@
 import datetime
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pydantic
 from pydantic import BaseModel
+
+
+class LanguageGetSchema(BaseModel):
+    code: str
+    name: str
+    native: str
 
 
 class BookAddSchema(BaseModel):
@@ -25,6 +31,7 @@ class BooksListSendSchema(BaseModel):
 
 class TitlesListSendSchema(BaseModel):
     ident: str
+    languages: Optional[List[LanguageGetSchema]]
 
 
 class TitleSendSchema(BaseModel):

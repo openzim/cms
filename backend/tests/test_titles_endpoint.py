@@ -10,9 +10,45 @@ async def test_get_list_of_titles_single_title(client, title):
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_ara.ident},
-            {"ident": title.ident},
-            {"ident": title_fra.ident},
+            {"ident": title_ara.ident, "languages": []},
+            {"ident": title.ident, "languages": []},
+            {"ident": title_fra.ident, "languages": []},
+        ],
+        "total": 3,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_list_of_titles_with_languages(
+    title_with_language,
+    title_fra,
+    title_ara,
+):
+    response = client.get("/v1/titles?with_languages=true")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_ara.ident,
+                "languages": [
+                    {
+                        "code": "ara",
+                        "name": "Arabic (Egypt)",
+                        "native": "العربية (مصر)",
+                    }
+                ],
+            },
+            {
+                "ident": title_with_language.ident,
+                "languages": [{"code": "eng", "name": "English", "native": "English"}],
+            },
+            {
+                "ident": title_fra.ident,
+                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+            },
         ],
         "total": 3,
         "page": 1,
@@ -68,7 +104,12 @@ async def test_filter_titles_by_language_get_eng(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [{"ident": title_dict["ident"]}],
+        "items": [
+            {
+                "ident": title_dict["ident"],
+                "languages": [{"code": "eng", "name": "English", "native": "English"}],
+            }
+        ],
         "total": 1,
         "page": 1,
         "size": 50,
@@ -83,7 +124,12 @@ async def test_filter_titles_by_language_get_fra(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [{"ident": title_fra_dict["ident"]}],
+        "items": [
+            {
+                "ident": title_fra_dict["ident"],
+                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+            }
+        ],
         "total": 1,
         "page": 1,
         "size": 50,
@@ -102,8 +148,14 @@ async def test_filter_titles_by_language_get_fra_or_eng(
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_dict["ident"]},
-            {"ident": title_fra_dict["ident"]},
+            {
+                "ident": title_dict["ident"],
+                "languages": [{"code": "eng", "name": "English", "native": "English"}],
+            },
+            {
+                "ident": title_fra_dict["ident"],
+                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+            },
         ],
         "total": 2,
         "page": 1,
@@ -121,7 +173,15 @@ async def test_filter_titles_by_language_get_fra_and_eng(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [{"ident": title_fra_eng_dict["ident"]}],
+        "items": [
+            {
+                "ident": title_fra_eng_dict["ident"],
+                "languages": [
+                    {"code": "eng", "name": "English", "native": "English"},
+                    {"code": "fra", "name": "French", "native": "Français"},
+                ],
+            }
+        ],
         "total": 1,
         "page": 1,
         "size": 50,
