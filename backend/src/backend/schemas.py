@@ -1,9 +1,13 @@
 import datetime
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import pydantic
 from pydantic import BaseModel
+
+
+class TagGetSchema(BaseModel):
+    name: str
 
 
 class LanguageGetSchema(BaseModel):
@@ -31,7 +35,8 @@ class BooksListSendSchema(BaseModel):
 
 class TitlesListSendSchema(BaseModel):
     ident: str
-    languages: Optional[List[LanguageGetSchema]]
+    languages: List[LanguageGetSchema] = []
+    tags: List[TagGetSchema] = []
 
 
 class TitleSendSchema(BaseModel):

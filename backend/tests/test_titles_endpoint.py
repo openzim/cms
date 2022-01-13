@@ -10,9 +10,9 @@ async def test_get_list_of_titles_single_title(client, title):
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_ara.ident, "languages": []},
-            {"ident": title.ident, "languages": []},
-            {"ident": title_fra.ident, "languages": []},
+            {"ident": title_ara.ident, "languages": [], "tags": []},
+            {"ident": title.ident, "languages": [], "tags": []},
+            {"ident": title_fra.ident, "languages": [], "tags": []},
         ],
         "total": 3,
         "page": 1,
@@ -38,16 +38,19 @@ async def test_get_list_of_titles_with_languages(
                         "code": "ara",
                         "name": "Arabic (Egypt)",
                         "native": "العربية (مصر)",
-                    }
+                    },
                 ],
+                "tags": [],
             },
             {
                 "ident": title_with_language.ident,
                 "languages": [{"code": "eng", "name": "English", "native": "English"}],
+                "tags": [],
             },
             {
                 "ident": title_fra.ident,
                 "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+                "tags": [],
             },
         ],
         "total": 3,
@@ -108,6 +111,7 @@ async def test_filter_titles_by_language_get_eng(
             {
                 "ident": title_dict["ident"],
                 "languages": [{"code": "eng", "name": "English", "native": "English"}],
+                "tags": [],
             }
         ],
         "total": 1,
@@ -128,6 +132,7 @@ async def test_filter_titles_by_language_get_fra(
             {
                 "ident": title_fra_dict["ident"],
                 "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+                "tags": [],
             }
         ],
         "total": 1,
@@ -151,10 +156,12 @@ async def test_filter_titles_by_language_get_fra_or_eng(
             {
                 "ident": title_dict["ident"],
                 "languages": [{"code": "eng", "name": "English", "native": "English"}],
+                "tags": [],
             },
             {
                 "ident": title_fra_dict["ident"],
                 "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+                "tags": [],
             },
         ],
         "total": 2,
@@ -180,7 +187,27 @@ async def test_filter_titles_by_language_get_fra_and_eng(
                     {"code": "eng", "name": "English", "native": "English"},
                     {"code": "fra", "name": "French", "native": "Français"},
                 ],
+                "tags": [],
             }
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_list_of_titles_with_tags_without_languages(title_with_data):
+    response = client.get("/v1/titles?with_tags=true")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_with_data.ident,
+                "languages": [],
+                "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
+            },
         ],
         "total": 1,
         "page": 1,

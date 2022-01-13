@@ -27,6 +27,7 @@ async def list_titles(
     params: Params = Depends(),
     lang: str = None,
     with_languages: bool = False,
+    with_tags: bool = False,
 ):
     if lang:
         if "|" in lang:
@@ -69,7 +70,13 @@ async def list_titles(
         )
     if with_languages:
         return paginate(
-            await Title.objects.select_all().fields(["languages"]).all(),
+            await Title.objects.select_related("languages").fields(["languages"]).all(),
+            params,
+        )
+
+    if with_tags:
+        return paginate(
+            await Title.objects.select_related("tags").fields(["tags"]).all(),
             params,
         )
 
