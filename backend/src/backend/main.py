@@ -8,11 +8,27 @@ from fastapi.responses import RedirectResponse
 
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
+from backend.models import database
 from backend.routes import books, titles
 
 PREFIX = "/v1"
 
 app = FastAPI(title=__title__, description=__description__, version=__version__)
+app.state.database = database
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    database_ = app.state.database
+    if not database_.is_connected:
+        await database_.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    database_ = app.state.database
+    if database_.is_connected:
+        await database_.disconnect()
 
 
 @app.get("/")
