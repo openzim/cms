@@ -1,15 +1,10 @@
 import re
 
 import pytest
-from fastapi.testclient import TestClient
-
-from backend.main import app
-
-client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_get_list_of_titles_single_title(title):
+async def test_get_list_of_titles_single_title(client, title):
     response = client.get("/v1/titles/")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
@@ -22,7 +17,7 @@ async def test_get_list_of_titles_single_title(title):
 
 
 @pytest.mark.asyncio
-async def test_get_title_with_data(title_with_data, book_dict):
+async def test_get_title_with_data(client, title_with_data, book_dict):
     response = client.get(f"/v1/titles/{title_with_data.ident}")
     assert response.status_code == 200
 
@@ -41,7 +36,7 @@ async def test_get_title_with_data(title_with_data, book_dict):
 
 
 @pytest.mark.asyncio
-async def test_get_title_with_no_data(title):
+async def test_get_title_with_no_data(client, title):
     response = client.get(f"/v1/titles/{title.ident}")
     assert response.status_code == 200
     assert response.json() == {
@@ -51,3 +46,12 @@ async def test_get_title_with_no_data(title):
         "metadata": {},
         "books": [],
     }
+
+
+@pytest.mark.asyncio
+async def test_get_book_missing(client):
+    response = client.get("/v1/titles/missing")
+    assert response.status_code == 404
+    assert response.headers.get("Content-Type") == "application/json"
+
+    assert response.json() == {"message": "Title with ID “missing” not found"}

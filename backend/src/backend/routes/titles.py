@@ -1,10 +1,12 @@
 import base64
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from fastapi_pagination import Page, Params, paginate
+from ormar.exceptions import NoMatch
 
 from backend.models import KIND_ILLUSTRATION, Title, database
-from backend.schemas import TitleSendSchema, TitlesListSendSchema
+from backend.schemas import Message, TitleSendSchema, TitlesListSendSchema
 
 router = APIRouter(
     prefix="/titles",
@@ -23,10 +25,21 @@ async def list_titles(params: Params = Depends()):
 
 @database.transaction()
 @router.get(
-    "/{ident}", status_code=200, tags=["titles"], response_model=TitleSendSchema
+    "/{ident}",
+    tags=["titles"],
+    response_model=TitleSendSchema,
+    responses={
+        404: {"model": Message, "description": "Requested Title not found"},
+        200: {"model": TitleSendSchema, "description": "The requested Title"},
+    },
 )
 async def get_title(ident: str):
-    title = await Title.objects.select_all().get(ident=ident)
+    try:
+        title = await Title.objects.select_all().get(ident=ident)
+    except NoMatch:
+        return JSONResponse(
+            status_code=404, content={"message": f"Title with ID “{ident}” not found"}
+        )
 
     return {
         "ident": title.ident,

@@ -1,9 +1,5 @@
-from fastapi.testclient import TestClient
-
 import backend
-from backend.main import PREFIX, app
-
-client = TestClient(app)
+from backend.main import PREFIX
 
 
 def test_metadata():
@@ -12,7 +8,7 @@ def test_metadata():
     assert backend.__description__
 
 
-def test_root():
+def test_root(client):
     response = client.get("/", allow_redirects=False)
     assert response.status_code == 308
     response = client.get("/", allow_redirects=True)

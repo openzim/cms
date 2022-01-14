@@ -15,8 +15,8 @@ runtime = [
     "fastapi-pagination >=0.9.1,<1.0"
 ]
 test = [
-    "pytest >=6.2.4,<7.0.0",
-    "pytest-asyncio >=0.16.0,<1.0",
+    "pytest >=6.2.5,<7.0.0",
+    "pytest-asyncio >=0.17.0,<1.0",
     "pytest-cov >=2.12.0,<4.0.0",
     "coverage >=6.0.2,<7.0",
 ]
@@ -37,3 +37,4 @@ target-version = ['py36', 'py37', 'py38', 'py39']
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "../tests"]
+asyncio_mode = "auto"

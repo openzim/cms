@@ -104,8 +104,8 @@ async def create_book(book_payload: BookAddSchema):
 @router.get(
     "/{id}",
     responses={
-        404: {"model": Message, "description": "Requested Title not found"},
-        200: {"model": BookAddSchema, "description": "The requested Title"},
+        404: {"model": Message, "description": "Requested Book not found"},
+        200: {"model": BookAddSchema, "description": "The requested Book"},
     },
 )
 async def get_book(id: str):
@@ -113,7 +113,7 @@ async def get_book(id: str):
         book = await Book.objects.select_all().get(id=id)
     except NoMatch:
         return JSONResponse(
-            status_code=404, content={"message": f"Title with ID “{id}” not found"}
+            status_code=404, content={"message": f"Book with ID “{id}” not found"}
         )
 
     return {
