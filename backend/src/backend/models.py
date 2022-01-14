@@ -20,8 +20,7 @@ ILLUSTRATION_PATTERN: str = (
 )
 BOOK_ONLY_METADATA = ("Counter", "Flavour")
 
-
-database = databases.Database(BackendConf.database_url)
+database = databases.Database(databases.DatabaseURL(BackendConf.database_url))
 
 
 class BaseMeta(ormar.ModelMeta):
