@@ -18,6 +18,7 @@ KINDS: Tuple[str] = (KIND_TEXT, KIND_ILLUSTRATION, KIND_BINARY)
 ILLUSTRATION_PATTERN: str = (
     r"^Illustration_" r"(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
 )
+BOOK_ONLY_METADATA = ("Counter", "Flavour")
 
 
 database = databases.Database(BackendConf.database_url)

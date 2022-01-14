@@ -7,6 +7,7 @@ from ormar.exceptions import NoMatch
 
 from backend.main import app
 from backend.models import (
+    BOOK_ONLY_METADATA,
     KIND_ILLUSTRATION,
     KIND_TEXT,
     Book,
@@ -26,7 +27,6 @@ async def test_add_book(book_dict, clear_book_dict):
 
     book = await Book.objects.get(id=book_dict["id"])
     assert response.json() == {
-        "msg": "ok",
         "uuid": str(book.id),
         "title": book.title.ident,
     }
@@ -169,18 +169,21 @@ async def test_add_title_metadata(book_dict, clear_book_dict):
     title_metadata = await TitleMetadata.objects.fields("id", "metadata").all(
         title=book.title.ident
     )
+    expected_title_metadata = {
+        k: v for k, v in book_dict["metadata"].items() if k not in BOOK_ONLY_METADATA
+    }
 
-    assert len(title_metadata) == len(book_dict["metadata"])
+    assert len(title_metadata) == len(expected_title_metadata)
     for metadata in title_metadata:
         if metadata.name.startswith("Illustration"):
             assert metadata.kind == KIND_ILLUSTRATION
             assert metadata.bin_value == base64.standard_b64decode(
-                book_dict["metadata"][metadata.name]
+                expected_title_metadata[metadata.name]
             )
             assert metadata.value == ""
         else:
             assert metadata.kind == KIND_TEXT
-            assert metadata.value == book_dict["metadata"][metadata.name]
+            assert metadata.value == expected_title_metadata[metadata.name]
 
 
 @pytest.mark.asyncio

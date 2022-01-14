@@ -7,6 +7,7 @@ from ormar.exceptions import NoMatch
 from zimscraperlib.i18n import find_language_names
 
 from backend.models import (
+    BOOK_ONLY_METADATA,
     KIND_ILLUSTRATION,
     KIND_TEXT,
     Book,
@@ -71,6 +72,8 @@ async def create_book(book_payload: BookAddSchema):
             )
 
     for metadata in await book.metadata.all():
+        if metadata.name in BOOK_ONLY_METADATA:
+            continue
         await TitleMetadata.objects.create(
             title=title.ident,
             name=metadata.name,
@@ -94,7 +97,7 @@ async def create_book(book_payload: BookAddSchema):
         await book.languages.add(language)
         await title.languages.add(language)
 
-    return {"msg": "ok", "uuid": str(book.id), "title": book.title.ident}
+    return {"uuid": str(book.id), "title": book.title.ident}
 
 
 @database.transaction()
