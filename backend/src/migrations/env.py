@@ -44,6 +44,8 @@ def run_migrations_offline():
         # the prefix has to match sqlalchemy import name in alembic
         # that can be set by sqlalchemy_module_prefix option (default 'sa.')
         user_module_prefix="sa.",
+        # allows autogenerate to detect type changes
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -66,6 +68,8 @@ def run_migrations_online():
             # the prefix has to match sqlalchemy import name in alembic
             # that can be set by sqlalchemy_module_prefix option (default 'sa.')
             user_module_prefix="sa.",
+            # allows autogenerate to detect type changes
+            compare_type=True,
         )
 
         with context.begin_transaction():
