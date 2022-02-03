@@ -10,8 +10,8 @@ runtime = [
     "PyMySQL >=0.9,<=0.9.3",
     "ormar >=0.10.22,<1.0",
     "alembic >=1.7.4,<2.0",
-    "aiosqlite >= 0.17.0,<1.0",
-    "zimscraperlib >= 1.4.1,<2.0",
+    "aiosqlite >=0.17.0,<1.0",
+    "zimscraperlib >=1.4.1,<2.0",
     "fastapi-pagination >=0.9.1,<1.0"
 ]
 test = [
@@ -26,6 +26,7 @@ dev = [
     "pre-commit >=2.15.0,<3.0",
     "flake8 >=<4.0.1,<5.0",
     "uvicorn[standard] >=0.12.0,<0.16.0",
+    "alembic-autogen-check >=1.1.1,<1.2"
 ]
 
 [tool.isort]
