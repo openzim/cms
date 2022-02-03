@@ -16,7 +16,11 @@ fileConfig(config.config_file_name)
 # creating tables in an in-memory SQLITE so alembic knows about schema
 Language.Meta.table.create(create_engine("sqlite://"))
 target_metadata = Language.Meta.metadata
-database_url = database.url.replace(dialect="mysql+pymysql")
+database_url = (
+    database.url.replace(dialect="mysql+pymysql")
+    if "mysql" in database.url.dialect
+    else database.url
+)
 
 
 def run_migrations_offline():
