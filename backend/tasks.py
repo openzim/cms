@@ -142,7 +142,11 @@ def db_list(c):
 
 @task
 def db_gen(c):
-    c.run('invoke alembic --args "revision --autogenerate -m unnamed"')
+    with c.cd("src"):
+        res = c.run("alembic-autogen-check", env={"PYTHONPATH": "."}, warn=True)
+    # only generate revision if we're out of sync with models
+    if res.exited > 0:
+        c.run('invoke alembic --args "revision --autogenerate -m unnamed"')
 
 
 @task

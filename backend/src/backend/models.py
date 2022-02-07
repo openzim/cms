@@ -138,7 +138,7 @@ class Book(ormar.Model, EntryMixin):
     # non-metadata exposed info built from getArchiveMediaCount
     media_count: int = ormar.Integer()
     # non-metadata exposed info built from getArchiveFileSize
-    size: int = ormar.Integer()
+    size: int = ormar.BigInteger()
 
     # ingester-provided non-metadata
     url: pydantic.HttpUrl = ormar.String(max_length=2083)
