@@ -16,6 +16,7 @@ fileConfig(config.config_file_name)
 # creating tables in an in-memory SQLITE so alembic knows about schema
 Language.Meta.table.create(create_engine("sqlite://"))
 target_metadata = Language.Meta.metadata
+render_as_batch = True
 database_url = (
     database.url.replace(dialect="mysql+pymysql")
     if "mysql" in database.url.dialect
@@ -40,6 +41,7 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=render_as_batch,
         # if you use UUID field set also this param
         # the prefix has to match sqlalchemy import name in alembic
         # that can be set by sqlalchemy_module_prefix option (default 'sa.')
@@ -64,6 +66,7 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            render_as_batch=render_as_batch,
             # if you use UUID field set also this param
             # the prefix has to match sqlalchemy import name in alembic
             # that can be set by sqlalchemy_module_prefix option (default 'sa.')
