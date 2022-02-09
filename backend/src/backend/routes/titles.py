@@ -30,6 +30,9 @@ async def list_titles(
     with_tags: bool = False,
     with_metadata: str = None,
 ):
+    """WARNING: When the flags are set to false (by default), the API still sends
+    those fields in response. The value of those keys are either empty of None.
+    """
     if lang:
         if "|" in lang:
             # union of languages
@@ -59,7 +62,7 @@ async def list_titles(
                 params,
             )
 
-        # when single language code is given
+        # when single language code is given, example "/titles?lang=eng"
         return paginate(
             (
                 await Title.objects.select_related("languages")
@@ -72,7 +75,7 @@ async def list_titles(
 
     if with_languages and with_tags:
         return paginate(
-            await Title.objects.select_all().all(),
+            await Title.objects.select_related(["languages", "tags"]).all(),
             params,
         )
 

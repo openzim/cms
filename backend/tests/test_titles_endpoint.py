@@ -10,9 +10,9 @@ async def test_get_list_of_titles_single_title(client, title):
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_ara.ident},
-            {"ident": title.ident},
-            {"ident": title_fra.ident},
+            {"ident": title_ara.ident, "languages": [], "metadata": {}, "tags": []},
+            {"ident": title.ident, "languages": [], "metadata": {}, "tags": []},
+            {"ident": title_fra.ident, "languages": [], "metadata": {}, "tags": []},
         ],
         "total": 3,
         "page": 1,
@@ -40,17 +40,20 @@ async def test_get_list_of_titles_with_languages(
                         "native": "العربية (مصر)",
                     },
                 ],
-                # "tags": [],
+                "metadata": {},
+                "tags": [],
             },
             {
                 "ident": title_with_language.ident,
                 "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                # "tags": [],
+                "metadata": {},
+                "tags": [],
             },
             {
                 "ident": title_fra.ident,
                 "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                # "tags": [],
+                "metadata": {},
+                "tags": [],
             },
         ],
         "total": 3,
@@ -110,8 +113,9 @@ async def test_filter_titles_by_language_get_eng(
         "items": [
             {
                 "ident": title_dict["ident"],
-                # "languages": [],
-                # "tags": [],
+                "languages": [{"code": "eng", "name": "English", "native": "English"}],
+                "metadata": {},
+                "tags": [],
             }
         ],
         "total": 1,
@@ -131,8 +135,9 @@ async def test_filter_titles_by_language_get_fra(
         "items": [
             {
                 "ident": title_fra_dict["ident"],
-                # "languages": [],
-                # "tags": [],
+                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
+                "metadata": {},
+                "tags": [],
             }
         ],
         "total": 1,
@@ -155,17 +160,19 @@ async def test_filter_titles_by_language_get_fra_or_eng(
         "items": [
             {
                 "ident": title_dict["ident"],
-                # "languages": [
-                #     {"code": "eng", "name": "English", "native": "English"},
-                # ],
-                # "tags": [],
+                "languages": [
+                    {"code": "eng", "name": "English", "native": "English"},
+                ],
+                "metadata": {},
+                "tags": [],
             },
             {
                 "ident": title_fra_dict["ident"],
-                # "languages": [
-                #     {"code": "fra", "name": "French", "native": "Français"},
-                # ],
-                # "tags": [],
+                "languages": [
+                    {"code": "fra", "name": "French", "native": "Français"},
+                ],
+                "metadata": {},
+                "tags": [],
             },
         ],
         "total": 2,
@@ -187,11 +194,12 @@ async def test_filter_titles_by_language_get_fra_and_eng(
         "items": [
             {
                 "ident": title_fra_eng_dict["ident"],
-                # "languages": [
-                #     {"code": "eng", "name": "English", "native": "English"},
-                #     {"code": "fra", "name": "French", "native": "Français"},
-                # ],
-                # "tags": [],
+                "languages": [
+                    {"code": "eng", "name": "English", "native": "English"},
+                    {"code": "fra", "name": "French", "native": "Français"},
+                ],
+                "metadata": {},
+                "tags": [],
             }
         ],
         "total": 1,
@@ -209,7 +217,8 @@ async def test_get_list_of_titles_with_tags_without_languages(title_with_data):
         "items": [
             {
                 "ident": title_with_data.ident,
-                # "languages": [],
+                "languages": [],
+                "metadata": {},
                 "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
             },
         ],
@@ -241,6 +250,7 @@ async def test_get_list_of_titles_with_languages_and_tags(title_with_data):
                         "native": "Luganda (Yuganda)",
                     },
                 ],
+                "metadata": {},
                 "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
             },
         ],
@@ -259,10 +269,12 @@ async def test_get_title_with_specific_metadata(title_with_data, title_dict, boo
         "items": [
             {
                 "ident": title_dict["ident"],
+                "languages": None,
                 "metadata": {
-                    "Title": book_dict["metadata"]["Title"],
                     "Publisher": book_dict["metadata"]["Publisher"],
+                    "Title": book_dict["metadata"]["Title"],
                 },
+                "tags": None,
             },
         ],
         "total": 1,
