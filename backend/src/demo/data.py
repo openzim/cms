@@ -3,7 +3,7 @@ import base64
 import re
 import uuid
 
-from zimscraperlib.i18n import find_language_names
+from zimscraperlib.i18n import find_language_names, get_language_details
 
 from backend.models import (
     KIND_ILLUSTRATION,
@@ -141,8 +141,11 @@ async def load_fixture():
 
         # create Languages, and add to the Book and Title
         native_name, english_name = find_language_names(lang_code)
+
+        iso_639_3_lang_code = get_language_details(lang_code)["iso-639-3"]
+
         language = await Language.objects.get_or_create(
-            code=lang_code, name=english_name, native=native_name
+            code=iso_639_3_lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)
         await title.languages.add(language)
