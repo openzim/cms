@@ -19,7 +19,17 @@ from backend.models import (
 )
 
 
-@database.transaction()
+def transaction(func):
+    async def inner():
+        await database.connect()
+        async with database.transaction():
+            await func()
+        await database.disconnect()
+
+    return inner
+
+
+@transaction
 async def load_fixture():
 
     lang_codes = [
