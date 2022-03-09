@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_get_list_of_titles_single_title(client, title):
-    response = client.get("/v1/titles/")
+    response = await client.get("/v1/titles")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
@@ -18,7 +18,7 @@ async def test_get_list_of_titles_single_title(client, title):
 
 @pytest.mark.asyncio
 async def test_get_title_with_data(client, title_with_data, book_dict):
-    response = client.get(f"/v1/titles/{title_with_data.ident}")
+    response = await client.get(f"/v1/titles/{title_with_data.ident}")
     assert response.status_code == 200
 
     tags = []
@@ -37,7 +37,7 @@ async def test_get_title_with_data(client, title_with_data, book_dict):
 
 @pytest.mark.asyncio
 async def test_get_title_with_no_data(client, title):
-    response = client.get(f"/v1/titles/{title.ident}")
+    response = await client.get(f"/v1/titles/{title.ident}")
     assert response.status_code == 200
     assert response.json() == {
         "ident": title.ident,
@@ -50,7 +50,7 @@ async def test_get_title_with_no_data(client, title):
 
 @pytest.mark.asyncio
 async def test_get_book_missing(client):
-    response = client.get("/v1/titles/missing")
+    response = await client.get("/v1/titles/missing")
     assert response.status_code == 404
     assert response.headers.get("Content-Type") == "application/json"
 

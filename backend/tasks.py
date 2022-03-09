@@ -116,7 +116,7 @@ def upload_coverage(c):
 def serve(c, args=""):
     """run devel HTTP server locally. Use --args to specify additional uvicorn args"""
     with c.cd("src"):
-        c.run(f"python -m uvicorn backend.main:app --reload {args}", pty=True)
+        c.run(f"python -m uvicorn backend.entrypoint:app --reload {args}", pty=True)
 
 
 @task

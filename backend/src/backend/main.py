@@ -13,48 +13,50 @@ from backend.routes import books, titles
 
 PREFIX = "/v1"
 
-app = FastAPI(title=__title__, description=__description__, version=__version__)
-app.state.database = database
 
-
-@app.on_event("startup")
 async def startup() -> None:
-    database_ = app.state.database
-    if not database_.is_connected:
-        await database_.connect()
+    if not database.is_connected:
+        await database.connect()
 
 
-@app.on_event("shutdown")
 async def shutdown() -> None:
-    database_ = app.state.database
-    if database_.is_connected:
-        await database_.disconnect()
+    if database.is_connected:
+        await database.disconnect()
 
 
-@app.get("/")
-async def landing():
-    """Redirect to root of latest version of the API"""
-    return RedirectResponse(f"{PREFIX}/", status_code=308)
+def create_app():
+    app = FastAPI(
+        title=__title__,
+        description=__description__,
+        version=__version__,
+        on_startup=[startup],
+        on_shutdown=[shutdown],
+    )
+    app.state.database = database
 
+    @app.get("/")
+    async def landing():
+        """Redirect to root of latest version of the API"""
+        return RedirectResponse(f"{PREFIX}/", status_code=308)
 
-api = FastAPI(title=__title__, description=__description__, version=__version__)
+    api = FastAPI(title=__title__, description=__description__, version=__version__)
 
-api.add_middleware(
-    CORSMiddleware,
-    allow_origins=BackendConf.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    api.add_middleware(
+        CORSMiddleware,
+        allow_origins=BackendConf.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
+    @api.get("/")
+    async def root():
+        """Greetings"""
+        return "Hello World"
 
-@api.get("/")
-async def root():
-    """Greetings"""
-    return "Hello World"
+    api.include_router(router=books.router)
+    api.include_router(router=titles.router)
 
+    app.mount(PREFIX, api)
 
-api.include_router(router=books.router)
-api.include_router(router=titles.router)
-
-app.mount(PREFIX, api)
+    return app
