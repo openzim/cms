@@ -13,6 +13,7 @@ from backend.models import (
     Title,
     TitleMetadata,
     TitleTag,
+    get_matched_m2m_combination,
 )
 
 
@@ -180,3 +181,18 @@ async def test_title_illustrations(title, base64_png):
     # `.illustrations` is dumb and just checks for begining of Name
     assert await title.illustrations.count() == 2
     assert illus.size is None
+
+
+@pytest.mark.asyncio
+async def test_get_matched_m2m_combination(title_fra_eng):
+    assert (
+        len(
+            await get_matched_m2m_combination(items=["eng", "fra"], on="title-language")
+        )
+        == 1
+    )
+
+    with pytest.raises(ValueError, match="Invalid"):
+        await get_matched_m2m_combination(items=["eng", "fra"], on="title-erp")
+    with pytest.raises(ValueError, match="Invalid"):
+        await get_matched_m2m_combination(items=["eng", "fra"], on="erp-language")

@@ -207,6 +207,7 @@ class TitleMetadata(ormar.Model, MetadataMixin):
 
     title: Title = ormar.ForeignKey(Title, related_name="metadata")
 
+
 async def get_matched_m2m_combination(on: str, items: List[str]) -> List[str]:
     """Ids of requested model matching a combination of values on many2many column
 
@@ -232,10 +233,10 @@ async def get_matched_m2m_combination(on: str, items: List[str]) -> List[str]:
         model = Title
         id_field = "ident"
         lookup_field = "title"
-    elif on == "book":
-        model = Book
-        id_field = "uuid"
-        lookup_field = "book"
+    # elif on == "book":
+    #     model = Book
+    #     id_field = "uuid"
+    #     lookup_field = "book"
     coll_lookup_field = collection_name
     # fine as long as there's no customed-table-name for the through model
     through_tablename = f"{model.Meta.tablename}_{collection_name}s"

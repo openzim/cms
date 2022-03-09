@@ -3,7 +3,6 @@ import base64
 import uuid
 
 import pytest
-import pytest_asyncio
 import sqlalchemy
 from httpx import AsyncClient
 
@@ -43,25 +42,25 @@ async def test_database():
     BaseMeta.metadata.drop_all(engine)
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 async def client(app):
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_titles():
     yield
     await Title.objects.delete(each=True)
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_title_tags():
     yield
     await TitleTag.objects.delete(each=True)
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_book_dict(book_dict):
     """removes metadata, tags, languages, title and book created from the book_dict"""
     yield
@@ -90,21 +89,21 @@ async def clear_book_dict(book_dict):
     ).delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_eng():
     lang = await Language.objects.create(code="eng", name="English", native="English")
     yield lang
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_fra():
     lang = await Language.objects.create(code="fra", name="French", native="Français")
     yield lang
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_lug():
     lang = await Language.objects.create(
         code="lug", name="Ganda (Uganda)", native="Luganda (Yuganda)"
@@ -113,7 +112,7 @@ async def language_lug():
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_ara():
     lang = await Language.objects.create(
         code="ara", name="Arabic (Egypt)", native="العربية (مصر)"
@@ -172,7 +171,7 @@ def book_dict(base64_png):
     }
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book(book_dict):
     book = await Book.objects.create(
         id=book_dict["id"],
@@ -191,13 +190,13 @@ async def book(book_dict):
     await book.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book_with_language(book, language_eng):
     await book.languages.add(language_eng)
     yield book
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book_with_metadata(book, book_dict):
     for metadata_name, value in book_dict["metadata"].items():
         if metadata_name.startswith("Illustration_"):
@@ -225,7 +224,7 @@ def title_dict():
     }
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title(title_dict):
     title = await Title.objects.create(
         ident=title_dict["ident"],
@@ -237,20 +236,20 @@ async def title(title_dict):
     await title.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_with_language(title, language_eng):
     await title.languages.add(language_eng)
     yield title
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_tag():
     tag = await TitleTag.objects.create(name="wikipedia")
     yield tag
     await tag.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_with_data(
     title,
     language_eng,
