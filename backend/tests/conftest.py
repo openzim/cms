@@ -4,12 +4,14 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
+import sqlalchemy
+from httpx import AsyncClient
 
-from backend.main import app
+from backend.main import create_app, shutdown, startup
 from backend.models import (
     KIND_ILLUSTRATION,
     KIND_TEXT,
+    BaseMeta,
     Book,
     BookMetadata,
     BookTag,
@@ -17,24 +19,33 @@ from backend.models import (
     Title,
     TitleMetadata,
     TitleTag,
-    setup,
 )
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(autouse=True, scope="session")
 def event_loop():
     return asyncio.get_event_loop()
 
 
-@pytest_asyncio.fixture(autouse=True, scope="session")
-async def database_url(event_loop):
-    setup()
+@pytest.fixture(autouse=True, scope="session")
+def app():
+    return create_app()
+
+
+@pytest.fixture(autouse=True, scope="session")
+async def test_database():
+    engine = sqlalchemy.create_engine(str(BaseMeta.database.url))
+    BaseMeta.metadata.drop_all(engine)  # reset db first
+    BaseMeta.metadata.create_all(engine)
+    await startup()
     yield
+    await shutdown()
+    BaseMeta.metadata.drop_all(engine)
 
 
 @pytest_asyncio.fixture(scope="session")
-async def client(event_loop):
-    with TestClient(app) as client:
+async def client(app):
+    async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 

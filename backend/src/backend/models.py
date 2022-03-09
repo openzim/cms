@@ -206,9 +206,3 @@ class TitleMetadata(ormar.Model, MetadataMixin):
         constraints = [ormar.UniqueColumns("name", "title")]
 
     title: Title = ormar.ForeignKey(Title, related_name="metadata")
-
-
-def setup():
-    """Create Database tables if missing"""
-    engine = sqlalchemy.create_engine(str(BaseMeta.database.url))
-    BaseMeta.metadata.create_all(engine)
