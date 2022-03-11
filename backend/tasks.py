@@ -65,7 +65,7 @@ def test(c, args="", path=""):
                 env={
                     "DATABASE_URL": custom_db_url
                     if custom_db_url
-                    else f"sqlite:///{db_path.resolve()}"
+                    else f"sqlite:////{db_path.resolve()}"
                 },
             )
         finally:
