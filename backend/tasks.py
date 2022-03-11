@@ -150,6 +150,19 @@ def db_gen(c):
 
 
 @task
+def db_init_no_migration(c):
+    """[dev] create database schema from models, without migration. expects empty DB"""
+    with c.cd("src"):
+        c.run(
+            "python -c 'import sqlalchemy\n"
+            "from backend.models import BaseMeta;\n"
+            "engine = sqlalchemy.create_engine(str(BaseMeta.database.url))\n"
+            "BaseMeta.metadata.drop_all(engine)\n"
+            "BaseMeta.metadata.create_all(engine)\n'"
+        )
+
+
+@task
 def load_demo_fixture(c):
     with c.cd("src"):
         c.run(f"{sys.executable} ./demo/data.py", env={"PYTHONPATH": "."})
