@@ -10,9 +10,9 @@ async def test_get_list_of_titles_single_title(client, title, title_ara, title_f
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {"ident": title_ara.ident, "languages": [], "metadata": {}, "tags": []},
-            {"ident": title.ident, "languages": [], "metadata": {}, "tags": []},
-            {"ident": title_fra.ident, "languages": [], "metadata": {}, "tags": []},
+            {"ident": title_ara.ident},
+            {"ident": title.ident},
+            {"ident": title_fra.ident},
         ],
         "total": 3,
         "page": 1,
@@ -27,35 +27,14 @@ async def test_get_list_of_titles_with_languages(
     title_fra,
     title_ara,
 ):
-    response = await client.get("/v1/titles?with_languages=true")
+    response = await client.get("/v1/titles?with-languages=true")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {
-                "ident": title_ara.ident,
-                "languages": [
-                    {
-                        "code": "ara",
-                        "name": "Arabic (Egypt)",
-                        "native": "العربية (مصر)",
-                    },
-                ],
-                "metadata": {},
-                "tags": [],
-            },
-            {
-                "ident": title_with_language.ident,
-                "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                "metadata": {},
-                "tags": [],
-            },
-            {
-                "ident": title_fra.ident,
-                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                "metadata": {},
-                "tags": [],
-            },
+            {"ident": title_ara.ident, "languages": ["ara"]},
+            {"ident": title_with_language.ident, "languages": ["eng"]},
+            {"ident": title_fra.ident, "languages": ["fra"]},
         ],
         "total": 3,
         "page": 1,
@@ -104,6 +83,33 @@ async def test_get_book_missing(client):
     assert response.json() == {"message": "Title with ID “missing” not found"}
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("wikipedia_en_test", [{"ident": "wikipedia_en_test"}]),
+        ("wikipedia_en_all", []),
+        (
+            "wikipedia_*",
+            [
+                {"ident": "wikipedia_ar_all"},
+                {"ident": "wikipedia_en_test"},
+                {"ident": "wikipedia_fr_all"},
+            ],
+        ),
+    ],
+)
+async def test_get_title_by_ident(client, title, title_ara, title_fra, query, expected):
+    response = await client.get(f"/v1/titles?ident={query}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": expected,
+        "total": len(expected),
+        "page": 1,
+        "size": 50,
+    }
+
+
 async def test_filter_titles_by_language_get_eng(
     client, title_dict, title_with_language, title_fra
 ):
@@ -111,14 +117,7 @@ async def test_filter_titles_by_language_get_eng(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [
-            {
-                "ident": title_dict["ident"],
-                "languages": [{"code": "eng", "name": "English", "native": "English"}],
-                "metadata": {},
-                "tags": [],
-            }
-        ],
+        "items": [{"ident": title_dict["ident"]}],
         "total": 1,
         "page": 1,
         "size": 50,
@@ -133,14 +132,7 @@ async def test_filter_titles_by_language_get_fra(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [
-            {
-                "ident": title_fra_dict["ident"],
-                "languages": [{"code": "fra", "name": "French", "native": "Français"}],
-                "metadata": {},
-                "tags": [],
-            }
-        ],
+        "items": [{"ident": title_fra_dict["ident"]}],
         "total": 1,
         "page": 1,
         "size": 50,
@@ -159,22 +151,8 @@ async def test_filter_titles_by_language_get_fra_or_eng(
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
-            {
-                "ident": title_dict["ident"],
-                "languages": [
-                    {"code": "eng", "name": "English", "native": "English"},
-                ],
-                "metadata": {},
-                "tags": [],
-            },
-            {
-                "ident": title_fra_dict["ident"],
-                "languages": [
-                    {"code": "fra", "name": "French", "native": "Français"},
-                ],
-                "metadata": {},
-                "tags": [],
-            },
+            {"ident": title_dict["ident"]},
+            {"ident": title_fra_dict["ident"]},
         ],
         "total": 2,
         "page": 1,
@@ -192,17 +170,7 @@ async def test_filter_titles_by_language_get_fra_and_eng(
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
-        "items": [
-            {
-                "ident": title_fra_eng_dict["ident"],
-                "languages": [
-                    {"code": "eng", "name": "English", "native": "English"},
-                    {"code": "fra", "name": "French", "native": "Français"},
-                ],
-                "metadata": {},
-                "tags": [],
-            }
-        ],
+        "items": [{"ident": title_fra_eng_dict["ident"]}],
         "total": 1,
         "page": 1,
         "size": 50,
@@ -210,17 +178,21 @@ async def test_filter_titles_by_language_get_fra_and_eng(
 
 
 @pytest.mark.asyncio
+async def test_filter_titles_by_language_bad_combination(client, title_fra_eng):
+    response = await client.get("/v1/titles?lang=fra,eng|esp")
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_get_list_of_titles_with_tags_without_languages(client, title_with_data):
-    response = await client.get("/v1/titles?with_tags=true")
+    response = await client.get("/v1/titles?with-tags=true")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
             {
                 "ident": title_with_data.ident,
-                "languages": [],
-                "metadata": {},
-                "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
+                "tags": ["_category:wikipedia", "wikipedia"],
             },
         ],
         "total": 1,
@@ -231,28 +203,15 @@ async def test_get_list_of_titles_with_tags_without_languages(client, title_with
 
 @pytest.mark.asyncio
 async def test_get_list_of_titles_with_languages_and_tags(client, title_with_data):
-    response = await client.get("/v1/titles?with_languages=true&with_tags=true")
+    response = await client.get("/v1/titles?with-languages=true&with-tags=true")
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
             {
                 "ident": title_with_data.ident,
-                "languages": [
-                    {
-                        "code": "ara",
-                        "name": "Arabic (Egypt)",
-                        "native": "العربية (مصر)",
-                    },
-                    {"code": "eng", "name": "English", "native": "English"},
-                    {
-                        "code": "lug",
-                        "name": "Ganda (Uganda)",
-                        "native": "Luganda (Yuganda)",
-                    },
-                ],
-                "metadata": {},
-                "tags": [{"name": "_category:wikipedia"}, {"name": "wikipedia"}],
+                "languages": ["ara", "eng", "lug"],
+                "tags": ["_category:wikipedia", "wikipedia"],
             },
         ],
         "total": 1,
@@ -262,23 +221,130 @@ async def test_get_list_of_titles_with_languages_and_tags(client, title_with_dat
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("wikipedia", [{"ident": "wikipedia_en_all"}, {"ident": "wikipedia_fr_all"}]),
+        (
+            "wikipedia,_category:wikipedia",
+            [{"ident": "wikipedia_en_all"}, {"ident": "wikipedia_fr_all"}],
+        ),
+        ("french,english", []),
+        (
+            "french|english",
+            [{"ident": "wikipedia_en_all"}, {"ident": "wikipedia_fr_all"}],
+        ),
+    ],
+)
+async def test_filter_titles_by_tag_single(
+    client, titles_with_metadata, query, expected
+):
+    response = await client.get(f"/v1/titles?tag={query}")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": expected,
+        "total": len(expected),
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_filter_titles_by_tag_bad_combination(client, titles_with_metadata):
+    response = await client.get("/v1/titles?tag=wikipedia,_category:wikipedia|french")
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("metadata=Name:wikipedia_en_all", [{"ident": "wikipedia_en_all"}]),
+        (
+            "metadata=Name:wikipedia_*_all",
+            [{"ident": "wikipedia_en_all"}, {"ident": "wikipedia_fr_all"}],
+        ),
+        (
+            "metadata=Scraper:mwoffliner",
+            [{"ident": "wikipedia_en_all"}, {"ident": "wikipedia_fr_all"}],
+        ),
+    ],
+)
+async def test_filter_titles_by_metadata(client, titles_with_metadata, query, expected):
+    response = await client.get(f"/v1/titles?{query}")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": expected,
+        "total": len(expected),
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
 async def test_get_title_with_specific_metadata(
     client, title_with_data, title_dict, book_dict
 ):
-    response = await client.get("/v1/titles?with_metadata=Title,Publisher")
+    response = await client.get(
+        "/v1/titles?with-metadata=Title&with-metadata=Publisher"
+    )
     assert response.status_code == 200
     assert response.headers.get("Content-Type") == "application/json"
     assert response.json() == {
         "items": [
             {
                 "ident": title_dict["ident"],
-                "languages": None,
                 "metadata": {
                     "Publisher": book_dict["metadata"]["Publisher"],
                     "Title": book_dict["metadata"]["Title"],
                 },
-                "tags": None,
-            },
+            }
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_title_with_all_metadata(
+    client, title_with_data, title_dict, book_dict
+):
+    response = await client.get("/v1/titles?with-metadata=all")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_dict["ident"],
+                "metadata": book_dict["metadata"],
+            }
+        ],
+        "total": 1,
+        "page": 1,
+        "size": 50,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_title_with_alltext_metadata(
+    client, title_with_data, title_dict, book_dict
+):
+    response = await client.get("/v1/titles?with-metadata=all-text")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    assert response.json() == {
+        "items": [
+            {
+                "ident": title_dict["ident"],
+                "metadata": {
+                    k: v
+                    for k, v in book_dict["metadata"].items()
+                    if k != "Illustration_48x48"
+                },
+            }
         ],
         "total": 1,
         "page": 1,

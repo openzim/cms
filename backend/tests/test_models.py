@@ -14,6 +14,9 @@ from backend.models import (
     TitleMetadata,
     TitleTag,
     get_matched_m2m_combination,
+    matching_metadata,
+    reduce_qs,
+    star_to_like,
 )
 
 
@@ -193,6 +196,53 @@ async def test_get_matched_m2m_combination(title_fra_eng):
     )
 
     with pytest.raises(ValueError, match="Invalid"):
-        await get_matched_m2m_combination(items=["eng", "fra"], on="title-erp")
+        await get_matched_m2m_combination(
+            items=["eng", "fra"], on="title-erp", combination="intersection"
+        )
     with pytest.raises(ValueError, match="Invalid"):
-        await get_matched_m2m_combination(items=["eng", "fra"], on="erp-language")
+        await get_matched_m2m_combination(
+            items=["eng", "fra"], on="erp-language", combination="intersection"
+        )
+    with pytest.raises(ValueError, match="Invalid"):
+        await get_matched_m2m_combination(
+            items=["eng", "fra"], on="title-language", combination="erp"
+        )
+
+
+def test_star_to_like():
+    assert star_to_like("wikipedia_*_all") == "wikipedia_%_all"
+    assert star_to_like("wikipedia*") == "wikipedia%"
+    assert star_to_like("*_all") == "%_all"
+    assert star_to_like("wikipedia*_a*") == "wikipedia%_a%"
+    assert star_to_like("wikipedia_%_all") == "wikipedia_\\%_all"
+
+
+@pytest.mark.asyncio
+async def test_reduce_qs(title, title_fra_eng):
+    qs = Title.objects
+    assert await reduce_qs(qs) == [title.ident, title_fra_eng.ident]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name, value, expected, using",
+    [
+        ("Name", "wikipedia_fr_all", ["wikipedia_fr_all"], None),
+        ("Name", "wikipedia_en_all", ["wikipedia_en_all"], None),
+        ("Scraper", "mwoffliner", ["wikipedia_en_all", "wikipedia_fr_all"], None),
+        ("Name", "wikipedia_fr_all", ["wikipedia_fr_all"], ["wikipedia_fr_all"]),
+        ("Name", "wikipedia_en_all", [], ["wikipedia_fr_all"]),
+        ("Scraper", "mwoffliner", ["wikipedia_fr_all"], ["wikipedia_fr_all"]),
+    ],
+)
+async def test_matching_metadata(titles_with_metadata, name, value, expected, using):
+    # idents = [title.ident, title_fra_eng.ident]
+    assert (
+        await matching_metadata(
+            on="title",
+            name=name,
+            value=star_to_like(value),
+            using=using,
+        )
+        == expected
+    )

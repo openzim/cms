@@ -208,7 +208,9 @@ class TitleMetadata(ormar.Model, MetadataMixin):
     title: Title = ormar.ForeignKey(Title, related_name="metadata")
 
 
-async def get_matched_m2m_combination(on: str, items: List[str]) -> List[str]:
+async def get_matched_m2m_combination(
+    on: str, items: List[str], combination: str = "intersection"
+) -> List[str]:
     """Ids of requested model matching a combination of values on many2many column
 
     params:
@@ -226,9 +228,14 @@ async def get_matched_m2m_combination(on: str, items: List[str]) -> List[str]:
     model_name, collection_name = on.lower().split("-", 1)
     if model_name not in ("title", "book") or collection_name not in (
         "language",
-        "tags",
+        "tag",
+        "titletag",
     ):
         raise ValueError("Invalid m2m combination request")
+    if combination not in ("intersection", "union"):
+        raise ValueError("Invalid m2m combination operator request")
+    count_condition = "= :nbitems" if combination == "intersection" else ">= 1"
+
     if model_name == "title":
         model = Title
         id_field = "ident"
@@ -251,7 +258,41 @@ async def get_matched_m2m_combination(on: str, items: List[str]) -> List[str]:
         f"FROM {through_tablename} WHERE {where} "
         f"GROUP BY {lookup_field}) tmp "
         f"WHERE {model.Meta.tablename}.{id_field} = tmp.{lookup_field} "
-        f"AND tmp.nbi = :nbitems;"
+        f"AND tmp.nbi {count_condition};"
     )
-    params["nbitems"] = len(items)
+    if combination == "intersection":
+        params["nbitems"] = len(items)
     return [row[0] for row in await database.fetch_all(stmt, params)]
+
+
+async def reduce_qs(queryset, on: str = "ident") -> List[str]:
+    """executes a queryset and return identifiers as list for later reuse"""
+    return [getattr(item, on) for item in await queryset.all()]
+
+
+async def matching_metadata(
+    on: str, name: str, value: str, using: Optional[List[str]] = None
+):
+    model_name = on
+    lookup_field = model_name
+    if using:
+        params = {f"item{idx}": item for idx, item in enumerate(using)}
+        in_clause = f"{lookup_field} in (:" + ", :".join(params.keys()) + ") AND "
+    else:
+        params = {}
+        in_clause = ""
+
+    stmt = (
+        f"SELECT DISTINCT xm.{lookup_field} "
+        f"FROM {model_name}s_metadata xm "
+        f"WHERE {in_clause} "
+        "xm.name = :name AND xm.value LIKE :value "
+        f"GROUP BY xm.{lookup_field};"
+    )
+    params["name"] = name
+    params["value"] = value
+    return [row[0] for row in await database.fetch_all(stmt, params)]
+
+
+def star_to_like(query: str):
+    return query.replace("%", r"\%").replace("*", "%")
