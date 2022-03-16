@@ -102,18 +102,18 @@ async def create_book(book_payload: BookAddSchema):
 
 @database.transaction()
 @router.get(
-    "/{id}",
+    "/{book_id}",
     responses={
         404: {"model": Message, "description": "Requested Book not found"},
         200: {"model": BookAddSchema, "description": "The requested Book"},
     },
 )
-async def get_book(id: str):
+async def get_book(book_id: str):
     try:
-        book = await Book.objects.select_all().get(id=id)
+        book = await Book.objects.select_all().get(id=book_id)
     except NoMatch:
         return JSONResponse(
-            status_code=404, content={"message": f"Book with ID “{id}” not found"}
+            status_code=404, content={"message": f"Book with ID “{book_id}” not found"}
         )
 
     return {
