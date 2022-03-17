@@ -65,7 +65,7 @@ def test(c, args="", path=""):
                 env={
                     "DATABASE_URL": custom_db_url
                     if custom_db_url
-                    else f"sqlite:///{db_path.resolve()}"
+                    else f"sqlite:////{db_path.resolve()}"
                 },
             )
         finally:
@@ -147,6 +147,19 @@ def db_gen(c):
     # only generate revision if we're out of sync with models
     if res.exited > 0:
         c.run('invoke alembic --args "revision --autogenerate -m unnamed"')
+
+
+@task
+def db_init_no_migration(c):
+    """[dev] create database schema from models, without migration. expects empty DB"""
+    with c.cd("src"):
+        c.run(
+            "python -c 'import sqlalchemy\n"
+            "from backend.models import BaseMeta;\n"
+            "engine = sqlalchemy.create_engine(str(BaseMeta.database.url))\n"
+            "BaseMeta.metadata.drop_all(engine)\n"
+            "BaseMeta.metadata.create_all(engine)\n'"
+        )
 
 
 @task

@@ -24,7 +24,7 @@ async def shutdown() -> None:
         await database.disconnect()
 
 
-def create_app():
+def create_app() -> FastAPI:
     app = FastAPI(
         title=__title__,
         description=__description__,

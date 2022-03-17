@@ -206,3 +206,93 @@ class TitleMetadata(ormar.Model, MetadataMixin):
         constraints = [ormar.UniqueColumns("name", "title")]
 
     title: Title = ormar.ForeignKey(Title, related_name="metadata")
+
+
+async def get_matched_m2m_combination(
+    on: str, items: List[str], combination: str = "intersection"
+) -> List[str]:
+    """Ids of requested model matching a combination of values on many2many column
+
+    params:
+        on: a {model}-{collection} string to indiquate which model and m2m colums
+        are being queried.
+        model is either `title` or `book`; collection is either `language` or `tag`
+
+        items: list of pk from the m2m target that must all be present to match
+
+    Sample uses:
+        get list of titles ident for which the m2m has eng and french language:
+            on="title-language", items=["eng", "fra"]
+        get list of books uuids for which the m2m has "wiki", "new" and "kid" tags:
+            on="book-tag", items=["wiki", "new", "kid"]"""
+    model_name, collection_name = on.lower().split("-", 1)
+    if model_name not in ("title", "book") or collection_name not in (
+        "language",
+        "tag",
+        "titletag",
+    ):
+        raise ValueError("Invalid m2m combination request")
+    if combination not in ("intersection", "union"):
+        raise ValueError("Invalid m2m combination operator request")
+    count_condition = "= :nbitems" if combination == "intersection" else ">= 1"
+
+    if model_name == "title":
+        model = Title
+        id_field = "ident"
+        lookup_field = "title"
+    # elif on == "book":
+    #     model = Book
+    #     id_field = "uuid"
+    #     lookup_field = "book"
+    coll_lookup_field = collection_name
+    # fine as long as there's no customed-table-name for the through model
+    through_tablename = f"{model.Meta.tablename}_{collection_name}s"
+
+    # expanding bound params alternative (https://stackoverflow.com/a/25168069/631925)
+    params = {f"item{idx}": item for idx, item in enumerate(items)}
+    where = f"{coll_lookup_field} in (:" + ", :".join(params.keys()) + ")"
+    stmt = (
+        f"SELECT {model.Meta.tablename}.{id_field} "
+        f"FROM {model.Meta.tablename}, "
+        f"(SELECT DISTINCT {lookup_field}, COUNT({coll_lookup_field}) as nbi "
+        f"FROM {through_tablename} WHERE {where} "
+        f"GROUP BY {lookup_field}) tmp "
+        f"WHERE {model.Meta.tablename}.{id_field} = tmp.{lookup_field} "
+        f"AND tmp.nbi {count_condition};"
+    )
+    if combination == "intersection":
+        params["nbitems"] = len(items)
+    return [row[0] for row in await database.fetch_all(stmt, params)]
+
+
+async def reduce_qs(queryset, on: str = "ident") -> List[str]:
+    """executes a queryset and return identifiers as list for later reuse"""
+    return [getattr(item, on) for item in await queryset.all()]
+
+
+async def matching_metadata(
+    on: str, name: str, value: str, using: Optional[List[str]] = None
+):
+    model_name = on
+    lookup_field = model_name
+    if using:
+        params = {f"item{idx}": item for idx, item in enumerate(using)}
+        in_clause = f"{lookup_field} in (:" + ", :".join(params.keys()) + ") AND "
+    else:
+        params = {}
+        in_clause = ""
+
+    stmt = (
+        f"SELECT DISTINCT xm.{lookup_field} "
+        f"FROM {model_name}s_metadata xm "
+        f"WHERE {in_clause} "
+        "xm.name = :name AND xm.value LIKE :value "
+        f"GROUP BY xm.{lookup_field};"
+    )
+    params["name"] = name
+    params["value"] = value
+    return [row[0] for row in await database.fetch_all(stmt, params)]
+
+
+def star_to_like(query: str):
+    return query.replace("%", r"\%").replace("*", "%")

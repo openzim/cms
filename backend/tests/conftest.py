@@ -3,7 +3,6 @@ import base64
 import uuid
 
 import pytest
-import pytest_asyncio
 import sqlalchemy
 from httpx import AsyncClient
 
@@ -43,25 +42,25 @@ async def test_database():
     BaseMeta.metadata.drop_all(engine)
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 async def client(app):
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_titles():
     yield
     await Title.objects.delete(each=True)
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_title_tags():
     yield
     await TitleTag.objects.delete(each=True)
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def clear_book_dict(book_dict):
     """removes metadata, tags, languages, title and book created from the book_dict"""
     yield
@@ -90,21 +89,21 @@ async def clear_book_dict(book_dict):
     ).delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_eng():
     lang = await Language.objects.create(code="eng", name="English", native="English")
     yield lang
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_fra():
     lang = await Language.objects.create(code="fra", name="French", native="Français")
     yield lang
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_lug():
     lang = await Language.objects.create(
         code="lug", name="Ganda (Uganda)", native="Luganda (Yuganda)"
@@ -113,7 +112,7 @@ async def language_lug():
     await lang.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def language_ara():
     lang = await Language.objects.create(
         code="ara", name="Arabic (Egypt)", native="العربية (مصر)"
@@ -172,7 +171,7 @@ def book_dict(base64_png):
     }
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book(book_dict):
     book = await Book.objects.create(
         id=book_dict["id"],
@@ -191,13 +190,13 @@ async def book(book_dict):
     await book.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book_with_language(book, language_eng):
     await book.languages.add(language_eng)
     yield book
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def book_with_metadata(book, book_dict):
     for metadata_name, value in book_dict["metadata"].items():
         if metadata_name.startswith("Illustration_"):
@@ -225,7 +224,7 @@ def title_dict():
     }
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title(title_dict):
     title = await Title.objects.create(
         ident=title_dict["ident"],
@@ -237,20 +236,20 @@ async def title(title_dict):
     await title.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_with_language(title, language_eng):
     await title.languages.add(language_eng)
     yield title
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_tag():
     tag = await TitleTag.objects.create(name="wikipedia")
     yield tag
     await tag.delete()
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def title_with_data(
     title,
     language_eng,
@@ -332,3 +331,110 @@ def base64_png():
         "r1NGFnFPRAqa3QMMfmxAQrcJCLb1kdULbGJvxlrjvONBwDnQ0en9tR6GM31gslK145z1YtW"
         "Hs91N/RKEgP/x2Pc+lY9VeYqBDz1rqiJ41SxVy6nuOyUqeJIMRAAAAA=="
     )
+
+
+@pytest.fixture(scope="function")
+def title_ara_dict():
+    return {
+        "ident": "wikipedia_ar_all",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_ara(title_ara_dict, language_ara):
+    title = await Title.objects.create(
+        ident=title_ara_dict["ident"],
+    )
+    await title.languages.add(language_ara)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
+def title_fra_dict():
+    return {
+        "ident": "wikipedia_fr_all",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_fra(title_fra_dict, language_fra):
+    title = await Title.objects.create(
+        ident=title_fra_dict["ident"],
+    )
+    await title.languages.add(language_fra)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
+def title_fra_eng_dict():
+    return {
+        "ident": "wikipedia_fr-eng_nopic",
+    }
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_fra_eng(title_fra_eng_dict, language_fra, language_eng):
+    title = await Title.objects.create(
+        ident=title_fra_eng_dict["ident"],
+    )
+    await title.languages.add(language_fra)
+    await title.languages.add(language_eng)
+    yield title
+    await title.languages.clear(keep_reversed=False)
+    await title.tags.clear()
+    await title.metadata.clear(keep_reversed=False)
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def titles_with_metadata(language_fra, language_eng):
+    title_fra = await Title.objects.create(ident="wikipedia_fr_all")
+    await title_fra.languages.add(language_fra)
+    await title_fra.tags.add(await TitleTag.objects.get_or_create(name="wikipedia"))
+    await title_fra.tags.add(
+        await TitleTag.objects.get_or_create(name="_category:wikipedia")
+    )
+    await title_fra.tags.add(await TitleTag.objects.get_or_create(name="french"))
+    await TitleMetadata.objects.create(
+        name="Name", kind=KIND_TEXT, value="wikipedia_fr_all", title=title_fra.ident
+    )
+    await TitleMetadata.objects.create(
+        name="Scraper", kind=KIND_TEXT, value="mwoffliner", title=title_fra.ident
+    )
+
+    title_eng = await Title.objects.create(ident="wikipedia_en_all")
+    await title_eng.languages.add(language_eng)
+    await title_eng.tags.add(
+        await TitleTag.objects.get_or_create(name="_category:wikipedia")
+    )
+    await title_eng.tags.add(await TitleTag.objects.get_or_create(name="wikipedia"))
+    await title_eng.tags.add(await TitleTag.objects.get_or_create(name="english"))
+    await TitleMetadata.objects.create(
+        name="Name", kind=KIND_TEXT, value="wikipedia_en_all", title=title_eng.ident
+    )
+    await TitleMetadata.objects.create(
+        name="Scraper", kind=KIND_TEXT, value="mwoffliner", title=title_eng.ident
+    )
+
+    yield
+    for title in (title_fra, title_eng):
+        await title.languages.clear(keep_reversed=False)
+        for tag in await title.tags.all():
+            await tag.delete()
+        await title.tags.clear()
+        await title.metadata.clear(keep_reversed=False)
+        for metadata in await title.metadata.all():
+            await metadata.delete()
+        await title.delete()
