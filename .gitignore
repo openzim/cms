@@ -131,3 +131,6 @@ dmypy.json
 codecov
 dev.db
 test.db
+
+# dump of scripts
+scripts/*csv
