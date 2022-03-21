@@ -32,7 +32,7 @@ class ReconciliationTitle:
 
     def _get_list_of_library_names(self):
         """Get and builds the list of library names"""
-        dom = parseString(requests.get(self.url_library_zim).content)
+        dom = parseString(requests.get(self.url_library_zim).content)  # nosec
         self.books_in_library = sorted(
             [
                 (book.getAttribute("name"), book.getAttribute("url"))
