@@ -1,5 +1,6 @@
 import base64
 import datetime
+import uuid
 
 import pytest
 from ormar.exceptions import NoMatch
@@ -32,6 +33,15 @@ async def test_add_book(client, book_dict, clear_book_dict):
     assert book.article_count == book_dict["article_count"]
     assert book.size == book_dict["size"]
     assert book.zimcheck == book_dict["zimcheck"]
+
+
+@pytest.mark.asyncio
+async def test_integrity_error_of_title_metadata(client, book_dict, clear_book_dict):
+    response = await client.post("/v1/books/add", json=book_dict)
+    assert response.status_code == 201
+    book_dict["id"] = str(uuid.uuid4())
+    response = await client.post("/v1/books/add", json=book_dict)
+    assert response.status_code == 201
 
 
 @pytest.mark.asyncio

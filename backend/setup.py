@@ -33,15 +33,15 @@ setup(
     license="GPL-3.0-or-later",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     ],
     packages=find_packages("src"),
     package_dir={"": "src"},
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     install_requires=manifest["dependencies"]["runtime"],
     tests_require=manifest["dependencies"]["test"],
     extras_require={

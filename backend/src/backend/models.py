@@ -169,7 +169,7 @@ class MetadataMixin:
     kind: str = ormar.String(max_length=50, choices=KINDS)
     value: str = ormar.String(max_length=METADATA_MAX_LEN, default="")
     bin_value: Optional[bytes] = ormar.LargeBinary(
-        max_length=2 ** 20 * 2, represent_as_base64_str=False, default=b""
+        max_length=2**20 * 2, represent_as_base64_str=False, default=b""
     )  # 2MiB
 
     @property
