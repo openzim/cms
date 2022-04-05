@@ -28,8 +28,8 @@ router = APIRouter(
 )
 
 
-@database.transaction()
 @router.post("/add", status_code=201)
+@database.transaction()
 async def create_book(book_payload: BookAddSchema):
     """API endpoint to receive Book addition requests and add to database"""
 
@@ -42,6 +42,12 @@ async def create_book(book_payload: BookAddSchema):
             status_code=400,
             detail=f"Invalid Name metadata. Unable to build Title identifier: {exc}",
         ) from exc
+
+    if not book_payload.metadata.get("Language"):
+        raise HTTPException(
+            status_code=400,
+            detail="Missing language code",
+        )
 
     book = await Book.objects.create(
         id=book_payload.id,
@@ -86,12 +92,15 @@ async def create_book(book_payload: BookAddSchema):
             kind=metadata.kind,
         )
 
-    for tag_name in book_payload.metadata["Tags"].split(";"):
-        book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
-        await book.tags.add(book_tag)
-        if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
-            title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
-            await title.tags.add(title_tag)
+    if book_payload.metadata.get("Tags"):
+        for tag_name in book_payload.metadata["Tags"].split(";"):
+            book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
+            await book.tags.add(book_tag)
+            if not re.match(
+                r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name
+            ):
+                title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
+                await title.tags.add(title_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)
@@ -104,7 +113,6 @@ async def create_book(book_payload: BookAddSchema):
     return {"uuid": str(book.id), "title": book.title.ident}
 
 
-@database.transaction()
 @router.get(
     "/{book_id}",
     responses={
@@ -112,6 +120,7 @@ async def create_book(book_payload: BookAddSchema):
         200: {"model": BookAddSchema, "description": "The requested Book"},
     },
 )
+@database.transaction()
 async def get_book(book_id: str):
     try:
         book = await Book.objects.select_all().get(id=book_id)

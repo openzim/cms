@@ -10,7 +10,6 @@ router = APIRouter(
 )
 
 
-@database.transaction()
 @router.get(
     "",
     status_code=200,
@@ -22,6 +21,7 @@ router = APIRouter(
         },
     },
 )
+@database.transaction()
 async def list_languages(params: Params = Depends()):
     def dress_page(page):
         for index, item in enumerate(page.items):
