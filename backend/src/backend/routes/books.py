@@ -28,8 +28,8 @@ router = APIRouter(
 )
 
 
-@database.transaction()
 @router.post("/add", status_code=201)
+@database.transaction()
 async def create_book(book_payload: BookAddSchema):
     """API endpoint to receive Book addition requests and add to database"""
 
@@ -113,7 +113,6 @@ async def create_book(book_payload: BookAddSchema):
     return {"uuid": str(book.id), "title": book.title.ident}
 
 
-@database.transaction()
 @router.get(
     "/{book_id}",
     responses={
@@ -121,6 +120,7 @@ async def create_book(book_payload: BookAddSchema):
         200: {"model": BookAddSchema, "description": "The requested Book"},
     },
 )
+@database.transaction()
 async def get_book(book_id: str):
     try:
         book = await Book.objects.select_all().get(id=book_id)

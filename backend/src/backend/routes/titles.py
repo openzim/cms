@@ -26,7 +26,6 @@ router = APIRouter(
 )
 
 
-@database.transaction()
 @router.get(
     "",
     status_code=200,
@@ -38,6 +37,7 @@ router = APIRouter(
         },
     },
 )
+@database.transaction()
 async def list_titles(
     params: Params = Depends(),
     ident: str = Query(
@@ -209,7 +209,6 @@ async def list_titles(
     return dress_page(paginate(await qs.all(), params))
 
 
-@database.transaction()
 @router.get(
     "/{ident}",
     tags=["titles"],
@@ -219,6 +218,7 @@ async def list_titles(
         200: {"model": TitleSendSchema, "description": "The requested Title"},
     },
 )
+@database.transaction()
 async def get_title(ident: str):
     try:
         title = await Title.objects.select_all().get(ident=ident)

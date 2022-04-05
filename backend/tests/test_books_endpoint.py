@@ -14,6 +14,7 @@ from backend.models import (
     Title,
     TitleMetadata,
 )
+from backend.utils import get_ident_from_name
 
 
 @pytest.mark.asyncio
@@ -33,6 +34,15 @@ async def test_add_book(client, book_dict, clear_book_dict):
     assert book.article_count == book_dict["article_count"]
     assert book.size == book_dict["size"]
     assert book.zimcheck == book_dict["zimcheck"]
+
+
+@pytest.mark.asyncio
+async def test_of_rollback(client, book_dict):
+    ident = get_ident_from_name(book_dict["metadata"]["Name"])
+    book_dict["metadata"]["Language"] = ""
+    response = await client.post("/v1/books/add", json=book_dict)
+    assert response.status_code == 400
+    assert await Title.objects.filter(ident=ident).count() == 0
 
 
 @pytest.mark.asyncio

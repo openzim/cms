@@ -9,7 +9,6 @@ router = APIRouter(
 )
 
 
-@database.transaction()
 @router.get(
     "",
     status_code=200,
@@ -21,6 +20,7 @@ router = APIRouter(
         },
     },
 )
+@database.transaction()
 async def list_tags(params: Params = Depends()):
     def dress_page(page):
         page.items = [item.name for item in page.items]
