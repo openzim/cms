@@ -43,6 +43,12 @@ async def create_book(book_payload: BookAddSchema):
             detail=f"Invalid Name metadata. Unable to build Title identifier: {exc}",
         ) from exc
 
+    if not book_payload.metadata.get("Language"):
+        raise HTTPException(
+            status_code=400,
+            detail="Missing language code",
+        )
+
     book = await Book.objects.create(
         id=book_payload.id,
         counter=book_payload.counter,
@@ -86,12 +92,15 @@ async def create_book(book_payload: BookAddSchema):
             kind=metadata.kind,
         )
 
-    for tag_name in book_payload.metadata["Tags"].split(";"):
-        book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
-        await book.tags.add(book_tag)
-        if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
-            title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
-            await title.tags.add(title_tag)
+    if book_payload.metadata.get("Tags"):
+        for tag_name in book_payload.metadata["Tags"].split(";"):
+            book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
+            await book.tags.add(book_tag)
+            if not re.match(
+                r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name
+            ):
+                title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
+                await title.tags.add(title_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)
