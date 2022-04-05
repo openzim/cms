@@ -74,6 +74,10 @@ async def create_book(book_payload: BookAddSchema):
     for metadata in await book.metadata.all():
         if metadata.name in BOOK_ONLY_METADATA:
             continue
+        if await TitleMetadata.objects.filter(
+            title=title.ident, name=metadata.name
+        ).exists():
+            continue
         await TitleMetadata.objects.create(
             title=title.ident,
             name=metadata.name,
