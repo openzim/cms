@@ -154,7 +154,7 @@ async def load_fixture():
 
         iso_639_3_lang_code = get_language_details(lang_code)["iso-639-3"]
 
-        language = await Language.objects.get_or_create(
+        language, _ = await Language.objects.get_or_create(
             code=iso_639_3_lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)
@@ -188,12 +188,12 @@ async def load_fixture():
 
         # add tags
         for tag_name in book_dict["metadata"]["Tags"].split(";"):
-            book_tag = await BookTag.objects.get_or_create(name=tag_name)
+            book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
             await book.tags.add(book_tag)
             if not re.match(
                 r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name
             ):
-                title_tag = await TitleTag.objects.get_or_create(name=tag_name)
+                title_tag, _ = await TitleTag.objects.get_or_create(name=tag_name)
                 await title.tags.add(title_tag)
 
     # add multiple books to a title

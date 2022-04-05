@@ -402,11 +402,13 @@ async def title_fra_eng(title_fra_eng_dict, language_fra, language_eng):
 async def titles_with_metadata(language_fra, language_eng):
     title_fra = await Title.objects.create(ident="wikipedia_fr_all")
     await title_fra.languages.add(language_fra)
-    await title_fra.tags.add(await TitleTag.objects.get_or_create(name="wikipedia"))
     await title_fra.tags.add(
-        await TitleTag.objects.get_or_create(name="_category:wikipedia")
+        (await TitleTag.objects.get_or_create(name="wikipedia"))[0]
     )
-    await title_fra.tags.add(await TitleTag.objects.get_or_create(name="french"))
+    await title_fra.tags.add(
+        (await TitleTag.objects.get_or_create(name="_category:wikipedia"))[0]
+    )
+    await title_fra.tags.add((await TitleTag.objects.get_or_create(name="french"))[0])
     await TitleMetadata.objects.create(
         name="Name", kind=KIND_TEXT, value="wikipedia_fr_all", title=title_fra.ident
     )
@@ -417,10 +419,12 @@ async def titles_with_metadata(language_fra, language_eng):
     title_eng = await Title.objects.create(ident="wikipedia_en_all")
     await title_eng.languages.add(language_eng)
     await title_eng.tags.add(
-        await TitleTag.objects.get_or_create(name="_category:wikipedia")
+        (await TitleTag.objects.get_or_create(name="_category:wikipedia"))[0]
     )
-    await title_eng.tags.add(await TitleTag.objects.get_or_create(name="wikipedia"))
-    await title_eng.tags.add(await TitleTag.objects.get_or_create(name="english"))
+    await title_eng.tags.add(
+        (await TitleTag.objects.get_or_create(name="wikipedia"))[0]
+    )
+    await title_eng.tags.add((await TitleTag.objects.get_or_create(name="english"))[0])
     await TitleMetadata.objects.create(
         name="Name", kind=KIND_TEXT, value="wikipedia_en_all", title=title_eng.ident
     )

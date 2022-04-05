@@ -34,7 +34,7 @@ async def create_book(book_payload: BookAddSchema):
     """API endpoint to receive Book addition requests and add to database"""
 
     try:
-        title = await Title.objects.get_or_create(
+        title, _ = await Title.objects.get_or_create(
             ident=get_ident_from_name(book_payload.metadata["Name"])
         )
     except ValueError as exc:
@@ -83,15 +83,15 @@ async def create_book(book_payload: BookAddSchema):
         )
 
     for tag_name in book_payload.metadata["Tags"].split(";"):
-        book_tag = await BookTag.objects.get_or_create(name=tag_name)
+        book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
         await book.tags.add(book_tag)
         if not re.match(r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name):
-            title_tag = await TitleTag.objects.get_or_create(name=tag_name)
+            title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
             await title.tags.add(title_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)
-        language = await Language.objects.get_or_create(
+        language, _ = await Language.objects.get_or_create(
             code=lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)
