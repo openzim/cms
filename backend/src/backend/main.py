@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
 from backend.models import database
-from backend.routes import books, languages, tags, titles
+from backend.routes import books, digesters, languages, tags, titles
 
 PREFIX = "/v1"
 
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
     api.include_router(router=languages.router)
     api.include_router(router=tags.router)
     api.include_router(router=titles.router)
+    api.include_router(router=digesters.router)
 
     app.mount(PREFIX, api)
 
