@@ -1,28 +1,25 @@
 import base64
 from urllib.parse import urlparse
-from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.etree.ElementTree import Element, tostring
 
 from backend.models import KIND_ILLUSTRATION, Book
 
 
 async def gen_raw_digester() -> bytes:
 
-    lib_elem = Element("Library")
-    lib_elem.attrib["version"] = "20110515"
-    for book in await Book.objects.select_related("metadata").exclude(title=None).all():
-        book_dict = {}
-        book_dict.update(
-            {
-                item.name: (
-                    base64.standard_b64encode(item.bin_value)
-                    if item.kind == KIND_ILLUSTRATION
-                    else item.value
-                )
-                for item in book.metadata
-            }
-        )
+    xml_text = b'<?xml version="1.0" encoding="UTF-8" ?>\n<library version="20110515">'
 
-        metadata_name_dic = {
+    for book in await Book.objects.select_related("metadata").all():
+        metadata = {
+            item.name: (
+                base64.standard_b64encode(item.bin_value)
+                if item.kind == KIND_ILLUSTRATION
+                else item.value
+            )
+            for item in book.metadata
+        }
+
+        meta_names_map = {
             "Title": "title",
             "Description": "description",
             "Language": "language",
@@ -35,11 +32,11 @@ async def gen_raw_digester() -> bytes:
             "Date": "date",
         }
 
-        elem = SubElement(lib_elem, "book")
-        for metadata_name in metadata_name_dic.keys():
-            value = book_dict.get(metadata_name)
+        elem = Element("book")
+        for metadata_name in meta_names_map.keys():
+            value = metadata.get(metadata_name)
             if value:
-                elem.attrib[metadata_name_dic.get(metadata_name)] = str(value)
+                elem.attrib[meta_names_map.get(metadata_name)] = str(value)
 
         elem.attrib["id"] = str(book.id)
         elem.attrib["faviconMimeType"] = "image/png"
@@ -53,4 +50,8 @@ async def gen_raw_digester() -> bytes:
                 "../var/www/download.kiwix.org" + urlparse(book.url).path
             )
 
-    return tostring(lib_elem)
+        xml_text += b"\n" + tostring(elem)
+
+    xml_text += b"\n</library>\n"
+
+    return xml_text
