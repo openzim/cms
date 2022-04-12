@@ -1,9 +1,11 @@
 import base64
+import copy
 import datetime
 import uuid
 
 import pytest
 from ormar.exceptions import NoMatch
+from utils import clear_book_dict_from
 
 from backend.models import (
     BOOK_ONLY_METADATA,
@@ -38,6 +40,7 @@ async def test_add_book(client, book_dict, clear_book_dict):
 
 @pytest.mark.asyncio
 async def test_of_rollback(client, book_dict):
+
     ident = get_ident_from_name(book_dict["metadata"]["Name"])
     book_dict["metadata"]["Language"] = ""
     response = await client.post("/v1/books/add", json=book_dict)
@@ -49,9 +52,12 @@ async def test_of_rollback(client, book_dict):
 async def test_integrity_error_of_title_metadata(client, book_dict, clear_book_dict):
     response = await client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
-    book_dict["id"] = str(uuid.uuid4())
-    response = await client.post("/v1/books/add", json=book_dict)
+
+    book_dict2 = copy.deepcopy(book_dict)
+    book_dict2["id"] = str(uuid.uuid4())
+    response = await client.post("/v1/books/add", json=book_dict2)
     assert response.status_code == 201
+    await clear_book_dict_from(book_dict2["id"], book_dict2["metadata"]["Tags"])
 
 
 @pytest.mark.asyncio
@@ -63,7 +69,6 @@ async def test_add_metadata(client, book_dict, clear_book_dict):
     book_metadata = await BookMetadata.objects.fields("id", "metadata").all(
         book=book_dict["id"]
     )
-
     assert len(book_metadata) == len(book_dict["metadata"])
     for metadata in book_metadata:
         if metadata.name.startswith("Illustration"):

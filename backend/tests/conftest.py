@@ -5,6 +5,7 @@ import uuid
 import pytest
 import sqlalchemy
 from httpx import AsyncClient
+from utils import clear_book_dict_from
 
 from backend.main import create_app, shutdown, startup
 from backend.models import (
@@ -13,7 +14,6 @@ from backend.models import (
     BaseMeta,
     Book,
     BookMetadata,
-    BookTag,
     Language,
     Title,
     TitleMetadata,
@@ -64,29 +64,7 @@ async def clear_title_tags():
 async def clear_book_dict(book_dict):
     """removes metadata, tags, languages, title and book created from the book_dict"""
     yield
-
-    book = await Book.objects.get(id=book_dict["id"])
-
-    if book.title:
-        title = await Title.objects.get(ident=book.title.ident)
-        for language in await title.languages.all():
-            await language.delete()
-        await title.tags.clear(keep_reversed=False)
-        await title.metadata.clear(keep_reversed=False)
-        await title.books.clear()
-        await title.delete()
-
-    await book.languages.clear(keep_reversed=False)
-    await book.tags.clear(keep_reversed=False)
-    await book.metadata.clear(keep_reversed=False)
-    await book.delete()
-
-    await BookTag.objects.filter(
-        name__in=book_dict["metadata"]["Tags"].split(";")
-    ).delete()
-    await TitleTag.objects.filter(
-        name__in=book_dict["metadata"]["Tags"].split(";")
-    ).delete()
+    await clear_book_dict_from(book_dict["id"], book_dict["metadata"]["Tags"])
 
 
 @pytest.fixture(scope="function")
