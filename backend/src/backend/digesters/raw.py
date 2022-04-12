@@ -4,6 +4,8 @@ from xml.etree.ElementTree import Element, tostring
 
 from backend.models import KIND_ILLUSTRATION, Book
 
+description = "Complete, raw list of Books without any filtering"
+
 
 async def gen_raw_digester() -> bytes:
 

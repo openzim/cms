@@ -25,6 +25,16 @@ async def test_raw_endpoint(client, title_with_data):
 
 
 @pytest.mark.asyncio
+async def test_list_digesters(client):
+    response = await client.get("/v1/digesters")
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type") == "application/json"
+    for raw in response.json().get("items"):
+        assert "slug" in raw
+        assert "description" in raw
+
+
+@pytest.mark.asyncio
 async def test_of_gen_raw_digester(client, title_with_data):
     xml_bytes = await gen_raw_digester()
 
