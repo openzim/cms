@@ -137,6 +137,11 @@ class TitleSendSchema(BaseModel):
     books: List[BooksListSendSchema]
 
 
+class DigestersListSchema(BaseModel):
+    slug: str
+    description: str
+
+
 class Message(BaseModel):
     message: str
 
