@@ -25,7 +25,7 @@
           <li class="nav-item">
             <router-link
               class="nav-link px-2"
-              :to="{ name: 'home' }"
+              :to="{ name: 'digesters' }"
             >
               Digesters
             </router-link>
