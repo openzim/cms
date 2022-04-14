@@ -22,7 +22,6 @@ jobs:
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
-          webhook: https://api.sloppy.io/v1/apps/cms/services/backend/apps/api/deploy?user=${{ secrets.SLOPPY_USERNAME }}&auth=${{ secrets.SLOPPY_AUTH_TOKEN }}
 
   build-and-push-ui:
     name: Deploy UI Docker Image
@@ -40,4 +39,3 @@ jobs:
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
-          webhook: https://api.sloppy.io/v1/apps/cms/services/frontend/apps/ui/deploy?user=${{ secrets.SLOPPY_USERNAME }}&auth=${{ secrets.SLOPPY_AUTH_TOKEN }}
