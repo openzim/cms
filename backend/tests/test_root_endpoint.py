@@ -13,5 +13,5 @@ async def test_root(client):
     assert response.status_code == 308
     response = await client.get("/", follow_redirects=True)
     assert str(response.url).endswith(PREFIX + "/")
-    assert response.headers.get("Content-Type") == "application/json"
-    assert response.json() == "Hello World"
+    assert response.headers.get("Content-Type") == "text/html; charset=utf-8"
+    assert "Swagger UI" in response.text

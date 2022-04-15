@@ -31,7 +31,6 @@ def create_app() -> FastAPI:
         version=__version__,
         on_startup=[startup],
         on_shutdown=[shutdown],
-        docs_url="/",
     )
     app.state.database = database
 
