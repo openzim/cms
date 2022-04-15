@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
         version=__version__,
         on_startup=[startup],
         on_shutdown=[shutdown],
+        docs_url="/",
     )
     app.state.database = database
 
@@ -39,7 +40,40 @@ def create_app() -> FastAPI:
         """Redirect to root of latest version of the API"""
         return RedirectResponse(f"{PREFIX}/", status_code=308)
 
-    api = FastAPI(title=__title__, description=__description__, version=__version__)
+    api = FastAPI(
+        title=__title__,
+        description=__description__,
+        version=__version__,
+        docs_url="/",
+        openapi_tags=[
+            {"name": "digesters", "description": "XML Library generators"},
+            {
+                "name": "titles",
+                "description": "Library Entries which group Books together",
+            },
+            {
+                "name": "books",
+                "description": "Individual, potentially flavoured ZIM files",
+            },
+            {
+                "name": "tags",
+                "description": "ZIM Tags for Titles and Books",
+            },
+            {
+                "name": "languages",
+                "description": "Languages for Titles and Books",
+            },
+        ],
+        contact={
+            "name": "Kiwix/openZIM Team",
+            "url": "https://www.kiwix.org/en/contact/",
+            "email": "contact+cms@kiwix.org",
+        },
+        license_info={
+            "name": "GNU General Public License v3.0",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.en.html",
+        },
+    )
 
     api.add_middleware(
         CORSMiddleware,
@@ -48,11 +82,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @api.get("/")
-    async def root():
-        """Greetings"""
-        return "Hello World"
 
     api.include_router(router=books.router)
     api.include_router(router=languages.router)
