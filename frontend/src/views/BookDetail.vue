@@ -32,7 +32,7 @@
           <tr>
             <td>Url</td>
             <td>
-              <a href="{{ book.url }}">{{ book.url }}</a>
+              <a :href="book.url">{{ book.url }}</a>
             </td>
           </tr>
           <tr>
