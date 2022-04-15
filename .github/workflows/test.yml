@@ -23,11 +23,9 @@ jobs:
           invoke install-deps --package test
           invoke test --args "-v"
           pwd
-
       - name: Upload coverage report to codecov
-        run: |
-          pwd
-          ls -l
-          cd backend
-          ls -l
-          invoke upload-coverage
+        uses: codecov/codecov-action@v3.0.0
+        with:
+          # token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          fail_ci_if_error: true
+          directory: backend/src
