@@ -24,6 +24,15 @@
               target="_blank"
               :href="getLink (digester.slug)"
             >
+              generate {{ digester.slug }}
+            </a>
+          </td>
+          <td>
+            <a
+              class="btn btn-secondary btn-sm"
+              target="_blank"
+              :href="getXmlFile (digester.slug)"
+            >
               get {{ digester.slug }}
             </a>
           </td>
@@ -72,7 +81,10 @@ export default {
   },
   methods: {
     getLink (slug) {
-      return `${Constants.backend_api}/digesters/${slug}`
+      return `${Constants.backend_api}/digesters/${slug}/trigger`
+    },
+    getXmlFile (slug) {
+      return `${Constants.backend_api}/digesters/${slug}/library.xml`
     }
   }
 }
