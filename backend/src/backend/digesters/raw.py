@@ -1,5 +1,4 @@
 import base64
-import os
 from urllib.parse import urlparse
 
 from lxml.etree import Element, tostring
@@ -8,9 +7,10 @@ from backend.digesters import DigesterInterface
 from backend.models import KIND_ILLUSTRATION, Book
 
 
-class Digester(DigesterInterface):
+class DigesterRaw(DigesterInterface):
 
     description: str = "Complete, raw list of Books without any filtering"
+    slug = "raw"
 
     @classmethod
     async def generate(cls) -> bytes:
@@ -18,7 +18,6 @@ class Digester(DigesterInterface):
             '<?xml version="1.0" encoding="UTF-8" ?>\n<library version="20110515">'
         )
 
-        Digester.status = "building"
         for book in (
             await Book.objects.exclude_fields(
                 ["title", "counter", "languages", "zimcheck"]
@@ -28,7 +27,7 @@ class Digester(DigesterInterface):
         ):
             metadata = {
                 item.name: (
-                    base64.standard_b64encode(item.bin_value)
+                    base64.standard_b64encode(item.bin_value).decode("ASCII")
                     if item.kind == KIND_ILLUSTRATION
                     else item.value
                 )
@@ -67,10 +66,4 @@ class Digester(DigesterInterface):
 
         xml_text += "\n</library>\n"
 
-        directory = os.path.dirname(os.getcwd() + "/" + "digesters_dump/")
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        with open(directory + "/" + "raw.xml", "w") as f:
-            f.write(str(xml_text))
-
-        Digester.status = "pending"
+        return xml_text

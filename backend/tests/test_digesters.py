@@ -1,7 +1,7 @@
 import pytest
 from defusedxml import ElementTree
 
-from backend.digesters.raw import gen_raw_digester
+from backend.digesters.raw import DigesterRaw
 from backend.models import Book
 
 
@@ -36,7 +36,7 @@ async def test_list_digesters(client):
 
 @pytest.mark.asyncio
 async def test_of_gen_raw_digester(client, title_with_data):
-    xml_bytes = await gen_raw_digester()
+    xml_bytes = await DigesterRaw.generate()
 
     tree = ElementTree.fromstring(xml_bytes)
     books = tree.findall("book")
@@ -64,4 +64,4 @@ async def test_of_gen_raw_digester(client, title_with_data):
 
     db_book = await Book.objects.get(id=book.attrib["id"])
     assert book.attrib["url"] == db_book.url
-    assert int(book.attrib["size"]) == db_book.size * 1024
+    assert int(book.attrib["size"]) == db_book.size / 1024
