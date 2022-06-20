@@ -1,4 +1,4 @@
-class DigesterInterface:
+class FormaterInterface:
 
     slug: str
     description: str

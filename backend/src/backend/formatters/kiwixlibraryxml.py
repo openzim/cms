@@ -3,28 +3,29 @@ from urllib.parse import urlparse
 
 from lxml.etree import Element, tostring
 
-from backend.digesters import DigesterInterface
+from backend.collections import CollectionInterface
+from backend.formatters import FormaterInterface
 from backend.models import KIND_ILLUSTRATION, Book
 
 
-class DigesterRaw(DigesterInterface):
+class KiwixLibraryXml(FormaterInterface):
 
-    description: str = "Complete, raw list of Books without any filtering"
-    slug = "raw"
+    description: str = "Kiwix Library XML"
+    slug = "kiwixlibraryxml"
 
     @classmethod
-    async def generate(cls) -> bytes:
+    async def generate(cls, collection: CollectionInterface) -> bytes:
         xml_text = (
             '<?xml version="1.0" encoding="UTF-8" ?>\n<library version="20110515">'
         )
-
-        for book in (
-            await Book.objects.exclude_fields(
-                ["title", "counter", "languages", "zimcheck"]
+        async for book_id in collection.get_book_ids():
+            book = (
+                await Book.objects.exclude_fields(
+                    ["title", "counter", "languages", "zimcheck"]
+                )
+                .select_related("metadata")
+                .get(id=book_id)
             )
-            .select_related("metadata")
-            .all()
-        ):
             metadata = {
                 item.name: (
                     base64.standard_b64encode(item.bin_value).decode("ASCII")
