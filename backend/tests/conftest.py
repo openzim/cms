@@ -420,3 +420,27 @@ async def titles_with_metadata(language_fra, language_eng):
         for metadata in await title.metadata.all():
             await metadata.delete()
         await title.delete()
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def titles_with_metadata_books(client, book_dict):
+
+    ids = []
+    book_dict["metadata"]["Name"] = "wikipedia_en_all"
+    book_dict["metadata"]["Flavour"] = "maxi"
+    book_dict["metadata"]["Language"] = "eng"
+    ids.append(book_dict["id"])
+    await client.post("/v1/books/add", json=book_dict)
+
+    book_dict["metadata"]["Name"] = "wikipedia_fr_all"
+    book_dict["metadata"]["Language"] = "fra"
+    del book_dict["metadata"]["Flavour"]
+    book_dict["id"] = str(uuid.uuid4())
+    ids.append(book_dict["id"])
+    await client.post("/v1/books/add", json=book_dict)
+
+    yield
+
+    for bid in ids:
+        await clear_book_dict_from(bid, book_dict["metadata"]["Tags"])

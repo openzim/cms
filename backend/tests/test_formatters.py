@@ -7,7 +7,7 @@ from backend.models import Book
 
 
 @pytest.mark.asyncio
-async def test_kiwix_xml_formatter(book_with_metadata):
+async def test_kiwix_xml_formatter(title_with_data):
     collection = KiwixPublicCollection()
     xml_bytes = await KiwixLibraryXml.generate(collection=collection)
     tree = ElementTree.fromstring(xml_bytes)
@@ -15,7 +15,6 @@ async def test_kiwix_xml_formatter(book_with_metadata):
     xmlbooks = tree.findall("book")
 
     assert "version" in tree.attrib
-    assert len(xmlbooks) == await collection.get_size()
 
     for xmlbook in xmlbooks:
         for name in [
