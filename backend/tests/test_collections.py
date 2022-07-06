@@ -18,7 +18,7 @@ async def test_collection_interface():
 
 
 @pytest.mark.asyncio
-async def test_kiwix_public(book_with_metadata):
+async def test_kiwix_public(titles_with_metadata_books):
 
     books_ids = KiwixPublicCollection().get_book_ids()
     async for book_id in books_ids:
