@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from ormar.exceptions import NoMatch
 from zimscraperlib.i18n import find_language_names
 
+from backend import utils
+from backend.constants import logger
 from backend.models import (
     BOOK_ONLY_METADATA,
     KIND_ILLUSTRATION,
@@ -109,6 +111,15 @@ async def create_book(book_payload: BookAddSchema):
         )
         await book.languages.add(language)
         await title.languages.add(language)
+    flavour = book_payload.metadata.get("Flavour", "")
+    try:
+        # use via utils.xxx to accomodate monkeypatch in tests
+        await utils.remove_obsolete_books(title_ident=title.ident, flavour=flavour)
+    except Exception as exc:
+        logger.warning(
+            f"Unable to remove obsolete books for {title.ident}/{flavour}: {exc}"
+        )
+        logger.exception(exc)
 
     return {"uuid": str(book.id), "title": book.title.ident}
 

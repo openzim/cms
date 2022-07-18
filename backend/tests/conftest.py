@@ -444,3 +444,31 @@ async def titles_with_metadata_books(client, book_dict):
 
     for bid in ids:
         await clear_book_dict_from(bid, book_dict["metadata"]["Tags"])
+
+
+@pytest.fixture(scope="function")
+@pytest.mark.asyncio
+async def title_with_three_books(client, book_dict):
+
+    title = await Title.objects.create(ident="wikipedia_ar_mathematics")
+    ids = []
+    for period in ["2021-04-08", "2021-05-08", "2021-06-08"]:
+        id_ = str(uuid.uuid4())
+        await Book.objects.create(
+            id=id_,
+            counter=book_dict["counter"],
+            period=period,
+            article_count=book_dict["article_count"],
+            media_count=book_dict["media_count"],
+            size=book_dict["size"],
+            url=book_dict["url"],
+            zimcheck={},
+            title=title,
+        )
+        ids.append(id_)
+
+    yield
+
+    for bid in ids:
+        if await Book.objects.filter(id=bid).exists():
+            await clear_book_dict_from(bid, book_dict["metadata"]["Tags"])
