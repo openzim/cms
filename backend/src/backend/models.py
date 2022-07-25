@@ -15,11 +15,10 @@ KIND_TEXT: str = "text"
 KIND_ILLUSTRATION: str = "illustration"
 KIND_BINARY: str = "binary"
 KINDS: Tuple[str] = (KIND_TEXT, KIND_ILLUSTRATION, KIND_BINARY)
-ADD: str = "add"
-EDITE: str = "edite"
-EXPORT: str = "export"
-DELETE: str = "delete"
-ACTIONS: Tuple[str] = (ADD, EDITE, EXPORT, DELETE)
+ACTION_ADD: int = 1
+ACTION_CHANGE: int = 2
+ACTION_DELETE: int = 3
+ACTIONS: Tuple[str] = (ACTION_ADD, ACTION_CHANGE, ACTION_DELETE)
 ILLUSTRATION_PATTERN: str = (
     r"^Illustration_" r"(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
 )
@@ -33,40 +32,35 @@ class BaseMeta(ormar.ModelMeta):
     database = database
 
 
-class History(ormar.Model):
-    """
-    examples:
-        Ajout du book "wikipedia_en_all" le 22-12-2020 à 03h30 par @rgaudin
-        Suppression du book "wikipedia_ar_mathematics" le 22-07-2022 à 10h30 par
-        @rgaudin
-
-        Modification du nom du  book "wikipedia_ar_mathematic" en
-        "wikipedia_ar_mathematics" le 12-04-2021 par @ibfad.
-
-        Modification du tilte MetadataTilte "wikipedia" en "wikimedia" le 01-03-2021 à
-        9h01 par @aicha
-
-        Export des books pour la période de 20-04-1900 à 01-01-2020 le 02-01-2020 à
-        11h20 par @issa
-
-    action object information date time author
-    action field_name object old_info new_info date time author
-    action object period  date time author
-
-    actions: [
-        add, edite, export, delete
-    ]
-
-    """
-
+class LogEntry(ormar.Model):
     class Meta(BaseMeta):
-        tablename = "histories"
+        tablename = "log_entries"
 
-    ident: str = ormar.String(primary_key=True, max_length=3)
-    author: str = ormar.String(max_length=100)
-    date: datetime.datetime = ormar.DateTime()
-    action: str = ormar.String(max_length=100, choices=ACTIONS)
-    content: str = ormar.String(max_length=100)
+    object_type: str = ormar.String(max_length=50)
+    object_id: str = ormar.String(max_length=100)
+    object_repr: str = ormar.String(max_length=100)
+    action: int = ormar.Integer(choices=ACTIONS)
+    action_time: datetime.datetime = ormar.DateTime()
+    user: str = ormar.String(max_length=100, default="n/a")
+    message: str = ormar.String(max_length=255)
+
+    @classmethod
+    async def add(cls, target, action: int, message: str, user: Optional[user]):
+        ...
+        object_type = str(type(target))
+        object_id = target.ident if isinstance(target, Title) else target.id
+        object_repr = str(target)
+        action_time = datetime.datetime.now()
+
+        return await cls.objects.create(
+            object_type=object_type,
+            object_id=object_id,
+            object_repr=object_repr,
+            action=action,
+            action_time=action_time,
+            user=user,
+            message=message,
+        )
 
 
 class Language(ormar.Model):
