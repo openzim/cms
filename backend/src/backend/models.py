@@ -15,6 +15,11 @@ KIND_TEXT: str = "text"
 KIND_ILLUSTRATION: str = "illustration"
 KIND_BINARY: str = "binary"
 KINDS: Tuple[str] = (KIND_TEXT, KIND_ILLUSTRATION, KIND_BINARY)
+ADD: str = "add"
+EDITE: str = "edite"
+EXPORT: str = "export"
+DELETE: str = "delete"
+ACTIONS: Tuple[str] = (ADD, EDITE, EXPORT, DELETE)
 ILLUSTRATION_PATTERN: str = (
     r"^Illustration_" r"(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
 )
@@ -26,6 +31,42 @@ database = databases.Database(databases.DatabaseURL(BackendConf.database_url))
 class BaseMeta(ormar.ModelMeta):
     metadata = sqlalchemy.MetaData()
     database = database
+
+
+class History(ormar.Model):
+    """
+    examples:
+        Ajout du book "wikipedia_en_all" le 22-12-2020 à 03h30 par @rgaudin
+        Suppression du book "wikipedia_ar_mathematics" le 22-07-2022 à 10h30 par
+        @rgaudin
+
+        Modification du nom du  book "wikipedia_ar_mathematic" en
+        "wikipedia_ar_mathematics" le 12-04-2021 par @ibfad.
+
+        Modification du tilte MetadataTilte "wikipedia" en "wikimedia" le 01-03-2021 à
+        9h01 par @aicha
+
+        Export des books pour la période de 20-04-1900 à 01-01-2020 le 02-01-2020 à
+        11h20 par @issa
+
+    action object information date time author
+    action field_name object old_info new_info date time author
+    action object period  date time author
+
+    actions: [
+        add, edite, export, delete
+    ]
+
+    """
+
+    class Meta(BaseMeta):
+        tablename = "histories"
+
+    ident: str = ormar.String(primary_key=True, max_length=3)
+    author: str = ormar.String(max_length=100)
+    date: datetime.datetime = ormar.DateTime()
+    action: str = ormar.String(max_length=100, choices=ACTIONS)
+    content: str = ormar.String(max_length=100)
 
 
 class Language(ormar.Model):
