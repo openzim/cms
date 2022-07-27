@@ -4,12 +4,14 @@ import datetime
 import pytest
 
 from backend.models import (
+    ACTION_ADD,
     KIND_ILLUSTRATION,
     KIND_TEXT,
     Book,
     BookMetadata,
     BookTag,
     Language,
+    LogEntry,
     Title,
     TitleMetadata,
     TitleTag,
@@ -27,9 +29,39 @@ async def test_language():
     assert lang.code == "bam"
     assert lang.name == "Bamanakan"
     assert lang.native == "Bambara"
+    repr(lang) == f"Language(code={lang.code}, name={lang.name})"
     with pytest.raises(Exception):
         await Language.objects.create(code="bam", name="Bamanakan", native="Bambara")
     await lang.delete()
+
+
+@pytest.mark.asyncio
+async def test_log_entry(book_dict, clear_book_dict):
+    book = await Book.objects.create(
+        id=book_dict["id"],
+        counter=book_dict["counter"],
+        period=book_dict["period"],
+        article_count=book_dict["article_count"],
+        media_count=book_dict["media_count"],
+        size=book_dict["size"],
+        url=book_dict["url"],
+        zimcheck=book_dict["zimcheck"],
+    )
+    message = f"Created {repr(book)}"
+
+    log_entry = await LogEntry.add(
+        target=book,
+        action=ACTION_ADD,
+        message=message,
+    )
+
+    assert log_entry.action == ACTION_ADD
+    assert log_entry.object_type == str(type(book))
+    assert log_entry.object_id == str(book.id)
+    assert log_entry.object_repr == repr(book)
+    assert log_entry.message == message
+
+    await log_entry.delete()
 
 
 ######
@@ -54,6 +86,7 @@ async def test_book_create(book_dict, clear_book_dict):
     assert book.size == book_dict["size"]
     assert book.zimcheck == book_dict["zimcheck"]
     assert await book.book_name() == ""
+    assert repr(book) == f"Book(id={book.id})"
 
 
 @pytest.mark.asyncio
@@ -126,6 +159,7 @@ async def test_title_create(clear_titles):
         ident=ident,
     )
     assert title.ident == ident
+    assert repr(title) == f"Title(ident={title.ident})"
 
 
 @pytest.mark.asyncio

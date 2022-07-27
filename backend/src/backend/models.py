@@ -15,6 +15,10 @@ KIND_TEXT: str = "text"
 KIND_ILLUSTRATION: str = "illustration"
 KIND_BINARY: str = "binary"
 KINDS: Tuple[str] = (KIND_TEXT, KIND_ILLUSTRATION, KIND_BINARY)
+ACTION_ADD: int = 1
+ACTION_CHANGE: int = 2
+ACTION_DELETE: int = 3
+ACTIONS: Tuple[str] = (ACTION_ADD, ACTION_CHANGE, ACTION_DELETE)
 ILLUSTRATION_PATTERN: str = (
     r"^Illustration_" r"(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
 )
@@ -26,6 +30,31 @@ database = databases.Database(databases.DatabaseURL(BackendConf.database_url))
 class BaseMeta(ormar.ModelMeta):
     metadata = sqlalchemy.MetaData()
     database = database
+
+
+class LogEntry(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "log_entries"
+
+    id: int = ormar.Integer(primary_key=True)
+    object_type: str = ormar.String(max_length=50)
+    object_id: str = ormar.String(max_length=100)
+    object_repr: str = ormar.String(max_length=255)
+    action: int = ormar.Integer(choices=ACTIONS)
+    action_time: datetime.datetime = ormar.DateTime(default=datetime.datetime.now)
+    user: str = ormar.String(max_length=100, default="n/a")
+    message: str = ormar.String(max_length=255)
+
+    @classmethod
+    async def add(cls, target, action: int, message: str, user: Optional[str] = None):
+        return await cls.objects.create(
+            object_type=str(type(target)),
+            object_id=str(target.ident if isinstance(target, Title) else target.id),
+            object_repr=repr(target),
+            action=action,
+            user=user,
+            message=message,
+        )
 
 
 class Language(ormar.Model):
@@ -42,6 +71,9 @@ class Language(ormar.Model):
     code: str = ormar.String(primary_key=True, max_length=3)
     name: str = ormar.String(max_length=100)
     native: str = ormar.String(max_length=100)
+
+    def __repr__(self):
+        return f"Language(code={self.code}, name={self.name})"
 
 
 class TagMixin:
@@ -113,6 +145,9 @@ class Title(ormar.Model, EntryMixin):
     )
     tags: Optional[List[TitleTag]] = ormar.ManyToMany(TitleTag, related_name="titles")
 
+    def __repr__(self):
+        return f"Title(ident={self.ident})"
+
 
 class Book(ormar.Model, EntryMixin):
     """Actual ZIM file's details
@@ -153,6 +188,9 @@ class Book(ormar.Model, EntryMixin):
         except ormar.exceptions.NoMatch:
             # if the book doesn't have metadata Name
             return ""
+
+    def __repr__(self):
+        return f"Book(id={self.id})"
 
 
 class MetadataMixin:
