@@ -36,10 +36,10 @@ class LogEntry(ormar.Model):
     class Meta(BaseMeta):
         tablename = "log_entries"
 
-    id: int = ormar.Integer(primary_key=True)
+    id: uuid.UUID = ormar.UUID(default=uuid.uuid4, primary_key=True)
     object_type: str = ormar.String(max_length=50)
     object_id: str = ormar.String(max_length=100)
-    object_repr: str = ormar.String(max_length=100)
+    object_repr: str = ormar.String(max_length=255)
     action: int = ormar.Integer(choices=ACTIONS)
     action_time: datetime.datetime = ormar.DateTime(default=datetime.datetime.now)
     user: str = ormar.String(max_length=100, default="n/a")
@@ -49,12 +49,11 @@ class LogEntry(ormar.Model):
     async def add(cls, target, action: int, message: str, user: Optional[str] = None):
         object_type = str(type(target))
         object_id = target.ident if isinstance(target, Title) else target.id
-        object_repr = str(target)
-
+        object_repr = target
         return await cls.objects.create(
             object_type=object_type,
-            object_id=object_id,
-            object_repr=object_repr,
+            object_id=str(object_id),
+            object_repr=str(object_repr.__repr__()),
             action=action,
             user=user,
             message=message,
@@ -75,6 +74,9 @@ class Language(ormar.Model):
     code: str = ormar.String(primary_key=True, max_length=3)
     name: str = ormar.String(max_length=100)
     native: str = ormar.String(max_length=100)
+
+    def __repr__(self):
+        return f"Language(code={self.code}, name={self.name}"
 
 
 class TagMixin:
@@ -146,6 +148,9 @@ class Title(ormar.Model, EntryMixin):
     )
     tags: Optional[List[TitleTag]] = ormar.ManyToMany(TitleTag, related_name="titles")
 
+    def __repr__(self):
+        return f"Title(ident={self.ident})"
+
 
 class Book(ormar.Model, EntryMixin):
     """Actual ZIM file's details
@@ -186,6 +191,9 @@ class Book(ormar.Model, EntryMixin):
         except ormar.exceptions.NoMatch:
             # if the book doesn't have metadata Name
             return ""
+
+    def __repr__(self):
+        return f"Book(uuid={self.id})"
 
 
 class MetadataMixin:
