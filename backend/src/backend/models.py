@@ -36,7 +36,7 @@ class LogEntry(ormar.Model):
     class Meta(BaseMeta):
         tablename = "log_entries"
 
-    id: uuid.UUID = ormar.UUID(default=uuid.uuid4, primary_key=True)
+    id: int = ormar.Integer(primary_key=True)
     object_type: str = ormar.String(max_length=50)
     object_id: str = ormar.String(max_length=100)
     object_repr: str = ormar.String(max_length=255)
@@ -47,13 +47,10 @@ class LogEntry(ormar.Model):
 
     @classmethod
     async def add(cls, target, action: int, message: str, user: Optional[str] = None):
-        object_type = str(type(target))
-        object_id = target.ident if isinstance(target, Title) else target.id
-        object_repr = target
         return await cls.objects.create(
-            object_type=object_type,
-            object_id=str(object_id),
-            object_repr=str(object_repr.__repr__()),
+            object_type=str(type(target)),
+            object_id=str(target.ident if isinstance(target, Title) else target.id),
+            object_repr=repr(target),
             action=action,
             user=user,
             message=message,
@@ -76,7 +73,7 @@ class Language(ormar.Model):
     native: str = ormar.String(max_length=100)
 
     def __repr__(self):
-        return f"Language(code={self.code}, name={self.name}"
+        return f"Language(code={self.code}, name={self.name})"
 
 
 class TagMixin:
@@ -193,7 +190,7 @@ class Book(ormar.Model, EntryMixin):
             return ""
 
     def __repr__(self):
-        return f"Book(uuid={self.id})"
+        return f"Book(id={self.id})"
 
 
 class MetadataMixin:
