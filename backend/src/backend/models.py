@@ -36,28 +36,26 @@ class LogEntry(ormar.Model):
     class Meta(BaseMeta):
         tablename = "log_entries"
 
+    id: int = ormar.Integer(primary_key=True)
     object_type: str = ormar.String(max_length=50)
     object_id: str = ormar.String(max_length=100)
     object_repr: str = ormar.String(max_length=100)
     action: int = ormar.Integer(choices=ACTIONS)
-    action_time: datetime.datetime = ormar.DateTime()
+    action_time: datetime.datetime = ormar.DateTime(default=datetime.datetime.now)
     user: str = ormar.String(max_length=100, default="n/a")
     message: str = ormar.String(max_length=255)
 
     @classmethod
-    async def add(cls, target, action: int, message: str, user: Optional[user]):
-        ...
+    async def add(cls, target, action: int, message: str, user: Optional[str] = None):
         object_type = str(type(target))
         object_id = target.ident if isinstance(target, Title) else target.id
         object_repr = str(target)
-        action_time = datetime.datetime.now()
 
         return await cls.objects.create(
             object_type=object_type,
             object_id=object_id,
             object_repr=object_repr,
             action=action,
-            action_time=action_time,
             user=user,
             message=message,
         )
