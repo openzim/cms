@@ -232,6 +232,9 @@ class BookMetadata(ormar.Model, MetadataMixin):
 
     book: Book = ormar.ForeignKey(Book, related_name="metadata")
 
+    def __repr__(self):
+        return f"BookMetadata(name={self.name}"
+
 
 class TitleMetadata(ormar.Model, MetadataMixin):
     """Metadata associated with a Title
@@ -244,6 +247,9 @@ class TitleMetadata(ormar.Model, MetadataMixin):
         constraints = [ormar.UniqueColumns("name", "title")]
 
     title: Title = ormar.ForeignKey(Title, related_name="metadata")
+
+    def __repr__(self):
+        return f"TitleMetadata(name={self.name}"
 
 
 async def get_matched_m2m_combination(
