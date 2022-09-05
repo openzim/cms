@@ -8,6 +8,7 @@ from zimscraperlib.i18n import find_language_names
 
 from backend import utils
 from backend.constants import logger
+from backend.event_handlers import ee
 from backend.models import (
     BOOK_ONLY_METADATA,
     KIND_ILLUSTRATION,
@@ -62,22 +63,25 @@ async def create_book(book_payload: BookAddSchema):
         zimcheck=book_payload.zimcheck,
         title=title,
     )
-
+    await ee.emit_async("added_book", book)
     for metadata_name, value in book_payload.metadata.items():
         if metadata_name.startswith("Illustration_"):
-            await BookMetadata.objects.create(
+            book_metadata = await BookMetadata.objects.create(
                 book=book.id,
                 name=metadata_name,
                 bin_value=base64.standard_b64decode(value),
                 kind=KIND_ILLUSTRATION,
             )
         else:
-            await BookMetadata.objects.create(
+            book_metadata = await BookMetadata.objects.create(
                 book=book.id,
                 name=metadata_name,
                 value=value,
                 kind=KIND_TEXT,
             )
+        await ee.emit_async(
+            "added_book_metadata", book, f"Added {repr(book_metadata)} to {repr(book)}"
+        )
 
     for metadata in await book.metadata.all():
         if metadata.name in BOOK_ONLY_METADATA:
@@ -86,7 +90,7 @@ async def create_book(book_payload: BookAddSchema):
             title=title.ident, name=metadata.name
         ).exists():
             continue
-        await TitleMetadata.objects.create(
+        title_metadata = await TitleMetadata.objects.create(
             title=title.ident,
             name=metadata.name,
             bin_value=metadata.bin_value,
@@ -94,15 +98,31 @@ async def create_book(book_payload: BookAddSchema):
             kind=metadata.kind,
         )
 
+        await ee.emit_async(
+            "added_title_metadata",
+            title,
+            f"Added {repr(title_metadata)} to {repr(title)}",
+        )
     if book_payload.metadata.get("Tags"):
         for tag_name in book_payload.metadata["Tags"].split(";"):
-            book_tag, _ = await BookTag.objects.get_or_create(name=tag_name)
+            book_tag, created = await BookTag.objects.get_or_create(name=tag_name)
             await book.tags.add(book_tag)
+            if created:
+                await ee.emit_async(
+                    "added_book_tag", book, f"Added {repr(book_tag)} to {repr(book)}"
+                )
             if not re.match(
                 r"_(sw|ftindex|pictures|videos|details):(yes|no)", tag_name
             ):
-                title_tag = (await TitleTag.objects.get_or_create(name=tag_name))[0]
+                title_tag, created = await TitleTag.objects.get_or_create(name=tag_name)
                 await title.tags.add(title_tag)
+                if created:
+                    await ee.emit_async(
+                        "added_title_tag",
+                        title,
+                        f"Added {repr(title_tag)} to {repr(title)}",
+                    )
+            await book.tags.add(book_tag)
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)

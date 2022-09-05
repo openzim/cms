@@ -13,6 +13,7 @@ runtime = [
     "aiosqlite >=0.17.0,<1.0",
     "zimscraperlib >=1.4.1,<2.0",
     "fastapi-pagination >=0.9.1,<1.0",
+    "pymitter >=0.4.0,<0.5",
     "openzim-uploader >=1.0.1,<2.0"
 ]
 test = [
@@ -21,7 +22,7 @@ test = [
     "pytest-cov >=2.12.0,<4.0.0",
     "coverage >=6.0.2,<7.0",
     "httpx >=0.22.0,<0.23",
-    "defusedxml >=0.7.1, <0.8"
+    "defusedxml >=0.7.1,<0.8"
 ]
 dev = [
     "black >=21.9b0,<22",
