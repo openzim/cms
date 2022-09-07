@@ -15,7 +15,7 @@ class KiwixPublicExporter(ExporterInterface):
         with open(src_path, "w") as f:
             f.write(await KiwixLibraryXml.generate(collection=KiwixPublicCollection()))
 
-        await openzim_uploader.check_and_upload_file(
+        openzim_uploader.check_and_upload_file(
             src_path=src_path,
             upload_uri=BackendConf.upload_uri,
             private_key=BackendConf.private_key,
