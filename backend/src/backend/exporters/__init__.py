@@ -1,3 +1,3 @@
 class ExporterInterface:
-    async def exporter(self):
+    async def export(self):
         raise NotImplementedError()

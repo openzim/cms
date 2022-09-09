@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import pathlib
 import uuid
 
 import pytest
@@ -269,6 +270,27 @@ async def title_with_data(
     await title.books.clear()
     await title.delete()
     await category_tag.delete()
+
+
+@pytest.fixture(scope="session")
+def ssh_private_key(tmpdir_factory):
+    fpath = pathlib.Path(tmpdir_factory.mktemp("data")) / "test_key"
+    with open(fpath, "w") as f:
+        f.write(
+            "-----BEGIN OPENSSH PRIVATE KEY-----"
+            "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAArAAAABNlY2RzYS"
+            "1zaGEyLW5pc3RwNTIxAAAACG5pc3RwNTIxAAAAhQQBdd7LkqFrRhjNRFaJdH69EegPzUrD"
+            "q0nBs33C0PGrWfOq6SzpmpCLrLUmky6fBVSluCEyfgFKuf4q8ev5k1eNcTMAeZ6i0uGBYq"
+            "r7wfTWlQNRrtJq/hsDWnfvu+UX7gO0jGA9IvRuS/T1AyWqwm8M7MgxSVfHp8RCQIYEyzGX"
+            "cY7Z1KIAAAEQmJUd+JiVHfgAAAATZWNkc2Etc2hhMi1uaXN0cDUyMQAAAAhuaXN0cDUyMQ"
+            "AAAIUEAXXey5Kha0YYzURWiXR+vRHoD81Kw6tJwbN9wtDxq1nzquks6ZqQi6y1JpMunwVU"
+            "pbghMn4BSrn+KvHr+ZNXjXEzAHmeotLhgWKq+8H01pUDUa7Sav4bA1p377vlF+4DtIxgPS"
+            "L0bkv09QMlqsJvDOzIMUlXx6fEQkCGBMsxl3GO2dSiAAAAQgFLU9fztUffe7jp+nuo30wA"
+            "0/ABOGCvSz9/GI8FGXJ073fenbK8nOjO6X6sGKhj76ANkXcqpA/MlxpjkkT+A6YwrwAAAB"
+            "BmYWRAZmFkaWdhLmxvY2FsAQI="
+            "-----END OPENSSH PRIVATE KEY-----"
+        )
+    return fpath
 
 
 @pytest.fixture(scope="module")
