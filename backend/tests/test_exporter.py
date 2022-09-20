@@ -1,3 +1,5 @@
+import tempfile
+
 import openzim_uploader
 import pytest
 
@@ -15,11 +17,17 @@ async def test_exporter_interface():
 
 
 @pytest.mark.asyncio
-async def test_export(monkeypatch):
+async def test_incorrect_path(monkeypatch):
+    def mock_named_temporary_file(delete=False):
+        class MockNamedTemporaryFile(object):
+            def __init__(self, *args, **kwargs):
+                self.name = "/fakefile"
+
+        return MockNamedTemporaryFile()
 
     with monkeypatch.context() as mp:
-        mp.setattr(KiwixPublicExporter, "src_path", "fake_path/test")
-        await KiwixPublicExporter.export()
+        mp.setattr(tempfile, "NamedTemporaryFile", mock_named_temporary_file)
+        assert not await KiwixPublicExporter.export()
 
 
 @pytest.mark.asyncio
@@ -50,4 +58,4 @@ async def test_kiwix_public_exporter(monkeypatch, ssh_private_key):
         mp.setattr(BackendConf, "upload_uri", "sftp://localhost:8080/data/test/")
         mp.setattr(BackendConf, "private_key", ssh_private_key)
 
-        await KiwixPublicExporter.export()
+        assert await KiwixPublicExporter.export()

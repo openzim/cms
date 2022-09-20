@@ -279,6 +279,9 @@ async def title_with_data(
 
 @pytest.fixture(scope="session")
 def ssh_private_key(tmpdir_factory):
+    """sample, valid SSH private key (not used anywhere) Required for
+    check_and_upload_file to validate other arguments"""
+
     fpath = pathlib.Path(tmpdir_factory.mktemp("data")) / "test_key"
     with open(fpath, "w") as f:
         f.write(
