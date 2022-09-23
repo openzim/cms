@@ -17,6 +17,9 @@ logger = lib_getLogger(
 @dataclass
 class BackendConf:
     nb_book_versions_to_keep = os.getenv("NB_BOOK_VERSIONS_TO_KEEP", 2)
+    upload_uri = os.getenv("UPLOAD_URI", "")
+    private_key = os.getenv("PRIVATE_KEY", "")
+
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:////{src_dir}/dev.db")
     allowed_origins = os.getenv(
         "ALLOWED_ORIGINS",
