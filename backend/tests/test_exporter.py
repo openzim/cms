@@ -31,6 +31,20 @@ async def test_incorrect_path(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_incorrect_rsa_key(monkeypatch, ssh_private_key):
+    with monkeypatch.context() as mp:
+        mp.setattr(BackendConf, "private_key", ssh_private_key)
+    assert not await KiwixPublicExporter.export()
+
+
+@pytest.mark.asyncio
+async def test_incorrect_url(monkeypatch):
+    with monkeypatch.context() as mp:
+        mp.setattr(BackendConf, "upload_uri", "sftps://localhost:8080/data/test/")
+    assert not await KiwixPublicExporter.export()
+
+
+@pytest.mark.asyncio
 async def test_kiwix_public_exporter(monkeypatch, ssh_private_key):
     def mock_ack_host_fingerprint(host, port):
         ...
