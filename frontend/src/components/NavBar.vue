@@ -48,6 +48,13 @@
           >
             Sign-in
           </button>
+
+          <button
+            class="btn btn-outline-light me-2"
+            @click="exporter()"
+          >
+            Export
+          </button>
         </div>
       </div>
     </div>
@@ -61,7 +68,24 @@ import Common from '../Common.mixin.js'
 export default {
   name: 'NavBar',
   components: { LoadingIndicator },
-  mixins: [Common]
+  mixins: [Common],
+
+  methods: {
+    exporter: function () {
+      const parent = this
+      this.startLoading()
+
+      const url = '/export'
+
+      this.queryAPI('GET', url)
+        .then(function (response) {
+          parent.endLoading()
+        }).catch(function (error) {
+          parent.standardErrorHandling(error)
+          parent.endLoading()
+        })
+    }
+  }
 }
 </script>
 

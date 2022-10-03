@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
 from backend.models import database
-from backend.routes import books, languages, tags, titles
+from backend.routes import books, exports, languages, tags, titles
 
 PREFIX = "/v1"
 
@@ -46,6 +46,10 @@ def create_app() -> FastAPI:
         docs_url="/",
         openapi_tags=[
             {
+                "name": "exports",
+                "description": "Kiwix public exporter",
+            },
+            {
                 "name": "titles",
                 "description": "Library Entries which group Books together",
             },
@@ -81,6 +85,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    api.include_router(router=exports.router)
     api.include_router(router=books.router)
     api.include_router(router=languages.router)
     api.include_router(router=tags.router)
