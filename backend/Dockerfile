@@ -8,6 +8,11 @@ ENV DATABASE_URL sqlite:///local.db
 # internal
 ENV APP_MODULE "backend.entrypoint:app"
 
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends ssh && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # add out prestart script launched by upstream's /start.sh and remove upstrean entry
 COPY prestart.sh /app/prestart.sh
 RUN chmod +x /app/prestart.sh && rm -f /app/main.py
