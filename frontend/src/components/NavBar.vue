@@ -78,7 +78,7 @@ export default {
       const url = '/export'
 
       this.queryAPI('GET', url)
-        .then(function (response) {
+        .then(function () {
           parent.endLoading()
         }).catch(function (error) {
           parent.standardErrorHandling(error)
