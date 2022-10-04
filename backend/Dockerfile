@@ -26,5 +26,7 @@ COPY src/ /tmp/src
 RUN python setup.py install && mv /tmp/src /src
 WORKDIR /src
 
+RUN mkdir -p /root/.ssh
+
 # from upsteam
 CMD ["/start.sh"]
