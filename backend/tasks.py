@@ -59,7 +59,8 @@ def test(c, args="", path=""):
     with c.cd("src"):
         try:
             c.run(
-                f"python -m pytest --cov=backend --cov-report term-missing {args} "
+                f"{sys.executable} -m pytest --cov=backend "
+                f"--cov-report term-missing {args} "
                 f"../tests{'/' + path if path else ''}",
                 pty=True,
                 env={
@@ -116,13 +117,16 @@ def upload_coverage(c):
 def serve(c, args=""):
     """run devel HTTP server locally. Use --args to specify additional uvicorn args"""
     with c.cd("src"):
-        c.run(f"python -m uvicorn backend.entrypoint:app --reload {args}", pty=True)
+        c.run(
+            f"{sys.executable} -m uvicorn backend.entrypoint:app --reload {args}",
+            pty=True,
+        )
 
 
 @task
 def alembic(c, args=""):
     with c.cd("src"):
-        c.run(f"python -m alembic {args}")
+        c.run(f"{sys.executable} -m alembic {args}")
 
 
 @task
@@ -154,7 +158,7 @@ def db_init_no_migration(c):
     """[dev] create database schema from models, without migration. expects empty DB"""
     with c.cd("src"):
         c.run(
-            "python -c 'import sqlalchemy\n"
+            f"{sys.executable} -c 'import sqlalchemy\n"
             "from backend.models import BaseMeta;\n"
             "engine = sqlalchemy.create_engine(str(BaseMeta.database.url))\n"
             "BaseMeta.metadata.drop_all(engine)\n"
