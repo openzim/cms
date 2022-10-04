@@ -45,6 +45,36 @@ async def test_incorrect_url(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_exception_upload_file(monkeypatch, ssh_private_key):
+    def mock_ack_host_fingerprint(host, port):
+        ...
+
+    def mock_upload_file(
+        src_path,
+        upload_uri,
+        private_key,
+        username=None,
+        resume=False,
+        watch=None,
+        move=False,
+        delete=False,
+        compress=False,
+        bandwidth=None,
+        cipher=None,
+        delete_after=None,
+    ):
+        raise
+
+    with monkeypatch.context() as mp:
+        mp.setattr(openzim_uploader, "upload_file", mock_upload_file)
+        mp.setattr(openzim_uploader, "ack_host_fingerprint", mock_ack_host_fingerprint)
+        mp.setattr(BackendConf, "upload_uri", "sftp://localhost/data/test/")
+        mp.setattr(BackendConf, "private_key", ssh_private_key)
+
+        assert not await KiwixPublicExporter.export()
+
+
+@pytest.mark.asyncio
 async def test_kiwix_public_exporter(monkeypatch, ssh_private_key):
     def mock_ack_host_fingerprint(host, port):
         ...

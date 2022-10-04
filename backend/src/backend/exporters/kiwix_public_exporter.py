@@ -27,12 +27,17 @@ class KiwixPublicExporter(ExporterInterface):
             )
             logger.exception(exc)
             return False
-        return (
-            openzim_uploader.check_and_upload_file(
-                src_path=src_path,
-                upload_uri=BackendConf.upload_uri,
-                private_key=BackendConf.private_key,
-                delete=True,
+        try:
+            return (
+                openzim_uploader.check_and_upload_file(
+                    src_path=src_path,
+                    upload_uri=BackendConf.upload_uri,
+                    private_key=BackendConf.private_key,
+                    delete=True,
+                )
+                == 0
             )
-            == 0
-        )
+        except Exception as exc:
+            logger.warning(f"Failed openzim_uploader : {exc}")
+            logger.exception(exc)
+            return False
