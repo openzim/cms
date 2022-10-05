@@ -1,4 +1,4 @@
-"""unnamed
+"""add-log-entries
 
 Revision ID: 2c699e7d3dd4
 Revises: 8b190eda9c41
