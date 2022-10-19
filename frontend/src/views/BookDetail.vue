@@ -64,17 +64,12 @@
               </table>
             </td>
           </tr>
-          <tr>
-            <td>Zimcheck</td>
-            <td>
-              <pre>
-                {{ book.zimcheck }}
-              </pre>
-            </td>
-          </tr>
         </tbody>
       </table>
     </div>
+    <ZimCheck
+      :book="book"
+    />
     <ErrorMessage
       v-if="error"
       :message="error"
@@ -85,11 +80,12 @@
 <script>
 import Common from '../Common.mixin.js'
 import ErrorMessage from '../components/ErrorMessage.vue'
+import ZimCheck from '../components/ZimCheck.vue'
 
 export default {
   name: 'BookDetails',
   components: {
-    ErrorMessage
+    ErrorMessage, ZimCheck
   },
   mixins: [Common],
   props: {

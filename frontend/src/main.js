@@ -17,7 +17,7 @@ import store from './store.js'
 
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowCircleLeft, faCarrot, faSpinner } from '@fortawesome/free-solid-svg-icons'
+import { faArrowCircleLeft, faCarrot, faSpinner, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 // matomo (stats.kiwix.org)
@@ -31,6 +31,8 @@ app.use(store)
 library.add(faArrowCircleLeft)
 library.add(faCarrot)
 library.add(faSpinner)
+library.add(faCheck)
+library.add(faTimes)
 app.component('FontAwesomeIcon', FontAwesomeIcon)
 app.use(VueMatomo, {
   host: 'https://stats.kiwix.org',
