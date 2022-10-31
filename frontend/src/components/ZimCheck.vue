@@ -21,23 +21,19 @@
       </span>
       <button
         class="btn btn-sm btn-neutral me-2"
+        @click="seen = !seen"
       >
-        <div
-          class="form-check form-switch"
-        >
-          <input
-            id="flexSwitchCheckDefault"
-            class="form-check-input"
-            type="checkbox"
-            @click="seen = !seen"
-          >
-          <label
-            class="form-check-label"
-            for="flexSwitchCheckDefault"
-          >
-            toggle details
-          </label>
-        </div>
+        <font-awesome-icon
+          v-if="seen"
+          icon="toggle-on"
+          size="sm"
+        />
+        <font-awesome-icon
+          v-else
+          icon="toggle-off"
+          size="sm"
+        />
+        toggle details
       </button>
       <span
         v-for="(value, name) in logsData"
@@ -52,48 +48,41 @@
         </span>
       </span>
     </p>
-    <table
-      class="table table-striped"
-    >
-      <tbody
-        v-if="seen"
+    <div class="table-responsive">
+      <table
+        v-show="seen"
+        class="table table-sm table-striped table-responsive"
       >
-        <tr
-          :class="success ? 'alert-success': 'alert-danger'"
-        >
-          <th
-            scope="col"
+        <tbody>
+          <tr>
+            <th>
+              check
+            </th>
+            <th>
+              level
+            </th>
+            <th>
+              message
+            </th>
+          </tr>
+          <tr
+            v-for="log in book.zimcheck.logs"
+            id="hide"
+            :key="log"
           >
-            check
-          </th>
-          <th
-            scope="col"
-          >
-            level
-          </th>
-          <th
-            scope="col"
-          >
-            message
-          </th>
-        </tr>
-        <tr
-          v-for="log in book.zimcheck.logs"
-          id="hide"
-          :key="log"
-        >
-          <td scope="row">
-            {{ log.check }}
-          </td>
-          <td>
-            {{ log.level }}
-          </td>
-          <td>
-            {{ log.message }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <td>
+              {{ log.check }}
+            </td>
+            <td>
+              {{ log.level }}
+            </td>
+            <td>
+              {{ log.message }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 <script type="text/javascript">
@@ -128,13 +117,3 @@ export default {
   }
 }
 </script>
-<style>
-  span[data-status=success] {
-    background-color: #42b983;
-    color: #fff;
-  }
-  span[data-status=error] {
-    background-color: #e74a3b;
-    color: #fff;
-  }
-</style>
