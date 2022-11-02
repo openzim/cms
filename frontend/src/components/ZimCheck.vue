@@ -91,7 +91,7 @@ export default {
   props: {
     book: {
       type: Object,
-      default (rawProps) {
+      default () {
         return {}
       }
     }
