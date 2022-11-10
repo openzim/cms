@@ -68,6 +68,7 @@
       </table>
     </div>
     <ZimCheck
+      v-if="book"
       :book="book"
     />
     <ErrorMessage
