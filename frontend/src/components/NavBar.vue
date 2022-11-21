@@ -24,6 +24,14 @@
           </li>
           <li class="nav-item">
             <router-link
+              class="nav-link px-2"
+              :to="{ name: 'dashboard' }"
+            >
+              Dashboard
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
               class="btn btn-light btn-sm mt-1 mb-1 support"
               :to="{ name: 'support-us' }"
             >

@@ -6,6 +6,7 @@ import TitlesListing from './views/TitlesListing.vue'
 import TitleDetail from './views/TitleDetail.vue'
 import BookDetail from './views/BookDetail'
 import BookListing from './views/BookListing'
+import ZimcheckDashboard from './views/ZimcheckDashboard'
 
 const routes = [
   {
@@ -17,6 +18,11 @@ const routes = [
     path: '/titles',
     name: 'titles',
     component: TitlesListing
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: ZimcheckDashboard
   },
   {
     path: '/titles/:ident',
