@@ -192,6 +192,11 @@ class Book(ormar.Model, EntryMixin):
     def __repr__(self):
         return f"Book(id={self.id})"
 
+    async def get_scraper_name(self):
+        metadata = await self.metadata.all()
+        scraper = next((m for m in metadata if m.name == "Scraper"), None)
+        return scraper.value if scraper else ""
+
 
 class MetadataMixin:
     """ZIM Metadata
