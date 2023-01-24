@@ -20,9 +20,9 @@ router = APIRouter(
     },
 )
 @database.transaction()
-async def ZimcheckDashboard():
+async def zim_check_dashboard():
 
-    dic_scraper = {}
+    dic_checks = {}
     keys = [
         "integrity",
         "empty",
@@ -35,27 +35,25 @@ async def ZimcheckDashboard():
         "redirect",
     ]
 
-    dict_totals = {key: 0 for key in keys}
+    dict_total_checks = {key: 0 for key in keys}
     for title in await Title.objects.all():
         try:
-            first_book = (
+            last_book = (
                 await Book.objects.filter(title=title)
                 .order_by("-period")
                 .exclude_fields(["title", "counter", "languages", "tags"])
                 .first()
             )
-            scraper_name = await first_book.get_scraper_name()
         except NoMatch:
             continue
 
-        if scraper_name not in dic_scraper:
-            dic_scraper.update({scraper_name: {key: 0 for key in keys}})
+        scraper_name = await last_book.get_scraper_name()
+        if scraper_name not in dic_checks:
+            dic_checks.update({scraper_name: {key: 0 for key in keys}})
 
-        for log in first_book.zimcheck.get("logs"):
+        for log in last_book.zimcheck.get("logs"):
             check = log.get("check")
-            dic_scraper[scraper_name][check] = (
-                dic_scraper[scraper_name].get(check, 0) + 1
-            )
-            dict_totals[check] = dict_totals.get(check, 0) + 1
+            dic_checks[scraper_name][check] = dic_checks[scraper_name].get(check, 0) + 1
+            dict_total_checks[check] = dict_total_checks.get(check, 0) + 1
 
-    return {"checkData": dic_scraper, "dictTotals": dict_totals}
+    return {"checkData": dic_checks, "checkTotals": dict_total_checks}

@@ -4,57 +4,66 @@
     <div class="container">
       <div class="row">
         <div class="col btn btn-light position-relative me-1">
-          Total Integrity
-          <span class="badge bg-warning">
-            {{ dictTotals.integrity }}
+          Integrity
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.integrity }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total Empty
-          <span class="badge bg-warning">
-            {{ dictTotals.empty }}
+          Empty
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.empty }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total metadata
-          <span class="badge bg-warning">
-            {{ dictTotals.metadata }}
+          metadata
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.metadata }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total favicon
-          <span class="badge bg-warning">
-            {{ dictTotals.favicon }}
+          favicon
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.favicon }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total main_page
-          <span class="badge bg-warning">
-            {{ dictTotals.main_page }}
+          main_page
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.main_page }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total redundant
-          <span class="badge bg-warning">
-            {{ dictTotals.redundant }}
+          redundant
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.redundant }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total url_internal
-          <span class="badge bg-warning">
-            {{ dictTotals.url_internal }}
+          url_internal
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.url_internal }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total url_external
-          <span class="badge bg-warning">
-            {{ dictTotals.url_external }}
+          url_external
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.url_external }}
           </span>
         </div>
         <div class="col btn btn-light position-relative me-1">
-          Total redirect
-          <span class="badge bg-warning">
-            {{ dictTotals.redirect }}
+          redirect
+          <hr>
+          <span class="badge bg-danger">
+            {{ checkTotals.redirect }}
           </span>
         </div>
       </div>
@@ -87,31 +96,31 @@
             {{ scraper }}
           </td>
           <td>
-            {{ Math.round((errors.integrity * 100) / dictTotals.integrity) }} %
+            {{ Math.round((errors.integrity * 100) / checkTotals.integrity) }} %
           </td>
           <td>
-            {{ Math.round((errors.empty * 100) / dictTotals.empty) }} %
+            {{ Math.round((errors.empty * 100) / checkTotals.empty) }} %
           </td>
           <td>
-            {{ Math.round((errors.metadata * 100) / dictTotals.metadata) }} %
+            {{ Math.round((errors.metadata * 100) / checkTotals.metadata) }} %
           </td>
           <td>
-            {{ Math.round((errors.favicon * 100) / dictTotals.favicon) }} %
+            {{ Math.round((errors.favicon * 100) / checkTotals.favicon) }} %
           </td>
           <td>
-            {{ Math.round((errors.main_page * 100) / dictTotals.main_page) }} %
+            {{ Math.round((errors.main_page * 100) / checkTotals.main_page) }} %
           </td>
           <td>
-            {{ Math.round((errors.redundant * 100) / dictTotals.redundant) }} %
+            {{ Math.round((errors.redundant * 100) / checkTotals.redundant) }} %
           </td>
           <td>
-            {{ Math.round((errors.url_internal * 100) / dictTotals.url_internal) }} %
+            {{ Math.round((errors.url_internal * 100) / checkTotals.url_internal) }} %
           </td>
           <td>
-            {{ Math.round((errors.url_external * 100) / dictTotals.url_external) }} %
+            {{ Math.round((errors.url_external * 100) / checkTotals.url_external) }} %
           </td>
           <td>
-            {{ Math.round((errors.redirect * 100) / dictTotals.redirect) }} %
+            {{ Math.round((errors.redirect * 100) / checkTotals.redirect) }} %
           </td>
         </tr>
       </tbody>
@@ -136,7 +145,7 @@ export default {
   data () {
     return {
       checkData: null,
-      dictTotals: null,
+      checkTotals: null,
       error: null // error message generated by API
     }
   },
@@ -149,7 +158,7 @@ export default {
     this.queryAPI('GET', url)
       .then(function (response) {
         parent.checkData = response.data.checkData
-        parent.dictTotals = response.data.dictTotals
+        parent.checkTotals = response.data.checkTotals
         parent.endLoading()
       })
       .catch(function (error) {
