@@ -41,7 +41,7 @@
         <div class="col btn btn-light position-relative me-1">
           redundant
           <hr>
-          <span class="badge bg-danger">
+          <span class="badge bg-warning">
             {{ checkTotals.redundant }}
           </span>
         </div>
@@ -96,31 +96,58 @@
             {{ scraper }}
           </td>
           <td>
-            {{ Math.round((errors.integrity * 100) / checkTotals.integrity) }} %
+            <span v-if="checkTotals.integrity !== 0">
+              {{ Math.round((errors.integrity * 100) / checkTotals.integrity) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.empty * 100) / checkTotals.empty) }} %
+            <span v-if="checkTotals.empty !== 0">
+              {{ Math.round((errors.empty * 100) / checkTotals.empty) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.metadata * 100) / checkTotals.metadata) }} %
+            <span v-if="checkTotals.metadata !== 0">
+              {{ Math.round((errors.metadata * 100) / checkTotals.metadata) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.favicon * 100) / checkTotals.favicon) }} %
+            <span v-if="checkTotals.favicon !== 0">
+              {{ Math.round((errors.favicon * 100) / checkTotals.favicon) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.main_page * 100) / checkTotals.main_page) }} %
+            <span v-if="checkTotals.main_page !== 0">
+              {{ Math.round((errors.main_page * 100) / checkTotals.main_page) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.redundant * 100) / checkTotals.redundant) }} %
+            <span v-if="checkTotals.redundant !== 0">
+              {{ Math.round((errors.redundant * 100) / checkTotals.redundant) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.url_internal * 100) / checkTotals.url_internal) }} %
+            <span v-if="checkTotals.url_internal !== 0">
+              {{ Math.round((errors.url_internal * 100) / checkTotals.url_internal) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.url_external * 100) / checkTotals.url_external) }} %
+            <span v-if="checkTotals.url_external !== 0">
+              {{ Math.round((errors.url_external * 100) / checkTotals.url_external) }}
+            </span>
+            <span v-else>0</span> %
           </td>
           <td>
-            {{ Math.round((errors.redirect * 100) / checkTotals.redirect) }} %
+            <span v-if="checkTotals.redirect !== 0">
+              {{ Math.round((errors.redirect * 100) / checkTotals.redirect) }}
+            </span>
+            <span v-else>0</span> %
           </td>
         </tr>
       </tbody>
