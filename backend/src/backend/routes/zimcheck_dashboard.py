@@ -4,56 +4,52 @@ from ormar.exceptions import NoMatch
 from backend.models import Book, Title, database
 
 router = APIRouter(
-    prefix="/dashboard",
-    tags=["dashboard"],
+    prefix="/zimcheck",
+    tags=["zimcheck"],
 )
 
 
 @router.get(
     "",
     status_code=200,
-    tags=["dashboard"],
+    tags=["zimcheck"],
     responses={
         200: {
-            "description": "Condensed stats of zimcheck data",
+            "description": "Overview of Zimcheck data",
         },
     },
 )
 @database.transaction()
 async def zim_check_dashboard():
+    scraper_data = {}
 
-    dic_checks = {}
-    keys = [
-        "integrity",
-        "empty",
-        "metadata",
-        "favicon",
-        "main_page",
-        "redundant",
-        "url_internal",
-        "url_external",
-        "redirect",
-    ]
+    def increment(scraper: str, check: str):
+        if scraper not in scraper_data:
+            scraper_data[scraper] = {}
+        if check not in scraper_data[scraper]:
+            scraper_data[scraper][check] = 0
+        scraper_data[scraper][check] += 1
 
-    dict_total_checks = {key: 0 for key in keys}
     for title in await Title.objects.all():
         try:
             last_book = (
                 await Book.objects.filter(title=title)
                 .order_by("-period")
-                .exclude_fields(["title", "counter", "languages", "tags"])
+                .exclude_fields(
+                    [
+                        "title",
+                        "counter",
+                        "languages",
+                        "tags",
+                    ]
+                )
                 .first()
             )
         except NoMatch:
             continue
 
-        scraper_name = await last_book.get_scraper_name()
-        if scraper_name not in dic_checks:
-            dic_checks.update({scraper_name: {key: 0 for key in keys}})
+        scraper = await last_book.get_scraper_name()
+        for log in last_book.zimcheck.get("logs", []):
+            increment(scraper, log.get("check", "Unknown"))
 
-        for log in last_book.zimcheck.get("logs"):
-            check = log.get("check")
-            dic_checks[scraper_name][check] = dic_checks[scraper_name].get(check, 0) + 1
-            dict_total_checks[check] = dict_total_checks.get(check, 0) + 1
-
-    return {"checkData": dic_checks, "checkTotals": dict_total_checks}
+    return {"checkData": scraper_data}

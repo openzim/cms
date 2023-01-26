@@ -20,8 +20,8 @@ const routes = [
     component: TitlesListing
   },
   {
-    path: '/dashboard',
-    name: 'dashboard',
+    path: '/zimcheck',
+    name: 'zimcheck',
     component: ZimcheckDashboard
   },
   {

@@ -3,67 +3,16 @@
     <h2>ZimCheck Dashboard</h2>
     <div class="container">
       <div class="row">
-        <div class="col btn btn-light position-relative me-1">
-          Integrity
+        <div
+          v-for="value in checkTotals"
+          id="hide"
+          :key="value"
+          class="col btn btn-light position-relative me-1"
+        >
+          {{ value[0] }}
           <hr>
           <span class="badge bg-danger">
-            {{ checkTotals.integrity }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          Empty
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.empty }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          metadata
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.metadata }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          favicon
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.favicon }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          main_page
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.main_page }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          redundant
-          <hr>
-          <span class="badge bg-warning">
-            {{ checkTotals.redundant }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          url_internal
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.url_internal }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          url_external
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.url_external }}
-          </span>
-        </div>
-        <div class="col btn btn-light position-relative me-1">
-          redirect
-          <hr>
-          <span class="badge bg-danger">
-            {{ checkTotals.redirect }}
+            {{ value[1] }}
           </span>
         </div>
       </div>
@@ -75,79 +24,44 @@
       <thead>
         <tr>
           <th>Scraper</th>
-          <th>integrity</th>
-          <th>empty</th>
-          <th>metadata</th>
-          <th>favicon</th>
-          <th>main_page</th>
-          <th>redundant</th>
-          <th>url_internal</th>
-          <th>url_external</th>
-          <th>redirect</th>
+          <th
+            v-for="value in checkTotals"
+            id="hide"
+            :key="value"
+          >
+            {{ value[0] }}
+          </th>
         </tr>
       </thead>
       <tbody>
         <tr
-          v-for="(errors, scraper) in checkData"
+          v-for="(checks, scraper) in scraperData"
           id="hide"
           :key="scraper"
         >
-          <td>
+          <th>
             {{ scraper }}
-          </td>
-          <td>
-            <span v-if="checkTotals.integrity !== 0">
-              {{ Math.round((errors.integrity * 100) / checkTotals.integrity) }}
+          </th>
+          <td
+            v-for="value in checkTotals"
+            id="hide"
+            :key="value"
+          >
+            <span
+              v-if="value[1] === 0"
+            >
+              -
             </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.empty !== 0">
-              {{ Math.round((errors.empty * 100) / checkTotals.empty) }}
+            <span
+              v-else-if="!checks[value[0]]"
+            >
+              0 %
             </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.metadata !== 0">
-              {{ Math.round((errors.metadata * 100) / checkTotals.metadata) }}
+            <span
+              v-else
+            >
+              {{ Math.round((checks[value[0]] * 100) / value[1]) }} %
             </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.favicon !== 0">
-              {{ Math.round((errors.favicon * 100) / checkTotals.favicon) }}
-            </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.main_page !== 0">
-              {{ Math.round((errors.main_page * 100) / checkTotals.main_page) }}
-            </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.redundant !== 0">
-              {{ Math.round((errors.redundant * 100) / checkTotals.redundant) }}
-            </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.url_internal !== 0">
-              {{ Math.round((errors.url_internal * 100) / checkTotals.url_internal) }}
-            </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.url_external !== 0">
-              {{ Math.round((errors.url_external * 100) / checkTotals.url_external) }}
-            </span>
-            <span v-else>0</span> %
-          </td>
-          <td>
-            <span v-if="checkTotals.redirect !== 0">
-              {{ Math.round((errors.redirect * 100) / checkTotals.redirect) }}
-            </span>
-            <span v-else>0</span> %
           </td>
         </tr>
       </tbody>
@@ -171,7 +85,7 @@ export default {
   mixins: [Common],
   data () {
     return {
-      checkData: null,
+      scraperData: null,
       checkTotals: null,
       error: null // error message generated by API
     }
@@ -180,16 +94,38 @@ export default {
     const parent = this
     this.startLoading()
 
-    const url = '/dashboard'
+    const url = '/zimcheck'
 
     this.queryAPI('GET', url)
       .then(function (response) {
-        parent.checkData = response.data.checkData
-        parent.checkTotals = response.data.checkTotals
-        parent.endLoading()
+        // list of known check we want to display values for (can be extended)
+        const knownChecks = new Map([
+          ['checksum', 'error'],
+          ['integrity', 'error'],
+          ['empty', 'error'],
+          ['metadata', 'error'],
+          ['favicon', 'error'],
+          ['main_page', 'error'],
+          ['redundant', 'warning'],
+          ['url_internal', 'error'],
+          ['url_external', 'error'],
+          ['redirect', 'error']
+        ])
+
+        parent.checkTotals = new Map()
+        knownChecks.forEach((value, key) => parent.checkTotals.set(key, 0))
+
+        parent.scraperData = response.data.checkData
+        for (const data of Object.values(parent.scraperData)) {
+          for (const [check, value] of Object.entries(data)) {
+            parent.checkTotals.set(check, (parent.checkTotals.get(check) || 0) + value)
+          }
+        }
       })
       .catch(function (error) {
         parent.standardErrorHandling(error)
+      })
+      .finally(function () {
         parent.endLoading()
       })
   }

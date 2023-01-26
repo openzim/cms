@@ -182,20 +182,21 @@ class Book(ormar.Model, EntryMixin):
     # not sure yet if should be Optional or not
     title: Optional[Title] = ormar.ForeignKey(Title, related_name="books")
 
-    async def book_name(self) -> str:
-        try:
-            return (await self.metadata.get(name="Name")).value
-        except ormar.exceptions.NoMatch:
-            # if the book doesn't have metadata Name
-            return ""
-
     def __repr__(self):
         return f"Book(id={self.id})"
 
-    async def get_scraper_name(self):
-        metadata = await self.metadata.all()
-        scraper = next((m for m in metadata if m.name == "Scraper"), None)
-        return scraper.value if scraper else ""
+    async def get_meta(self, name: str) -> str:
+        try:
+            return (await self.metadata.get(name=name)).value
+        except ormar.exceptions.NoMatch:
+            # if the book doesn't have requested metadata
+            return ""
+
+    async def book_name(self) -> str:
+        return await self.get_meta("Name")
+
+    async def get_scraper_name(self) -> str:
+        return await self.get_meta("Scraper")
 
 
 class MetadataMixin:

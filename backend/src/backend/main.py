@@ -66,8 +66,8 @@ def create_app() -> FastAPI:
                 "description": "Languages for Titles and Books",
             },
             {
-                "name": "dashboard",
-                "description": "Condensed stats of zimcheck data",
+                "name": "zimcheck",
+                "description": "Overview of Zimcheck data",
             },
         ],
         contact={

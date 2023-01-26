@@ -25,9 +25,9 @@
           <li class="nav-item">
             <router-link
               class="nav-link px-2"
-              :to="{ name: 'dashboard' }"
+              :to="{ name: 'zimcheck' }"
             >
-              Dashboard
+              Zimcheck
             </router-link>
           </li>
           <li class="nav-item">
