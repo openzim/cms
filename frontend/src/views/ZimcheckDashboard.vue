@@ -24,13 +24,12 @@
     </div>
     <hr>
     <table
+      v-if="scraperData"
       class="table table-sm table-striped table-responsive"
     >
       <thead>
         <tr>
-          <th
-            v-if="scraperData"
-          >
+          <th>
             Scraper
           </th>
           <th
@@ -43,14 +42,14 @@
       </thead>
       <tbody>
         <tr
-          v-for="(checks, scraper) in scraperData"
+          v-for="[scraper, checks] in scraperData"
           :key="scraper"
         >
           <th>
             {{ scraper }}
           </th>
           <td
-            v-for="[check, total] in checkTotals.entries()"
+            v-for="[check, total] in checkTotals"
             :key="check"
           >
             <span
@@ -118,8 +117,8 @@ export default {
     this.queryAPI('GET', url)
       .then(function (response) {
         parent.knownChecks.forEach((value, key) => parent.checkTotals.set(key, 0))
-        parent.scraperData = response.data.checkData
-        for (const data of Object.values(parent.scraperData)) {
+        parent.scraperData = new Map(Object.entries(response.data.checkData).sort((a, b) => a[0].localeCompare(b[0])))
+        for (const data of parent.scraperData.values()) {
           for (const [check, value] of Object.entries(data)) {
             parent.checkTotals.set(check, (parent.checkTotals.get(check) || 0) + value)
           }
