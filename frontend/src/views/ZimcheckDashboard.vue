@@ -28,7 +28,11 @@
     >
       <thead>
         <tr>
-          <th>Scraper</th>
+          <th
+            v-if="scraperData"
+          >
+            Scraper
+          </th>
           <th
             v-for="check in checkTotals.keys()"
             :key="check"
