@@ -238,3 +238,9 @@ async def test_get_book_missing(client):
     assert response.headers.get("Content-Type") == "application/json"
 
     assert response.json() == {"message": "Book with ID “missing” not found"}
+
+
+@pytest.mark.asyncio
+async def test_get_scraper_name(client, book_with_metadata, book_dict):
+    book = await Book.objects.get(id=book_dict["id"])
+    assert "mwoffliner 1.11.10" == await book.get_scraper_name()

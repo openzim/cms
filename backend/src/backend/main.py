@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from backend import __description__, __title__, __version__
 from backend.constants import BackendConf
 from backend.models import database
-from backend.routes import books, exports, languages, tags, titles
+from backend.routes import books, exports, languages, tags, titles, zimcheck_dashboard
 
 PREFIX = "/v1"
 
@@ -65,6 +65,10 @@ def create_app() -> FastAPI:
                 "name": "languages",
                 "description": "Languages for Titles and Books",
             },
+            {
+                "name": "zimcheck",
+                "description": "Overview of Zimcheck data",
+            },
         ],
         contact={
             "name": "Kiwix/openZIM Team",
@@ -90,6 +94,7 @@ def create_app() -> FastAPI:
     api.include_router(router=languages.router)
     api.include_router(router=tags.router)
     api.include_router(router=titles.router)
+    api.include_router(router=zimcheck_dashboard.router)
 
     app.mount(PREFIX, api)
 

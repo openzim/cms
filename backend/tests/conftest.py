@@ -156,6 +156,61 @@ def book_dict(base64_png):
 
 
 @pytest.fixture(scope="function")
+async def title_without_book(book_dict):
+
+    title = await Title.objects.create(ident="wikipedia_ar_mathematics")
+
+    yield title
+    await title.delete()
+
+
+@pytest.fixture(scope="function")
+async def book_dict_with_logs(book_dict):
+
+    book_dict["zimcheck"].update(
+        {
+            "logs": [
+                {
+                    "check": "redundant",
+                    "level": "WARNING",
+                    "message": "I/vendors/ext-icons/eps.svg",
+                    "path1": "I/vendors/ext-icons/eps.svg",
+                    "path2": "I/vendors/ext-icons/wmf.svg",
+                },
+                {
+                    "check": "redundant",
+                    "level": "WARNING",
+                    "message": "I/vendors/ext-icons/dist.svg",
+                    "path1": "I/vendors/ext-icons/dist.svg",
+                    "path2": "I/vendors/ext-icons/xaml.svg",
+                },
+                {
+                    "check": "empty",
+                    "level": "ERROR",
+                    "message": "I/vendors/ext-icons/dist.svg",
+                    "path1": "I/vendors/ext-icons/dist.svg",
+                },
+            ]
+        }
+    )
+    title = await Title.objects.create(ident="wikipedia_en_mathematics")
+    book = await Book.objects.create(
+        id=str(uuid.uuid4()),
+        counter=book_dict["counter"],
+        period=book_dict["period"],
+        article_count=book_dict["article_count"],
+        media_count=book_dict["media_count"],
+        size=book_dict["size"],
+        url=book_dict["url"],
+        zimcheck=book_dict["zimcheck"],
+        title=title,
+    )
+
+    yield book
+    await book.delete()
+
+
+@pytest.fixture(scope="function")
 async def book(book_dict):
     book = await Book.objects.create(
         id=book_dict["id"],
