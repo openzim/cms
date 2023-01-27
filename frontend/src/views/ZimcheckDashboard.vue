@@ -17,7 +17,7 @@
             class="badge"
             :class="isError(check) ? 'bg-danger': 'bg-warning'"
           >
-            {{ total }}
+            {{ $filters.numberToHuman(total) }}
           </span>
         </div>
       </div>
