@@ -49,7 +49,8 @@ async def zim_check_dashboard():
             continue
 
         scraper = await last_book.get_scraper_name()
-        for log in last_book.zimcheck.get("logs", []):
-            increment(scraper, log.get("check", "Unknown"))
+        if last_book.zimcheck:
+            for log in last_book.zimcheck.get("logs", []):
+                increment(scraper, log.get("check", "Unknown"))
 
     return {"checkData": scraper_data}
