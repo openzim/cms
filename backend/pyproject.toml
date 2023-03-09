@@ -12,7 +12,7 @@ runtime = [
     "alembic >=1.7.4,<2.0",
     "aiosqlite >=0.17.0,<1.0",
     "zimscraperlib >=2.1.0,<2.2",
-    "fastapi-pagination >=0.9.1,<1.0",
+    "fastapi-pagination ==0.11.2",
     "pymitter >=0.4.0,<0.5",
     "openzim-uploader >=1.0.1,<2.0"
 ]

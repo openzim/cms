@@ -18,7 +18,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install -U pip invoke toml
+          pip install -U pip invoke setuptools==65.5.0 toml==0.10.2
           cd backend
           invoke install-deps --package test
           invoke test --args "-v"
