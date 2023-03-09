@@ -1,3 +1,4 @@
+import re
 from logging.config import fileConfig
 
 from alembic import context
@@ -37,7 +38,7 @@ def run_migrations_offline():
 
     """
     context.configure(
-        url=str(database_url),
+        url=re.sub(r"(\?.+)$", "", str(database_url)),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -61,7 +62,7 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    engine = create_engine(str(database_url))
+    engine = create_engine(re.sub(r"(\?.+)$", "", str(database_url)))
     with engine.connect() as connection:
         context.configure(
             connection=connection,
