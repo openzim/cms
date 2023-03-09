@@ -18,7 +18,7 @@ COPY prestart.sh /app/prestart.sh
 RUN chmod +x /app/prestart.sh && rm -f /app/main.py
 
 WORKDIR /tmp
-RUN pip install --no-cache-dir --upgrade pip setuptools toml invoke
+RUN pip install --no-cache-dir --upgrade pip setuptools==65.5.0 toml==0.10.2 invoke
 COPY pyproject.toml README.md setup.cfg setup.py tasks.py /tmp/
 RUN invoke install-deps --package runtime
 
