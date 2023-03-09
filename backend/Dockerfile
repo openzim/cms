@@ -1,4 +1,4 @@
-FROM tiangolo/uvicorn-gunicorn:python3.8-slim
+FROM tiangolo/uvicorn-gunicorn:python3.10-slim
 LABEL org.opencontainers.image.source https://github.com/openzim/cms
 
 # to set to your clients' origins
