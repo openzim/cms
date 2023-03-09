@@ -20,7 +20,7 @@ ACTION_CHANGE: int = 2
 ACTION_DELETE: int = 3
 ACTIONS: Tuple[str] = (ACTION_ADD, ACTION_CHANGE, ACTION_DELETE)
 ILLUSTRATION_PATTERN: str = (
-    r"^Illustration_" r"(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
+    r"^Illustration_(?P<height>\d+)x(?P<width>\d+)(@(?P<scale>\d+))?$"
 )
 BOOK_ONLY_METADATA = ("Counter", "Flavour")
 
