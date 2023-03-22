@@ -1,5 +1,7 @@
 # frontend
 
+[![Docker](https://img.shields.io/badge/docker-latest-blue)](https://ghcr.io/openzim/cms-ui)
+
 ## Project setup
 ```
 yarn install
