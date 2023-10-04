@@ -7,7 +7,6 @@ from backend.models import Title
 
 @pytest.mark.asyncio
 async def test_remove_obsolete_books(client, book_dict, title_with_three_books):
-
     title = (
         await Title.objects.exclude_fields(["tags", "languages"])
         .select_related("books")

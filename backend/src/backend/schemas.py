@@ -117,7 +117,6 @@ class TitlesListSendSchemasHolder:
         with_tags: bool = False,
         with_metadata: Union[List[str], bool] = False,
     ):
-
         return getattr(
             cls,
             cls._name_for(
@@ -129,7 +128,6 @@ class TitlesListSendSchemasHolder:
 
 
 class TitleSendSchema(BaseModel):
-
     ident: str
     languages: List[str]
     tags: List[str]

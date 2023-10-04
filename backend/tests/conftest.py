@@ -157,7 +157,6 @@ def book_dict(base64_png):
 
 @pytest.fixture(scope="function")
 async def title_without_book(book_dict):
-
     title = await Title.objects.create(ident="wikipedia_ar_mathematics")
 
     yield title
@@ -166,7 +165,6 @@ async def title_without_book(book_dict):
 
 @pytest.fixture(scope="function")
 async def book_dict_with_logs(book_dict):
-
     book_dict["zimcheck"].update(
         {
             "logs": [
@@ -510,7 +508,6 @@ async def titles_with_metadata(language_fra, language_eng):
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
 async def titles_with_metadata_books(client, book_dict):
-
     ids = []
     book_dict["metadata"]["Name"] = "wikipedia_en_all"
     book_dict["metadata"]["Flavour"] = "maxi"
@@ -534,7 +531,6 @@ async def titles_with_metadata_books(client, book_dict):
 @pytest.fixture(scope="function")
 @pytest.mark.asyncio
 async def title_with_three_books(client, book_dict):
-
     title = await Title.objects.create(ident="wikipedia_ar_mathematics")
     ids = []
     for period in ["2021-04-08", "2021-05-08", "2021-06-08"]:

@@ -13,7 +13,6 @@ class KiwixPublicExporter(ExporterInterface):
     """Upload XML Kiwix Library to `UPLOAD_URI`, using `PRIVATE_KEY"""
 
     async def export():
-
         src_path = pathlib.Path(tempfile.NamedTemporaryFile(delete=False).name)
 
         try:

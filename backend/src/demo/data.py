@@ -31,7 +31,6 @@ def transaction(func):
 
 @transaction
 async def load_fixture():
-
     lang_codes = [
         "lg",
         "hi",
