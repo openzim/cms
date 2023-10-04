@@ -13,6 +13,7 @@ from backend.models import (
     KIND_TEXT,
     Book,
     BookMetadata,
+    Language,
     Title,
     TitleMetadata,
 )
@@ -20,7 +21,7 @@ from backend.utils import get_ident_from_name
 
 
 @pytest.mark.asyncio
-async def test_add_book(client, book_dict, clear_book_dict):
+async def test_add_book_create_language(client, book_dict, clear_book_dict):
     response = await client.post("/v1/books/add", json=book_dict)
     assert response.status_code == 201
     assert response.headers.get("Content-Type") == "application/json"
@@ -36,6 +37,21 @@ async def test_add_book(client, book_dict, clear_book_dict):
     assert book.article_count == book_dict["article_count"]
     assert book.size == book_dict["size"]
     assert book.zimcheck == book_dict["zimcheck"]
+
+
+@pytest.mark.asyncio
+async def test_add_book_update_language(
+    client, book_dict, clear_book_dict, language_eng
+):
+    # language_eng is already created in DB but its name and native properties are wrong
+    # since they have been updated in Babel
+    response = await client.post("/v1/books/add", json=book_dict)
+    assert response.status_code == 201
+    assert response.headers.get("Content-Type") == "application/json"
+
+    language = await Language.objects.get(code="eng")
+    assert language.native == "English (United States)"
+    assert language.name == "English (United States)"
 
 
 @pytest.mark.asyncio

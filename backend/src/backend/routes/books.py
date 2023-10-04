@@ -126,7 +126,7 @@ async def create_book(book_payload: BookAddSchema):
 
     for lang_code in book_payload.metadata["Language"].split(","):
         native_name, english_name = find_language_names(lang_code)
-        language, _ = await Language.objects.get_or_create(
+        language = await Language.get_create_or_update(
             code=lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)
