@@ -9,7 +9,6 @@ from backend.models import KIND_ILLUSTRATION, Book
 
 
 class KiwixLibraryXml(FormaterInterface):
-
     description: str = "Kiwix Library XML"
     slug = "kiwixlibraryxml"
 

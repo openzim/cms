@@ -31,7 +31,6 @@ def transaction(func):
 
 @transaction
 async def load_fixture():
-
     lang_codes = [
         "lg",
         "hi",
@@ -154,7 +153,7 @@ async def load_fixture():
 
         iso_639_3_lang_code = get_language_details(lang_code)["iso-639-3"]
 
-        language, _ = await Language.objects.get_or_create(
+        language = await Language.get_create_or_update(
             code=iso_639_3_lang_code, name=english_name, native=native_name
         )
         await book.languages.add(language)

@@ -8,7 +8,7 @@ import ormar
 import pydantic
 import sqlalchemy
 
-from backend.constants import BackendConf
+from backend.constants import BackendConf, logger
 
 METADATA_MAX_LEN = 2048
 KIND_TEXT: str = "text"
@@ -74,6 +74,20 @@ class Language(ormar.Model):
 
     def __repr__(self):
         return f"Language(code={self.code}, name={self.name})"
+
+    async def get_create_or_update(code: str, name: str, native: str):
+        language, created = await Language.objects.get_or_create(
+            code=code, _defaults={"name": name, "native": native}
+        )
+        if created is False and (language.name != name or language.native != native):
+            logger.warning(
+                f"Updating language values for {language.code} from {language.name}/"
+                f"{language.native} to {name}/{native}"
+            )
+            language.name = name
+            language.native = native
+            await language.update()
+        return language
 
 
 class TagMixin:

@@ -10,7 +10,6 @@ from backend.exporters.kiwix_public_exporter import KiwixPublicExporter
 
 @pytest.mark.asyncio
 async def test_exporter_interface():
-
     with pytest.raises(NotImplementedError):
         for _ in await ExporterInterface().export():
             ...
