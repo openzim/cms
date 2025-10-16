@@ -1,0 +1,33 @@
+services:
+  postgresdb:
+    image: postgres:18.0-trixie
+    container_name: cms_postgresdb
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - pg_data_cms:/var/lib/postgresql/data
+    # - /tmp/foo/root/.borgmatic/postgresql_databases/api-db-service/cms:/data/cms
+    environment:
+      - POSTGRES_DB=cms
+      - POSTGRES_USER=cms
+      - POSTGRES_PASSWORD=cmspass
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "dbname=cms user=cms"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  backend:
+    build:
+      context: ../backend
+    container_name: cms_backend
+    ports:
+      - 127.0.0.1:8000:80
+    environment:
+      WEB_CONCURRENCY: 1
+      DATABASE_URL: postgresql+psycopg2://cms:cmspass@postgresdb:5432/cms
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+
+volumes:
+  pg_data_cms:
