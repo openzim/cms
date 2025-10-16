@@ -1,22 +1,54 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
     hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
--   repo: https://github.com/pycqa/isort
-    rev: "5.10.1"
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.10
     hooks:
-    -   id: isort
-        args: ["--profile", "black", "--filter-files"]
--   repo: https://github.com/psf/black
-    rev: "22.3.0"
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: https://github.com/psf/black
+    rev: "25.1.0"
     hooks:
-    -   id: black
--   repo: https://github.com/pycqa/flake8
-    rev: "4.0.1"
+      - id: black
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.400
     hooks:
-    -   id: flake8
-        args: ["--max-line-length", "88"]
+      - id: pyright
+        name: pyright (system)
+        description: "pyright static type checker"
+        entry: pyright
+        language: system
+        "types_or": [python, pyi]
+        require_serial: true
+        minimum_pre_commit_version: "2.9.2"
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (system)
+        entry: prettier --write --ignore-unknown
+        language: node
+        files: frontend\/.*$ # files in frontend folder
+        minimum_pre_commit_version: "2.9.2"
+
+#   - repo: https://github.com/pre-commit/mirrors-eslint
+#     rev: v9.35.0
+#     hooks:
+#       - id: eslint
+#         additional_dependencies:
+#           - eslint@9.29.0
+#           - eslint-plugin-vue@10.2.0
+#           - jiti@2.4.2
+#         types: [file]
+#         files: frontend\/src\/.*(?:\.[jt]sx?|\.vue)$ # *.js, *.jsx, *.ts, *.tsx, *.vue in frontend-ui/src folder
+#         args:
+#           - --config
+#           - frontend/eslint.config.ts
