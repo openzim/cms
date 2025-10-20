@@ -1,32 +1,30 @@
-FROM tiangolo/uvicorn-gunicorn:python3.10-slim
+FROM python:3.13-slim-bookworm
 LABEL org.opencontainers.image.source https://github.com/openzim/cms
 
-# to set to your clients' origins
-ENV ALLOWED_ORIGINS http://localhost
-ENV DATABASE_URL sqlite:///local.db
+ENV INIT_PASSWORD admin
 
-# internal
-ENV APP_MODULE "backend.entrypoint:app"
-
-RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends ssh && \
-    apt-get clean && \
+# curl needed for healthcheck
+RUN apt-get update && apt-get install -y curl supervisor && \
     rm -rf /var/lib/apt/lists/*
 
-# add out prestart script launched by upstream's /start.sh and remove upstrean entry
+# prestart script (former entrypoint - database init)
 COPY prestart.sh /app/prestart.sh
-RUN chmod +x /app/prestart.sh && rm -f /app/main.py
+RUN chmod +x /app/prestart.sh
 
-WORKDIR /tmp
-RUN pip install --no-cache-dir --upgrade pip setuptools==65.5.0 toml==0.10.2 invoke
-COPY pyproject.toml README.md setup.cfg setup.py tasks.py /tmp/
-RUN invoke install-deps --package runtime
+# install Python dependencies first (since they change more rarely than src code)
+COPY pyproject.toml README.md /app/
+COPY src/cms_backend/__about__.py /app/src/cms_backend/__about__.py
+RUN pip install --no-cache-dir /app
 
-COPY src/ /tmp/src
-RUN python setup.py install && mv /tmp/src /src
-WORKDIR /src
+COPY src /app/src
 
-RUN mkdir -p /root/.ssh
+RUN pip install --no-cache-dir /app  \
+    && rm -rf /app/src \
+    && rm /app/pyproject.toml \
+    && rm /app/README.md
 
-# from upsteam
-CMD ["/start.sh"]
+EXPOSE 80
+
+COPY periodic.conf /etc/supervisor/conf.d/periodic.conf
+
+CMD ["/usr/bin/supervisord", "-n", "-u", "root"]
