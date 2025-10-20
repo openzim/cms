@@ -61,7 +61,7 @@ class ZimfarmNotification(Base):
     __tablename__ = "zimfarm_notification"
     id: Mapped[UUID] = mapped_column(primary_key=True)
     received_at: Mapped[datetime]
-    content: Mapped[str]
+    content: Mapped[dict[str, Any]]
     processed: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)

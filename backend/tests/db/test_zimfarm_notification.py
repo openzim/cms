@@ -46,7 +46,7 @@ def test_get_zimfarm_notification_exist(
 def test_create_zimfarm_notification(dbsession: OrmSession, faker: Faker):
     """Create a notification"""
     notification_id = uuid4()
-    content = " ".join(faker.words())
+    content = {"foo": " ".join(faker.words())}
     created_notification = create_zimfarm_notification(
         dbsession, notification_id=notification_id, content=content
     )

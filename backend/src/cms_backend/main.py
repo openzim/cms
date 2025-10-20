@@ -9,6 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from cms_backend.db.exceptions import (
+    RecordAlreadyExistsError,
+    RecordDisabledError,
+    RecordDoesNotExistError,
+)
+from cms_backend.routes.http_errors import BadRequestError
+from cms_backend.routes.zimfarm_notification import (
+    router as zimfarm_notification_router,
+)
 from cms_backend.utils.database import (
     upgrade_db_schema,
 )
@@ -39,7 +48,8 @@ def create_app(*, debug: bool = True):
             allow_headers=["*"],
         )
 
-    main_router = APIRouter(prefix="/v2")
+    main_router = APIRouter(prefix="/v1")
+    main_router.include_router(router=zimfarm_notification_router)
 
     app.include_router(router=main_router)
 
@@ -85,6 +95,38 @@ async def validation_error_handler(_, exc: ValidationError):
             "message": "Input values failed constraints validation",
             "errors": errors,
         },
+    )
+
+
+@app.exception_handler(RecordDoesNotExistError)
+async def record_does_not_exist_error_handler(_, exc: RecordDoesNotExistError):
+    return JSONResponse(
+        status_code=HTTPStatus.NOT_FOUND,
+        content={"success": False, "message": exc.detail},
+    )
+
+
+@app.exception_handler(RecordDisabledError)
+async def record_disabled_error_handler(_, exc: RecordDisabledError):
+    return JSONResponse(
+        status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+        content={"success": False, "message": exc.detail},
+    )
+
+
+@app.exception_handler(RecordAlreadyExistsError)
+async def record_already_exists_error_handler(_, exc: RecordAlreadyExistsError):
+    return JSONResponse(
+        status_code=HTTPStatus.CONFLICT,
+        content={"success": False, "message": exc.detail},
+    )
+
+
+@app.exception_handler(BadRequestError)
+async def bad_request_error_handler(_, exc: BadRequestError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "message": exc.detail, "errors": exc.errors},
     )
 
 

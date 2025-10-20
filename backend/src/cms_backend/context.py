@@ -26,7 +26,7 @@ class Context:
     always available.
     """
 
-    base_dir: Path = Path(__file__).parent.parent
+    base_dir: Path = Path(__file__).parent
 
     debug: bool = parse_bool(os.getenv("DEBUG", "False"))
 

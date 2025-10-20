@@ -41,7 +41,7 @@ def create_zimfarm_notification(
 ) -> Callable[..., ZimfarmNotification]:
     def _create_zimfarm_notification() -> ZimfarmNotification:
         zimfarm_notification = ZimfarmNotification(
-            id=uuid4(), received_at=getnow(), content=""
+            id=uuid4(), received_at=getnow(), content={"key": "value"}
         )
         dbsession.add(zimfarm_notification)
         dbsession.flush()

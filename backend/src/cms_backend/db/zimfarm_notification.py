@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -12,7 +13,7 @@ from cms_backend.utils.datetime import getnow
 
 
 def create_zimfarm_notification(
-    session: OrmSession, *, notification_id: UUID, content: str
+    session: OrmSession, *, notification_id: UUID, content: dict[str, Any]
 ) -> ZimfarmNotification:
     """Create a new Zimfarm notification"""
 

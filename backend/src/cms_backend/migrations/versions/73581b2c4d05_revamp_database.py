@@ -1,8 +1,8 @@
 """Revamp database
 
-Revision ID: e1a0680e37f0
+Revision ID: 73581b2c4d05
 Revises:
-Create Date: 2025-10-20 11:46:02.437545
+Create Date: 2025-10-20 15:19:59.376605
 
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "e1a0680e37f0"
+revision = "73581b2c4d05"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -37,9 +37,6 @@ def upgrade():
             "zim_metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False
         ),
         sa.Column("title_id", sa.Uuid(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["title_id"], ["title.id"], name=op.f("fk_book_title_id_title")
-        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_book")),
     )
     op.create_table(
@@ -56,6 +53,9 @@ def upgrade():
             ["last_book_id"], ["book.id"], name=op.f("fk_title_last_book_id_book")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_title")),
+    )
+    op.create_foreign_key(
+        "fk_book_title_id_title", "book", "title", ["title_id"], ["id"]
     )
     op.create_table(
         "zim_store",
@@ -112,7 +112,7 @@ def upgrade():
         "zimfarm_notification",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("received_at", sa.DateTime(), nullable=False),
-        sa.Column("content", sa.String(), nullable=False),
+        sa.Column("content", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column(
             "processed", sa.Boolean(), server_default=sa.text("false"), nullable=False
         ),
