@@ -1,8 +1,6 @@
 FROM python:3.13-slim-bookworm
 LABEL org.opencontainers.image.source https://github.com/openzim/cms
 
-ENV INIT_PASSWORD admin
-
 # curl needed for healthcheck
 RUN apt-get update && apt-get install -y curl supervisor && \
     rm -rf /var/lib/apt/lists/*

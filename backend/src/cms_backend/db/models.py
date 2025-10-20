@@ -59,14 +59,22 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
 class ZimfarmNotification(Base):
     __tablename__ = "zimfarm_notification"
-    id: Mapped[UUID] = mapped_column(init=False, primary_key=True)
+    id: Mapped[UUID] = mapped_column(primary_key=True)
     received_at: Mapped[datetime]
     content: Mapped[str]
+    processed: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
     book: Mapped[Optional["Book"]] = relationship(
         init=False, back_populates="zimfarm_notification"
     )
+
+
+Index(
+    "idx_zimfarm_notification_processed_false",
+    ZimfarmNotification.processed,
+    postgresql_where=ZimfarmNotification.processed.is_(False),
+)
 
 
 class BookCopy(Base):
@@ -76,8 +84,8 @@ class BookCopy(Base):
     )
 
     filename: Mapped[str]
-    to_create: Mapped[bool]
-    to_delete: Mapped[bool] = mapped_column(default=False, server_default=false())
+    created: Mapped[bool]
+    deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     book_id: Mapped[UUID] = mapped_column(ForeignKey("book.id"), init=False)
     book: Mapped["Book"] = relationship(init=False)
@@ -85,18 +93,18 @@ class BookCopy(Base):
     zim_store_id: Mapped[UUID] = mapped_column(ForeignKey("zim_store.id"), init=False)
     zim_store: Mapped["ZimStore"] = relationship(init=False)
 
-    __table_args__ = (
-        Index(
-            "idx_book_copy_to_create_true",
-            "to_create",
-            postgresql_where=to_create.is_(True),  # noqa: F821 # pyright: ignore
-        ),
-        Index(
-            "idx_book_copy_to_delete_true",
-            "to_delete",
-            postgresql_where=to_delete.is_(True),  # pyright: ignore
-        ),
-    )
+
+Index(
+    "idx_book_copy_created_true",
+    BookCopy.created,
+    postgresql_where=BookCopy.created.is_(True),
+)
+
+Index(
+    "idx_book_copy_deleted_true",
+    BookCopy.deleted,
+    postgresql_where=BookCopy.deleted.is_(True),
+)
 
 
 class Book(Base):
@@ -111,7 +119,7 @@ class Book(Base):
     zim_metadata: Mapped[dict[str, Any]]
 
     title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
-    title: Mapped[Optional["Title"]] = relationship(init=False)
+    title: Mapped[Optional["Title"]] = relationship(init=False, foreign_keys=[title_id])
 
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
         init=False, back_populates="book"
@@ -156,4 +164,6 @@ class Title(Base):
     )
 
     last_book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
-    last_book: Mapped[Optional["Book"]] = relationship(init=False)
+    last_book: Mapped[Optional["Book"]] = relationship(
+        init=False, foreign_keys=[last_book_id]
+    )

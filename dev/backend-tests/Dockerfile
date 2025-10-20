@@ -8,6 +8,6 @@ RUN pip install --no-cache-dir "/app[dev]"
 COPY src /app/src
 COPY tests /app/tests
 
-RUN pip install --no-cache-dir /app
+ENV PYTHONPATH=/app/src
 
 WORKDIR /app/

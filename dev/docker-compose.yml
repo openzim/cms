@@ -6,6 +6,7 @@ services:
       - 127.0.0.1:5432:5432
     volumes:
       - pg_data_cms:/var/lib/postgresql/data
+      - ./postgres-initdb:/docker-entrypoint-initdb.d
     # - /tmp/foo/root/.borgmatic/postgresql_databases/api-db-service/cms:/data/cms
     environment:
       - POSTGRES_DB=cms
@@ -24,10 +25,22 @@ services:
       - 127.0.0.1:8000:80
     environment:
       WEB_CONCURRENCY: 1
-      DATABASE_URL: postgresql+psycopg2://cms:cmspass@postgresdb:5432/cms
+      DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
     depends_on:
       postgresdb:
         condition: service_healthy
-
+  backend-tests:
+    build:
+      dockerfile: ../dev/backend-tests/Dockerfile
+      context: ../backend
+    container_name: cms_backend-tests
+    command: tail -f /dev/null
+    volumes:
+      - ../backend/src:/app/src
+      - ../backend/tests:/app/tests
+    environment:
+      DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cmstest
+    depends_on:
+      - postgresdb
 volumes:
   pg_data_cms:
