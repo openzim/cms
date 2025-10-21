@@ -1,0 +1,90 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force publish all components'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+
+  paths-filter:
+    runs-on: ubuntu-24.04
+
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+          frontend:
+            - 'frontend-ui/**'
+
+  backend:
+    name: Backend build
+    runs-on: ubuntu-24.04
+    needs: paths-filter
+    if: ${{ needs.paths-filter.outputs.backend == 'true' || inputs.force }}
+    steps:
+      - name: Retrieve source code
+        uses: actions/checkout@v5
+
+      - name: Build and publish Docker Image
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/cms-api
+          on-master: latest
+          restrict-to: openzim/cms
+          context: backend
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+      - name: Deploy CMS API changes to cms.openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments api-deployment -n cms
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-24.04
+    needs: paths-filter
+    if: ${{ needs.paths-filter.outputs.frontend == 'true' || inputs.force }}
+    steps:
+      - name: Retrieve source code
+        uses: actions/checkout@v5
+
+      - name: Build and publish Docker Image
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/cms-ui
+          on-master: latest
+          restrict-to: openzim/cms
+          context: frontend
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+      - name: Deploy CMS UI changes to cms.openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments ui-deployment -n cms

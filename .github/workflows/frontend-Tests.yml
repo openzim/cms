@@ -1,0 +1,38 @@
+name: Frontend Tests
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+  push:
+    paths:
+      - "frontend/**"
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Retrieve source code
+        uses: actions/checkout@v5
+
+      - name: Build frontend Docker image
+        working-directory: frontend
+        run: docker build -t cms-frontend:test .
+
+      - name: Run frontend container
+        run: |
+          docker run -d --name cms-frontend-test \
+            -p 8080:80 \
+            cms-frontend:test
+          # wait for container to be ready
+          for i in {1..10}; do
+            if curl -s http://localhost:8080/ > /dev/null; then
+              echo "Frontend is up!"
+              break
+            fi
+            echo "Waiting for frontend..."
+            sleep 3
+          done

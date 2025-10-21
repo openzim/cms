@@ -1,0 +1,91 @@
+name: Backend Tests
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+  push:
+    paths:
+      - "backend/**"
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-24.04
+
+    services:
+      postgresdb:
+        image: postgres:16.3-bookworm
+        env:
+          POSTGRES_DB: cmstest
+          POSTGRES_PASSWORD: cmspass
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: cms
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgresdb has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_URI: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
+
+    steps:
+      - name: Retrieve source code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: backend/pyproject.toml
+          architecture: x64
+
+      - name: Install dependencies (and project)
+        working-directory: backend
+        run: |
+          pip install -U pip
+          pip install -e .[test,scripts]
+
+      - name: Create extensions on the PostgreSQL database
+        run: >-
+          psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+          "host=localhost port=5432 dbname=cmstest user=cms password=cmspass"
+
+      - name: Build backend Docker image
+        working-directory: backend
+        run: docker build -t cms-backend:test .
+
+      - name: Run backend container
+        run: |
+          docker run -d --name cms-backend-test \
+            -e POSTGRES_URI=$POSTGRES_URI \
+            -e JWT_SECRET=DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw \
+            -p 8000:80 \
+            cms-backend:test
+          # wait for container to be ready
+          for i in {1..10}; do
+            if curl -s http://localhost:8000/v2/healthcheck > /dev/null; then
+              echo "Backend is up!"
+              break
+            fi
+            echo "Waiting for backend..."
+            sleep 3
+          done
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
+          JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
+        run: inv coverage --args "-vvv"
+
+      - name: Upload coverage report to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          directory: backend
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
