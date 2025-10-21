@@ -1,0 +1,7 @@
+{
+  "CMS_API": "https://api.cms.openzim.org/v1",
+  "MATOMO_ENABLED": false,
+  "MATOMO_HOST": "https://stats.kiwix.org",
+  "MATOMO_SITE_ID": 12,
+  "MATOMO_TRACKER_FILE_NAME": "matomo"
+}

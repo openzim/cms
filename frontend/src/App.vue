@@ -1,37 +1,63 @@
-<template>
-  <main>
-    <NavBar />
-    <router-view class="container" />
-  </main>
-</template>
+<script setup lang="ts">
+import type { NavigationItem } from '@/components/NavBar.vue'
+import NavBar from '@/components/NavBar.vue'
+import NotificationSystem from '@/components/NotificationSystem.vue'
+import { useLoadingStore } from '@/stores/loading'
+import { onMounted, ref } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
 
-<script>
-import axios from 'axios'
+// Store and router
+const loadingStore = useLoadingStore()
 
-import Constants from './constants.js'
-import NavBar from './components/NavBar.vue'
+const router = useRouter()
+const ready = ref(false)
 
-export default {
-  name: 'App',
-  components: { NavBar },
-  computed: {
-    axios () { // prefixed axios object with API url
-      const headers = {}
-      return axios.create({
-        baseURL: Constants.backend_api,
-        headers: headers,
-        paramsSerializer: Constants.params_serializer
-      })
-    }
-  }
+onMounted(async () => {
+  loadingStore.startLoading('Loading application data...')
+
+  loadingStore.stopLoading()
+  ready.value = true
+})
+
+const navigationItems: NavigationItem[] = [
+  {
+    name: 'inbox',
+    label: 'Inbox',
+    route: 'inbox',
+    icon: 'mdi-inbox',
+    disabled: false,
+    show: true,
+  },
+]
+
+const handleSignOut = () => {
+  // authStore.logout()
+  router.push({ name: 'home' })
 }
 </script>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-}
-</style>
+<template>
+  <v-app>
+    <NotificationSystem />
+    <header>
+      <NavBar
+        :navigation-items="navigationItems"
+        :username="null"
+        :is-logged-in="false"
+        :access-token="null"
+        :is-loading="loadingStore.isLoading"
+        :loading-text="loadingStore.loadingText"
+        @sign-out="handleSignOut"
+      />
+    </header>
+
+    <v-main>
+      <v-container>
+        <RouterView v-if="ready" />
+        <div v-else class="d-flex align-center justify-center" style="height: 80vh">
+          <v-progress-circular indeterminate size="70" width="7" color="primary" />
+        </div>
+      </v-container>
+    </v-main>
+  </v-app>
+</template>

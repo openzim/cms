@@ -14,6 +14,7 @@ from cms_backend.db.exceptions import (
     RecordDisabledError,
     RecordDoesNotExistError,
 )
+from cms_backend.routes.healthcheck import router as healthcheck_router
 from cms_backend.routes.http_errors import BadRequestError
 from cms_backend.routes.zimfarm_notification import (
     router as zimfarm_notification_router,
@@ -50,6 +51,7 @@ def create_app(*, debug: bool = True):
 
     main_router = APIRouter(prefix="/v1")
     main_router.include_router(router=zimfarm_notification_router)
+    main_router.include_router(router=healthcheck_router)
 
     app.include_router(router=main_router)
 

@@ -1,42 +1,82 @@
 <template>
-  <div class="about">
-    <h2>openZIM CMS</h2>
-    <p>
-      The openZIM CMS is the publishing counter-part of the <a
-        target="_blank"
-        href="https://farm.openzim.org"
-      >Zimfarm</a>. Zimfarm allows non-tech people to manage ZIM creation ; CMS is a Web tool allowing non-tech people to handle publishing of ZIM files.
-    </p>
+  <v-container class="py-8">
+    <v-row justify="center">
+      <v-col cols="12" md="10" lg="8">
+        <v-card class="pa-6" elevation="2">
+          <v-card-title class="d-flex align-center mb-4">
+            <h2 class="text-h4 font-weight-bold">Support Kiwix</h2>
+            <img src="/assets/logo.svg" width="32" height="32" class="ml-2" alt="CMS Logo" />
+          </v-card-title>
 
-    <p>Publishing is all about managing the central catalog/library: how it is presented and where it is made available. It is <strong>neither about creation nor distribution</strong>.</p>
+          <v-card-text class="text-body-1">
+            <p class="mb-4">
+              CMS is
+              <a href="https://kiwix.org" target="_blank" class="text-primary text-decoration-none">
+                Kiwix</a
+              >'s platform for automating the management of
+              <a
+                href="https://wiki.openzim.org/wiki/ZIM_File_Format"
+                target="_blank"
+                class="text-primary text-decoration-none"
+              >
+                ZIM files</a
+              >
+              publication. Every ZIMs created on the
+              <a
+                href="https://farm.openzim.org"
+                target="_blank"
+                class="text-primary text-decoration-none"
+              >
+                Zimfarm</a
+              >go through the CMS for quality checks before publication to our libraries and
+              download servers. All day, every day, so you can enjoy offline content.
+            </p>
 
-    <h2>Supporting Us</h2>
-    <p>
-      It is <strong>entirely and only supported by donations</strong>. A few dollars may not mean much for you but will certainly help us a lot : if you can, <a
-        target="_blank"
-        href="https://support.kiwix.org/"
-      >consider supporting us</a> - even with the price of a cup of coffee (we love coffee and at times need quite a bit of it).
-    </p>
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="text-h6">
+                <v-icon class="mr-2">mdi-heart</v-icon>
+                Support with Donations
+              </v-card-title>
+              <v-card-text>
+                <p class="mb-0">
+                  It is <strong>entirely and only supported by donations</strong>. A few dollars may
+                  not mean much for you but will certainly help us a lot: if you can,
+                  <a
+                    href="https://support.kiwix.org/"
+                    target="_blank"
+                    class="text-primary text-decoration-none"
+                  >
+                    consider supporting us
+                  </a>
+                  — even with the price of a cup of coffee (we love coffee and at times need quite a
+                  bit of it).
+                </p>
+              </v-card-text>
+            </v-card>
 
-    <p>
-      The CMS is a Python/JS project hosted <a
-        target="_blank"
-        href="https://github.com/openzim/cms"
-      >on Github</a>.
-    </p>
-  </div>
+            <v-divider class="my-2"></v-divider>
+
+            <p>
+              CMS is a Python and Vue.JS project hosted
+              <a
+                href="https://github.com/openzim/cms"
+                target="_blank"
+                class="text-primary text-decoration-none"
+              >
+                on Github</a
+              >.
+            </p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
-<script type="text/javascript">
-export default {
-  name: 'SupportUs'
-}
-</script>
+<script setup lang="ts"></script>
 
-<style type="text/css">
-  .about h2 img {
-    width: 2rem;
-    height: 2rem;
-    margin-bottom: .5rem;
-  }
+<style scoped>
+.v-card-title h2 {
+  margin: 0;
+}
 </style>

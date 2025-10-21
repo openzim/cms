@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir /app  \
 
 EXPOSE 80
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost/v1/healthcheck || exit 1
+
 COPY periodic.conf /etc/supervisor/conf.d/periodic.conf
 
 CMD ["/usr/bin/supervisord", "-n", "-u", "root"]

@@ -42,5 +42,28 @@ services:
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cmstest
     depends_on:
       - postgresdb
+  frontend:
+    build: ../frontend
+    container_name: cms_frontend
+    volumes:
+      - ./frontend-dev/config.json:/usr/share/nginx/html/config.json:ro
+    ports:
+      - 127.0.0.1:8001:80
+    depends_on:
+      backend:
+        condition: service_healthy
+  frontend-dev:
+    build:
+      dockerfile: ../dev/frontend-dev/Dockerfile
+      context: ../frontend
+    container_name: zf_frontend-dev
+    volumes:
+      - ../frontend/src:/app/src
+      - ./frontend-dev/config.json:/app/public/config.json:ro
+    ports:
+      - 127.0.0.1:8002:80
+    depends_on:
+      backend:
+        condition: service_healthy
 volumes:
   pg_data_cms:
