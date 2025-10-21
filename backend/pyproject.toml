@@ -44,6 +44,7 @@ test = [
     "pytest-asyncio == 0.26.0",
     "pytest-env == 1.1.5",
     "Faker==37.3.0",
+    "python-dateutil==2.9.0.post0",
 ]
 dev = [
     "pre-commit == 4.2.0",
