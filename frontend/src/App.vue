@@ -28,6 +28,14 @@ const navigationItems: NavigationItem[] = [
     disabled: false,
     show: true,
   },
+  {
+    name: 'titles',
+    label: 'Titles',
+    route: 'titles',
+    icon: 'mdi-bookshelf',
+    disabled: false,
+    show: true,
+  },
 ]
 
 const handleSignOut = () => {
