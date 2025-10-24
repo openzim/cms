@@ -12,9 +12,8 @@ def add_book_to_title(book: Book, title: Title):
             raise Exception(f"book Name is expected to be a string, found {type(name)}")
 
         title.books.append(book)
-        title.last_book = book
-        book.events.append(f"{getnow()}: last book added to title {title.id}")
-        title.events.append(f"{getnow()}: last book {book.id} added to title")
+        book.events.append(f"{getnow()}: book added to title {title.id}")
+        title.events.append(f"{getnow()}: book {book.id} added to title")
 
         if name and title.name != name:
             title.events.append(f"{getnow()}: updating title name to {name}")
