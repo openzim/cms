@@ -14,6 +14,13 @@ COPY pyproject.toml README.md /app/
 COPY src/cms_backend/__about__.py /app/src/cms_backend/__about__.py
 RUN pip install --no-cache-dir /app
 
+# Copy supervisor scripts
+COPY supervisor-every-minute.py /app/supervisor-every-minute.py
+RUN chmod +x /app/supervisor-every-minute.py
+
+COPY supervisor-listener.py /usr/local/bin/supervisor-listener
+RUN chmod +x /usr/local/bin/supervisor-listener
+
 COPY src /app/src
 
 RUN pip install --no-cache-dir /app  \
@@ -22,9 +29,6 @@ RUN pip install --no-cache-dir /app  \
     && rm /app/README.md
 
 EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost/v1/healthcheck || exit 1
 
 COPY periodic.conf /etc/supervisor/conf.d/periodic.conf
 

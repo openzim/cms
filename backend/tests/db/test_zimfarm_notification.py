@@ -1,13 +1,18 @@
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
+from tests.processors.test_zimfarm_notification import GOOD_NOTIFICATION_CONTENT
 
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import ZimfarmNotification
 from cms_backend.db.zimfarm_notification import (
-    create_zimfarm_notification,
+    create_zimfarm_notification as db_create_zimfarm_notification,
+)
+from cms_backend.db.zimfarm_notification import (
+    get_next_notification_to_process_or_none,
     get_zimfarm_notification,
     get_zimfarm_notification_or_none,
 )
@@ -47,7 +52,7 @@ def test_create_zimfarm_notification(dbsession: OrmSession, faker: Faker):
     """Create a notification"""
     notification_id = uuid4()
     content = {"foo": " ".join(faker.words())}
-    created_notification = create_zimfarm_notification(
+    created_notification = db_create_zimfarm_notification(
         dbsession, notification_id=notification_id, content=content
     )
     assert created_notification is not None
@@ -57,3 +62,21 @@ def test_create_zimfarm_notification(dbsession: OrmSession, faker: Faker):
     assert received_since < 3600
     assert created_notification.id == notification_id
     assert created_notification.content == content
+
+
+def test_get_next_notification_to_process_or_none(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
+    assert notification.processed is False
+    next_notification = get_next_notification_to_process_or_none(dbsession)
+    assert next_notification == notification
+    next_notification = get_next_notification_to_process_or_none(dbsession)
+    assert (
+        next_notification == notification
+    )  # still same retrieved since still not processed
+    assert next_notification is not None
+    next_notification.processed = True
+    next_notification = get_next_notification_to_process_or_none(dbsession)
+    assert next_notification is None
