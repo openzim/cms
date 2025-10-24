@@ -40,7 +40,6 @@ def test_process_notification_success(
     assert notification.book is not None
     assert notification.book.title == title
     assert notification.book.title_id == title.id
-    assert title.last_book == notification.book
     assert any(
         event
         for event in notification.events
@@ -64,12 +63,10 @@ def test_process_notification_success(
     assert any(
         event
         for event in notification.book.events
-        if re.match(".*: last book added to title .*", event)
+        if re.match(".*: book added to title .*", event)
     )
     assert any(
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     )
 
 
@@ -238,7 +235,7 @@ def test_process_notification_no_matching_title(
     assert not any(
         event
         for event in notification.book.events
-        if re.match(".*: last book added to title .*", event)
+        if re.match(".*: book added to title .*", event)
     )
 
 
@@ -356,11 +353,9 @@ def test_process_notification_with_existing_books(
     # Add an existing book to the title
     existing_book = create_book(zim_metadata={"Name": title.name})
     title.books.append(existing_book)
-    title.last_book = existing_book
     dbsession.flush()
 
     assert len(title.books) == 1
-    assert title.last_book == existing_book
 
     # Now process a new notification
     notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
@@ -372,6 +367,5 @@ def test_process_notification_with_existing_books(
     assert notification.book is not None
     assert notification.book.title == title
     assert len(title.books) == 2
-    assert title.last_book == notification.book
     assert existing_book in title.books
     assert notification.book in title.books

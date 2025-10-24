@@ -19,18 +19,12 @@ def test_add_book_to_title_same_name(
     dbsession.flush()
     assert book.title == title
     assert book.title_id == title.id
-    assert title.last_book == book
-    assert title.last_book_id == book.id
     assert book in title.books
     assert any(
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     )
     assert any(
-        event
-        for event in book.events
-        if re.match(".*: last book added to title .*", event)
+        event for event in book.events if re.match(".*: book added to title .*", event)
     )
 
 
@@ -48,14 +42,10 @@ def test_add_book_to_title_different_name(
     dbsession.flush()
     assert book.title == title
     assert book.title_id == title.id
-    assert title.last_book == book
-    assert title.last_book_id == book.id
     assert book in title.books
     assert title.name == book_name  # title name has been overriden
     assert any(
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     )
     assert any(
         event
@@ -63,9 +53,7 @@ def test_add_book_to_title_different_name(
         if re.match(f".*: updating title name to {book_name}", event)
     )
     assert any(
-        event
-        for event in book.events
-        if re.match(".*: last book added to title .*", event)
+        event for event in book.events if re.match(".*: book added to title .*", event)
     )
 
 
@@ -84,17 +72,11 @@ def test_add_book_to_title_empty_name(
     assert book not in title.books
     assert book.title is None
     assert book.title_id is None
-    assert title.last_book is None
-    assert title.last_book_id is None
     assert [
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     ] == []
     assert [
-        event
-        for event in book.events
-        if re.match(".*: last book added to title .*", event)
+        event for event in book.events if re.match(".*: book added to title .*", event)
     ] == []
     assert any(
         event
@@ -123,17 +105,11 @@ def test_add_book_to_title_bad_name(
     assert book not in title.books
     assert book.title is None
     assert book.title_id is None
-    assert title.last_book is None
-    assert title.last_book_id is None
     assert [
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     ] == []
     assert [
-        event
-        for event in book.events
-        if re.match(".*: last book added to title .*", event)
+        event for event in book.events if re.match(".*: book added to title .*", event)
     ] == []
     assert any(
         event
@@ -167,17 +143,11 @@ def test_add_book_to_title_bad_error(
     assert book not in title.books
     assert book.title is None
     assert book.title_id is None
-    assert title.last_book is None
-    assert title.last_book_id is None
     assert [
-        event
-        for event in title.events
-        if re.match(".*: last book .* added to title", event)
+        event for event in title.events if re.match(".*: book .* added to title", event)
     ] == []
     assert [
-        event
-        for event in book.events
-        if re.match(".*: last book added to title .*", event)
+        event for event in book.events if re.match(".*: book added to title .*", event)
     ] == []
     assert any(
         event

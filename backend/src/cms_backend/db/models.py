@@ -118,8 +118,3 @@ class Title(Base):
         init=False,
         foreign_keys=[Book.title_id],
     )
-
-    last_book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
-    last_book: Mapped[Optional["Book"]] = relationship(
-        init=False, foreign_keys=[last_book_id], post_update=True
-    )
