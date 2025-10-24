@@ -63,6 +63,8 @@ class ZimfarmNotification(Base):
     received_at: Mapped[datetime]
     content: Mapped[dict[str, Any]]
     processed: Mapped[bool] = mapped_column(default=False, server_default=false())
+    errored: Mapped[bool] = mapped_column(default=False, server_default=false())
+    events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
     book: Mapped[Optional["Book"]] = relationship(
@@ -76,76 +78,30 @@ Index(
     postgresql_where=ZimfarmNotification.processed.is_(False),
 )
 
-
-class BookCopy(Base):
-    __tablename__ = "book_copy"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
-
-    filename: Mapped[str]
-    created: Mapped[bool]
-    deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
-
-    book_id: Mapped[UUID] = mapped_column(ForeignKey("book.id"), init=False)
-    book: Mapped["Book"] = relationship(init=False)
-
-    zim_store_id: Mapped[UUID] = mapped_column(ForeignKey("zim_store.id"), init=False)
-    zim_store: Mapped["ZimStore"] = relationship(init=False)
-
-
 Index(
-    "idx_book_copy_created_true",
-    BookCopy.created,
-    postgresql_where=BookCopy.created.is_(True),
-)
-
-Index(
-    "idx_book_copy_deleted_true",
-    BookCopy.deleted,
-    postgresql_where=BookCopy.deleted.is_(True),
+    "idx_zimfarm_notification_errored_false",
+    ZimfarmNotification.errored,
+    postgresql_where=ZimfarmNotification.errored.is_(True),
 )
 
 
 class Book(Base):
     __tablename__ = "book"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
+    id: Mapped[UUID] = mapped_column(primary_key=True)
     article_count: Mapped[int]
     media_count: Mapped[int]
     size: Mapped[int]
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
+    events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
-    title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
+    title_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("title.id", use_alter=True), init=False
+    )
     title: Mapped[Optional["Title"]] = relationship(init=False, foreign_keys=[title_id])
 
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
-        init=False, back_populates="book"
-    )
-
-    book_copies: Mapped[list["BookCopy"]] = relationship(
-        back_populates="book",
-        cascade="save-update, merge, refresh-expire",
-        init=False,
-        foreign_keys=[BookCopy.book_id],
-    )
-
-
-class ZimStore(Base):
-    __tablename__ = "zim_store"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
-    name: Mapped[str]
-    config: Mapped[dict[str, Any]]
-
-    book_copies: Mapped[list["BookCopy"]] = relationship(
-        back_populates="zim_store",
-        cascade="save-update, merge, refresh-expire",
-        init=False,
-        foreign_keys=[BookCopy.zim_store_id],
+        back_populates="book"
     )
 
 
@@ -155,7 +111,7 @@ class Title(Base):
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
     name: Mapped[str]
-
+    events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
         cascade="save-update, merge, refresh-expire",
@@ -165,5 +121,5 @@ class Title(Base):
 
     last_book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
     last_book: Mapped[Optional["Book"]] = relationship(
-        init=False, foreign_keys=[last_book_id]
+        init=False, foreign_keys=[last_book_id], post_update=True
     )

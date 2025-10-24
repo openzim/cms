@@ -21,10 +21,34 @@ services:
     build:
       context: ../backend
     container_name: cms_backend
+    volumes:
+      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ./backend-periodic.conf:/etc/supervisor/conf.d/periodic.conf:ro
     ports:
       - 127.0.0.1:8000:80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/v1/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     environment:
+      DEBUG: 1
       WEB_CONCURRENCY: 1
+      DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+  background:
+    build:
+      context: ../backend
+    container_name: cms_background
+    volumes:
+      - ../backend/supervisor-listener.py:/usr/local/bin/supervisor-listener
+      - ../backend/supervisor-every-minute.py:/app/supervisor-every-minute.py
+      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ./background-periodic.conf:/etc/supervisor/conf.d/periodic.conf:ro
+    environment:
+      DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
     depends_on:
       postgresdb:
@@ -56,7 +80,7 @@ services:
     build:
       dockerfile: ../dev/frontend-dev/Dockerfile
       context: ../frontend
-    container_name: zf_frontend-dev
+    container_name: cms_frontend-dev
     volumes:
       - ../frontend/src:/app/src
       - ./frontend-dev/config.json:/app/public/config.json:ro

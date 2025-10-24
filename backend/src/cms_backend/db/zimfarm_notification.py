@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import not_, select
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
@@ -30,7 +30,7 @@ def create_zimfarm_notification(
 def get_zimfarm_notification_or_none(
     session: OrmSession, notification_id: UUID
 ) -> ZimfarmNotification | None:
-    """Get a schedule for the given schedule name if possible else None"""
+    """Get a zimfarm notification by ID if possible else None"""
     return session.scalars(
         select(ZimfarmNotification)
         .where(ZimfarmNotification.id == notification_id)
@@ -41,7 +41,7 @@ def get_zimfarm_notification_or_none(
 def get_zimfarm_notification(
     session: OrmSession, notification_id: UUID
 ) -> ZimfarmNotification:
-    """Get a schedule for the given schedule name if possible else raise an exception"""
+    """Get a zimfarm notification by ID if possible else raise an exception"""
     if (
         schedule := get_zimfarm_notification_or_none(
             session, notification_id=notification_id
@@ -51,3 +51,14 @@ def get_zimfarm_notification(
             f"Zimfarm Notification with ID {notification_id} does not exist"
         )
     return schedule
+
+
+def get_next_notification_to_process_or_none(
+    session: OrmSession,
+) -> ZimfarmNotification | None:
+    return session.scalars(
+        select(ZimfarmNotification)
+        .where(not_(ZimfarmNotification.processed))
+        .order_by(ZimfarmNotification.received_at)
+        .limit(1)
+    ).one_or_none()

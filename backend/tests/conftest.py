@@ -1,13 +1,15 @@
 # ruff: noqa: E501
 from collections.abc import Callable, Generator
-from uuid import uuid4
+from datetime import datetime
+from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import Session
-from cms_backend.db.models import Base, ZimfarmNotification
+from cms_backend.db.models import Base, Book, Title, ZimfarmNotification
 from cms_backend.utils.datetime import getnow
 
 
@@ -39,9 +41,15 @@ def faker(faker: Faker) -> Faker:
 def create_zimfarm_notification(
     dbsession: OrmSession,
 ) -> Callable[..., ZimfarmNotification]:
-    def _create_zimfarm_notification() -> ZimfarmNotification:
+    def _create_zimfarm_notification(
+        _id: UUID | None = None,
+        received_at: datetime | None = None,
+        content: dict[str, Any] | None = None,
+    ) -> ZimfarmNotification:
         zimfarm_notification = ZimfarmNotification(
-            id=uuid4(), received_at=getnow(), content={"key": "value"}
+            id=_id if _id is not None else uuid4(),
+            received_at=received_at if received_at is not None else getnow(),
+            content=content if content is not None else {"key": "value"},
         )
         dbsession.add(zimfarm_notification)
         dbsession.flush()
@@ -55,3 +63,63 @@ def zimfarm_notification(
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
 ) -> ZimfarmNotification:
     return create_zimfarm_notification()
+
+
+@pytest.fixture
+def create_book(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., Book]:
+    def _create_book(
+        _id: UUID | None = None,
+        article_count: int | None = None,
+        media_count: int | None = None,
+        size: int | None = None,
+        zim_metadata: dict[str, Any] | None = None,
+        zimcheck_result: dict[str, Any] | None = None,
+        zimfarm_notification: ZimfarmNotification | None = None,
+    ) -> Book:
+        book = Book(
+            id=_id if _id is not None else uuid4(),
+            article_count=(
+                article_count if article_count is not None else faker.random_int()
+            ),
+            media_count=media_count if media_count is not None else faker.random_int(),
+            size=size if size is not None else faker.random_int(),
+            zim_metadata=zim_metadata if zim_metadata else {},
+            zimcheck_result=zimcheck_result if zimcheck_result else {},
+            zimfarm_notification=zimfarm_notification,
+        )
+        # book.events = []
+        dbsession.add(book)
+        dbsession.flush()
+        return book
+
+    return _create_book
+
+
+@pytest.fixture
+def book(
+    create_book: Callable[..., Book],
+) -> Book:
+    return create_book()
+
+
+@pytest.fixture
+def create_title(
+    dbsession: OrmSession,
+) -> Callable[..., Title]:
+    def _create_title(name: str = "test_en_all") -> Title:
+        title = Title(name=name)
+        dbsession.add(title)
+        dbsession.flush()
+        return title
+
+    return _create_title
+
+
+@pytest.fixture()
+def title(
+    create_title: Callable[..., Title],
+) -> Title:
+    return create_title()
