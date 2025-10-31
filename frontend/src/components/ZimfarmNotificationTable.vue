@@ -55,11 +55,11 @@
         </template>
 
         <template #[`item.id`]="{ item }">
-          <!-- <router-link :to="{ name: 'schedule-detail', params: { scheduleName: item.id } }"> -->
-          <span class="d-flex align-center">
-            {{ item.id }}
-          </span>
-          <!-- </router-link> -->
+          <router-link :to="{ name: 'zimfarm-notification-detail', params: { id: item.id } }">
+            <span class="d-flex align-center">
+              {{ item.id }}
+            </span>
+          </router-link>
         </template>
 
         <template #[`item.received_at`]="{ item }">
@@ -74,18 +74,7 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <span v-if="!item.processed" class="d-flex align-center">
-            <v-icon size="small" color="success" icon="mdi-clock-check-outline"></v-icon>
-            <span class="text-caption ml-1">Pending</span>
-          </span>
-          <span v-else-if="item.errored" class="d-flex align-center">
-            <v-icon size="small" color="error" icon="mdi-alert-circle-outline"></v-icon>
-            <span class="text-caption ml-1">Bad Error</span>
-          </span>
-          <span v-else class="d-flex align-center">
-            <v-icon size="small" color="warning" icon="mdi-alert-circle-outline"></v-icon>
-            <span class="text-caption ml-1">Bad Notification</span>
-          </span>
+          <ZimfarmNotificationStatus :zimfarm-notification="item" />
         </template>
 
         <template #no-data>
@@ -104,6 +93,7 @@ import type { Paginator } from '@/types/base'
 import type { ZimfarmNotificationLight } from '@/types/zimfarmNotification'
 import { computed, ref, watch } from 'vue'
 import { formatDt, fromNow } from '@/utils/format'
+import ZimfarmNotificationStatus from '@/components/ZimfarmNotificationStatus.vue'
 
 // Props
 interface Props {

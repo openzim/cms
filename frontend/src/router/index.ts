@@ -2,8 +2,9 @@ import InboxView from '@/views/InboxView.vue'
 import NotFoundView from '@/views/NotFound.vue'
 import SupportUsView from '@/views/SupportUs.vue'
 import SignInView from '@/views/SignInView.vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
+import ZimfarmNotificationView from '@/views/ZimfarmNotificationView.vue'
 
 const routes = [
   {
@@ -34,6 +35,15 @@ const routes = [
     name: 'titles',
     component: TitlesView,
     meta: { title: 'CMS | Titles' },
+  },
+  {
+    path: '/zimfarm-notification/:id',
+    name: 'zimfarm-notification-detail',
+    component: ZimfarmNotificationView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Zimfarm Notification • ${to.params.id}`,
+    },
   },
   {
     path: '/:pathMatch(.*)*',
