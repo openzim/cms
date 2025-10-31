@@ -52,9 +52,7 @@ def create_zimfarm_notification(
             received_at=received_at if received_at is not None else getnow(),
             content=content if content is not None else {"key": "value"},
         )
-        zimfarm_notification.events = (
-            events if events is not None else ["event1", "event2"]
-        )
+        zimfarm_notification.events = events if events is not None else []
         dbsession.add(zimfarm_notification)
         dbsession.flush()
         return zimfarm_notification
