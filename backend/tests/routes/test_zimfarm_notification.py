@@ -382,3 +382,28 @@ def test_get_zimfarm_notifications_combined_filters(
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
+
+
+def test_get_zimfarm_notifications_filter_by_id(
+    client: TestClient,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    """Test get zimfarm_notifications endpoint passes id filter to database layer"""
+    from uuid import UUID
+
+    # Create notifications with specific UUIDs for partial matching
+    notif1 = create_zimfarm_notification(
+        _id=UUID("12345678-1234-5678-1234-567812345678"),
+        content={"test": "notif1"},
+    )
+    create_zimfarm_notification(
+        _id=UUID("87654321-4321-8765-4321-876543218765"),
+        content={"test": "notif2"},
+    )
+
+    # Test that id parameter is passed through and filters correctly
+    response = client.get("/v1/zimfarm-notifications?id=1234-5678")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 1
+    assert response_doc["items"][0]["id"] == str(notif1.id)

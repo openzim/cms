@@ -37,8 +37,8 @@ class Base(MappedAsDataclass, DeclarativeBase):
         datetime: DateTime(
             timezone=False
         ),  # transform Python datetime into PostgreSQL Datetime without timezone
-        list[str]: ARRAY(
-            item_type=String
+        list[str]: MutableList.as_mutable(
+            ARRAY(item_type=String)
         ),  # transform Python List[str] into PostgreSQL Array of strings
         IPv4Address: INET,  # transform Python IPV4Address into PostgreSQL INET
     }

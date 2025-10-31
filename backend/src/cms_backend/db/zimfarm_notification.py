@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import not_, select
+from sqlalchemy import String, not_, select
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
@@ -72,6 +72,7 @@ def get_zimfarm_notifications(
     *,
     skip: int,
     limit: int,
+    notification_id: str | None = None,
     has_book: bool | None = None,
     has_errored: bool | None = None,
     is_processed: bool | None = None,
@@ -87,6 +88,11 @@ def get_zimfarm_notifications(
         ZimfarmNotification.errored,
         ZimfarmNotification.received_at,
     ).order_by(ZimfarmNotification.received_at)
+
+    if notification_id is not None:
+        stmt = stmt.where(
+            ZimfarmNotification.id.cast(String).ilike(f"%{notification_id}%")
+        )
 
     if has_book is not None:
         if has_book:

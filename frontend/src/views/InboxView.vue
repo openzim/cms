@@ -156,7 +156,16 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
       if (!hideLoading) {
         loadingStore.startLoading('Fetching zimfarm notifications...')
       }
-      await zimfarmNotificationStore.fetchZimfarmNotifications(limit, skip, false)
+      await zimfarmNotificationStore.fetchZimfarmNotifications(
+        limit,
+        skip,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        filters.value.id || undefined,
+      )
       zimfarmNotifications.value = zimfarmNotificationStore.zimfarmNotifications
       errors.value = zimfarmNotificationStore.errors
       zimfarmNotificationStore.savePaginatorLimit(limit)

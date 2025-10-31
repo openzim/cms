@@ -20,7 +20,7 @@ from cms_backend.db.zimfarm_notification import (
 from cms_backend.db.zimfarm_notification import (
     get_zimfarm_notifications as db_get_zimfarm_notifications,
 )
-from cms_backend.routes.fields import LimitFieldMax200, SkipField
+from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel, WithExtraModel
 from cms_backend.schemas.orms import (
@@ -34,6 +34,7 @@ router = APIRouter(prefix="/zimfarm-notifications", tags=["zimfarm-notifications
 class ZimfarmNotificationsGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
+    id: NotEmptyString | None = None
     has_book: bool | None = None
     has_errored: bool | None = None
     is_processed: bool | None = None
@@ -58,6 +59,7 @@ async def get_zimfarm_notifications(
         session,
         skip=params.skip,
         limit=params.limit,
+        notification_id=params.id,
         has_book=params.has_book,
         has_errored=params.has_errored,
         is_processed=params.is_processed,

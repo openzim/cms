@@ -59,6 +59,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
     is_processed: boolean | undefined = undefined,
     received_after: string | undefined = undefined,
     received_before: string | undefined = undefined,
+    id: string | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('zimfarm-notifications')
     // filter out undefined values from params
@@ -71,6 +72,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
         is_processed,
         received_after,
         received_before,
+        id,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),

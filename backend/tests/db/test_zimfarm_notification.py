@@ -269,3 +269,133 @@ def test_get_zimfarm_notifications_skip(
     assert results.nb_records == 8
     assert len(results.records) <= limit
     assert len(results.records) == expected_count
+
+
+@pytest.mark.parametrize(
+    "notification_id_filter,expected_count,expected_ids",
+    [
+        pytest.param("1234-5678-1234", 1, ["notif1"], id="partial-match-notif1"),
+        pytest.param("8765-4321", 1, ["notif2"], id="partial-match-notif2"),
+        pytest.param("2222-3333", 1, ["notif3"], id="partial-match-notif3"),
+        pytest.param("1234", 1, ["notif1"], id="match-1234-only-notif1"),
+        pytest.param("abcd", 1, ["notif4"], id="lowercase-match"),
+        pytest.param("ABCD", 1, ["notif4"], id="uppercase-match"),
+        pytest.param("AbCd", 1, ["notif4"], id="mixed-case-match"),
+        pytest.param("nonexistent", 0, [], id="no-match"),
+        pytest.param("aaaa", 2, ["notif5", "notif6"], id="multiple-matches"),
+        pytest.param("1111", 2, ["notif3", "notif5"], id="multiple-matches-with-1111"),
+    ],
+)
+def test_get_zimfarm_notifications_notification_id_filter(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    notification_id_filter: str,
+    expected_count: int,
+    expected_ids: list[str],
+):
+    """Test that get_zimfarm_notifications works with notification_id filter"""
+    from uuid import UUID
+
+    # Create notifications with specific UUIDs
+    notif_mapping = {
+        "notif1": create_zimfarm_notification(
+            _id=UUID("12345678-1234-5678-1234-567812345678"),
+            content={"test": "notif1"},
+        ),
+        "notif2": create_zimfarm_notification(
+            _id=UUID("87654321-4321-8765-4321-876543218765"),
+            content={"test": "notif2"},
+        ),
+        "notif3": create_zimfarm_notification(
+            _id=UUID("11111111-2222-3333-4444-555555555555"),
+            content={"test": "notif3"},
+        ),
+        "notif4": create_zimfarm_notification(
+            _id=UUID("abcdefab-cdef-abcd-efab-cdefabcdefab"),
+            content={"test": "notif4"},
+        ),
+        "notif5": create_zimfarm_notification(
+            _id=UUID("aaaaaaaa-1111-1111-1111-111111111111"),
+            content={"test": "notif5"},
+        ),
+        "notif6": create_zimfarm_notification(
+            _id=UUID("aaaaaaaa-2222-2222-2222-222222222222"),
+            content={"test": "notif6"},
+        ),
+    }
+
+    dbsession.flush()
+
+    results = get_zimfarm_notifications(
+        dbsession,
+        skip=0,
+        limit=20,
+        notification_id=notification_id_filter,
+    )
+
+    assert results.nb_records == expected_count
+    assert len(results.records) == expected_count
+
+    # Verify the correct notifications were returned
+    returned_ids = {str(record.id) for record in results.records}
+    expected_uuid_ids = {str(notif_mapping[key].id) for key in expected_ids}
+    assert returned_ids == expected_uuid_ids
+
+
+def test_get_zimfarm_notifications_notification_id_combined_with_other_filters(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    create_book: Callable[..., Book],
+):
+    """Test notification_id filter combined with other filters"""
+    from uuid import UUID
+
+    # Create notifications with specific characteristics
+    notif1 = create_zimfarm_notification(
+        _id=UUID("aaaaaaaa-1111-1111-1111-111111111111"),
+        content={"test": "notif1"},
+    )
+    notif1.processed = True
+    book1 = create_book(zimfarm_notification=notif1)
+    notif1.book_id = book1.id
+
+    notif2 = create_zimfarm_notification(
+        _id=UUID("aaaaaaaa-2222-2222-2222-222222222222"),
+        content={"test": "notif2"},
+    )
+    notif2.processed = False
+
+    notif3 = create_zimfarm_notification(
+        _id=UUID("bbbbbbbb-3333-3333-3333-333333333333"),
+        content={"test": "notif3"},
+    )
+    notif3.processed = True
+
+    dbsession.flush()
+
+    # Filter by ID pattern "aaaa" - should match notif1 and notif2
+    results = get_zimfarm_notifications(
+        dbsession, skip=0, limit=20, notification_id="aaaa"
+    )
+    assert results.nb_records == 2
+
+    # Filter by ID pattern "aaaa" AND processed=true - should only match notif1
+    results = get_zimfarm_notifications(
+        dbsession, skip=0, limit=20, notification_id="aaaa", is_processed=True
+    )
+    assert results.nb_records == 1
+    assert results.records[0].id == notif1.id
+
+    # Filter by ID pattern "aaaa" AND has_book=false - should only match notif2
+    results = get_zimfarm_notifications(
+        dbsession, skip=0, limit=20, notification_id="aaaa", has_book=False
+    )
+    assert results.nb_records == 1
+    assert results.records[0].id == notif2.id
+
+    # Filter by ID pattern "bbbb" AND processed=true - should only match notif3
+    results = get_zimfarm_notifications(
+        dbsession, skip=0, limit=20, notification_id="bbbb", is_processed=True
+    )
+    assert results.nb_records == 1
+    assert results.records[0].id == notif3.id
