@@ -1,9 +1,9 @@
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Response
+from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
@@ -17,27 +17,68 @@ from cms_backend.db.zimfarm_notification import (
 from cms_backend.db.zimfarm_notification import (
     get_zimfarm_notification_or_none as db_get_zimfarm_notification_or_none,
 )
+from cms_backend.db.zimfarm_notification import (
+    get_zimfarm_notifications as db_get_zimfarm_notifications,
+)
+from cms_backend.routes.fields import LimitFieldMax200, SkipField
+from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel, WithExtraModel
+from cms_backend.schemas.orms import (
+    ZimfarmNotificationFullSchema,
+    ZimfarmNotificationLightSchema,
+)
 
 router = APIRouter(prefix="/zimfarm-notifications", tags=["zimfarm-notifications"])
 
 
+class ZimfarmNotificationsGetSchema(BaseModel):
+    skip: SkipField = 0
+    limit: LimitFieldMax200 = 20
+    has_book: bool | None = None
+    has_errored: bool | None = None
+    is_processed: bool | None = None
+    received_after: datetime | None = None
+    received_before: datetime | None = None
+
+
 # only thing we wanna validate from the Zimfarm notification is that it has an ID
 # which is an UUID and we do not already received it
-class ZimfarmNotificationSchema(WithExtraModel):
+class ZimfarmNotificationCreateSchema(WithExtraModel):
     id: UUID
 
 
-class ZimfarmNotificationLightSchema(BaseModel):
-    id: UUID
-    received_at: datetime
-    content: dict[str, Any]
-    processed: bool
+@router.get("")
+async def get_zimfarm_notifications(
+    params: Annotated[ZimfarmNotificationsGetSchema, Query()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> ListResponse[ZimfarmNotificationLightSchema]:
+    """Get a list of zimfarm notifications"""
+
+    results = db_get_zimfarm_notifications(
+        session,
+        skip=params.skip,
+        limit=params.limit,
+        has_book=params.has_book,
+        has_errored=params.has_errored,
+        is_processed=params.is_processed,
+        received_after=params.received_after,
+        received_before=params.received_before,
+    )
+
+    return ListResponse[ZimfarmNotificationLightSchema](
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=params.skip,
+            limit=params.limit,
+            page_size=len(results.records),
+        ),
+        items=results.records,
+    )
 
 
 @router.post("")
 async def create_zimfarm_notification(
-    request: ZimfarmNotificationSchema,
+    request: ZimfarmNotificationCreateSchema,
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> Response:
     """Create a zimfarm notification"""
@@ -61,16 +102,19 @@ async def create_zimfarm_notification(
 async def get_zimfarm_notification(
     notification_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ZimfarmNotificationLightSchema:
+) -> ZimfarmNotificationFullSchema:
     """Create a zimfarm notification"""
 
     db_notification = db_get_zimfarm_notification(
         session=session, notification_id=notification_id
     )
 
-    return ZimfarmNotificationLightSchema(
+    return ZimfarmNotificationFullSchema(
         id=db_notification.id,
+        book_id=db_notification.book_id,
+        processed=db_notification.processed,
+        errored=db_notification.errored,
         received_at=db_notification.received_at,
         content=db_notification.content,
-        processed=db_notification.processed,
+        events=db_notification.events,
     )

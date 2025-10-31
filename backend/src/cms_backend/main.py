@@ -17,7 +17,7 @@ from cms_backend.db.exceptions import (
 from cms_backend.routes.healthcheck import router as healthcheck_router
 from cms_backend.routes.http_errors import BadRequestError
 from cms_backend.routes.titles import router as titles_router
-from cms_backend.routes.zimfarm_notification import (
+from cms_backend.routes.zimfarm_notifications import (
     router as zimfarm_notification_router,
 )
 from cms_backend.utils.database import (

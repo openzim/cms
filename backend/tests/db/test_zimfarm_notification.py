@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import timedelta
 from uuid import uuid4
 
 import pytest
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 from tests.processors.test_zimfarm_notification import GOOD_NOTIFICATION_CONTENT
 
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import ZimfarmNotification
+from cms_backend.db.models import Book, ZimfarmNotification
 from cms_backend.db.zimfarm_notification import (
     create_zimfarm_notification as db_create_zimfarm_notification,
 )
@@ -15,6 +16,7 @@ from cms_backend.db.zimfarm_notification import (
     get_next_notification_to_process_or_none,
     get_zimfarm_notification,
     get_zimfarm_notification_or_none,
+    get_zimfarm_notifications,
 )
 from cms_backend.utils.datetime import getnow
 
@@ -45,7 +47,7 @@ def test_get_zimfarm_notification_exist(
         dbsession, notification_id=zimfarm_notification.id
     )
     assert result is not None
-    assert result.id == zimfarm_notification.id
+    assert result == zimfarm_notification
 
 
 def test_create_zimfarm_notification(dbsession: OrmSession, faker: Faker):
@@ -80,3 +82,190 @@ def test_get_next_notification_to_process_or_none(
     next_notification.processed = True
     next_notification = get_next_notification_to_process_or_none(dbsession)
     assert next_notification is None
+
+
+@pytest.mark.parametrize(
+    "has_book,has_errored,is_processed,expected_count",
+    [
+        pytest.param(None, None, None, 10, id="all-no-filters"),
+        pytest.param(True, None, None, 3, id="has-book-only"),
+        pytest.param(False, None, None, 7, id="no-book-only"),
+        pytest.param(None, True, None, 4, id="has-errored-only"),
+        pytest.param(None, False, None, 6, id="not-errored-only"),
+        pytest.param(None, None, True, 5, id="is-processed-only"),
+        pytest.param(None, None, False, 5, id="not-processed-only"),
+        pytest.param(True, True, None, 2, id="has-book-and-has-errored"),
+        pytest.param(True, None, True, 2, id="has-book-and-is-processed"),
+        pytest.param(False, False, False, 3, id="no-book-not-errored-not-processed"),
+    ],
+)
+def test_get_zimfarm_notifications_filters(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    create_book: Callable[..., Book],
+    has_book: bool | None,
+    has_errored: bool | None,
+    is_processed: bool | None,
+    expected_count: int,
+):
+    """Test that get_zimfarm_notifications works correctly with various filters"""
+    now = getnow()
+
+    # Create notifications with different characteristics
+    # Notification 0: has_book, errored, processed
+    notif0 = create_zimfarm_notification(received_at=now - timedelta(hours=10))
+    notif0.errored = True
+    notif0.processed = True
+    book0 = create_book(zimfarm_notification=notif0)
+    notif0.book_id = book0.id
+
+    # Notification 1: has_book, errored, not processed
+    notif1 = create_zimfarm_notification(received_at=now - timedelta(hours=9))
+    notif1.errored = True
+    notif1.processed = False
+    book1 = create_book(zimfarm_notification=notif1)
+    notif1.book_id = book1.id
+
+    # Notification 2: has_book, not errored, processed
+    notif2 = create_zimfarm_notification(received_at=now - timedelta(hours=8))
+    notif2.errored = False
+    notif2.processed = True
+    book2 = create_book(zimfarm_notification=notif2)
+    notif2.book_id = book2.id
+
+    # Notification 3: no_book, errored, processed
+    notif3 = create_zimfarm_notification(received_at=now - timedelta(hours=7))
+    notif3.errored = True
+    notif3.processed = True
+
+    # Notification 4: no_book, errored, not processed
+    notif4 = create_zimfarm_notification(received_at=now - timedelta(hours=6))
+    notif4.errored = True
+    notif4.processed = False
+
+    # Notification 5: no_book, not errored, processed
+    notif5 = create_zimfarm_notification(received_at=now - timedelta(hours=5))
+    notif5.errored = False
+    notif5.processed = True
+
+    # Notification 6: no_book, not errored, not processed
+    notif6 = create_zimfarm_notification(received_at=now - timedelta(hours=4))
+    notif6.errored = False
+    notif6.processed = False
+
+    # Notification 7: no_book, not errored, not processed
+    notif7 = create_zimfarm_notification(received_at=now - timedelta(hours=3))
+    notif7.errored = False
+    notif7.processed = False
+
+    # Notification 8: no_book, not errored, not processed
+    notif8 = create_zimfarm_notification(received_at=now - timedelta(hours=2))
+    notif8.errored = False
+    notif8.processed = False
+
+    # Notification 9: no_book, not errored, processed
+    notif9 = create_zimfarm_notification(received_at=now - timedelta(hours=1))
+    notif9.errored = False
+    notif9.processed = True
+
+    dbsession.flush()
+
+    limit = 20
+    results = get_zimfarm_notifications(
+        dbsession,
+        skip=0,
+        limit=limit,
+        has_book=has_book,
+        has_errored=has_errored,
+        is_processed=is_processed,
+    )
+    assert results.nb_records == expected_count
+    assert len(results.records) <= limit
+    assert len(results.records) == expected_count
+
+
+@pytest.mark.parametrize(
+    "received_after_hours,received_before_hours,expected_count",
+    [
+        pytest.param(None, None, 5, id="no-time-filters"),  # All 5 notifications match
+        pytest.param(
+            6, None, 2, id="received-after-6h"
+        ),  # Last 2 (4h, 2h ago) - exclusive
+        pytest.param(
+            None, 3, 4, id="received-before-3h"
+        ),  # First 4 (10h, 8h, 6h, 4h ago) - exclusive
+        pytest.param(8, 3, 2, id="received-between-8h-and-3h"),  # Middle 2 (6h, 4h ago)
+    ],
+)
+def test_get_zimfarm_notifications_time_filters(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    received_after_hours: int | None,
+    received_before_hours: int | None,
+    expected_count: int,
+):
+    """Test that get_zimfarm_notifications works correctly with time filters"""
+    now = getnow()
+
+    # Create 5 notifications at different times
+    create_zimfarm_notification(received_at=now - timedelta(hours=10))
+    create_zimfarm_notification(received_at=now - timedelta(hours=8))
+    create_zimfarm_notification(received_at=now - timedelta(hours=6))
+    create_zimfarm_notification(received_at=now - timedelta(hours=4))
+    create_zimfarm_notification(received_at=now - timedelta(hours=2))
+
+    dbsession.flush()
+
+    received_after = (
+        now - timedelta(hours=received_after_hours) if received_after_hours else None
+    )
+    received_before = (
+        now - timedelta(hours=received_before_hours) if received_before_hours else None
+    )
+
+    results = get_zimfarm_notifications(
+        dbsession,
+        skip=0,
+        limit=20,
+        received_after=received_after,
+        received_before=received_before,
+    )
+    assert results.nb_records == expected_count
+    assert len(results.records) == expected_count
+
+
+@pytest.mark.parametrize(
+    "skip,limit,expected_count",
+    [
+        pytest.param(0, 3, 3, id="first-page"),
+        pytest.param(3, 3, 3, id="second-page"),
+        pytest.param(6, 3, 2, id="third-page-partial"),
+        pytest.param(8, 3, 0, id="page-num-too-high-no-results"),
+        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
+        pytest.param(0, 20, 8, id="first-page-with-high-limit"),
+    ],
+)
+def test_get_zimfarm_notifications_skip(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    skip: int,
+    limit: int,
+    expected_count: int,
+):
+    """Test that get_zimfarm_notifications works correctly with skip and limit"""
+    now = getnow()
+
+    # Create 8 notifications
+    for i in range(8):
+        create_zimfarm_notification(received_at=now - timedelta(hours=10 - i))
+
+    dbsession.flush()
+
+    results = get_zimfarm_notifications(
+        dbsession,
+        skip=skip,
+        limit=limit,
+    )
+    assert results.nb_records == 8
+    assert len(results.records) <= limit
+    assert len(results.records) == expected_count
