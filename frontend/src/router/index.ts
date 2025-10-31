@@ -3,6 +3,7 @@ import NotFoundView from '@/views/NotFound.vue'
 import SupportUsView from '@/views/SupportUs.vue'
 import SignInView from '@/views/SignInView.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import TitlesView from '@/views/TitlesView.vue'
 
 const routes = [
   {
@@ -27,6 +28,12 @@ const routes = [
     name: 'inbox',
     component: InboxView,
     meta: { title: 'CMS | Inbox' },
+  },
+  {
+    path: '/titles',
+    name: 'titles',
+    component: TitlesView,
+    meta: { title: 'CMS | Titles' },
   },
   {
     path: '/:pathMatch(.*)*',
