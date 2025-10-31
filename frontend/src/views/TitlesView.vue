@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import TitlesFilter from '@/components/TitlesFilter.vue'
+import TitlesFilter from '@/components/TitlesFilters.vue'
 import TitlesTable from '@/components/TitlesTable.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
