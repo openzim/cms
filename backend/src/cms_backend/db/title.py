@@ -47,11 +47,3 @@ def get_titles(
             for (title_name,) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
-
-    results = ListResult[TitleLightSchema](nb_records=0, records=[])
-
-    for nb_records, title_name in session.execute(stmt).all():
-        results.nb_records = nb_records
-        results.records.append(TitleLightSchema(name=title_name))
-
-    return results
