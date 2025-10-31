@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel
+from cms_backend.schemas import BaseModel
 
 T = TypeVar("T")
 
