@@ -19,7 +19,7 @@ from cms_backend.db.zimfarm_notification import (
 )
 from cms_backend.schemas import BaseModel, WithExtraModel
 
-router = APIRouter(prefix="/zimfarm-notification")
+router = APIRouter(prefix="/zimfarm-notifications", tags=["zimfarm-notifications"])
 
 
 # only thing we wanna validate from the Zimfarm notification is that it has an ID

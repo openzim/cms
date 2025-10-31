@@ -42,20 +42,20 @@ from cms_backend.utils.datetime import getnow
         ),
     ],
 )
-def test_create_schedule(
+def test_create_zimfarm_notification(
     client: TestClient,
     payload: dict[str, Any],
     expected_status_code: HTTPStatus,
 ):
-    """Test create schedule endpoint"""
+    """Test create zimfarm_notification endpoint"""
 
     response = client.post(
-        "/v1/zimfarm-notification",
+        "/v1/zimfarm-notifications",
         json=payload,
     )
     assert response.status_code == expected_status_code
     if expected_status_code == HTTPStatus.ACCEPTED:
-        response = client.get(f"/v1/zimfarm-notification/{payload['id']}")
+        response = client.get(f"/v1/zimfarm-notifications/{payload['id']}")
         response_doc = response.json()
         assert "id" in response_doc
         assert response_doc["id"] == payload["id"]
@@ -76,13 +76,13 @@ def test_create_schedule(
                 assert response_doc["content"][key] == value
 
 
-def test_create_schedule_is_idempotent(
+def test_create_zimfarm_notification_is_idempotent(
     client: TestClient,
     zimfarm_notification: ZimfarmNotification,
 ):
-    """Test create schedule endpoint"""
+    """Test create zimfarm_notification endpoint"""
 
-    response = client.get(f"/v1/zimfarm-notification/{zimfarm_notification.id}")
+    response = client.get(f"/v1/zimfarm-notifications/{zimfarm_notification.id}")
     assert response.status_code == HTTPStatus.OK
 
     # try to recreate same Zimfarm notification with different data (to check this
@@ -94,13 +94,13 @@ def test_create_schedule_is_idempotent(
     }
 
     response = client.post(
-        "/v1/zimfarm-notification",
+        "/v1/zimfarm-notifications",
         json=payload,
     )
 
     assert response.status_code == HTTPStatus.ACCEPTED
 
-    response = client.get(f"/v1/zimfarm-notification/{zimfarm_notification.id}")
+    response = client.get(f"/v1/zimfarm-notifications/{zimfarm_notification.id}")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert "content" in response_doc
