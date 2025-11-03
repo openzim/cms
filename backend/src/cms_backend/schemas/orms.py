@@ -35,3 +35,21 @@ class ZimfarmNotificationLightSchema(BaseModel):
 class ZimfarmNotificationFullSchema(ZimfarmNotificationLightSchema):
     content: dict[str, Any]
     events: list[str]
+
+
+class BookLightSchema(BaseModel):
+    """
+    Schema for reading a book model with some fields
+    """
+
+    id: UUID
+    title_id: UUID | None
+
+
+class BookFullSchema(BookLightSchema):
+    article_count: int
+    media_count: int
+    size: int
+    zimcheck_result: dict[str, Any]
+    zim_metadata: dict[str, Any]
+    events: list[str]
