@@ -35,6 +35,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
                 f"{getnow()}: notification is missing mandatory keys: "
                 f"{','.join(missing_notification_keys)}"
             )
+            notification.status = "bad_notification"
             return
 
         book = create_book(
@@ -47,6 +48,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             zimcheck_result=notification.content["zimcheck"],
             zimfarm_notification=notification,
         )
+        notification.status = "processed"
 
         if not check_book_qa(book):
             return
@@ -63,6 +65,4 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             f"{getnow()}: error encountered while processing notification\n{exc}"
         )
         logger.exception(f"Failed to process zimfarm notification {notification.id}")
-        notification.errored = True
-    finally:
-        notification.processed = True
+        notification.status = "errored"

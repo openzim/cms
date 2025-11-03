@@ -27,8 +27,7 @@ class ZimfarmNotificationLightSchema(BaseModel):
 
     id: UUID
     book_id: UUID | None
-    processed: bool
-    errored: bool
+    status: str
     received_at: datetime
 
 

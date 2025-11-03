@@ -36,8 +36,7 @@ class ZimfarmNotificationsGetSchema(BaseModel):
     limit: LimitFieldMax200 = 20
     id: NotEmptyString | None = None
     has_book: bool | None = None
-    has_errored: bool | None = None
-    is_processed: bool | None = None
+    status: str | None = None
     received_after: datetime | None = None
     received_before: datetime | None = None
 
@@ -61,8 +60,7 @@ async def get_zimfarm_notifications(
         limit=params.limit,
         notification_id=params.id,
         has_book=params.has_book,
-        has_errored=params.has_errored,
-        is_processed=params.is_processed,
+        status=params.status,
         received_after=params.received_after,
         received_before=params.received_before,
     )
@@ -114,8 +112,7 @@ async def get_zimfarm_notification(
     return ZimfarmNotificationFullSchema(
         id=db_notification.id,
         book_id=db_notification.book_id,
-        processed=db_notification.processed,
-        errored=db_notification.errored,
+        status=db_notification.status,
         received_at=db_notification.received_at,
         content=db_notification.content,
         events=db_notification.events,

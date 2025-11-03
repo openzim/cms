@@ -8,7 +8,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
-    false,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
@@ -62,8 +61,7 @@ class ZimfarmNotification(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     received_at: Mapped[datetime]
     content: Mapped[dict[str, Any]]
-    processed: Mapped[bool] = mapped_column(default=False, server_default=false())
-    errored: Mapped[bool] = mapped_column(default=False, server_default=false())
+    status: Mapped[str] = mapped_column(default="pending", server_default="pending")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
@@ -73,15 +71,15 @@ class ZimfarmNotification(Base):
 
 
 Index(
-    "idx_zimfarm_notification_processed_false",
-    ZimfarmNotification.processed,
-    postgresql_where=ZimfarmNotification.processed.is_(False),
+    "idx_zimfarm_notification_status_pending",
+    ZimfarmNotification.status,
+    postgresql_where=text("status = 'pending'"),
 )
 
 Index(
-    "idx_zimfarm_notification_errored_false",
-    ZimfarmNotification.errored,
-    postgresql_where=ZimfarmNotification.errored.is_(True),
+    "idx_zimfarm_notification_status_bad_notification",
+    ZimfarmNotification.status,
+    postgresql_where=text("status = 'bad_notification'"),
 )
 
 

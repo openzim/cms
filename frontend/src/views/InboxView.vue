@@ -230,7 +230,6 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         undefined,
         undefined,
         undefined,
-        undefined,
         zimfarmFilters.value.id || undefined,
       )
       zimfarmNotifications.value = zimfarmNotificationStore.zimfarmNotifications

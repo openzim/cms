@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import String, not_, select
+from sqlalchemy import String, select
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
@@ -21,7 +21,7 @@ def create_zimfarm_notification(
     """Create a new Zimfarm notification"""
 
     zimfarm_notification = ZimfarmNotification(
-        id=notification_id, received_at=getnow(), content=content, processed=False
+        id=notification_id, received_at=getnow(), content=content
     )
 
     session.add(zimfarm_notification)
@@ -61,7 +61,7 @@ def get_next_notification_to_process_or_none(
 ) -> ZimfarmNotification | None:
     return session.scalars(
         select(ZimfarmNotification)
-        .where(not_(ZimfarmNotification.processed))
+        .where(ZimfarmNotification.status == "pending")
         .order_by(ZimfarmNotification.received_at)
         .limit(1)
     ).one_or_none()
@@ -74,8 +74,7 @@ def get_zimfarm_notifications(
     limit: int,
     notification_id: str | None = None,
     has_book: bool | None = None,
-    has_errored: bool | None = None,
-    is_processed: bool | None = None,
+    status: str | None = None,
     received_after: datetime | None = None,
     received_before: datetime | None = None,
 ) -> ListResult[ZimfarmNotificationLightSchema]:
@@ -84,8 +83,7 @@ def get_zimfarm_notifications(
     stmt = select(
         ZimfarmNotification.id,
         ZimfarmNotification.book_id,
-        ZimfarmNotification.processed,
-        ZimfarmNotification.errored,
+        ZimfarmNotification.status,
         ZimfarmNotification.received_at,
     ).order_by(ZimfarmNotification.received_at)
 
@@ -100,11 +98,8 @@ def get_zimfarm_notifications(
         else:
             stmt = stmt.where(ZimfarmNotification.book_id.is_(None))
 
-    if has_errored is not None:
-        stmt = stmt.where(ZimfarmNotification.errored == has_errored)
-
-    if is_processed is not None:
-        stmt = stmt.where(ZimfarmNotification.processed == is_processed)
+    if status is not None:
+        stmt = stmt.where(ZimfarmNotification.status == status)
 
     if received_after is not None:
         stmt = stmt.where(ZimfarmNotification.received_at > received_after)
@@ -118,15 +113,13 @@ def get_zimfarm_notifications(
             ZimfarmNotificationLightSchema(
                 id=notif_id,
                 book_id=notif_book_id,
-                processed=notif_processed,
-                errored=notif_errored,
+                status=notif_status,
                 received_at=notif_received_at,
             )
             for (
                 notif_id,
                 notif_book_id,
-                notif_processed,
-                notif_errored,
+                notif_status,
                 notif_received_at,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
