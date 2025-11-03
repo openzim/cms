@@ -35,12 +35,14 @@ def get_books(
     limit: int,
     book_id: str | None = None,
     has_title: bool | None = None,
+    status: str | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
     stmt = select(
         Book.id,
         Book.title_id,
+        Book.status,
     ).order_by(Book.id)
 
     if book_id is not None:
@@ -52,14 +54,18 @@ def get_books(
         else:
             stmt = stmt.where(Book.title_id.is_(None))
 
+    if status is not None:
+        stmt = stmt.where(Book.status == status)
+
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
             BookLightSchema(
                 id=book_id_result,
                 title_id=book_title_id,
+                status=book_status,
             )
-            for (book_id_result, book_title_id) in session.execute(
+            for (book_id_result, book_title_id, book_status) in session.execute(
                 stmt.offset(skip).limit(limit)
             ).all()
         ],

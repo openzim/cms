@@ -14,6 +14,7 @@ def add_book_to_title(book: Book, title: Title):
         title.books.append(book)
         book.events.append(f"{getnow()}: book added to title {title.id}")
         title.events.append(f"{getnow()}: book {book.id} added to title")
+        book.status = "processed"
 
         if name and title.name != name:
             title.events.append(f"{getnow()}: updating title name to {name}")
@@ -26,4 +27,5 @@ def add_book_to_title(book: Book, title: Title):
         title.events.append(
             f"{getnow()}: error encountered while adding book {book.id}\n{exc}"
         )
+        book.status = "errored"
         logger.exception(f"Failed to add book {book.id} to title {title.id}")

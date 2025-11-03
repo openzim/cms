@@ -67,8 +67,8 @@ def test_create_zimfarm_notification(
         received_since = (getnow() - received_at.replace(tzinfo=None)).total_seconds()
         assert received_since > 0
         assert received_since < 3600
-        assert "processed" in response_doc
-        assert response_doc["processed"] is False
+        assert "status" in response_doc
+        assert response_doc["status"] == "pending"
         assert "content" in response_doc
         for key, value in payload.items():
             if key == "id":
@@ -154,8 +154,7 @@ def test_get_zimfarm_notifications_with_data(
     for item in response_doc["items"]:
         assert "id" in item
         assert "book_id" in item
-        assert "processed" in item
-        assert "errored" in item
+        assert "status" in item
         assert "received_at" in item
         # Light schema should NOT include content
         assert "content" not in item
@@ -237,72 +236,68 @@ def test_get_zimfarm_notifications_filter_by_has_book(
         assert item["book_id"] is None
 
 
-def test_get_zimfarm_notifications_filter_by_processed(
+def test_get_zimfarm_notifications_filter_by_status(
     client: TestClient,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    create_book: Callable[..., Book],
 ):
-    """Test get zimfarm_notifications endpoint filtering by is_processed"""
+    """Test get zimfarm_notifications endpoint filtering by status"""
 
-    # Create 3 processed notifications
-    for _ in range(3):
-        notif = create_zimfarm_notification(content={"processed": True})
-        notif.processed = True
-
-    # Create 2 unprocessed notifications (default is False)
+    # Create 2 processed notifications (with books)
     for _ in range(2):
-        create_zimfarm_notification(content={"processed": False})
-
-    # Filter for processed notifications
-    response = client.get("/v1/zimfarm-notifications?is_processed=true")
-    assert response.status_code == HTTPStatus.OK
-    response_doc = response.json()
-    assert response_doc["meta"]["count"] == 3
-    assert len(response_doc["items"]) == 3
-    for item in response_doc["items"]:
-        assert item["processed"] is True
-
-    # Filter for unprocessed notifications
-    response = client.get("/v1/zimfarm-notifications?is_processed=false")
-    assert response.status_code == HTTPStatus.OK
-    response_doc = response.json()
-    assert response_doc["meta"]["count"] == 2
-    assert len(response_doc["items"]) == 2
-    for item in response_doc["items"]:
-        assert item["processed"] is False
-
-
-def test_get_zimfarm_notifications_filter_by_errored(
-    client: TestClient,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-):
-    """Test get zimfarm_notifications endpoint filtering by has_errored"""
+        notif = create_zimfarm_notification(content={"status": "processed"})
+        notif.status = "processed"
+        create_book(zimfarm_notification=notif)
 
     # Create 2 errored notifications
     for _ in range(2):
-        notif = create_zimfarm_notification(content={"errored": True})
-        notif.errored = True
+        notif = create_zimfarm_notification(content={"status": "errored"})
+        notif.status = "errored"
 
-    # Create 3 non-errored notifications (default is False)
-    for _ in range(3):
-        create_zimfarm_notification(content={"errored": False})
+    # Create 2 bad_notification notifications
+    for _ in range(2):
+        notif = create_zimfarm_notification(content={"status": "bad_notification"})
+        notif.status = "bad_notification"
 
-    # Filter for errored notifications
-    response = client.get("/v1/zimfarm-notifications?has_errored=true")
+    # Create 2 pending notifications (default)
+    for _ in range(2):
+        create_zimfarm_notification(content={"status": "pending"})
+
+    # Filter for processed notifications
+    response = client.get("/v1/zimfarm-notifications?status=processed")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2
     assert len(response_doc["items"]) == 2
     for item in response_doc["items"]:
-        assert item["errored"] is True
+        assert item["status"] == "processed"
 
-    # Filter for non-errored notifications
-    response = client.get("/v1/zimfarm-notifications?has_errored=false")
+    # Filter for errored notifications
+    response = client.get("/v1/zimfarm-notifications?status=errored")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
-    assert response_doc["meta"]["count"] == 3
-    assert len(response_doc["items"]) == 3
+    assert response_doc["meta"]["count"] == 2
+    assert len(response_doc["items"]) == 2
     for item in response_doc["items"]:
-        assert item["errored"] is False
+        assert item["status"] == "errored"
+
+    # Filter for bad_notification notifications
+    response = client.get("/v1/zimfarm-notifications?status=bad_notification")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 2
+    assert len(response_doc["items"]) == 2
+    for item in response_doc["items"]:
+        assert item["status"] == "bad_notification"
+
+    # Filter for pending notifications
+    response = client.get("/v1/zimfarm-notifications?status=pending")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 2
+    assert len(response_doc["items"]) == 2
+    for item in response_doc["items"]:
+        assert item["status"] == "pending"
 
 
 def test_get_zimfarm_notifications_filter_by_date_range(
@@ -355,30 +350,31 @@ def test_get_zimfarm_notifications_combined_filters(
     """Test get zimfarm_notifications endpoint with multiple filters combined"""
 
     # Create various notifications
-    # 1. Processed with book
+    # 1. status=processed with book
     notif1 = create_zimfarm_notification(content={"case": 1})
-    notif1.processed = True
+    notif1.status = "processed"
     create_book(zimfarm_notification=notif1)
 
-    # 2. Processed without book
+    # 2. status=bad_notification without book
     notif2 = create_zimfarm_notification(content={"case": 2})
-    notif2.processed = True
+    notif2.status = "bad_notification"
 
-    # 3. Unprocessed with book
+    # 3. status=pending with book (unusual but possible)
     notif3 = create_zimfarm_notification(content={"case": 3})
+    notif3.status = "pending"
     create_book(zimfarm_notification=notif3)
 
-    # 4. Unprocessed without book
+    # 4. status=pending without book
     create_zimfarm_notification(content={"case": 4})
 
     # Filter for processed notifications with books
-    response = client.get("/v1/zimfarm-notifications?is_processed=true&has_book=true")
+    response = client.get("/v1/zimfarm-notifications?status=processed&has_book=true")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
 
-    # Filter for unprocessed notifications without books
-    response = client.get("/v1/zimfarm-notifications?is_processed=false&has_book=false")
+    # Filter for pending notifications without books
+    response = client.get("/v1/zimfarm-notifications?status=pending&has_book=false")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1

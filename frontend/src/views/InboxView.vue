@@ -69,7 +69,10 @@ import { useRouter } from 'vue-router'
 const headers = computed(() => {
   switch (activeTab.value) {
     case 'books':
-      return [{ title: 'ID', value: 'id' }]
+      return [
+        { title: 'ID', value: 'id' },
+        { title: 'Status', value: 'status' },
+      ]
     case 'zimfarm_notifications':
       return [
         { title: 'ID', value: 'id' },
@@ -227,7 +230,6 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         limit,
         skip,
         false,
-        undefined,
         undefined,
         undefined,
         undefined,
