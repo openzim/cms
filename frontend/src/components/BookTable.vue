@@ -62,6 +62,10 @@
           </router-link>
         </template>
 
+        <template #[`item.status`]="{ item }">
+          <BookStatus :book="item" />
+        </template>
+
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="x-large" class="mb-2">mdi-book-open-page-variant</v-icon>
@@ -74,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import BookStatus from '@/components/BookStatus.vue'
 import type { Paginator } from '@/types/base'
 import type { BookLight } from '@/types/book'
 import { computed, ref, watch } from 'vue'

@@ -25,6 +25,12 @@
             </td>
           </tr>
           <tr>
+            <th class="text-left" style="width: 200px">Status</th>
+            <td>
+              <BookStatus :book="book" />
+            </td>
+          </tr>
+          <tr>
             <th class="text-left" style="width: 200px">Article Count</th>
             <td>
               {{ book.article_count.toLocaleString() }}
@@ -100,6 +106,7 @@
 </template>
 
 <script setup lang="ts">
+import BookStatus from '@/components/BookStatus.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'

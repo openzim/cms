@@ -43,6 +43,7 @@ class BookLightSchema(BaseModel):
 
     id: UUID
     title_id: UUID | None
+    status: str
 
 
 class BookFullSchema(BookLightSchema):

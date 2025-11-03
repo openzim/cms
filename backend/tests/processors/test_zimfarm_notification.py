@@ -29,17 +29,16 @@ def test_process_notification_success(
     notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
     assert len(notification.events) == 0
     assert len(title.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
     assert notification.book is not None
     assert notification.book.title == title
     assert notification.book.title_id == title.id
+    assert notification.book.status == "processed"
     assert any(
         event
         for event in notification.events
@@ -102,14 +101,12 @@ def test_process_notification_missing_mandatory_key(
 
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "bad_notification"
     assert notification.book is None
     assert any(
         event
@@ -131,14 +128,13 @@ def test_process_notification_missing_multiple_mandatory_keys(
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "bad_notification"
+
     assert notification.book is None
     assert any(
         event
@@ -168,18 +164,18 @@ def test_process_notification_qa_check_fails(
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
+
     assert notification.book is not None
     # Book was created but not added to title because QA failed
     assert notification.book.title is None
     assert notification.book.title_id is None
+    assert notification.book.status == "qa_failed"
     assert any(
         event
         for event in notification.book.events
@@ -209,18 +205,18 @@ def test_process_notification_no_matching_title(
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
+
     assert notification.book is not None
     # Book was created and passed QA but not added to title
     assert notification.book.title is None
     assert notification.book.title_id is None
+    assert notification.book.status == "pending_title"
     assert any(
         event
         for event in notification.book.events
@@ -256,18 +252,18 @@ def test_process_notification_missing_name(
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
+
     assert notification.book is not None
     # Book was created but QA check fails because Name is missing
     assert notification.book.title is None
     assert notification.book.title_id is None
+    assert notification.book.status == "qa_failed"
     # Name is a mandatory metadata field, so QA check should fail
     assert any(
         event
@@ -285,8 +281,7 @@ def test_process_notification_exception_handling(
 
     notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     # Simulate a very bad error by dropping the content attribute
     # (and adding it back so that SQLAlchemy does not choke during flush)
@@ -298,8 +293,8 @@ def test_process_notification_exception_handling(
     notification.content = save_content
     dbsession.flush()
 
-    assert notification.processed is True
-    assert notification.errored is True
+    assert notification.status == "errored"
+
     assert any(
         event
         for event in notification.events
@@ -323,18 +318,18 @@ def test_process_notification_empty_name(
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
-    assert notification.processed is False
-    assert notification.errored is False
+    assert notification.status == "pending"
 
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
+
     assert notification.book is not None
     # Book was created but not added to title because Name is empty
     assert notification.book.title is None
     assert notification.book.title_id is None
+    assert notification.book.status == "qa_failed"
     assert any(
         event
         for event in notification.book.events
@@ -362,10 +357,11 @@ def test_process_notification_with_existing_books(
     process_notification(dbsession, notification)
 
     dbsession.flush()
-    assert notification.processed is True
-    assert notification.errored is False
+    assert notification.status == "processed"
+
     assert notification.book is not None
     assert notification.book.title == title
+    assert notification.book.status == "processed"
     assert len(title.books) == 2
     assert existing_book in title.books
     assert notification.book in title.books

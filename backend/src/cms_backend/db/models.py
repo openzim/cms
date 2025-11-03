@@ -91,6 +91,9 @@ class Book(Base):
     size: Mapped[int]
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
+    status: Mapped[str] = mapped_column(
+        init=False, default="pending_processing", server_default="pending_processing"
+    )
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     title_id: Mapped[UUID | None] = mapped_column(
@@ -101,6 +104,31 @@ class Book(Base):
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
         back_populates="book"
     )
+
+
+Index(
+    "idx_book_status_pending_processing",
+    Book.status,
+    postgresql_where=text("status = 'pending_processing'"),
+)
+
+Index(
+    "idx_book_status_qa_failed",
+    Book.status,
+    postgresql_where=text("status = 'qa_failed'"),
+)
+
+Index(
+    "idx_book_status_pending_title",
+    Book.status,
+    postgresql_where=text("status = 'pending_title'"),
+)
+
+Index(
+    "idx_book_status_errored",
+    Book.status,
+    postgresql_where=text("status = 'errored'"),
+)
 
 
 class Title(Base):

@@ -29,6 +29,7 @@ def check_book_qa(book: Book) -> bool:
                 f"{getnow()}: book is missing mandatory metadata: "
                 f"{','.join(missing_metadata_keys)}"
             )
+            book.status = "qa_failed"
             return False
 
         book.events.append(f"{getnow()}: book passed QA checks")
@@ -39,6 +40,7 @@ def check_book_qa(book: Book) -> bool:
             f"{getnow()}: error encountered while checking book QA\n{exc}"
         )
         logger.exception(f"Failed to check book QA for {book.id}")
+        book.status = "errored"
         return False
 
 
@@ -49,12 +51,14 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             book.events.append(
                 f"{getnow()}: no title can be found because name is missing"
             )
+            book.status = "qa_failed"
             return None
 
         title = get_title_by_name_or_none(session, name=name)
 
         if not title:
             book.events.append(f"{getnow()}: no matching title found for book")
+            book.status = "pending_title"
             return None
 
         book.events.append(f"{getnow()}: found matching title {title.id}")
@@ -65,4 +69,5 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             f"{getnow()}: error encountered while get matching title\n{exc}"
         )
         logger.exception(f"Failed to get matching title for {book.id}")
+        book.status = "errored"
         return None
