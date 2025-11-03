@@ -18,6 +18,7 @@ from cms_backend.routes.books import router as books_router
 from cms_backend.routes.healthcheck import router as healthcheck_router
 from cms_backend.routes.http_errors import BadRequestError
 from cms_backend.routes.titles import router as titles_router
+from cms_backend.routes.warehouse_paths import router as warehouse_paths_router
 from cms_backend.routes.zimfarm_notifications import (
     router as zimfarm_notification_router,
 )
@@ -56,6 +57,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)
     main_router.include_router(router=books_router)
+    main_router.include_router(router=warehouse_paths_router)
 
     app.include_router(router=main_router)
 

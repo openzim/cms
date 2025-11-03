@@ -144,3 +144,29 @@ class Title(Base):
         init=False,
         foreign_keys=[Book.title_id],
     )
+
+
+class Warehouse(Base):
+    __tablename__ = "warehouse"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    name: Mapped[str]
+    configuration: Mapped[dict[str, Any]]
+    warehouse_paths: Mapped[list["WarehousePath"]] = relationship(
+        back_populates="warehouse",
+        cascade="all, delete-orphan",
+        init=False,
+    )
+
+
+class WarehousePath(Base):
+    __tablename__ = "warehouse_path"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    folder_name: Mapped[str]
+    warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"), init=False)
+    warehouse: Mapped["Warehouse"] = relationship(
+        back_populates="warehouse_paths", init=False
+    )

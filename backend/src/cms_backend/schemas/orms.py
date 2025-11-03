@@ -53,3 +53,14 @@ class BookFullSchema(BookLightSchema):
     zimcheck_result: dict[str, Any]
     zim_metadata: dict[str, Any]
     events: list[str]
+
+
+class WarehousePathSchema(BaseModel):
+    """
+    Schema for reading warehouse path with warehouse information
+    """
+
+    path_id: UUID
+    folder_name: str
+    warehouse_id: UUID
+    warehouse_name: str
