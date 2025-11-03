@@ -14,6 +14,7 @@ from cms_backend.db.exceptions import (
     RecordDisabledError,
     RecordDoesNotExistError,
 )
+from cms_backend.routes.books import router as books_router
 from cms_backend.routes.healthcheck import router as healthcheck_router
 from cms_backend.routes.http_errors import BadRequestError
 from cms_backend.routes.titles import router as titles_router
@@ -54,6 +55,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=zimfarm_notification_router)
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)
+    main_router.include_router(router=books_router)
 
     app.include_router(router=main_router)
 

@@ -4,6 +4,7 @@ import SupportUsView from '@/views/SupportUs.vue'
 import SignInView from '@/views/SignInView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
+import BookView from '@/views/BookView.vue'
 import ZimfarmNotificationView from '@/views/ZimfarmNotificationView.vue'
 
 const routes = [
@@ -35,6 +36,15 @@ const routes = [
     name: 'titles',
     component: TitlesView,
     meta: { title: 'CMS | Titles' },
+  },
+  {
+    path: '/book/:id',
+    name: 'book-detail',
+    component: BookView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Book • ${to.params.id}`,
+    },
   },
   {
     path: '/zimfarm-notification/:id',
