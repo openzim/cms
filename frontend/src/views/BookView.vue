@@ -31,6 +31,16 @@
             </td>
           </tr>
           <tr>
+            <th class="text-left" style="width: 200px">Producer</th>
+            <td>
+              <a :href="book.producer.display_url" target="_blank" rel="noopener noreferrer">
+                {{ book.producer.display_name }}
+              </a>
+              (<code>{{ book.producer.unique_id }}</code
+              >)
+            </td>
+          </tr>
+          <tr>
             <th class="text-left" style="width: 200px">Article Count</th>
             <td>
               {{ book.article_count.toLocaleString() }}

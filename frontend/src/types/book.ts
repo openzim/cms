@@ -1,3 +1,9 @@
+export interface Producer {
+  display_name: string
+  display_url: string
+  unique_id: string
+}
+
 export interface Book {
   id: string
   title_id?: string
@@ -8,6 +14,7 @@ export interface Book {
   zimcheck_result: Record<string, unknown>
   zim_metadata: Record<string, unknown>
   events: string[]
+  producer: Producer
 }
 
 export interface BookLight {

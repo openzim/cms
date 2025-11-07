@@ -36,6 +36,16 @@ class ZimfarmNotificationFullSchema(ZimfarmNotificationLightSchema):
     events: list[str]
 
 
+class ProducerSchema(BaseModel):
+    """
+    Schema for producer information
+    """
+
+    display_name: str
+    display_url: str
+    unique_id: str
+
+
 class BookLightSchema(BaseModel):
     """
     Schema for reading a book model with some fields
@@ -53,9 +63,7 @@ class BookFullSchema(BookLightSchema):
     zimcheck_result: dict[str, Any]
     zim_metadata: dict[str, Any]
     events: list[str]
-    producer_display_name: str
-    producer_display_url: str
-    producer_unique_id: str
+    producer: ProducerSchema
 
 
 class WarehousePathSchema(BaseModel):

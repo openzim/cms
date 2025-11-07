@@ -10,7 +10,7 @@ from cms_backend.db.books import get_books as db_get_books
 from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.orms import BookFullSchema, BookLightSchema
+from cms_backend.schemas.orms import BookFullSchema, BookLightSchema, ProducerSchema
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -69,7 +69,9 @@ async def get_book(
         zimcheck_result=db_book.zimcheck_result,
         zim_metadata=db_book.zim_metadata,
         events=db_book.events,
-        producer_display_name=db_book.producer_display_name,
-        producer_display_url=db_book.producer_display_url,
-        producer_unique_id=db_book.producer_unique_id,
+        producer=ProducerSchema(
+            display_name=db_book.producer_display_name,
+            display_url=db_book.producer_display_url,
+            unique_id=db_book.producer_unique_id,
+        ),
     )
