@@ -9,7 +9,14 @@ from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import Session
-from cms_backend.db.models import Base, Book, Title, ZimfarmNotification
+from cms_backend.db.models import (
+    Base,
+    Book,
+    Title,
+    Warehouse,
+    WarehousePath,
+    ZimfarmNotification,
+)
 from cms_backend.utils.datetime import getnow
 
 
@@ -132,28 +139,20 @@ def create_title(
 ) -> Callable[..., Title]:
     def _create_title(
         name: str = "test_en_all",
+        producer_unique_id: str | None = None,
         producer_display_name: str | None = None,
         producer_display_url: str | None = None,
-        producer_unique_id: str | None = None,
     ) -> Title:
         title = Title(
             name=name,
-            producer_display_name=(
-                producer_display_name
-                if producer_display_name is not None
-                else faker.company()
-            ),
-            producer_display_url=(
-                producer_display_url
-                if producer_display_url is not None
-                else faker.url()
-            ),
             producer_unique_id=(
                 producer_unique_id
                 if producer_unique_id is not None
                 else str(faker.uuid4())
             ),
         )
+        title.producer_display_name = producer_display_name
+        title.producer_display_url = producer_display_url
         dbsession.add(title)
         dbsession.flush()
         return title
@@ -166,3 +165,61 @@ def title(
     create_title: Callable[..., Title],
 ) -> Title:
     return create_title()
+
+
+@pytest.fixture
+def create_warehouse(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., Warehouse]:
+    def _create_warehouse(
+        name: str | None = None,
+        configuration: dict[str, Any] | None = None,
+    ) -> Warehouse:
+        warehouse = Warehouse(
+            name=name if name is not None else faker.company(),
+            configuration=configuration if configuration is not None else {},
+        )
+        dbsession.add(warehouse)
+        dbsession.flush()
+        return warehouse
+
+    return _create_warehouse
+
+
+@pytest.fixture
+def warehouse(
+    create_warehouse: Callable[..., Warehouse],
+) -> Warehouse:
+    return create_warehouse()
+
+
+@pytest.fixture
+def create_warehouse_path(
+    dbsession: OrmSession,
+    faker: Faker,
+    create_warehouse: Callable[..., Warehouse],
+) -> Callable[..., WarehousePath]:
+    def _create_warehouse_path(
+        folder_name: str | None = None,
+        warehouse: Warehouse | None = None,
+    ) -> WarehousePath:
+        warehouse_path = WarehousePath(
+            folder_name=folder_name if folder_name is not None else faker.file_path(),
+        )
+        warehouse_path.warehouse = (
+            warehouse if warehouse is not None else create_warehouse()
+        )
+        dbsession.add(warehouse_path)
+        dbsession.flush()
+        return warehouse_path
+
+    return _create_warehouse_path
+
+
+@pytest.fixture
+def warehouse_path(
+    create_warehouse_path: Callable[..., WarehousePath],
+    warehouse: Warehouse,
+) -> WarehousePath:
+    return create_warehouse_path(warehouse=warehouse)

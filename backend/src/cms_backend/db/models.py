@@ -139,11 +139,11 @@ class Title(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    name: Mapped[str]
-    producer_display_name: Mapped[str]
-    producer_display_url: Mapped[str]
+    name: Mapped[str] = mapped_column(unique=True, index=True)
     producer_unique_id: Mapped[str]
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
+    producer_display_name: Mapped[str | None] = mapped_column(init=False, default=None)
+    producer_display_url: Mapped[str | None] = mapped_column(init=False, default=None)
 
     # Warehouse paths
     dev_warehouse_path_id: Mapped[UUID | None] = mapped_column(

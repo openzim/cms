@@ -2,7 +2,7 @@ import constants from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
-import type { Title, TitleLight } from '@/types/title'
+import type { Title, TitleCreate, TitleLight } from '@/types/title'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { inject, ref } from 'vue'
@@ -73,6 +73,19 @@ export const useTitleStore = defineStore('title', () => {
     $cookies?.set('titles-table-limit', limit, constants.COOKIE_LIFETIME_EXPIRY)
   }
 
+  const createTitle = async (titleData: TitleCreate) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      errors.value = []
+      const response = await service.post<TitleCreate, TitleLight>('', titleData)
+      return response
+    } catch (_error) {
+      console.error('Failed to create title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
   return {
     // State
     title,
@@ -83,5 +96,6 @@ export const useTitleStore = defineStore('title', () => {
     fetchTitle,
     fetchTitles,
     savePaginatorLimit,
+    createTitle,
   }
 })

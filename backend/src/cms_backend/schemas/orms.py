@@ -17,6 +17,7 @@ class TitleLightSchema(BaseModel):
     Schema for reading a title model with some fields
     """
 
+    id: UUID
     name: str
 
 

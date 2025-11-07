@@ -53,11 +53,15 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <router-link :to="{ name: 'schedule-detail', params: { scheduleName: item.name } }">
+          <!--<router-link :to="{ name: 'schedule-detail', params: { scheduleName: item.name } }">
             <span class="d-flex align-center">
               {{ item.name }}
             </span>
           </router-link>
+          -->
+          <span class="d-flex align-center">
+            {{ item.name }}
+          </span>
         </template>
 
         <template #no-data>

@@ -31,14 +31,14 @@ def upgrade():
         sa.Column("producer_unique_id", sa.String(), nullable=False),
     )
 
-    # Add producer fields to title table (mandatory)
+    # Add producer fields to title table
     op.add_column(
         "title",
-        sa.Column("producer_display_name", sa.String(), nullable=False),
+        sa.Column("producer_display_name", sa.String(), nullable=True),
     )
     op.add_column(
         "title",
-        sa.Column("producer_display_url", sa.String(), nullable=False),
+        sa.Column("producer_display_url", sa.String(), nullable=True),
     )
     op.add_column(
         "title",
