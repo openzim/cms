@@ -53,6 +53,9 @@ class BookFullSchema(BookLightSchema):
     zimcheck_result: dict[str, Any]
     zim_metadata: dict[str, Any]
     events: list[str]
+    producer_display_name: str
+    producer_display_url: str
+    producer_unique_id: str
 
 
 class WarehousePathSchema(BaseModel):

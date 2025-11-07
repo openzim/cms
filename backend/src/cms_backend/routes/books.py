@@ -69,4 +69,7 @@ async def get_book(
         zimcheck_result=db_book.zimcheck_result,
         zim_metadata=db_book.zim_metadata,
         events=db_book.events,
+        producer_display_name=db_book.producer_display_name,
+        producer_display_url=db_book.producer_display_url,
+        producer_unique_id=db_book.producer_unique_id,
     )

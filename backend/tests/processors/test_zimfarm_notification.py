@@ -9,6 +9,12 @@ from tests.processors.test_book import GOOD_ZIM_METADATA
 from cms_backend.db.models import Book, Title, ZimfarmNotification
 from cms_backend.processors.zimfarm_notification import process_notification
 
+GOOD_PRODUCER = {
+    "displayName": "farm.openzim.org: test_en_all",
+    "displayUrl": "https://farm.openzim.org/recipes/test_en_all",
+    "uniqueId": "550e8400-e29b-41d4-a716-446655440000",
+}
+
 GOOD_NOTIFICATION_CONTENT = {
     "article_count": 100,
     "media_count": 50,
@@ -16,6 +22,7 @@ GOOD_NOTIFICATION_CONTENT = {
     "metadata": GOOD_ZIM_METADATA,
     "zimcheck": {"status": "pass"},
     "url": "https://example.com/zim/test.zim",
+    "producer": GOOD_PRODUCER,
 }
 
 
@@ -88,6 +95,7 @@ def test_process_notification_success(
             "metadata",
             "zimcheck",
             "url",
+            "producer",
         ]
     ],
 )
@@ -365,3 +373,124 @@ def test_process_notification_with_existing_books(
     assert len(title.books) == 2
     assert existing_book in title.books
     assert notification.book in title.books
+
+
+def test_process_notification_producer_not_dict(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    """Process notification where producer is not a dictionary"""
+
+    notification_content = {
+        **GOOD_NOTIFICATION_CONTENT,
+        "producer": "not a dict",
+    }
+    notification = create_zimfarm_notification(content=notification_content)
+    assert len(notification.events) == 0
+    assert notification.status == "pending"
+
+    process_notification(dbsession, notification)
+
+    dbsession.flush()
+    assert notification.status == "bad_notification"
+    assert notification.book is None
+    assert any(
+        event
+        for event in notification.events
+        if re.match(".*: producer must be a dictionary", event)
+    )
+
+
+@pytest.mark.parametrize(
+    "missing_key, producer_content",
+    [
+        pytest.param(
+            missing_key,
+            {key: value for key, value in GOOD_PRODUCER.items() if key != missing_key},
+            id=f"missing-{missing_key}",
+        )
+        for missing_key in ["displayName", "displayUrl", "uniqueId"]
+    ],
+)
+def test_process_notification_producer_missing_key(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    missing_key: str,
+    producer_content: dict[str, Any],
+):
+    """Process notification with producer missing mandatory key"""
+
+    notification_content = {
+        **GOOD_NOTIFICATION_CONTENT,
+        "producer": producer_content,
+    }
+    notification = create_zimfarm_notification(content=notification_content)
+    assert len(notification.events) == 0
+    assert notification.status == "pending"
+
+    process_notification(dbsession, notification)
+
+    dbsession.flush()
+    assert notification.status == "bad_notification"
+    assert notification.book is None
+    assert any(
+        event
+        for event in notification.events
+        if re.match(f".*: producer is missing mandatory keys: {missing_key}", event)
+    )
+
+
+def test_process_notification_producer_missing_multiple_keys(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    """Process notification with producer missing multiple mandatory keys"""
+
+    producer_content = {
+        key: value
+        for key, value in GOOD_PRODUCER.items()
+        if key not in ["displayName", "uniqueId"]
+    }
+    notification_content = {
+        **GOOD_NOTIFICATION_CONTENT,
+        "producer": producer_content,
+    }
+    notification = create_zimfarm_notification(content=notification_content)
+    assert len(notification.events) == 0
+    assert notification.status == "pending"
+
+    process_notification(dbsession, notification)
+
+    dbsession.flush()
+    assert notification.status == "bad_notification"
+    assert notification.book is None
+    assert any(
+        event
+        for event in notification.events
+        if re.match(
+            ".*: producer is missing mandatory keys: displayName,uniqueId", event
+        )
+    )
+
+
+def test_process_notification_producer_stored_in_book(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    title: Title,  # noqa: ARG001
+):
+    """Process notification successfully and verify producer fields are stored"""
+
+    notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
+    assert len(notification.events) == 0
+    assert notification.status == "pending"
+
+    process_notification(dbsession, notification)
+
+    dbsession.flush()
+    assert notification.status == "processed"
+    assert notification.book is not None
+
+    # Verify producer fields are stored correctly
+    assert notification.book.producer_display_name == GOOD_PRODUCER["displayName"]
+    assert notification.book.producer_display_url == GOOD_PRODUCER["displayUrl"]
+    assert notification.book.producer_unique_id == GOOD_PRODUCER["uniqueId"]

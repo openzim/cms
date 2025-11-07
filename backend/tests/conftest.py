@@ -80,6 +80,9 @@ def create_book(
         zim_metadata: dict[str, Any] | None = None,
         zimcheck_result: dict[str, Any] | None = None,
         zimfarm_notification: ZimfarmNotification | None = None,
+        producer_display_name: str | None = None,
+        producer_display_url: str | None = None,
+        producer_unique_id: str | None = None,
     ) -> Book:
         book = Book(
             id=_id if _id is not None else uuid4(),
@@ -91,6 +94,21 @@ def create_book(
             zim_metadata=zim_metadata if zim_metadata else {},
             zimcheck_result=zimcheck_result if zimcheck_result else {},
             zimfarm_notification=zimfarm_notification,
+            producer_display_name=(
+                producer_display_name
+                if producer_display_name is not None
+                else faker.company()
+            ),
+            producer_display_url=(
+                producer_display_url
+                if producer_display_url is not None
+                else faker.url()
+            ),
+            producer_unique_id=(
+                producer_unique_id
+                if producer_unique_id is not None
+                else str(faker.uuid4())
+            ),
         )
         # book.events = []
         dbsession.add(book)
@@ -110,9 +128,32 @@ def book(
 @pytest.fixture
 def create_title(
     dbsession: OrmSession,
+    faker: Faker,
 ) -> Callable[..., Title]:
-    def _create_title(name: str = "test_en_all") -> Title:
-        title = Title(name=name)
+    def _create_title(
+        name: str = "test_en_all",
+        producer_display_name: str | None = None,
+        producer_display_url: str | None = None,
+        producer_unique_id: str | None = None,
+    ) -> Title:
+        title = Title(
+            name=name,
+            producer_display_name=(
+                producer_display_name
+                if producer_display_name is not None
+                else faker.company()
+            ),
+            producer_display_url=(
+                producer_display_url
+                if producer_display_url is not None
+                else faker.url()
+            ),
+            producer_unique_id=(
+                producer_unique_id
+                if producer_unique_id is not None
+                else str(faker.uuid4())
+            ),
+        )
         dbsession.add(title)
         dbsession.flush()
         return title

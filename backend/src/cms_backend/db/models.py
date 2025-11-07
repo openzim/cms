@@ -91,6 +91,9 @@ class Book(Base):
     size: Mapped[int]
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
+    producer_display_name: Mapped[str]
+    producer_display_url: Mapped[str]
+    producer_unique_id: Mapped[str]
     status: Mapped[str] = mapped_column(
         init=False, default="pending_processing", server_default="pending_processing"
     )
@@ -137,6 +140,9 @@ class Title(Base):
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
     name: Mapped[str]
+    producer_display_name: Mapped[str]
+    producer_display_url: Mapped[str]
+    producer_unique_id: Mapped[str]
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     # Warehouse paths

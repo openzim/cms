@@ -17,6 +17,9 @@ def create_book(
     zim_metadata: dict[str, Any],
     zimcheck_result: dict[str, Any],
     zimfarm_notification: ZimfarmNotification,
+    producer_display_name: str,
+    producer_display_url: str,
+    producer_unique_id: str,
 ) -> Book:
     """Create a new book"""
 
@@ -28,6 +31,9 @@ def create_book(
         zim_metadata=zim_metadata,
         zimcheck_result=zimcheck_result,
         zimfarm_notification=zimfarm_notification,
+        producer_display_name=producer_display_name,
+        producer_display_url=producer_display_url,
+        producer_unique_id=producer_unique_id,
     )
     session.add(book)
     zimfarm_notification.events.append(
