@@ -138,6 +138,24 @@ class Title(Base):
     )
     name: Mapped[str]
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
+
+    # Warehouse paths
+    dev_warehouse_path_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("warehouse_path.id"), init=False, default=None
+    )
+    dev_warehouse_path: Mapped[Optional["WarehousePath"]] = relationship(
+        init=False, foreign_keys=[dev_warehouse_path_id]
+    )
+    prod_warehouse_path_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("warehouse_path.id"), init=False, default=None
+    )
+    prod_warehouse_path: Mapped[Optional["WarehousePath"]] = relationship(
+        init=False, foreign_keys=[prod_warehouse_path_id]
+    )
+    in_prod: Mapped[bool] = mapped_column(
+        init=False, default=False, server_default=text("false")
+    )
+
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
         cascade="save-update, merge, refresh-expire",
