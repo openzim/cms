@@ -112,8 +112,6 @@ const error = ref('')
 const formData = ref<TitleCreate>({
   name: '',
   producer_unique_id: '',
-  producer_display_name: '',
-  producer_display_url: '',
   dev_warehouse_path_id: '',
   prod_warehouse_path_id: '',
   in_prod: false,
@@ -152,24 +150,7 @@ async function handleSubmit() {
   error.value = ''
 
   try {
-    // Clean up optional fields
-    const titleData: TitleCreate = {
-      name: formData.value.name,
-      producer_unique_id: formData.value.producer_unique_id,
-      dev_warehouse_path_id: formData.value.dev_warehouse_path_id,
-      prod_warehouse_path_id: formData.value.prod_warehouse_path_id,
-      in_prod: formData.value.in_prod,
-    }
-
-    if (formData.value.producer_display_name) {
-      titleData.producer_display_name = formData.value.producer_display_name
-    }
-
-    if (formData.value.producer_display_url) {
-      titleData.producer_display_url = formData.value.producer_display_url
-    }
-
-    await titleStore.createTitle(titleData)
+    await titleStore.createTitle(formData.value)
     emit('created')
     resetForm()
     isOpen.value = false
@@ -190,8 +171,6 @@ function resetForm() {
   formData.value = {
     name: '',
     producer_unique_id: '',
-    producer_display_name: '',
-    producer_display_url: '',
     dev_warehouse_path_id: '',
     prod_warehouse_path_id: '',
     in_prod: false,

@@ -114,7 +114,9 @@ def test_get_matching_title_found(
 ):
     """Get matching title for a given book - title exist"""
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(
+        zim_metadata={"Name": title.name}, producer_unique_id=title.producer_unique_id
+    )
     assert len(book.events) == 0
     assert len(title.events) == 0
     matching_title = get_matching_title(dbsession, book=book)

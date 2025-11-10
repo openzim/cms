@@ -19,6 +19,18 @@ def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None
     return session.scalars(select(Title).where(Title.name == name)).one_or_none()
 
 
+def get_title_by_name_and_producer_or_none(
+    session: OrmSession, *, name: str, producer_unique_id: str
+) -> Title | None:
+    """Get a title by name and producer_unique_id if possible else None"""
+
+    return session.scalars(
+        select(Title).where(
+            Title.name == name, Title.producer_unique_id == producer_unique_id
+        )
+    ).one_or_none()
+
+
 def get_titles(
     session: OrmSession,
     *,

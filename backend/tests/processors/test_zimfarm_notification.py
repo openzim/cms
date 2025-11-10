@@ -29,9 +29,14 @@ GOOD_NOTIFICATION_CONTENT = {
 def test_process_notification_success(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
-    title: Title,
+    create_title: Callable[..., Title],
 ):
     """Process notification successfully - all steps work"""
+
+    # Create title with matching producer_unique_id
+    title = create_title(
+        name="test_en_all", producer_unique_id=GOOD_PRODUCER["uniqueId"]
+    )
 
     notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
     assert len(notification.events) == 0
@@ -349,12 +354,19 @@ def test_process_notification_with_existing_books(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     create_book: Callable[..., Book],
-    title: Title,
+    create_title: Callable[..., Title],
 ):
     """Process notification and add to title that already has books"""
 
+    # Create title with matching producer_unique_id
+    title = create_title(
+        name="test_en_all", producer_unique_id=GOOD_PRODUCER["uniqueId"]
+    )
+
     # Add an existing book to the title
-    existing_book = create_book(zim_metadata={"Name": title.name})
+    existing_book = create_book(
+        zim_metadata={"Name": title.name}, producer_unique_id=title.producer_unique_id
+    )
     title.books.append(existing_book)
     dbsession.flush()
 

@@ -134,3 +134,28 @@ def test_create_title_missing_required_field(
 
     response = client.post("/v1/titles", json=title_data)
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_create_title_duplicate_name(
+    client: TestClient,
+    create_warehouse_path: Callable[..., WarehousePath],
+):
+    """Test creating a title with duplicate name returns conflict error"""
+    dev_warehouse_path = create_warehouse_path()
+    prod_warehouse_path = create_warehouse_path()
+
+    title_data = {
+        "name": "wikipedia_en_duplicate",
+        "producer_unique_id": "550e8400-e29b-41d4-a716-446655440003",
+        "dev_warehouse_path_id": str(dev_warehouse_path.id),
+        "prod_warehouse_path_id": str(prod_warehouse_path.id),
+    }
+
+    # Create the first title
+    response = client.post("/v1/titles", json=title_data)
+    assert response.status_code == HTTPStatus.OK
+
+    # Try to create another title with the same name
+    response = client.post("/v1/titles", json=title_data)
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert "already exists" in response.json()["message"].lower()
