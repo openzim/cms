@@ -252,7 +252,15 @@ def test_get_title_by_id_with_books(
 
     # Verify books are included
     assert len(data["books"]) == 2
-    assert set(data["books"][0].keys()) == {"id", "title_id", "status"}
+    assert set(data["books"][0].keys()) == {
+        "id",
+        "title_id",
+        "status",
+        "created_at",
+        "name",
+        "date",
+        "flavour",
+    }
     assert data["books"][0]["title_id"] == str(title.id)
     assert data["books"][1]["title_id"] == str(title.id)
 

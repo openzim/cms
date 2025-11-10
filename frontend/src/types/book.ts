@@ -8,6 +8,10 @@ export interface Book {
   id: string
   title_id?: string
   status: string
+  created_at: string
+  name?: string
+  date?: string
+  flavour?: string
   article_count: number
   media_count: number
   size: number
@@ -21,4 +25,8 @@ export interface BookLight {
   id: string
   title_id?: string
   status: string
+  created_at: string
+  name?: string
+  date?: string
+  flavour?: string
 }

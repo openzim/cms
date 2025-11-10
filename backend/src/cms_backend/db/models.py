@@ -86,11 +86,15 @@ Index(
 class Book(Base):
     __tablename__ = "book"
     id: Mapped[UUID] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime]
     article_count: Mapped[int]
     media_count: Mapped[int]
     size: Mapped[int]
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
+    name: Mapped[str | None]
+    date: Mapped[str | None]
+    flavour: Mapped[str | None]
     producer_display_name: Mapped[str]
     producer_display_url: Mapped[str]
     producer_unique_id: Mapped[str]

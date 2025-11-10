@@ -81,11 +81,15 @@ def create_book(
 ) -> Callable[..., Book]:
     def _create_book(
         _id: UUID | None = None,
+        created_at: datetime | None = None,
         article_count: int | None = None,
         media_count: int | None = None,
         size: int | None = None,
         zim_metadata: dict[str, Any] | None = None,
         zimcheck_result: dict[str, Any] | None = None,
+        name: str | None = None,
+        date: str | None = None,
+        flavour: str | None = None,
         zimfarm_notification: ZimfarmNotification | None = None,
         producer_display_name: str | None = None,
         producer_display_url: str | None = None,
@@ -93,6 +97,7 @@ def create_book(
     ) -> Book:
         book = Book(
             id=_id if _id is not None else uuid4(),
+            created_at=created_at if created_at is not None else getnow(),
             article_count=(
                 article_count if article_count is not None else faker.random_int()
             ),
@@ -100,6 +105,9 @@ def create_book(
             size=size if size is not None else faker.random_int(),
             zim_metadata=zim_metadata if zim_metadata else {},
             zimcheck_result=zimcheck_result if zimcheck_result else {},
+            name=name,
+            date=date,
+            flavour=flavour,
             zimfarm_notification=zimfarm_notification,
             producer_display_name=(
                 producer_display_name

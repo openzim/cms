@@ -70,6 +70,10 @@ class BookLightSchema(BaseModel):
     id: UUID
     title_id: UUID | None
     status: str
+    created_at: datetime
+    name: str | None
+    date: str | None
+    flavour: str | None
 
 
 class BookFullSchema(BookLightSchema):

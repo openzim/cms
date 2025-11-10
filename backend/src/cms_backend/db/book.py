@@ -23,13 +23,22 @@ def create_book(
 ) -> Book:
     """Create a new book"""
 
+    # Extract metadata fields (optional fields may not be present)
+    name = zim_metadata.get("Name")
+    date = zim_metadata.get("Date")
+    flavour = zim_metadata.get("Flavor")  # Note: metadata uses "Flavor" not "Flavour"
+
     book = Book(
         id=book_id,
+        created_at=getnow(),
         article_count=article_count,
         media_count=media_count,
         size=size,
         zim_metadata=zim_metadata,
         zimcheck_result=zimcheck_result,
+        name=name,
+        date=date,
+        flavour=flavour,
         zimfarm_notification=zimfarm_notification,
         producer_display_name=producer_display_name,
         producer_display_url=producer_display_url,

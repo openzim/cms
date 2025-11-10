@@ -84,14 +84,47 @@
           <tr>
             <th class="text-left pa-4 align-top">Books</th>
             <td class="py-2">
-              <div v-if="title.books.length > 0">
-                <div v-for="book in title.books" :key="book.id" class="mb-2">
-                  <router-link :to="{ name: 'book-detail', params: { id: book.id } }">
-                    <code>{{ book.id }}</code>
+              <v-data-table
+                v-if="title.books.length > 0"
+                :headers="bookHeaders"
+                :items="sortedBooks"
+                :items-per-page="-1"
+                density="compact"
+                class="table-borderless"
+                hide-default-footer
+              >
+                <template #[`item.id`]="{ item }">
+                  <router-link :to="{ name: 'book-detail', params: { id: item.id } }">
+                    <code>{{ item.id }}</code>
                   </router-link>
-                  - Status: {{ book.status }}
-                </div>
-              </div>
+                </template>
+
+                <template #[`item.created_at`]="{ item }">
+                  <v-tooltip location="bottom">
+                    <template #activator="{ props }">
+                      <span v-bind="props">
+                        {{ fromNow(item.created_at) }}
+                      </span>
+                    </template>
+                    <span>{{ formatDt(item.created_at) }}</span>
+                  </v-tooltip>
+                </template>
+
+                <template #[`item.name`]="{ item }">
+                  <span v-if="item.name">{{ item.name }}</span>
+                  <span v-else class="text-grey">-</span>
+                </template>
+
+                <template #[`item.date`]="{ item }">
+                  <span v-if="item.date">{{ item.date }}</span>
+                  <span v-else class="text-grey">-</span>
+                </template>
+
+                <template #[`item.flavour`]="{ item }">
+                  <span v-if="item.flavour">{{ item.flavour }}</span>
+                  <span v-else class="text-grey">-</span>
+                </template>
+              </v-data-table>
               <span v-else class="text-grey">No books</span>
             </td>
           </tr>
@@ -108,6 +141,7 @@ import { useTitleStore } from '@/stores/title'
 import { useWarehousePathStore } from '@/stores/warehousePath'
 import type { Title } from '@/types/title'
 import type { WarehousePath } from '@/types/warehousePath'
+import { formatDt, fromNow } from '@/utils/format'
 import { computed, onMounted, ref } from 'vue'
 
 const loadingStore = useLoadingStore()
@@ -124,6 +158,22 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {})
+
+const bookHeaders = [
+  { title: 'Created', value: 'created_at', sortable: true },
+  { title: 'Name', value: 'name', sortable: true },
+  { title: 'Flavour', value: 'flavour', sortable: true },
+  { title: 'Date', value: 'date', sortable: true },
+  { title: 'Status', value: 'status', sortable: true },
+  { title: 'ID', value: 'id', sortable: false },
+]
+
+const sortedBooks = computed(() => {
+  if (!title.value?.books) return []
+  return [...title.value.books].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
+})
 
 const devWarehousePath = computed<WarehousePath | undefined>(() => {
   if (!title.value?.dev_warehouse_path_id) return undefined

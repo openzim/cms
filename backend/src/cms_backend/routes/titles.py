@@ -77,6 +77,10 @@ def get_title(
                 id=book.id,
                 title_id=book.title_id,
                 status=book.status,
+                created_at=book.created_at,
+                name=book.name,
+                date=book.date,
+                flavour=book.flavour,
             )
             for book in title.books
         ],
