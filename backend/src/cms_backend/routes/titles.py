@@ -69,4 +69,10 @@ def create_title(
         prod_warehouse_path_id=title_data.prod_warehouse_path_id,
         in_prod=title_data.in_prod,
     )
-    return TitleLightSchema(id=title.id, name=title.name)
+    return TitleLightSchema(
+        id=title.id,
+        name=title.name,
+        producer_unique_id=title.producer_unique_id,
+        producer_display_name=title.producer_display_name,
+        producer_display_url=title.producer_display_url,
+    )

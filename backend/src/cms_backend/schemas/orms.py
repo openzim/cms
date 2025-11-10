@@ -19,6 +19,9 @@ class TitleLightSchema(BaseModel):
 
     id: UUID
     name: str
+    producer_unique_id: str
+    producer_display_name: str | None
+    producer_display_url: str | None
 
 
 class ZimfarmNotificationLightSchema(BaseModel):

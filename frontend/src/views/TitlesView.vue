@@ -48,8 +48,8 @@ import { useRouter } from 'vue-router'
 
 // Define headers for the table
 const headers = [
-  { title: 'ID', value: 'id' },
   { title: 'Name', value: 'name' },
+  { title: 'Producer', value: 'producer' },
 ]
 
 // Reactive state

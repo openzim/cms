@@ -36,7 +36,13 @@ def test_get_titles(
     assert data["meta"]["page_size"] == 1
     assert data["meta"]["count"] == 2
     assert len(data["items"]) == 1
-    assert set(data["items"][0].keys()) == {"id", "name"}
+    assert set(data["items"][0].keys()) == {
+        "id",
+        "name",
+        "producer_unique_id",
+        "producer_display_name",
+        "producer_display_url",
+    }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
 

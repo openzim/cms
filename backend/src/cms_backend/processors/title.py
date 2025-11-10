@@ -20,6 +20,21 @@ def add_book_to_title(book: Book, title: Title):
             title.events.append(f"{getnow()}: updating title name to {name}")
             title.name = name
 
+        # Update title producer display fields from book
+        if title.producer_display_name != book.producer_display_name:
+            title.events.append(
+                f"{getnow()}: updating title producer_display_name to "
+                f"{book.producer_display_name}"
+            )
+            title.producer_display_name = book.producer_display_name
+
+        if title.producer_display_url != book.producer_display_url:
+            title.events.append(
+                f"{getnow()}: updating title producer_display_url to "
+                f"{book.producer_display_url}"
+            )
+            title.producer_display_url = book.producer_display_url
+
     except Exception as exc:
         book.events.append(
             f"{getnow()}: error encountered while adding to title {title.id}\n{exc}"

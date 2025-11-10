@@ -45,6 +45,9 @@ def get_titles(
         select(
             Title.id.label("title_id"),
             Title.name.label("title_name"),
+            Title.producer_unique_id.label("producer_unique_id"),
+            Title.producer_display_name.label("producer_display_name"),
+            Title.producer_display_url.label("producer_display_url"),
         )
         .order_by(Title.name)
         .where(
@@ -63,10 +66,20 @@ def get_titles(
     return ListResult[TitleLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
-            TitleLightSchema(id=title_id, name=title_name)
-            for (title_id, title_name) in session.execute(
-                stmt.offset(skip).limit(limit)
-            ).all()
+            TitleLightSchema(
+                id=title_id,
+                name=title_name,
+                producer_unique_id=producer_unique_id,
+                producer_display_name=producer_display_name,
+                producer_display_url=producer_display_url,
+            )
+            for (
+                title_id,
+                title_name,
+                producer_unique_id,
+                producer_display_name,
+                producer_display_url,
+            ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
 

@@ -18,6 +18,9 @@ def test_create_book(
         zim_metadata={"key": "value"},
         zimcheck_result={"check_key": "check_value"},
         zimfarm_notification=zimfarm_notification,
+        producer_display_name=faker.company(),
+        producer_display_url=faker.url(),
+        producer_unique_id=str(faker.uuid4()),
     )
     dbsession.flush()
     assert book.zimfarm_notification == zimfarm_notification

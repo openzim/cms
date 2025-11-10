@@ -159,3 +159,49 @@ def test_add_book_to_title_bad_error(
         for event in book.events
         if re.match(".*: error encountered while adding to title .*", event)
     )
+
+
+def test_add_book_to_title_updates_producer_fields(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+):
+    """Add a book to a title updates producer display fields"""
+
+    # Create a title without producer display fields (only unique_id)
+    title = create_title(
+        name="test_en_all",
+        producer_unique_id="550e8400-e29b-41d4-a716-446655440000",
+        producer_display_name=None,
+        producer_display_url=None,
+    )
+
+    # Create a book with complete producer information
+    book = create_book(
+        zim_metadata={"Name": title.name},
+        producer_unique_id=title.producer_unique_id,
+        producer_display_name="farm.openzim.org: test_en_all",
+        producer_display_url="https://farm.openzim.org/recipes/test_en_all",
+    )
+
+    assert title.producer_display_name is None
+    assert title.producer_display_url is None
+    assert len(book.events) == 0
+    assert len(title.events) == 0
+
+    add_book_to_title(book=book, title=title)
+    dbsession.flush()
+
+    # Verify producer fields were updated
+    assert title.producer_display_name == book.producer_display_name
+    assert title.producer_display_url == book.producer_display_url
+    assert any(
+        event
+        for event in title.events
+        if re.match(".*: updating title producer_display_name to .*", event)
+    )
+    assert any(
+        event
+        for event in title.events
+        if re.match(".*: updating title producer_display_url to .*", event)
+    )

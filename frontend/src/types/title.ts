@@ -1,11 +1,17 @@
 export interface Title {
   id: string
   name: string
+  producer_unique_id: string
+  producer_display_name: string | null
+  producer_display_url: string | null
 }
 
 export interface TitleLight {
   id: string
   name: string
+  producer_unique_id: string
+  producer_display_name: string | null
+  producer_display_url: string | null
 }
 
 export interface TitleCreate {
