@@ -24,6 +24,18 @@ class TitleLightSchema(BaseModel):
     producer_display_url: str | None
 
 
+class TitleFullSchema(TitleLightSchema):
+    """
+    Schema for reading a title model with all fields including books
+    """
+
+    dev_warehouse_path_id: UUID | None
+    prod_warehouse_path_id: UUID | None
+    in_prod: bool
+    events: list[str]
+    books: list["BookLightSchema"]
+
+
 class ZimfarmNotificationLightSchema(BaseModel):
     """
     Schema for reading a zimfarm notification model with some fields

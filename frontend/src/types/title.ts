@@ -1,9 +1,16 @@
+import type { BookLight } from './book'
+
 export interface Title {
   id: string
   name: string
   producer_unique_id: string
   producer_display_name: string | null
   producer_display_url: string | null
+  dev_warehouse_path_id: string | null
+  prod_warehouse_path_id: string | null
+  in_prod: boolean
+  events: string[]
+  books: BookLight[]
 }
 
 export interface TitleLight {

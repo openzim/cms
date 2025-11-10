@@ -13,6 +13,17 @@ from cms_backend.schemas.orms import ListResult, TitleLightSchema
 from cms_backend.utils.datetime import getnow
 
 
+def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
+    """Get a title by ID"""
+
+    title = session.get(Title, title_id)
+    if not title:
+        from cms_backend.db.exceptions import RecordDoesNotExistError
+
+        raise RecordDoesNotExistError(f"Title with id {title_id} does not exist")
+    return title
+
+
 def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None:
     """Get a title by name if possible else None"""
 

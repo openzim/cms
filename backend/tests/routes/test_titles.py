@@ -1,9 +1,10 @@
 from collections.abc import Callable
 from http import HTTPStatus
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from cms_backend.db.models import Title, WarehousePath
+from cms_backend.db.models import Book, Title, WarehousePath
 
 
 def test_get_titles_empty(client: TestClient):
@@ -165,3 +166,106 @@ def test_create_title_duplicate_name(
     response = client.post("/v1/titles", json=title_data)
     assert response.status_code == HTTPStatus.CONFLICT
     assert "already exists" in response.json()["message"].lower()
+
+
+def test_get_title_by_id(
+    client: TestClient,
+    create_title: Callable[..., Title],
+):
+    """Test retrieving a title by ID returns full details"""
+    title = create_title(
+        name="wikipedia_en_test",
+        producer_unique_id="550e8400-e29b-41d4-a716-446655440000",
+        producer_display_name="farm.openzim.org: wikipedia_en_test",
+        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
+    )
+
+    response = client.get(f"/v1/titles/{title.id}")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    # Verify all TitleFullSchema fields are present
+    assert set(data.keys()) == {
+        "id",
+        "name",
+        "producer_unique_id",
+        "producer_display_name",
+        "producer_display_url",
+        "dev_warehouse_path_id",
+        "prod_warehouse_path_id",
+        "in_prod",
+        "events",
+        "books",
+    }
+
+    # Verify field values
+    assert data["id"] == str(title.id)
+    assert data["name"] == "wikipedia_en_test"
+    assert data["producer_unique_id"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert data["producer_display_name"] == "farm.openzim.org: wikipedia_en_test"
+    assert (
+        data["producer_display_url"]
+        == "https://farm.openzim.org/recipes/wikipedia_en_test"
+    )
+    # Warehouse paths are None when not explicitly set by create_title fixture
+    assert data["dev_warehouse_path_id"] is None
+    assert data["prod_warehouse_path_id"] is None
+    assert data["in_prod"] == title.in_prod
+    assert isinstance(data["events"], list)
+    assert isinstance(data["books"], list)
+    assert len(data["books"]) == 0
+
+
+def test_get_title_by_id_with_books(
+    client: TestClient,
+    dbsession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+):
+    """Test retrieving a title with associated books"""
+    title = create_title(
+        name="wikipedia_en_test",
+        producer_unique_id="550e8400-e29b-41d4-a716-446655440000",
+    )
+
+    # Create books associated with this title
+    book1 = create_book(
+        zim_metadata={"Name": "wikipedia_en_test"},
+        producer_unique_id=title.producer_unique_id,
+        producer_display_name="farm.openzim.org: wikipedia_en_test",
+        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
+    )
+    book2 = create_book(
+        zim_metadata={"Name": "wikipedia_en_test"},
+        producer_unique_id=title.producer_unique_id,
+        producer_display_name="farm.openzim.org: wikipedia_en_test",
+        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
+    )
+
+    # Associate books with title
+    title.books.append(book1)
+    title.books.append(book2)
+    dbsession.flush()  # Flush to update title_id on books
+
+    response = client.get(f"/v1/titles/{title.id}")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    # Verify books are included
+    assert len(data["books"]) == 2
+    assert set(data["books"][0].keys()) == {"id", "title_id", "status"}
+    assert data["books"][0]["title_id"] == str(title.id)
+    assert data["books"][1]["title_id"] == str(title.id)
+
+    # Verify book IDs match
+    book_ids_in_response = {book["id"] for book in data["books"]}
+    assert str(book1.id) in book_ids_in_response
+    assert str(book2.id) in book_ids_in_response
+
+
+def test_get_title_by_id_not_found(client: TestClient):
+    """Test retrieving a non-existent title returns 404"""
+    non_existent_id = uuid4()
+    response = client.get(f"/v1/titles/{non_existent_id}")
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert "does not exist" in response.json()["message"].lower()

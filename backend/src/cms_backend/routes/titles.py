@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import gen_dbsession
 from cms_backend.db.title import create_title as db_create_title
+from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.orms import TitleLightSchema
+from cms_backend.schemas.orms import BookLightSchema, TitleFullSchema, TitleLightSchema
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 
@@ -50,6 +51,35 @@ def get_titles(
             page_size=len(results.records),
         ),
         items=results.records,
+    )
+
+
+@router.get("/{title_id}")
+def get_title(
+    title_id: UUID,
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleFullSchema:
+    """Get a title by ID with full details including books"""
+    title = db_get_title_by_id(session, title_id=title_id)
+
+    return TitleFullSchema(
+        id=title.id,
+        name=title.name,
+        producer_unique_id=title.producer_unique_id,
+        producer_display_name=title.producer_display_name,
+        producer_display_url=title.producer_display_url,
+        dev_warehouse_path_id=title.dev_warehouse_path_id,
+        prod_warehouse_path_id=title.prod_warehouse_path_id,
+        in_prod=title.in_prod,
+        events=title.events,
+        books=[
+            BookLightSchema(
+                id=book.id,
+                title_id=book.title_id,
+                status=book.status,
+            )
+            for book in title.books
+        ],
     )
 
 
