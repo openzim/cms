@@ -29,8 +29,8 @@ class TitleFullSchema(TitleLightSchema):
     Schema for reading a title model with all fields including books
     """
 
-    dev_warehouse_path_id: UUID | None
-    prod_warehouse_path_id: UUID | None
+    dev_warehouse_path_id: UUID
+    prod_warehouse_path_id: UUID
     in_prod: bool
     events: list[str]
     books: list["BookLightSchema"]

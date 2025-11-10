@@ -42,7 +42,7 @@
               <span v-if="devWarehousePath">
                 {{ devWarehousePath.warehouse_name }}: {{ devWarehousePath.folder_name }}
               </span>
-              <span v-else class="text-grey">None</span>
+              <span v-else class="text-grey">Unknown</span>
             </td>
           </tr>
           <tr>
@@ -51,7 +51,7 @@
               <span v-if="prodWarehousePath">
                 {{ prodWarehousePath.warehouse_name }}: {{ prodWarehousePath.folder_name }}
               </span>
-              <span v-else class="text-grey">None</span>
+              <span v-else class="text-grey">Unknown</span>
             </td>
           </tr>
           <tr>

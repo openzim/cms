@@ -6,8 +6,8 @@ export interface Title {
   producer_unique_id: string
   producer_display_name: string | null
   producer_display_url: string | null
-  dev_warehouse_path_id: string | null
-  prod_warehouse_path_id: string | null
+  dev_warehouse_path_id: string
+  prod_warehouse_path_id: string
   in_prod: boolean
   events: string[]
   books: BookLight[]

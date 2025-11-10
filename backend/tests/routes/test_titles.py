@@ -207,9 +207,8 @@ def test_get_title_by_id(
         data["producer_display_url"]
         == "https://farm.openzim.org/recipes/wikipedia_en_test"
     )
-    # Warehouse paths are None when not explicitly set by create_title fixture
-    assert data["dev_warehouse_path_id"] is None
-    assert data["prod_warehouse_path_id"] is None
+    assert data["dev_warehouse_path_id"] == str(title.dev_warehouse_path_id)
+    assert data["prod_warehouse_path_id"] == str(title.prod_warehouse_path_id)
     assert data["in_prod"] == title.in_prod
     assert isinstance(data["events"], list)
     assert isinstance(data["books"], list)

@@ -136,12 +136,15 @@ def book(
 def create_title(
     dbsession: OrmSession,
     faker: Faker,
+    create_warehouse_path: Callable[..., WarehousePath],
 ) -> Callable[..., Title]:
     def _create_title(
         name: str = "test_en_all",
         producer_unique_id: str | None = None,
         producer_display_name: str | None = None,
         producer_display_url: str | None = None,
+        dev_warehouse_path_id: UUID | None = None,
+        prod_warehouse_path_id: UUID | None = None,
     ) -> Title:
         title = Title(
             name=name,
@@ -153,6 +156,17 @@ def create_title(
         )
         title.producer_display_name = producer_display_name
         title.producer_display_url = producer_display_url
+        # Create default warehouse paths if not provided
+        if dev_warehouse_path_id is None:
+            dev_warehouse_path = create_warehouse_path()
+            title.dev_warehouse_path_id = dev_warehouse_path.id
+        else:
+            title.dev_warehouse_path_id = dev_warehouse_path_id
+        if prod_warehouse_path_id is None:
+            prod_warehouse_path = create_warehouse_path()
+            title.prod_warehouse_path_id = prod_warehouse_path.id
+        else:
+            title.prod_warehouse_path_id = prod_warehouse_path_id
         dbsession.add(title)
         dbsession.flush()
         return title
