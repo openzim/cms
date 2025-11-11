@@ -37,21 +37,33 @@
             </td>
           </tr>
           <tr>
-            <th class="text-left" style="width: 200px">Dev Warehouse Path</th>
+            <th class="text-left" style="width: 200px">Dev Warehouse Paths</th>
             <td>
-              <span v-if="devWarehousePath">
-                {{ devWarehousePath.warehouse_name }}: {{ devWarehousePath.folder_name }}
-              </span>
-              <span v-else class="text-grey">Unknown</span>
+              <div v-if="title.dev_warehouse_paths && title.dev_warehouse_paths.length > 0">
+                <div
+                  v-for="path in title.dev_warehouse_paths"
+                  :key="`dev-${path.path_id}`"
+                  class="mb-2"
+                >
+                  {{ path.warehouse_name }}: {{ path.folder_name }}
+                </div>
+              </div>
+              <span v-else class="text-grey">No dev warehouse paths</span>
             </td>
           </tr>
           <tr>
-            <th class="text-left" style="width: 200px">Prod Warehouse Path</th>
+            <th class="text-left" style="width: 200px">Prod Warehouse Paths</th>
             <td>
-              <span v-if="prodWarehousePath">
-                {{ prodWarehousePath.warehouse_name }}: {{ prodWarehousePath.folder_name }}
-              </span>
-              <span v-else class="text-grey">Unknown</span>
+              <div v-if="title.prod_warehouse_paths && title.prod_warehouse_paths.length > 0">
+                <div
+                  v-for="path in title.prod_warehouse_paths"
+                  :key="`prod-${path.path_id}`"
+                  class="mb-2"
+                >
+                  {{ path.warehouse_name }}: {{ path.folder_name }}
+                </div>
+              </div>
+              <span v-else class="text-grey">No prod warehouse paths</span>
             </td>
           </tr>
           <tr>
@@ -136,15 +148,12 @@
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
-import { useWarehousePathStore } from '@/stores/warehousePath'
 import type { Title } from '@/types/title'
-import type { WarehousePath } from '@/types/warehousePath'
 import { formatDt, fromNow } from '@/utils/format'
 import { computed, onMounted, ref } from 'vue'
 
 const loadingStore = useLoadingStore()
 const titleStore = useTitleStore()
-const warehousePathStore = useWarehousePathStore()
 const notificationStore = useNotificationStore()
 
 const error = ref<string | null>(null)
@@ -173,27 +182,9 @@ const sortedBooks = computed(() => {
   )
 })
 
-const devWarehousePath = computed<WarehousePath | undefined>(() => {
-  if (!title.value?.dev_warehouse_path_id) return undefined
-  return warehousePathStore.warehousePaths.find(
-    (wp) => wp.path_id === title.value!.dev_warehouse_path_id,
-  )
-})
-
-const prodWarehousePath = computed<WarehousePath | undefined>(() => {
-  if (!title.value?.prod_warehouse_path_id) return undefined
-  return warehousePathStore.warehousePaths.find(
-    (wp) => wp.path_id === title.value!.prod_warehouse_path_id,
-  )
-})
-
 const loadData = async () => {
   loadingStore.startLoading('Fetching title...')
 
-  // Fetch warehouse paths first
-  await warehousePathStore.fetchWarehousePaths()
-
-  // Then fetch the title
   const data = await titleStore.fetchTitleById(props.id)
   if (data) {
     error.value = null

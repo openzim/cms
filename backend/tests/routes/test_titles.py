@@ -60,8 +60,8 @@ def test_create_title_required_fields_only(
     title_data = {
         "name": "wikipedia_en_test",
         "producer_unique_id": "550e8400-e29b-41d4-a716-446655440000",
-        "dev_warehouse_path_id": str(dev_warehouse_path.id),
-        "prod_warehouse_path_id": str(prod_warehouse_path.id),
+        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
+        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
     }
 
     response = client.post("/v1/titles", json=title_data)
@@ -79,8 +79,18 @@ def test_create_title_required_fields_only(
     assert title.producer_unique_id == "550e8400-e29b-41d4-a716-446655440000"
     assert title.producer_display_name is None
     assert title.producer_display_url is None
-    assert title.dev_warehouse_path_id == dev_warehouse_path.id
-    assert title.prod_warehouse_path_id == prod_warehouse_path.id
+
+    # Verify warehouse paths
+    dev_paths = [
+        twp.warehouse_path_id for twp in title.warehouse_paths if twp.path_type == "dev"
+    ]
+    prod_paths = [
+        twp.warehouse_path_id
+        for twp in title.warehouse_paths
+        if twp.path_type == "prod"
+    ]
+    assert dev_warehouse_path.id in dev_paths
+    assert prod_warehouse_path.id in prod_paths
     assert title.in_prod is False
 
 
@@ -98,8 +108,8 @@ def test_create_title_with_optional_fields(
         "producer_unique_id": "550e8400-e29b-41d4-a716-446655440001",
         "producer_display_name": "farm.openzim.org: wikipedia_fr_test",
         "producer_display_url": "https://farm.openzim.org/recipes/wikipedia_fr_test",
-        "dev_warehouse_path_id": str(dev_warehouse_path.id),
-        "prod_warehouse_path_id": str(prod_warehouse_path.id),
+        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
+        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
         "in_prod": True,
     }
 
@@ -121,8 +131,18 @@ def test_create_title_with_optional_fields(
         title.producer_display_url
         == "https://farm.openzim.org/recipes/wikipedia_fr_test"
     )
-    assert title.dev_warehouse_path_id == dev_warehouse_path.id
-    assert title.prod_warehouse_path_id == prod_warehouse_path.id
+
+    # Verify warehouse paths
+    dev_paths = [
+        twp.warehouse_path_id for twp in title.warehouse_paths if twp.path_type == "dev"
+    ]
+    prod_paths = [
+        twp.warehouse_path_id
+        for twp in title.warehouse_paths
+        if twp.path_type == "prod"
+    ]
+    assert dev_warehouse_path.id in dev_paths
+    assert prod_warehouse_path.id in prod_paths
     assert title.in_prod is True
 
 
@@ -136,8 +156,8 @@ def test_create_title_missing_required_field(
     title_data = {
         "name": "wikipedia_en_incomplete",
         "producer_unique_id": "550e8400-e29b-41d4-a716-446655440002",
-        "dev_warehouse_path_id": str(dev_warehouse_path.id),
-        # Missing prod_warehouse_path_id
+        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
+        # Missing prod_warehouse_path_ids
     }
 
     response = client.post("/v1/titles", json=title_data)
@@ -155,8 +175,8 @@ def test_create_title_duplicate_name(
     title_data = {
         "name": "wikipedia_en_duplicate",
         "producer_unique_id": "550e8400-e29b-41d4-a716-446655440003",
-        "dev_warehouse_path_id": str(dev_warehouse_path.id),
-        "prod_warehouse_path_id": str(prod_warehouse_path.id),
+        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
+        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
     }
 
     # Create the first title
@@ -192,8 +212,8 @@ def test_get_title_by_id(
         "producer_unique_id",
         "producer_display_name",
         "producer_display_url",
-        "dev_warehouse_path_id",
-        "prod_warehouse_path_id",
+        "dev_warehouse_paths",
+        "prod_warehouse_paths",
         "in_prod",
         "events",
         "books",
@@ -208,12 +228,20 @@ def test_get_title_by_id(
         data["producer_display_url"]
         == "https://farm.openzim.org/recipes/wikipedia_en_test"
     )
-    assert data["dev_warehouse_path_id"] == str(title.dev_warehouse_path_id)
-    assert data["prod_warehouse_path_id"] == str(title.prod_warehouse_path_id)
+    assert isinstance(data["dev_warehouse_paths"], list)
+    assert isinstance(data["prod_warehouse_paths"], list)
+    assert len(data["dev_warehouse_paths"]) >= 1
+    assert len(data["prod_warehouse_paths"]) >= 1
     assert data["in_prod"] == title.in_prod
     assert isinstance(data["events"], list)
     assert isinstance(data["books"], list)
     assert len(data["books"]) == 0
+
+    # Verify warehouse path structure
+    dev_path = data["dev_warehouse_paths"][0]
+    assert set(dev_path.keys()) == {"path_id", "folder_name", "warehouse_name"}
+    prod_path = data["prod_warehouse_paths"][0]
+    assert set(prod_path.keys()) == {"path_id", "folder_name", "warehouse_name"}
 
 
 def test_get_title_by_id_with_books(

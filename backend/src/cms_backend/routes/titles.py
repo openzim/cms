@@ -11,7 +11,12 @@ from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.orms import BookLightSchema, TitleFullSchema, TitleLightSchema
+from cms_backend.schemas.orms import (
+    BookLightSchema,
+    TitleFullSchema,
+    TitleLightSchema,
+    WarehousePathInfoSchema,
+)
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 
@@ -27,8 +32,8 @@ class TitleCreateSchema(BaseModel):
     producer_unique_id: str
     producer_display_name: str | None = None
     producer_display_url: str | None = None
-    dev_warehouse_path_id: UUID
-    prod_warehouse_path_id: UUID
+    dev_warehouse_path_ids: list[UUID]
+    prod_warehouse_path_ids: list[UUID]
     in_prod: bool = False
 
 
@@ -62,14 +67,28 @@ def get_title(
     """Get a title by ID with full details including books"""
     title = db_get_title_by_id(session, title_id=title_id)
 
+    # Build sorted warehouse path lists by path_type
+    def build_warehouse_paths(path_type: str) -> list[WarehousePathInfoSchema]:
+        paths = [
+            WarehousePathInfoSchema(
+                path_id=twp.warehouse_path.id,
+                folder_name=twp.warehouse_path.folder_name,
+                warehouse_name=twp.warehouse_path.warehouse.name,
+            )
+            for twp in title.warehouse_paths
+            if twp.path_type == path_type
+        ]
+        # Sort alphabetically by warehouse_name then folder_name
+        return sorted(paths, key=lambda p: (p.warehouse_name, p.folder_name))
+
     return TitleFullSchema(
         id=title.id,
         name=title.name,
         producer_unique_id=title.producer_unique_id,
         producer_display_name=title.producer_display_name,
         producer_display_url=title.producer_display_url,
-        dev_warehouse_path_id=title.dev_warehouse_path_id,
-        prod_warehouse_path_id=title.prod_warehouse_path_id,
+        dev_warehouse_paths=build_warehouse_paths("dev"),
+        prod_warehouse_paths=build_warehouse_paths("prod"),
         in_prod=title.in_prod,
         events=title.events,
         books=[
@@ -99,8 +118,8 @@ def create_title(
         producer_unique_id=title_data.producer_unique_id,
         producer_display_name=title_data.producer_display_name,
         producer_display_url=title_data.producer_display_url,
-        dev_warehouse_path_id=title_data.dev_warehouse_path_id,
-        prod_warehouse_path_id=title_data.prod_warehouse_path_id,
+        dev_warehouse_path_ids=title_data.dev_warehouse_path_ids,
+        prod_warehouse_path_ids=title_data.prod_warehouse_path_ids,
         in_prod=title_data.in_prod,
     )
     return TitleLightSchema(

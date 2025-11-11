@@ -13,6 +13,7 @@ from cms_backend.db.models import (
     Base,
     Book,
     Title,
+    TitleWarehousePath,
     Warehouse,
     WarehousePath,
     ZimfarmNotification,
@@ -151,8 +152,8 @@ def create_title(
         producer_unique_id: str | None = None,
         producer_display_name: str | None = None,
         producer_display_url: str | None = None,
-        dev_warehouse_path_id: UUID | None = None,
-        prod_warehouse_path_id: UUID | None = None,
+        dev_warehouse_path_ids: list[UUID] | None = None,
+        prod_warehouse_path_ids: list[UUID] | None = None,
     ) -> Title:
         title = Title(
             name=name,
@@ -164,17 +165,25 @@ def create_title(
         )
         title.producer_display_name = producer_display_name
         title.producer_display_url = producer_display_url
+
         # Create default warehouse paths if not provided
-        if dev_warehouse_path_id is None:
+        if dev_warehouse_path_ids is None:
             dev_warehouse_path = create_warehouse_path()
-            title.dev_warehouse_path_id = dev_warehouse_path.id
-        else:
-            title.dev_warehouse_path_id = dev_warehouse_path_id
-        if prod_warehouse_path_id is None:
+            dev_warehouse_path_ids = [dev_warehouse_path.id]
+        if prod_warehouse_path_ids is None:
             prod_warehouse_path = create_warehouse_path()
-            title.prod_warehouse_path_id = prod_warehouse_path.id
-        else:
-            title.prod_warehouse_path_id = prod_warehouse_path_id
+            prod_warehouse_path_ids = [prod_warehouse_path.id]
+
+        # Add warehouse path associations
+        for path_id in dev_warehouse_path_ids:
+            twp = TitleWarehousePath(path_type="dev")
+            twp.warehouse_path_id = path_id
+            title.warehouse_paths.append(twp)
+        for path_id in prod_warehouse_path_ids:
+            twp = TitleWarehousePath(path_type="prod")
+            twp.warehouse_path_id = path_id
+            title.warehouse_paths.append(twp)
+
         dbsession.add(title)
         dbsession.flush()
         return title

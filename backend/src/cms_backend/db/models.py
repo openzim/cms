@@ -149,18 +149,11 @@ class Title(Base):
     producer_display_name: Mapped[str | None] = mapped_column(init=False, default=None)
     producer_display_url: Mapped[str | None] = mapped_column(init=False, default=None)
 
-    # Warehouse paths
-    dev_warehouse_path_id: Mapped[UUID] = mapped_column(
-        ForeignKey("warehouse_path.id"), init=False
-    )
-    dev_warehouse_path: Mapped["WarehousePath"] = relationship(
-        init=False, foreign_keys=[dev_warehouse_path_id]
-    )
-    prod_warehouse_path_id: Mapped[UUID] = mapped_column(
-        ForeignKey("warehouse_path.id"), init=False
-    )
-    prod_warehouse_path: Mapped["WarehousePath"] = relationship(
-        init=False, foreign_keys=[prod_warehouse_path_id]
+    # Warehouse paths via junction table
+    warehouse_paths: Mapped[list["TitleWarehousePath"]] = relationship(
+        back_populates="title",
+        cascade="all, delete-orphan",
+        init=False,
     )
     in_prod: Mapped[bool] = mapped_column(
         init=False, default=False, server_default=text("false")
@@ -172,6 +165,20 @@ class Title(Base):
         init=False,
         foreign_keys=[Book.title_id],
     )
+
+
+class TitleWarehousePath(Base):
+    __tablename__ = "title_warehouse_path"
+    title_id: Mapped[UUID] = mapped_column(
+        ForeignKey("title.id"), primary_key=True, init=False
+    )
+    warehouse_path_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse_path.id"), primary_key=True, init=False
+    )
+    path_type: Mapped[str] = mapped_column(primary_key=True)  # 'dev' or 'prod'
+
+    title: Mapped["Title"] = relationship(back_populates="warehouse_paths", init=False)
+    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)
 
 
 class Warehouse(Base):
