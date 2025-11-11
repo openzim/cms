@@ -12,10 +12,10 @@ def test_add_book_to_title_same_name(
 ):
     """Add a book to an existing title with same name"""
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(name=title.name, date="2024-01-01")
     assert len(book.events) == 0
     assert len(title.events) == 0
-    add_book_to_title(book=book, title=title)
+    add_book_to_title(session=dbsession, book=book, title=title)
     dbsession.flush()
     assert book.title == title
     assert book.title_id == title.id
@@ -35,10 +35,10 @@ def test_add_book_to_title_different_name(
 
     book_name = "test2_fr_all"
     assert book_name != title.name
-    book = create_book(zim_metadata={"Name": book_name})
+    book = create_book(name=book_name, date="2024-01-01")
     assert len(book.events) == 0
     assert len(title.events) == 0
-    add_book_to_title(book=book, title=title)
+    add_book_to_title(session=dbsession, book=book, title=title)
     dbsession.flush()
     assert book.title == title
     assert book.title_id == title.id
@@ -64,10 +64,10 @@ def test_add_book_to_title_empty_name(
 
     book_name = ""
     assert book_name != title.name
-    book = create_book(zim_metadata={"Name": book_name})
+    book = create_book(name=book_name, date="2024-01-01")
     assert len(book.events) == 0
     assert len(title.events) == 0
-    add_book_to_title(book=book, title=title)
+    add_book_to_title(session=dbsession, book=book, title=title)
     dbsession.flush()
     assert book not in title.books
     assert book.title is None
@@ -90,17 +90,15 @@ def test_add_book_to_title_empty_name(
     )
 
 
-def test_add_book_to_title_bad_name(
+def test_add_book_to_title_missing_name(
     dbsession: OrmSession, create_book: Callable[..., Book], title: Title
 ):
-    """Add a book to an existing title with a bad type name"""
+    """Add a book to an existing title with missing name"""
 
-    book_name = 123  # integer instead of string
-    assert book_name != title.name
-    book = create_book(zim_metadata={"Name": book_name})
+    book = create_book(name=None, date="2024-01-01")
     assert len(book.events) == 0
     assert len(title.events) == 0
-    add_book_to_title(book=book, title=title)
+    add_book_to_title(session=dbsession, book=book, title=title)
     dbsession.flush()
     assert book not in title.books
     assert book.title is None
@@ -128,16 +126,16 @@ def test_add_book_to_title_bad_error(
 ):
     """Add a book to an existing title which encounters a bad error"""
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(name=title.name, date="2024-01-01")
     assert len(book.events) == 0
     assert len(title.events) == 0
 
     # simulate a very bad error by dropping an expected property (and adding it back so
     # that SQLAlchemy does not choke)
-    save_metadata = book.zim_metadata
-    del book.zim_metadata
-    add_book_to_title(book=book, title=title)
-    book.zim_metadata = save_metadata
+    save_name = book.name
+    book.name = None
+    add_book_to_title(session=dbsession, book=book, title=title)
+    book.name = save_name
 
     dbsession.flush()
     assert book not in title.books
@@ -178,7 +176,8 @@ def test_add_book_to_title_updates_producer_fields(
 
     # Create a book with complete producer information
     book = create_book(
-        zim_metadata={"Name": title.name},
+        name=title.name,
+        date="2024-01-01",
         producer_unique_id=title.producer_unique_id,
         producer_display_name="farm.openzim.org: test_en_all",
         producer_display_url="https://farm.openzim.org/recipes/test_en_all",
@@ -189,7 +188,7 @@ def test_add_book_to_title_updates_producer_fields(
     assert len(book.events) == 0
     assert len(title.events) == 0
 
-    add_book_to_title(book=book, title=title)
+    add_book_to_title(session=dbsession, book=book, title=title)
     dbsession.flush()
 
     # Verify producer fields were updated
@@ -204,4 +203,66 @@ def test_add_book_to_title_updates_producer_fields(
         event
         for event in title.events
         if re.match(".*: updating title producer_display_url to .*", event)
+    )
+
+
+def test_add_book_to_title_missing_date(
+    dbsession: OrmSession, create_book: Callable[..., Book], title: Title
+):
+    """Add a book to an existing title with missing date"""
+
+    book = create_book(name=title.name, date=None)
+    assert len(book.events) == 0
+    assert len(title.events) == 0
+    add_book_to_title(session=dbsession, book=book, title=title)
+    dbsession.flush()
+    assert book not in title.books
+    assert book.title is None
+    assert book.title_id is None
+    assert [
+        event for event in title.events if re.match(".*: book .* added to title", event)
+    ] == []
+    assert [
+        event for event in book.events if re.match(".*: book added to title .*", event)
+    ] == []
+    assert any(
+        event
+        for event in title.events
+        if re.match(".*: error encountered while adding book .*", event)
+    )
+    assert any(
+        event
+        for event in book.events
+        if re.match(".*: error encountered while adding to title .*", event)
+    )
+
+
+def test_add_book_to_title_empty_date(
+    dbsession: OrmSession, create_book: Callable[..., Book], title: Title
+):
+    """Add a book to an existing title with empty date"""
+
+    book = create_book(name=title.name, date="")
+    assert len(book.events) == 0
+    assert len(title.events) == 0
+    add_book_to_title(session=dbsession, book=book, title=title)
+    dbsession.flush()
+    assert book not in title.books
+    assert book.title is None
+    assert book.title_id is None
+    assert [
+        event for event in title.events if re.match(".*: book .* added to title", event)
+    ] == []
+    assert [
+        event for event in book.events if re.match(".*: book added to title .*", event)
+    ] == []
+    assert any(
+        event
+        for event in title.events
+        if re.match(".*: error encountered while adding book .*", event)
+    )
+    assert any(
+        event
+        for event in book.events
+        if re.match(".*: error encountered while adding to title .*", event)
     )

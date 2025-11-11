@@ -46,8 +46,7 @@ def check_book_qa(book: Book) -> bool:
 
 def get_matching_title(session: ORMSession, book: Book) -> Title | None:
     try:
-        name = str(book.zim_metadata.get("Name"))
-        if not name:
+        if not book.name:
             book.events.append(
                 f"{getnow()}: no title can be found because name is missing"
             )
@@ -55,7 +54,7 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             return None
 
         title = get_title_by_name_and_producer_or_none(
-            session, name=name, producer_unique_id=book.producer_unique_id
+            session, name=book.name, producer_unique_id=book.producer_unique_id
         )
 
         if not title:

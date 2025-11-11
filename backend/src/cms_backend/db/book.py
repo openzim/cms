@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, ZimfarmNotification
+from cms_backend.db.models import Book, BookLocation, WarehousePath, ZimfarmNotification
 from cms_backend.utils.datetime import getnow
 
 
@@ -53,3 +53,47 @@ def create_book(
     )
 
     return book
+
+
+def create_book_location(
+    session: OrmSession,
+    *,
+    book: Book,
+    warehouse_path_id: UUID,
+    filename: str,
+    status: str = "current",
+) -> BookLocation:
+    """Create a new book location.
+
+    Args:
+        session: SQLAlchemy session
+        book: Book instance
+        warehouse_path_id: ID of the warehouse path
+        filename: Filename in warehouse
+        status: Location status ('current' or 'target'), defaults to 'current'
+
+    Returns:
+        Created BookLocation instance
+    """
+    # Get warehouse path info for event message
+    warehouse_path = session.get(WarehousePath, warehouse_path_id)
+    if not warehouse_path:
+        raise ValueError(f"WarehousePath with id {warehouse_path_id} not found")
+
+    warehouse_name = warehouse_path.warehouse.name
+    folder_name = warehouse_path.folder_name
+
+    location = BookLocation(
+        book_id=book.id,
+        status=status,
+        filename=filename,
+    )
+    location.warehouse_path_id = warehouse_path_id
+    session.add(location)
+    book.locations.append(location)
+    book.events.append(
+        f"{getnow()}: added {status} location: {filename} in {warehouse_name}: "
+        f"{folder_name} ({warehouse_path_id})"
+    )
+
+    return location

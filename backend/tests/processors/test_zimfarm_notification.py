@@ -21,7 +21,9 @@ GOOD_NOTIFICATION_CONTENT = {
     "size": 1024000,
     "metadata": GOOD_ZIM_METADATA,
     "zimcheck": {"status": "pass"},
-    "url": "https://example.com/zim/test.zim",
+    "warehouse_name": "test_warehouse",
+    "folder_name": "test_folder",
+    "filename": "test.zim",
     "producer": GOOD_PRODUCER,
 }
 
@@ -30,8 +32,14 @@ def test_process_notification_success(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification successfully - all steps work"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Create title with matching producer_unique_id
     title = create_title(
@@ -99,7 +107,9 @@ def test_process_notification_success(
             "size",
             "metadata",
             "zimcheck",
-            "url",
+            "warehouse_name",
+            "folder_name",
+            "filename",
             "producer",
         ]
     ],
@@ -137,7 +147,7 @@ def test_process_notification_missing_multiple_mandatory_keys(
     notification_content = {
         key: value
         for key, value in GOOD_NOTIFICATION_CONTENT.items()
-        if key not in ["article_count", "size", "url"]
+        if key not in ["article_count", "size", "filename"]
     }
     notification = create_zimfarm_notification(content=notification_content)
     assert len(notification.events) == 0
@@ -153,7 +163,7 @@ def test_process_notification_missing_multiple_mandatory_keys(
         event
         for event in notification.events
         if re.match(
-            ".*: notification is missing mandatory keys: article_count,size,url",
+            ".*: notification is missing mandatory keys: article_count,size,filename",
             event,
         )
     )
@@ -163,8 +173,14 @@ def test_process_notification_qa_check_fails(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     title: Title,  # noqa: ARG001
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification where book QA check fails due to missing metadata"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Create notification with metadata missing the Creator field
     incomplete_metadata = {
@@ -206,8 +222,14 @@ def test_process_notification_no_matching_title(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     title: Title,  # noqa: ARG001
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification where no matching title exists in database"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Use a different name that doesn't match the existing title
     different_metadata = {**GOOD_ZIM_METADATA, "Name": "different_title_name"}
@@ -252,8 +274,14 @@ def test_process_notification_missing_name(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     title: Title,  # noqa: ARG001
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification where book metadata has no Name field"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Remove Name from metadata
     no_name_metadata = {
@@ -319,8 +347,14 @@ def test_process_notification_empty_name(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     title: Title,  # noqa: ARG001
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification where book metadata has empty Name field"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Set Name to empty string
     empty_name_metadata = {**GOOD_ZIM_METADATA, "Name": ""}
@@ -355,8 +389,14 @@ def test_process_notification_with_existing_books(
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification and add to title that already has books"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     # Create title with matching producer_unique_id
     title = create_title(
@@ -489,8 +529,14 @@ def test_process_notification_producer_stored_in_book(
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     title: Title,  # noqa: ARG001
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
 ):
     """Process notification successfully and verify producer fields are stored"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
 
     notification = create_zimfarm_notification(content=GOOD_NOTIFICATION_CONTENT)
     assert len(notification.events) == 0
@@ -506,3 +552,46 @@ def test_process_notification_producer_stored_in_book(
     assert notification.book.producer_display_name == GOOD_PRODUCER["displayName"]
     assert notification.book.producer_display_url == GOOD_PRODUCER["displayUrl"]
     assert notification.book.producer_unique_id == GOOD_PRODUCER["uniqueId"]
+
+
+@pytest.mark.parametrize(
+    "invalid_filename",
+    [
+        pytest.param(123, id="int"),
+        pytest.param(None, id="None"),
+        pytest.param(["file.zim"], id="list"),
+        pytest.param({"name": "file.zim"}, id="dict"),
+        pytest.param("", id="empty-string"),
+    ],
+)
+def test_process_notification_filename_not_valid_string(
+    dbsession: OrmSession,
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    invalid_filename: Any,
+    create_warehouse: Callable[..., Any],
+    create_warehouse_path: Callable[..., Any],
+):
+    """Process notification where filename is not a valid non-empty string"""
+
+    # Create warehouse and warehouse path that match the notification
+    warehouse = create_warehouse(name="test_warehouse")
+    create_warehouse_path(folder_name="test_folder", warehouse=warehouse)
+
+    notification_content = {
+        **GOOD_NOTIFICATION_CONTENT,
+        "filename": invalid_filename,
+    }
+    notification = create_zimfarm_notification(content=notification_content)
+    assert len(notification.events) == 0
+    assert notification.status == "pending"
+
+    process_notification(dbsession, notification)
+
+    dbsession.flush()
+    assert notification.status == "bad_notification"
+    assert notification.book is None
+    assert any(
+        event
+        for event in notification.events
+        if re.match(r".*: filename must be a non-empty string, got \w+", event)
+    )

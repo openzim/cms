@@ -10,7 +10,12 @@ from cms_backend.db.books import get_books as db_get_books
 from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.orms import BookFullSchema, BookLightSchema, ProducerSchema
+from cms_backend.schemas.orms import (
+    BookFullSchema,
+    BookLightSchema,
+    BookLocationSchema,
+    ProducerSchema,
+)
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -59,6 +64,31 @@ async def get_book(
 
     db_book = db_get_book(session=session, book_id=book_id)
 
+    # Separate current and target locations
+    current_locations = [
+        BookLocationSchema(
+            warehouse_path_id=location.warehouse_path_id,
+            warehouse_name=location.warehouse_path.warehouse.name,
+            folder_name=location.warehouse_path.folder_name,
+            filename=location.filename,
+            status=location.status,
+        )
+        for location in db_book.locations
+        if location.status == "current"
+    ]
+
+    target_locations = [
+        BookLocationSchema(
+            warehouse_path_id=location.warehouse_path_id,
+            warehouse_name=location.warehouse_path.warehouse.name,
+            folder_name=location.warehouse_path.folder_name,
+            filename=location.filename,
+            status=location.status,
+        )
+        for location in db_book.locations
+        if location.status == "target"
+    ]
+
     return BookFullSchema(
         id=db_book.id,
         title_id=db_book.title_id,
@@ -78,4 +108,6 @@ async def get_book(
             display_url=db_book.producer_display_url,
             unique_id=db_book.producer_unique_id,
         ),
+        current_locations=current_locations,
+        target_locations=target_locations,
     )
