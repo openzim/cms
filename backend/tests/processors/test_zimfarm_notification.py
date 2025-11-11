@@ -409,7 +409,7 @@ def test_process_notification_producer_not_dict(
     assert any(
         event
         for event in notification.events
-        if re.match(".*: producer must be a dictionary", event)
+        if re.match(r".*: producer must be a dict\[str, str\]", event)
     )
 
 

@@ -3,6 +3,7 @@ from http import HTTPStatus
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, Title, WarehousePath
 
@@ -49,7 +50,7 @@ def test_get_titles(
 
 def test_create_title_required_fields_only(
     client: TestClient,
-    dbsession,
+    dbsession: OrmSession,
     create_warehouse_path: Callable[..., WarehousePath],
 ):
     """Test creating a title with only required fields"""
@@ -85,7 +86,7 @@ def test_create_title_required_fields_only(
 
 def test_create_title_with_optional_fields(
     client: TestClient,
-    dbsession,
+    dbsession: OrmSession,
     create_warehouse_path: Callable[..., WarehousePath],
 ):
     """Test creating a title with all fields including optional ones"""
@@ -217,7 +218,7 @@ def test_get_title_by_id(
 
 def test_get_title_by_id_with_books(
     client: TestClient,
-    dbsession,
+    dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
 ):

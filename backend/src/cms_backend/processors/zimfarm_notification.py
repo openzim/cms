@@ -1,3 +1,5 @@
+from typing import cast
+
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
@@ -41,10 +43,15 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
 
         # Validate producer information
         producer = notification.content.get("producer")
-        if not isinstance(producer, dict):
-            notification.events.append(f"{getnow()}: producer must be a dictionary")
+        if not isinstance(producer, dict) or not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in producer.items()  # pyright: ignore[reportUnknownVariableType]
+        ):
+            notification.events.append(f"{getnow()}: producer must be a dict[str, str]")
             notification.status = "bad_notification"
             return
+        else:
+            producer = cast(dict[str, str], producer)
 
         missing_producer_keys = [
             key
