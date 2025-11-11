@@ -385,3 +385,237 @@ class TestTargetFilenameComputation:
         assert len(target_locations) == 1
         # Should get letter suffix to avoid collision
         assert target_locations[0].filename == "test_en_all_2024-01a.zim"
+
+
+class TestTargetLocationOptimization:
+    """Test that target locations are skipped when they match current locations."""
+
+    def test_no_target_when_current_matches_single_path(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_book_location: Callable[..., BookLocation],
+        create_title: Callable[..., Title],
+        warehouse_setup: dict[str, Any],
+    ):
+        """When book current location exactly matches target, no target should
+        be created."""
+        dev_path = warehouse_setup["dev_path"]
+
+        # Create a book manually with a current location that will match the computed
+        # target
+        book = create_book(
+            name="wikipedia_fr_all",
+            date="2024-02-15",
+            flavour=None,
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+        )
+
+        # Add current location with target-style filename
+        create_book_location(
+            book=book,
+            warehouse_path=dev_path,
+            filename="wikipedia_fr_all_2024-02.zim",
+            status="current",
+        )
+
+        # Create title with same warehouse path
+        title = create_title(
+            name="wikipedia_fr_all",
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+            dev_warehouse_path_ids=[dev_path.id],
+            prod_warehouse_path_ids=[],
+            in_prod=False,
+        )
+
+        dbsession.flush()
+
+        # Add book to title - should skip target creation
+        from cms_backend.processors.title import add_book_to_title
+
+        add_book_to_title(dbsession, book, title)
+        dbsession.flush()
+
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+
+        # Should have current location
+        assert len(current_locations) == 1
+        assert current_locations[0].warehouse_path_id == dev_path.id
+        assert current_locations[0].filename == "wikipedia_fr_all_2024-02.zim"
+
+        # Should NOT have target location (optimization applied)
+        assert len(target_locations) == 0
+
+        # Check event log
+        assert any(
+            "book already at all target locations" in event for event in book.events
+        )
+
+    def test_no_target_when_current_matches_multiple_paths(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_title: Callable[..., Title],
+        create_book_location: Callable[..., BookLocation],
+        warehouse_setup: dict[str, Any],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        dev_path_1 = warehouse_setup["dev_path"]
+        dev_path_2 = create_warehouse_path(
+            warehouse=warehouse_setup["dev_warehouse"],
+            folder_name="dev-zim-backup",
+        )
+
+        # Create a book with current locations at both paths
+        book = create_book(
+            name="wiktionary_es_all",
+            date="2024-03-10",
+            flavour="maxi",
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+        )
+
+        # Add current locations at both paths with target-style filename
+        create_book_location(
+            book=book,
+            warehouse_path=dev_path_1,
+            filename="wiktionary_es_all_maxi_2024-03.zim",
+            status="current",
+        )
+        create_book_location(
+            book=book,
+            warehouse_path=dev_path_2,
+            filename="wiktionary_es_all_maxi_2024-03.zim",
+            status="current",
+        )
+
+        # Create title with multiple dev paths
+        title = create_title(
+            name="wiktionary_es_all",
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+            dev_warehouse_path_ids=[dev_path_1.id, dev_path_2.id],
+            prod_warehouse_path_ids=[],
+            in_prod=False,
+        )
+
+        dbsession.flush()
+
+        # Add book to title - should skip target creation
+        from cms_backend.processors.title import add_book_to_title
+
+        add_book_to_title(dbsession, book, title)
+        dbsession.flush()
+
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+
+        # Should have 2 current locations
+        assert len(current_locations) == 2
+        current_path_ids = {loc.warehouse_path_id for loc in current_locations}
+        assert current_path_ids == {dev_path_1.id, dev_path_2.id}
+
+        # Should NOT have target locations (optimization applied)
+        assert len(target_locations) == 0
+
+        # Check event log
+        assert any(
+            "book already at all target locations" in event for event in book.events
+        )
+
+    def test_target_created_when_partial_match(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        warehouse_setup: dict[str, Any],
+        create_warehouse_path: Callable[..., WarehousePath],
+        good_notification_content: dict[str, Any],
+    ):
+        """When book only matches some target paths, all targets should be created."""
+        dev_path_1 = warehouse_setup["dev_path"]
+        dev_path_2 = create_warehouse_path(
+            warehouse=warehouse_setup["dev_warehouse"],
+            folder_name="dev-zim-backup",
+        )
+
+        # Adjust filename to match computed target
+        good_notification_content["filename"] = "test_en_all_2024-01.zim"
+
+        # Create title with multiple dev paths
+        create_title(
+            name="test_en_all",
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+            dev_warehouse_path_ids=[dev_path_1.id, dev_path_2.id],
+            prod_warehouse_path_ids=[],
+            in_prod=False,
+        )
+
+        notification = create_zimfarm_notification(content=good_notification_content)
+        process_notification(dbsession, notification)
+
+        dbsession.flush()
+        assert notification.book is not None
+
+        book = notification.book
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+
+        # Should have 1 current location
+        assert len(current_locations) == 1
+        assert current_locations[0].warehouse_path_id == dev_path_1.id
+
+        # Should have 2 target locations (NO optimization, partial match)
+        assert len(target_locations) == 2
+        target_path_ids = {loc.warehouse_path_id for loc in target_locations}
+        assert target_path_ids == {dev_path_1.id, dev_path_2.id}
+
+        # Check event log - should NOT have optimization message
+        assert not any(
+            "book already at all target locations" in event for event in book.events
+        )
+
+    def test_target_created_when_filename_differs(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        warehouse_setup: dict[str, Any],
+        good_notification_content: dict[str, Any],
+    ):
+        """When book filename differs from computed target, target should be created."""
+        dev_path = warehouse_setup["dev_path"]
+
+        # Keep original filename that differs from computed target
+        # Original: test_en_all_2024-01-15.zim
+        # Computed target: test_en_all_2024-01.zim
+
+        create_title(
+            name="test_en_all",
+            producer_unique_id=GOOD_PRODUCER["uniqueId"],
+            dev_warehouse_path_ids=[dev_path.id],
+            prod_warehouse_path_ids=[],
+            in_prod=False,
+        )
+
+        notification = create_zimfarm_notification(content=good_notification_content)
+        process_notification(dbsession, notification)
+
+        dbsession.flush()
+        assert notification.book is not None
+
+        book = notification.book
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+
+        # Should have current location with original filename
+        assert len(current_locations) == 1
+        assert current_locations[0].filename == "test_en_all_2024-01-15.zim"
+
+        # Should have target location with computed filename (NO optimization)
+        assert len(target_locations) == 1
+        assert target_locations[0].filename == "test_en_all_2024-01.zim"
+
+        # Check event log - should NOT have optimization message
+        assert not any(
+            "book already at all target locations" in event for event in book.events
+        )

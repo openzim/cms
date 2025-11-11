@@ -5,8 +5,12 @@ from typing import Any
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, Title
-from cms_backend.processors.book import check_book_qa, get_matching_title
+from cms_backend.db.models import Book, BookLocation, Title, WarehousePath
+from cms_backend.processors.book import (
+    _current_locations_match_targets,  # pyright: ignore[reportPrivateUsage]
+    check_book_qa,
+    get_matching_title,
+)
 
 MINIMUM_ZIM_METADATA = {
     "Name": "test_en_all",
@@ -186,3 +190,233 @@ def test_get_matching_title_bad_error(
         if re.match(".*: error encountered while get matching title", event)
     )
     assert len(title.events) == 0
+
+
+class TestCurrentLocationsMatchTargets:
+    """Test the _current_locations_match_targets helper function."""
+
+    def test_exact_match_single_location(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with single current location matching single target should return
+        True."""
+        book = create_book()
+        warehouse_path = create_warehouse_path()
+
+        # Add current location
+        current_location = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        current_location.warehouse_path_id = warehouse_path.id
+        book.locations.append(current_location)
+        dbsession.add(current_location)
+        dbsession.flush()
+
+        # Target matches current
+        target_locations = [(warehouse_path.id, "test_book_2024-01.zim")]
+
+        assert _current_locations_match_targets(book, target_locations) is True
+
+    def test_exact_match_multiple_locations(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with multiple locations matching all targets should return True."""
+        book = create_book()
+        path1 = create_warehouse_path(folder_name="path1")
+        path2 = create_warehouse_path(folder_name="path2")
+
+        # Add current locations
+        loc1 = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        loc1.warehouse_path_id = path1.id
+        loc2 = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        loc2.warehouse_path_id = path2.id
+        book.locations.extend([loc1, loc2])
+        dbsession.add(loc1)
+        dbsession.add(loc2)
+        dbsession.flush()
+
+        # Targets match all currents
+        target_locations = [
+            (path1.id, "test_book_2024-01.zim"),
+            (path2.id, "test_book_2024-01.zim"),
+        ]
+
+        assert _current_locations_match_targets(book, target_locations) is True
+
+    def test_no_match_different_filenames(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with different filename than target should return False."""
+        book = create_book()
+        warehouse_path = create_warehouse_path()
+
+        # Add current location with different filename
+        current_location = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="old_filename_2024-01.zim",
+        )
+        current_location.warehouse_path_id = warehouse_path.id
+        book.locations.append(current_location)
+        dbsession.add(current_location)
+        dbsession.flush()
+
+        # Target has different filename
+        target_locations = [(warehouse_path.id, "test_book_2024-01.zim")]
+
+        assert _current_locations_match_targets(book, target_locations) is False
+
+    def test_no_match_different_warehouse_path(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book at different warehouse than target should return False."""
+        book = create_book()
+        path1 = create_warehouse_path(folder_name="path1")
+        path2 = create_warehouse_path(folder_name="path2")
+
+        # Add current location at path1
+        current_location = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        current_location.warehouse_path_id = path1.id
+        book.locations.append(current_location)
+        dbsession.add(current_location)
+        dbsession.flush()
+
+        # Target specifies path2
+        target_locations = [(path2.id, "test_book_2024-01.zim")]
+
+        assert _current_locations_match_targets(book, target_locations) is False
+
+    def test_no_match_subset_current_locations(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with only 1 current location should not match 2 target locations."""
+        book = create_book()
+        path1 = create_warehouse_path(folder_name="path1")
+        path2 = create_warehouse_path(folder_name="path2")
+
+        # Add current location at only path1
+        current_location = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        current_location.warehouse_path_id = path1.id
+        book.locations.append(current_location)
+        dbsession.add(current_location)
+        dbsession.flush()
+
+        # Targets specify both paths
+        target_locations = [
+            (path1.id, "test_book_2024-01.zim"),
+            (path2.id, "test_book_2024-01.zim"),
+        ]
+
+        assert _current_locations_match_targets(book, target_locations) is False
+
+    def test_no_match_superset_current_locations(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with more current locations than targets should return False."""
+        book = create_book()
+        path1 = create_warehouse_path(folder_name="path1")
+        path2 = create_warehouse_path(folder_name="path2")
+
+        # Add current locations at both paths
+        loc1 = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        loc1.warehouse_path_id = path1.id
+        loc2 = BookLocation(
+            book_id=book.id,
+            status="current",
+            filename="test_book_2024-01.zim",
+        )
+        loc2.warehouse_path_id = path2.id
+        book.locations.extend([loc1, loc2])
+        dbsession.add(loc1)
+        dbsession.add(loc2)
+        dbsession.flush()
+
+        # Targets specify only one path
+        target_locations = [(path1.id, "test_book_2024-01.zim")]
+
+        assert _current_locations_match_targets(book, target_locations) is False
+
+    def test_no_match_empty_current_locations(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Book with no current locations should not match non-empty targets."""
+        book = create_book()
+        warehouse_path = create_warehouse_path()
+
+        # Book has no locations
+        dbsession.flush()
+
+        # Targets specify locations
+        target_locations = [(warehouse_path.id, "test_book_2024-01.zim")]
+
+        assert _current_locations_match_targets(book, target_locations) is False
+
+    def test_ignores_target_status_locations(
+        self,
+        dbsession: OrmSession,
+        create_book: Callable[..., Book],
+        create_warehouse_path: Callable[..., WarehousePath],
+    ):
+        """Helper should ignore target status locations and only check current."""
+        book = create_book()
+        warehouse_path = create_warehouse_path()
+
+        # Add only target location (no current locations)
+        target_location = BookLocation(
+            book_id=book.id,
+            status="target",
+            filename="test_book_2024-01.zim",
+        )
+        target_location.warehouse_path_id = warehouse_path.id
+        book.locations.append(target_location)
+        dbsession.add(target_location)
+        dbsession.flush()
+
+        # Targets specify locations
+        target_locations = [(warehouse_path.id, "test_book_2024-01.zim")]
+
+        # Should return False because there are no current locations
+        assert _current_locations_match_targets(book, target_locations) is False
