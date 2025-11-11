@@ -28,29 +28,39 @@
           />
 
           <v-autocomplete
-            v-model="formData.dev_warehouse_path_id"
+            v-model="formData.dev_warehouse_path_ids"
             :items="warehousePathStore.warehousePathOptions"
             item-title="displayText"
             item-value="value"
-            label="Dev Warehouse Path"
-            :rules="[rules.required]"
+            label="Dev Warehouse Paths"
+            :rules="[ruleDevWarehouseRequired]"
             variant="outlined"
             density="comfortable"
             class="mb-2"
             :loading="loadingWarehousePaths"
+            multiple
+            chips
+            closable-chips
+            hint="Select at least one dev warehouse path"
+            persistent-hint
           />
 
           <v-autocomplete
-            v-model="formData.prod_warehouse_path_id"
+            v-model="formData.prod_warehouse_path_ids"
             :items="warehousePathStore.warehousePathOptions"
             item-title="displayText"
             item-value="value"
-            label="Prod Warehouse Path"
-            :rules="[rules.required]"
+            label="Prod Warehouse Paths"
+            :rules="[ruleProdWarehouseRequired]"
             variant="outlined"
             density="comfortable"
             class="mb-2"
             :loading="loadingWarehousePaths"
+            multiple
+            chips
+            closable-chips
+            hint="Select at least one prod warehouse path"
+            persistent-hint
           />
 
           <v-checkbox
@@ -112,8 +122,8 @@ const error = ref('')
 const formData = ref<TitleCreate>({
   name: '',
   producer_unique_id: '',
-  dev_warehouse_path_id: '',
-  prod_warehouse_path_id: '',
+  dev_warehouse_path_ids: [],
+  prod_warehouse_path_ids: [],
   in_prod: false,
 })
 
@@ -126,6 +136,12 @@ const rules = {
   required: (value: string) => !!value || 'This field is required',
 }
 
+const ruleDevWarehouseRequired = (value: string[]) =>
+  (value && value.length > 0) || 'At least one dev warehouse path is required'
+
+const ruleProdWarehouseRequired = (value: string[]) =>
+  (value && value.length > 0) || 'At least one prod warehouse path is required'
+
 async function fetchWarehousePaths() {
   loadingWarehousePaths.value = true
   try {
@@ -133,7 +149,7 @@ async function fetchWarehousePaths() {
 
     // Set default dev warehouse path to /.hidden/dev if it exists
     if (warehousePathStore.defaultDevPath) {
-      formData.value.dev_warehouse_path_id = warehousePathStore.defaultDevPath.path_id
+      formData.value.dev_warehouse_path_ids = [warehousePathStore.defaultDevPath.path_id]
     }
   } catch (err) {
     console.error('Failed to fetch warehouse paths', err)
@@ -171,8 +187,8 @@ function resetForm() {
   formData.value = {
     name: '',
     producer_unique_id: '',
-    dev_warehouse_path_id: '',
-    prod_warehouse_path_id: '',
+    dev_warehouse_path_ids: [],
+    prod_warehouse_path_ids: [],
     in_prod: false,
   }
   error.value = ''

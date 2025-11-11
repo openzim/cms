@@ -31,8 +31,12 @@ jobs:
 
       - name: Check linting
         working-directory: frontend
-        run: yarn type-check
+        run: yarn lint-check
 
       - name: Check formatting
         working-directory: frontend
         run: yarn format-check
+
+      - name: Check typing
+        working-directory: frontend
+        run: yarn type-check

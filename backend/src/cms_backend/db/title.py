@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordAlreadyExistsError
-from cms_backend.db.models import Title
+from cms_backend.db.models import Title, TitleWarehousePath
 from cms_backend.schemas.orms import ListResult, TitleLightSchema
 from cms_backend.utils.datetime import getnow
 
@@ -102,11 +102,25 @@ def create_title(
     producer_unique_id: str,
     producer_display_name: str | None,
     producer_display_url: str | None,
-    dev_warehouse_path_id: UUID,
-    prod_warehouse_path_id: UUID,
+    dev_warehouse_path_ids: list[UUID],
+    prod_warehouse_path_ids: list[UUID],
     in_prod: bool,
 ) -> Title:
-    """Create a new title"""
+    """Create a new title with multiple warehouse paths
+
+    Args:
+        dev_warehouse_path_ids: List of warehouse path IDs for dev environment
+        prod_warehouse_path_ids: List of warehouse path IDs for prod environment
+
+    Raises:
+        ValueError: If dev_warehouse_path_ids or prod_warehouse_path_ids is empty
+        RecordAlreadyExistsError: If title with same name already exists
+    """
+    # Validate that at least one path of each type is provided
+    if not dev_warehouse_path_ids:
+        raise ValueError("At least one dev warehouse path is required")
+    if not prod_warehouse_path_ids:
+        raise ValueError("At least one prod warehouse path is required")
 
     title = Title(
         name=name,
@@ -114,10 +128,18 @@ def create_title(
     )
     title.producer_display_name = producer_display_name
     title.producer_display_url = producer_display_url
-    title.dev_warehouse_path_id = dev_warehouse_path_id
-    title.prod_warehouse_path_id = prod_warehouse_path_id
     title.in_prod = in_prod
     title.events.append(f"{getnow()}: title created")
+
+    # Add warehouse path associations
+    for path_id in dev_warehouse_path_ids:
+        twp = TitleWarehousePath(path_type="dev")
+        twp.warehouse_path_id = path_id
+        title.warehouse_paths.append(twp)
+    for path_id in prod_warehouse_path_ids:
+        twp = TitleWarehousePath(path_type="prod")
+        twp.warehouse_path_id = path_id
+        title.warehouse_paths.append(twp)
 
     session.add(title)
     try:

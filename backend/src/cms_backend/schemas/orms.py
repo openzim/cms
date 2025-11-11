@@ -24,13 +24,23 @@ class TitleLightSchema(BaseModel):
     producer_display_url: str | None
 
 
+class WarehousePathInfoSchema(BaseModel):
+    """
+    Schema for warehouse path information (with warehouse details)
+    """
+
+    path_id: UUID
+    folder_name: str
+    warehouse_name: str
+
+
 class TitleFullSchema(TitleLightSchema):
     """
     Schema for reading a title model with all fields including books
     """
 
-    dev_warehouse_path_id: UUID
-    prod_warehouse_path_id: UUID
+    dev_warehouse_paths: list[WarehousePathInfoSchema]
+    prod_warehouse_paths: list[WarehousePathInfoSchema]
     in_prod: bool
     events: list[str]
     books: list["BookLightSchema"]
