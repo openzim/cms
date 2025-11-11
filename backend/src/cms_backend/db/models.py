@@ -86,11 +86,18 @@ Index(
 class Book(Base):
     __tablename__ = "book"
     id: Mapped[UUID] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime]
     article_count: Mapped[int]
     media_count: Mapped[int]
     size: Mapped[int]
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
+    name: Mapped[str | None]
+    date: Mapped[str | None]
+    flavour: Mapped[str | None]
+    producer_display_name: Mapped[str]
+    producer_display_url: Mapped[str]
+    producer_unique_id: Mapped[str]
     status: Mapped[str] = mapped_column(
         init=False, default="pending_processing", server_default="pending_processing"
     )
@@ -136,11 +143,58 @@ class Title(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    name: Mapped[str]
+    name: Mapped[str] = mapped_column(unique=True, index=True)
+    producer_unique_id: Mapped[str]
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
+    producer_display_name: Mapped[str | None] = mapped_column(init=False, default=None)
+    producer_display_url: Mapped[str | None] = mapped_column(init=False, default=None)
+
+    # Warehouse paths
+    dev_warehouse_path_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse_path.id"), init=False
+    )
+    dev_warehouse_path: Mapped["WarehousePath"] = relationship(
+        init=False, foreign_keys=[dev_warehouse_path_id]
+    )
+    prod_warehouse_path_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse_path.id"), init=False
+    )
+    prod_warehouse_path: Mapped["WarehousePath"] = relationship(
+        init=False, foreign_keys=[prod_warehouse_path_id]
+    )
+    in_prod: Mapped[bool] = mapped_column(
+        init=False, default=False, server_default=text("false")
+    )
+
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
         cascade="save-update, merge, refresh-expire",
         init=False,
         foreign_keys=[Book.title_id],
+    )
+
+
+class Warehouse(Base):
+    __tablename__ = "warehouse"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    name: Mapped[str]
+    configuration: Mapped[dict[str, Any]]
+    warehouse_paths: Mapped[list["WarehousePath"]] = relationship(
+        back_populates="warehouse",
+        cascade="all, delete-orphan",
+        init=False,
+    )
+
+
+class WarehousePath(Base):
+    __tablename__ = "warehouse_path"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    folder_name: Mapped[str]
+    warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"), init=False)
+    warehouse: Mapped["Warehouse"] = relationship(
+        back_populates="warehouse_paths", init=False
     )

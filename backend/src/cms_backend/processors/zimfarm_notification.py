@@ -1,3 +1,5 @@
+from typing import cast
+
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
@@ -26,6 +28,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
                 "metadata",
                 "zimcheck",
                 "url",
+                "producer",
             ]
             if key not in notification.content
         ]
@@ -34,6 +37,32 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.events.append(
                 f"{getnow()}: notification is missing mandatory keys: "
                 f"{','.join(missing_notification_keys)}"
+            )
+            notification.status = "bad_notification"
+            return
+
+        # Validate producer information
+        producer = notification.content.get("producer")
+        if not isinstance(producer, dict) or not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in producer.items()  # pyright: ignore[reportUnknownVariableType]
+        ):
+            notification.events.append(f"{getnow()}: producer must be a dict[str, str]")
+            notification.status = "bad_notification"
+            return
+        else:
+            producer = cast(dict[str, str], producer)
+
+        missing_producer_keys = [
+            key
+            for key in ["displayName", "displayUrl", "uniqueId"]
+            if key not in producer
+        ]
+
+        if missing_producer_keys:
+            notification.events.append(
+                f"{getnow()}: producer is missing mandatory keys: "
+                f"{','.join(missing_producer_keys)}"
             )
             notification.status = "bad_notification"
             return
@@ -47,6 +76,9 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             zim_metadata=notification.content["metadata"],
             zimcheck_result=notification.content["zimcheck"],
             zimfarm_notification=notification,
+            producer_display_name=producer["displayName"],
+            producer_display_url=producer["displayUrl"],
+            producer_unique_id=producer["uniqueId"],
         )
         notification.status = "processed"
 

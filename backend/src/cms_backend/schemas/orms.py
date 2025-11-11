@@ -17,7 +17,23 @@ class TitleLightSchema(BaseModel):
     Schema for reading a title model with some fields
     """
 
+    id: UUID
     name: str
+    producer_unique_id: str
+    producer_display_name: str | None
+    producer_display_url: str | None
+
+
+class TitleFullSchema(TitleLightSchema):
+    """
+    Schema for reading a title model with all fields including books
+    """
+
+    dev_warehouse_path_id: UUID
+    prod_warehouse_path_id: UUID
+    in_prod: bool
+    events: list[str]
+    books: list["BookLightSchema"]
 
 
 class ZimfarmNotificationLightSchema(BaseModel):
@@ -36,6 +52,16 @@ class ZimfarmNotificationFullSchema(ZimfarmNotificationLightSchema):
     events: list[str]
 
 
+class ProducerSchema(BaseModel):
+    """
+    Schema for producer information
+    """
+
+    display_name: str
+    display_url: str
+    unique_id: str
+
+
 class BookLightSchema(BaseModel):
     """
     Schema for reading a book model with some fields
@@ -44,6 +70,10 @@ class BookLightSchema(BaseModel):
     id: UUID
     title_id: UUID | None
     status: str
+    created_at: datetime
+    name: str | None
+    date: str | None
+    flavour: str | None
 
 
 class BookFullSchema(BookLightSchema):
@@ -53,3 +83,15 @@ class BookFullSchema(BookLightSchema):
     zimcheck_result: dict[str, Any]
     zim_metadata: dict[str, Any]
     events: list[str]
+    producer: ProducerSchema
+
+
+class WarehousePathSchema(BaseModel):
+    """
+    Schema for reading warehouse path with warehouse information
+    """
+
+    path_id: UUID
+    folder_name: str
+    warehouse_id: UUID
+    warehouse_name: str

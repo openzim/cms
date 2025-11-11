@@ -18,13 +18,23 @@
     @load-data="loadData"
     @clear-filters="clearFilters"
     @selection-changed="handleSelectionChanged"
-  />
+  >
+    <template #actions>
+      <v-btn color="primary" variant="elevated" size="small" @click="showCreateDialog = true">
+        <v-icon size="small" class="mr-1">mdi-plus</v-icon>
+        Create Title
+      </v-btn>
+    </template>
+  </TitlesTable>
   <div v-else class="d-flex align-center justify-center" style="height: 60vh">
     <v-progress-circular indeterminate size="70" width="7" color="primary" />
   </div>
+
+  <CreateTitleDialog v-model="showCreateDialog" @created="handleTitleCreated" />
 </template>
 
 <script setup lang="ts">
+import CreateTitleDialog from '@/components/CreateTitleDialog.vue'
 import TitlesFilter from '@/components/TitlesFilters.vue'
 import TitlesTable from '@/components/TitlesTable.vue'
 import { useLoadingStore } from '@/stores/loading'
@@ -39,11 +49,7 @@ import { useRouter } from 'vue-router'
 // Define headers for the table
 const headers = [
   { title: 'Name', value: 'name' },
-  { title: 'Category', value: 'category' },
-  { title: 'Language', value: 'language' },
-  { title: 'Offliner', value: 'offliner' },
-  { title: 'Requested', value: 'requested' },
-  { title: 'Last Task', value: 'last_task' },
+  { title: 'Producer', value: 'producer' },
 ]
 
 // Reactive state
@@ -59,6 +65,7 @@ const filters = ref({
 })
 const intervalId = ref<number | null>(null)
 const selectedTitles = ref<string[]>([])
+const showCreateDialog = ref(false)
 
 // Stores
 const router = useRouter()
@@ -106,6 +113,11 @@ function handleSelectionChanged(newSelection: string[]) {
   selectedTitles.value = newSelection
 }
 
+async function handleTitleCreated() {
+  notificationStore.showSuccess('Title created successfully')
+  await loadData(paginator.value.limit, paginator.value.skip)
+}
+
 function updateUrl() {
   // create query object from selected filters
   const query: Record<string, string | string[]> = {}
@@ -133,7 +145,9 @@ onMounted(async () => {
   // Load filters from URL
   loadFiltersFromUrl()
 
-  await loadData(paginator.value.limit, paginator.value.skip, true)
+  intervalId.value = window.setInterval(async () => {
+    await loadData(paginator.value.limit, paginator.value.skip, true)
+  }, 60000)
 
   // Mark as ready to show content - the table will handle initial load via updateOptions
   ready.value = true

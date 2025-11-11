@@ -53,11 +53,22 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <router-link :to="{ name: 'schedule-detail', params: { scheduleName: item.name } }">
+          <router-link :to="{ name: 'title-detail', params: { id: item.id } }">
             <span class="d-flex align-center">
               {{ item.name }}
             </span>
           </router-link>
+        </template>
+
+        <template #[`item.producer`]="{ item }">
+          <span v-if="item.producer_display_name && item.producer_display_url">
+            <a :href="item.producer_display_url" target="_blank" rel="noopener noreferrer">
+              {{ item.producer_display_name }}
+            </a>
+            (<code>{{ item.producer_unique_id }}</code
+            >)
+          </span>
+          <code v-else>{{ item.producer_unique_id }}</code>
         </template>
 
         <template #no-data>

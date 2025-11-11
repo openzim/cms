@@ -31,6 +31,50 @@
             </td>
           </tr>
           <tr>
+            <th class="text-left" style="width: 200px">Created</th>
+            <td>
+              <v-tooltip location="bottom">
+                <template #activator="{ props }">
+                  <span v-bind="props">
+                    {{ fromNow(book.created_at) }}
+                  </span>
+                </template>
+                <span>{{ formatDt(book.created_at) }}</span>
+              </v-tooltip>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-left" style="width: 200px">Name</th>
+            <td>
+              <span v-if="book.name">{{ book.name }}</span>
+              <span v-else class="text-grey">-</span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-left" style="width: 200px">Flavour</th>
+            <td>
+              <span v-if="book.flavour">{{ book.flavour }}</span>
+              <span v-else class="text-grey">-</span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-left" style="width: 200px">Date</th>
+            <td>
+              <span v-if="book.date">{{ book.date }}</span>
+              <span v-else class="text-grey">-</span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-left" style="width: 200px">Producer</th>
+            <td>
+              <a :href="book.producer.display_url" target="_blank" rel="noopener noreferrer">
+                {{ book.producer.display_name }}
+              </a>
+              (<code>{{ book.producer.unique_id }}</code
+              >)
+            </td>
+          </tr>
+          <tr>
             <th class="text-left" style="width: 200px">Article Count</th>
             <td>
               {{ book.article_count.toLocaleString() }}
@@ -111,6 +155,7 @@ import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
 import type { Book } from '@/types/book'
+import { formatDt, fromNow } from '@/utils/format'
 import { onMounted, ref } from 'vue'
 
 const loadingStore = useLoadingStore()

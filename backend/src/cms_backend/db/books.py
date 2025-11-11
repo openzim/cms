@@ -43,6 +43,10 @@ def get_books(
         Book.id,
         Book.title_id,
         Book.status,
+        Book.created_at,
+        Book.name,
+        Book.date,
+        Book.flavour,
     ).order_by(Book.id)
 
     if book_id is not None:
@@ -64,9 +68,19 @@ def get_books(
                 id=book_id_result,
                 title_id=book_title_id,
                 status=book_status,
+                created_at=created_at,
+                name=name,
+                date=date,
+                flavour=flavour,
             )
-            for (book_id_result, book_title_id, book_status) in session.execute(
-                stmt.offset(skip).limit(limit)
-            ).all()
+            for (
+                book_id_result,
+                book_title_id,
+                book_status,
+                created_at,
+                name,
+                date,
+                flavour,
+            ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )

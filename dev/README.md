@@ -1,8 +1,13 @@
-This is a tentative docker-compose configuration to be used **only** for development purpose.
+This is a docker-compose configuration to be used **only** for development purpose.
 
-It is recommended to use it in combination with Mutagen to effeciently sync data from your machine to the Docker containers.
+## URLs
 
-It is still incomplete (not all Zimfarm components are available).
+This project adheres to [openZIM TCP-UDP-ports-for-development convention](https://github.com/openzim/overview/wiki/TCP-UDP-ports-for-development). Its port range is `376xx`.
+
+- Dev UI (hot reloading): http://localhost:37600
+- Backend (hot reloading): http://localhost:37601
+- DB: postgresdb://localhost:37602
+- Compiled UI: http://localhost:37603
 
 ## List of containers
 
@@ -16,9 +21,21 @@ This container is simply a Python stack with all backend requirements but no web
 setup with appropriate environment variables for tests (i.e. it uses the test DB). Useful to run
 tests locally. Also useful to generate Alembic revisions, apply them is backend is down, ...
 
-### postgresqldb
+### postgresdb
 
 This container is a PostgreSQL DB. DB data is kept in a volume, persistent across containers restarts.
+
+### frontend-dev
+
+This container hosts the UI application with hot-reload enabled.
+
+### frontend
+
+This container hosts the statically compiled UI.
+
+### background
+
+This container hosts the background tasks which are expected to run once in a while.
 
 ## Instructions
 

@@ -3,7 +3,7 @@ services:
     image: postgres:18.0-trixie
     container_name: cms_postgresdb
     ports:
-      - 127.0.0.1:5432:5432
+      - 127.0.0.1:37602:5432
     volumes:
       - pg_data_cms:/var/lib/postgresql/data
       - ./postgres-initdb:/docker-entrypoint-initdb.d
@@ -25,7 +25,7 @@ services:
       - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
       - ./backend-periodic.conf:/etc/supervisor/conf.d/periodic.conf:ro
     ports:
-      - 127.0.0.1:8000:80
+      - 127.0.0.1:37601:80
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/v1/healthcheck"]
       interval: 30s
@@ -35,7 +35,7 @@ services:
       DEBUG: 1
       WEB_CONCURRENCY: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
-      ALLOWED_ORIGINS: http://localhost:8001,http://localhost:8002
+      ALLOWED_ORIGINS: http://localhost:37600,http://localhost:37603
     depends_on:
       postgresdb:
         condition: service_healthy
@@ -73,7 +73,7 @@ services:
     volumes:
       - ./frontend-dev/config.json:/usr/share/nginx/html/config.json:ro
     ports:
-      - 127.0.0.1:8001:80
+      - 127.0.0.1:37603:80
     depends_on:
       backend:
         condition: service_healthy
@@ -86,7 +86,7 @@ services:
       - ../frontend/src:/app/src
       - ./frontend-dev/config.json:/app/public/config.json:ro
     ports:
-      - 127.0.0.1:8002:80
+      - 127.0.0.1:37600:80
     depends_on:
       backend:
         condition: service_healthy

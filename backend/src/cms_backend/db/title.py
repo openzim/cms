@@ -1,15 +1,45 @@
+from uuid import UUID
+
+from psycopg.errors import UniqueViolation
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend import logger
 from cms_backend.db import count_from_stmt
+from cms_backend.db.exceptions import RecordAlreadyExistsError
 from cms_backend.db.models import Title
 from cms_backend.schemas.orms import ListResult, TitleLightSchema
+from cms_backend.utils.datetime import getnow
+
+
+def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
+    """Get a title by ID"""
+
+    title = session.get(Title, title_id)
+    if not title:
+        from cms_backend.db.exceptions import RecordDoesNotExistError
+
+        raise RecordDoesNotExistError(f"Title with id {title_id} does not exist")
+    return title
 
 
 def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None:
     """Get a title by name if possible else None"""
 
     return session.scalars(select(Title).where(Title.name == name)).one_or_none()
+
+
+def get_title_by_name_and_producer_or_none(
+    session: OrmSession, *, name: str, producer_unique_id: str
+) -> Title | None:
+    """Get a title by name and producer_unique_id if possible else None"""
+
+    return session.scalars(
+        select(Title).where(
+            Title.name == name, Title.producer_unique_id == producer_unique_id
+        )
+    ).one_or_none()
 
 
 def get_titles(
@@ -24,7 +54,11 @@ def get_titles(
 
     stmt = (
         select(
+            Title.id.label("title_id"),
             Title.name.label("title_name"),
+            Title.producer_unique_id.label("producer_unique_id"),
+            Title.producer_display_name.label("producer_display_name"),
+            Title.producer_display_url.label("producer_display_url"),
         )
         .order_by(Title.name)
         .where(
@@ -43,7 +77,57 @@ def get_titles(
     return ListResult[TitleLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
-            TitleLightSchema(name=title_name)
-            for (title_name,) in session.execute(stmt.offset(skip).limit(limit)).all()
+            TitleLightSchema(
+                id=title_id,
+                name=title_name,
+                producer_unique_id=producer_unique_id,
+                producer_display_name=producer_display_name,
+                producer_display_url=producer_display_url,
+            )
+            for (
+                title_id,
+                title_name,
+                producer_unique_id,
+                producer_display_name,
+                producer_display_url,
+            ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
+
+
+def create_title(
+    session: OrmSession,
+    *,
+    name: str,
+    producer_unique_id: str,
+    producer_display_name: str | None,
+    producer_display_url: str | None,
+    dev_warehouse_path_id: UUID,
+    prod_warehouse_path_id: UUID,
+    in_prod: bool,
+) -> Title:
+    """Create a new title"""
+
+    title = Title(
+        name=name,
+        producer_unique_id=producer_unique_id,
+    )
+    title.producer_display_name = producer_display_name
+    title.producer_display_url = producer_display_url
+    title.dev_warehouse_path_id = dev_warehouse_path_id
+    title.prod_warehouse_path_id = prod_warehouse_path_id
+    title.in_prod = in_prod
+    title.events.append(f"{getnow()}: title created")
+
+    session.add(title)
+    try:
+        session.flush()
+    except IntegrityError as exc:
+        if isinstance(exc.orig, UniqueViolation):
+            raise RecordAlreadyExistsError(
+                f"Title with name {name} already exists"
+            ) from exc
+        logger.exception("Unknown exception encountered while creating title")
+        raise
+
+    return title

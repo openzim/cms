@@ -1,4 +1,4 @@
-"""Add support for flavors
+"""Add support for flavours
 
 Revision ID: 6c6181d36517
 Revises: 40b58eace3fb

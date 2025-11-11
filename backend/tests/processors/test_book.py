@@ -18,11 +18,11 @@ MINIMUM_ZIM_METADATA = {
     "Language": "eng",
 }
 
-# minimum set of metadata + a long description + a flavor + a random one
+# minimum set of metadata + a long description + a flavour + a random one
 GOOD_ZIM_METADATA = {
     **MINIMUM_ZIM_METADATA,
     "Long description": "X" * 100,
-    "Flavor": "nopic",
+    "Flavour": "nopic",
     "Foo": "Bar",
 }
 
@@ -114,7 +114,9 @@ def test_get_matching_title_found(
 ):
     """Get matching title for a given book - title exist"""
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(
+        zim_metadata={"Name": title.name}, producer_unique_id=title.producer_unique_id
+    )
     assert len(book.events) == 0
     assert len(title.events) == 0
     matching_title = get_matching_title(dbsession, book=book)

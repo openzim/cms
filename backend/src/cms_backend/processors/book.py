@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
 from cms_backend.db.models import Book, Title
-from cms_backend.db.title import get_title_by_name_or_none
+from cms_backend.db.title import get_title_by_name_and_producer_or_none
 from cms_backend.utils.datetime import getnow
 
 
@@ -54,7 +54,9 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             book.status = "qa_failed"
             return None
 
-        title = get_title_by_name_or_none(session, name=name)
+        title = get_title_by_name_and_producer_or_none(
+            session, name=name, producer_unique_id=book.producer_unique_id
+        )
 
         if not title:
             book.events.append(f"{getnow()}: no matching title found for book")

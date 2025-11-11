@@ -9,7 +9,14 @@ from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import Session
-from cms_backend.db.models import Base, Book, Title, ZimfarmNotification
+from cms_backend.db.models import (
+    Base,
+    Book,
+    Title,
+    Warehouse,
+    WarehousePath,
+    ZimfarmNotification,
+)
 from cms_backend.utils.datetime import getnow
 
 
@@ -74,15 +81,23 @@ def create_book(
 ) -> Callable[..., Book]:
     def _create_book(
         _id: UUID | None = None,
+        created_at: datetime | None = None,
         article_count: int | None = None,
         media_count: int | None = None,
         size: int | None = None,
         zim_metadata: dict[str, Any] | None = None,
         zimcheck_result: dict[str, Any] | None = None,
+        name: str | None = None,
+        date: str | None = None,
+        flavour: str | None = None,
         zimfarm_notification: ZimfarmNotification | None = None,
+        producer_display_name: str | None = None,
+        producer_display_url: str | None = None,
+        producer_unique_id: str | None = None,
     ) -> Book:
         book = Book(
             id=_id if _id is not None else uuid4(),
+            created_at=created_at if created_at is not None else getnow(),
             article_count=(
                 article_count if article_count is not None else faker.random_int()
             ),
@@ -90,7 +105,25 @@ def create_book(
             size=size if size is not None else faker.random_int(),
             zim_metadata=zim_metadata if zim_metadata else {},
             zimcheck_result=zimcheck_result if zimcheck_result else {},
+            name=name,
+            date=date,
+            flavour=flavour,
             zimfarm_notification=zimfarm_notification,
+            producer_display_name=(
+                producer_display_name
+                if producer_display_name is not None
+                else faker.company()
+            ),
+            producer_display_url=(
+                producer_display_url
+                if producer_display_url is not None
+                else faker.url()
+            ),
+            producer_unique_id=(
+                producer_unique_id
+                if producer_unique_id is not None
+                else str(faker.uuid4())
+            ),
         )
         # book.events = []
         dbsession.add(book)
@@ -110,9 +143,38 @@ def book(
 @pytest.fixture
 def create_title(
     dbsession: OrmSession,
+    faker: Faker,
+    create_warehouse_path: Callable[..., WarehousePath],
 ) -> Callable[..., Title]:
-    def _create_title(name: str = "test_en_all") -> Title:
-        title = Title(name=name)
+    def _create_title(
+        name: str = "test_en_all",
+        producer_unique_id: str | None = None,
+        producer_display_name: str | None = None,
+        producer_display_url: str | None = None,
+        dev_warehouse_path_id: UUID | None = None,
+        prod_warehouse_path_id: UUID | None = None,
+    ) -> Title:
+        title = Title(
+            name=name,
+            producer_unique_id=(
+                producer_unique_id
+                if producer_unique_id is not None
+                else str(faker.uuid4())
+            ),
+        )
+        title.producer_display_name = producer_display_name
+        title.producer_display_url = producer_display_url
+        # Create default warehouse paths if not provided
+        if dev_warehouse_path_id is None:
+            dev_warehouse_path = create_warehouse_path()
+            title.dev_warehouse_path_id = dev_warehouse_path.id
+        else:
+            title.dev_warehouse_path_id = dev_warehouse_path_id
+        if prod_warehouse_path_id is None:
+            prod_warehouse_path = create_warehouse_path()
+            title.prod_warehouse_path_id = prod_warehouse_path.id
+        else:
+            title.prod_warehouse_path_id = prod_warehouse_path_id
         dbsession.add(title)
         dbsession.flush()
         return title
@@ -125,3 +187,61 @@ def title(
     create_title: Callable[..., Title],
 ) -> Title:
     return create_title()
+
+
+@pytest.fixture
+def create_warehouse(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., Warehouse]:
+    def _create_warehouse(
+        name: str | None = None,
+        configuration: dict[str, Any] | None = None,
+    ) -> Warehouse:
+        warehouse = Warehouse(
+            name=name if name is not None else faker.company(),
+            configuration=configuration if configuration is not None else {},
+        )
+        dbsession.add(warehouse)
+        dbsession.flush()
+        return warehouse
+
+    return _create_warehouse
+
+
+@pytest.fixture
+def warehouse(
+    create_warehouse: Callable[..., Warehouse],
+) -> Warehouse:
+    return create_warehouse()
+
+
+@pytest.fixture
+def create_warehouse_path(
+    dbsession: OrmSession,
+    faker: Faker,
+    create_warehouse: Callable[..., Warehouse],
+) -> Callable[..., WarehousePath]:
+    def _create_warehouse_path(
+        folder_name: str | None = None,
+        warehouse: Warehouse | None = None,
+    ) -> WarehousePath:
+        warehouse_path = WarehousePath(
+            folder_name=folder_name if folder_name is not None else faker.file_path(),
+        )
+        warehouse_path.warehouse = (
+            warehouse if warehouse is not None else create_warehouse()
+        )
+        dbsession.add(warehouse_path)
+        dbsession.flush()
+        return warehouse_path
+
+    return _create_warehouse_path
+
+
+@pytest.fixture
+def warehouse_path(
+    create_warehouse_path: Callable[..., WarehousePath],
+    warehouse: Warehouse,
+) -> WarehousePath:
+    return create_warehouse_path(warehouse=warehouse)
