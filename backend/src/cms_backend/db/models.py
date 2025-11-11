@@ -112,6 +112,12 @@ class Book(Base):
         back_populates="book"
     )
 
+    locations: Mapped[list["BookLocation"]] = relationship(
+        back_populates="book",
+        cascade="all, delete-orphan",
+        init=False,
+    )
+
 
 Index(
     "idx_book_status_pending_processing",
@@ -205,3 +211,17 @@ class WarehousePath(Base):
     warehouse: Mapped["Warehouse"] = relationship(
         back_populates="warehouse_paths", init=False
     )
+
+
+class BookLocation(Base):
+    __tablename__ = "book_location"
+    book_id: Mapped[UUID] = mapped_column(ForeignKey("book.id"), primary_key=True)
+    warehouse_path_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse_path.id"), primary_key=True, init=False
+    )
+    status: Mapped[str] = mapped_column(primary_key=True)  # 'current' or 'target'
+
+    filename: Mapped[str]
+
+    book: Mapped["Book"] = relationship(back_populates="locations", init=False)
+    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)

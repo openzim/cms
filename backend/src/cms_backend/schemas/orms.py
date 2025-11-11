@@ -72,6 +72,18 @@ class ProducerSchema(BaseModel):
     unique_id: str
 
 
+class BookLocationSchema(BaseModel):
+    """
+    Schema for book location information
+    """
+
+    warehouse_path_id: UUID
+    warehouse_name: str
+    folder_name: str
+    filename: str
+    status: str  # 'current' or 'target'
+
+
 class BookLightSchema(BaseModel):
     """
     Schema for reading a book model with some fields
@@ -94,6 +106,8 @@ class BookFullSchema(BookLightSchema):
     zim_metadata: dict[str, Any]
     events: list[str]
     producer: ProducerSchema
+    current_locations: list[BookLocationSchema]
+    target_locations: list[BookLocationSchema]
 
 
 class WarehousePathSchema(BaseModel):

@@ -4,6 +4,14 @@ export interface Producer {
   unique_id: string
 }
 
+export interface BookLocation {
+  warehouse_path_id: string
+  warehouse_name: string
+  folder_name: string
+  filename: string
+  status: string
+}
+
 export interface Book {
   id: string
   title_id?: string
@@ -19,6 +27,8 @@ export interface Book {
   zim_metadata: Record<string, unknown>
   events: string[]
   producer: Producer
+  current_locations: BookLocation[]
+  target_locations: BookLocation[]
 }
 
 export interface BookLight {

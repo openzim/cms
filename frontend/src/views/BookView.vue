@@ -127,6 +127,64 @@
             </td>
           </tr>
           <tr>
+            <th class="text-left pa-4 align-top">Current Locations</th>
+            <td class="py-2">
+              <div v-if="book.current_locations.length > 0">
+                <v-table size="small">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Warehouse</th>
+                      <th class="text-left">Folder</th>
+                      <th class="text-left">Filename</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="location in book.current_locations"
+                      :key="`current-${location.warehouse_path_id}`"
+                    >
+                      <td>{{ location.warehouse_name }}</td>
+                      <td>{{ location.folder_name }}</td>
+                      <td>
+                        <code>{{ location.filename }}</code>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+              <div v-else class="text-grey">No current locations</div>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-left pa-4 align-top">Target Locations</th>
+            <td class="py-2">
+              <div v-if="book.target_locations.length > 0">
+                <v-table size="small">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Warehouse</th>
+                      <th class="text-left">Folder</th>
+                      <th class="text-left">Filename</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="location in book.target_locations"
+                      :key="`target-${location.warehouse_path_id}`"
+                    >
+                      <td>{{ location.warehouse_name }}</td>
+                      <td>{{ location.folder_name }}</td>
+                      <td>
+                        <code>{{ location.filename }}</code>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+              <div v-else class="text-grey">No target locations</div>
+            </td>
+          </tr>
+          <tr>
             <th class="text-left pa-4 align-top">
               Events
               <v-btn

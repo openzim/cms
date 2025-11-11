@@ -12,6 +12,7 @@ from cms_backend.db import Session
 from cms_backend.db.models import (
     Base,
     Book,
+    BookLocation,
     Title,
     TitleWarehousePath,
     Warehouse,
@@ -148,12 +149,14 @@ def create_title(
     create_warehouse_path: Callable[..., WarehousePath],
 ) -> Callable[..., Title]:
     def _create_title(
+        *,
         name: str = "test_en_all",
         producer_unique_id: str | None = None,
         producer_display_name: str | None = None,
         producer_display_url: str | None = None,
         dev_warehouse_path_ids: list[UUID] | None = None,
         prod_warehouse_path_ids: list[UUID] | None = None,
+        in_prod: bool = False,
     ) -> Title:
         title = Title(
             name=name,
@@ -165,8 +168,10 @@ def create_title(
         )
         title.producer_display_name = producer_display_name
         title.producer_display_url = producer_display_url
+        title.in_prod = in_prod
 
-        # Create default warehouse paths if not provided
+        # Create default warehouse paths if not provided (None means create default)
+        # Empty list means explicitly no paths
         if dev_warehouse_path_ids is None:
             dev_warehouse_path = create_warehouse_path()
             dev_warehouse_path_ids = [dev_warehouse_path.id]
@@ -254,3 +259,35 @@ def warehouse_path(
     warehouse: Warehouse,
 ) -> WarehousePath:
     return create_warehouse_path(warehouse=warehouse)
+
+
+@pytest.fixture
+def create_book_location(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_warehouse_path: Callable[..., WarehousePath],
+) -> Callable[..., BookLocation]:
+    def _create_book_location(
+        book: Book | None = None,
+        warehouse_path: WarehousePath | None = None,
+        filename: str | None = None,
+        status: str = "current",
+    ) -> BookLocation:
+        if book is None:
+            book = create_book()
+        if warehouse_path is None:
+            warehouse_path = create_warehouse_path()
+        if filename is None:
+            filename = "test_file.zim"
+
+        location = BookLocation(
+            book_id=book.id,
+            status=status,
+            filename=filename,
+        )
+        location.warehouse_path_id = warehouse_path.id
+        dbsession.add(location)
+        dbsession.flush()
+        return location
+
+    return _create_book_location
