@@ -18,11 +18,11 @@ MINIMUM_ZIM_METADATA = {
     "Language": "eng",
 }
 
-# minimum set of metadata + a long description + a flavor + a random one
+# minimum set of metadata + a long description + a flavour + a random one
 GOOD_ZIM_METADATA = {
     **MINIMUM_ZIM_METADATA,
     "Long description": "X" * 100,
-    "Flavor": "nopic",
+    "Flavour": "nopic",
     "Foo": "Bar",
 }
 
