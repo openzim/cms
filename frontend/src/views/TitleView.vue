@@ -75,10 +75,8 @@
               </v-btn>
             </th>
             <td class="py-2">
-              <pre v-if="title.events.length > 0" v-for="event in title.events" :key="event">{{
-                event
-              }}</pre>
-              <span v-else class="text-grey">No events</span>
+              <pre v-for="event in title.events" :key="event">{{ event }}</pre>
+              <span v-if="title.events.length == 0" class="text-grey">No events</span>
             </td>
           </tr>
           <tr>
