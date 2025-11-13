@@ -9,18 +9,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from cms_backend.api.routes.books import router as books_router
+from cms_backend.api.routes.healthcheck import router as healthcheck_router
+from cms_backend.api.routes.http_errors import BadRequestError
+from cms_backend.api.routes.titles import router as titles_router
+from cms_backend.api.routes.warehouse_paths import router as warehouse_paths_router
+from cms_backend.api.routes.zimfarm_notifications import (
+    router as zimfarm_notification_router,
+)
 from cms_backend.db.exceptions import (
     RecordAlreadyExistsError,
     RecordDisabledError,
     RecordDoesNotExistError,
-)
-from cms_backend.routes.books import router as books_router
-from cms_backend.routes.healthcheck import router as healthcheck_router
-from cms_backend.routes.http_errors import BadRequestError
-from cms_backend.routes.titles import router as titles_router
-from cms_backend.routes.warehouse_paths import router as warehouse_paths_router
-from cms_backend.routes.zimfarm_notifications import (
-    router as zimfarm_notification_router,
 )
 from cms_backend.utils.database import (
     upgrade_db_schema,

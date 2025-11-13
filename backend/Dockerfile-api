@@ -1,0 +1,27 @@
+FROM python:3.13-slim-bookworm
+LABEL org.opencontainers.image.source https://github.com/openzim/cms
+
+ENV ALEMBIC_UPGRADE_HEAD_ON_START=false
+
+# curl needed for healthcheck
+RUN apt-get update && apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# install Python dependencies first (since they change more rarely than src code)
+COPY pyproject.toml README.md /app/
+COPY src/cms_backend/__about__.py /app/src/cms_backend/__about__.py
+RUN pip install --no-cache-dir '/app[api]'
+
+COPY src /app/src
+
+RUN pip install --no-cache-dir '/app[api]' \
+    && rm -rf /app/src \
+    && rm /app/pyproject.toml \
+    && rm /app/README.md
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost/v1/healthcheck || exit 1
+
+CMD ["uvicorn", "cms_backend.api.main:app", "--host", "0.0.0.0", "--port", "80"]

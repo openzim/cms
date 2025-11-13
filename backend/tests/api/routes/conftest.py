@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.main import app
 from cms_backend.db import gen_dbsession, gen_manual_dbsession
-from cms_backend.main import app
 
 
 @pytest.fixture

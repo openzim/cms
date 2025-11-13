@@ -55,24 +55,32 @@ jobs:
           psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
           "host=localhost port=5432 dbname=cmstest user=cms password=cmspass"
 
-      - name: Build backend Docker image
+      - name: Build backend mill Docker image
         working-directory: backend
-        run: docker build -t cms-backend:test .
+        run: docker build -t cms-backend-mill:test -f Dockerfile-mill .
 
-      - name: Run backend container
+      - name: Build backend shuttle Docker image
+        working-directory: backend
+        run: docker build -t cms-backend-shuttle:test -f Dockerfile-shuttle .
+
+      - name: Build backend API Docker image
+        working-directory: backend
+        run: docker build -t cms-backend-api:test -f Dockerfile-api .
+
+      - name: Run backend api container
         run: |
           docker run -d --name cms-backend-test \
             -e POSTGRES_URI=$POSTGRES_URI \
             -e JWT_SECRET=DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw \
             -p 8000:80 \
-            cms-backend:test
+            cms-backend-api:test
           # wait for container to be ready
           for i in {1..10}; do
             if curl -s http://localhost:8000/v2/healthcheck > /dev/null; then
-              echo "Backend is up!"
+              echo "Backend API is up!"
               break
             fi
-            echo "Waiting for backend..."
+            echo "Waiting for backend API..."
             sleep 3
           done
 
@@ -81,6 +89,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
           JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
+          ALEMBIC_UPGRADE_HEAD_ON_START: false
         run: inv coverage --args "-vvv"
 
       - name: Upload coverage report to codecov
