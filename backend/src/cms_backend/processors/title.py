@@ -2,10 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
-from cms_backend.db.book import create_book_location
 from cms_backend.db.models import Book, Title, TitleWarehousePath
+from cms_backend.processors.book import create_book_target_locations
 from cms_backend.utils.datetime import getnow
-from cms_backend.utils.filename import compute_target_filename
 
 
 def add_book_to_title(session: OrmSession, book: Book, title: Title):
@@ -18,16 +17,14 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         if not book.date:
             raise Exception("book date is missing or invalid")
 
-        name = book.name
-
         title.books.append(book)
         book.events.append(f"{getnow()}: book added to title {title.id}")
         title.events.append(f"{getnow()}: book {book.id} added to title")
         book.status = "processed"
 
-        if name and title.name != name:
-            title.events.append(f"{getnow()}: updating title name to {name}")
-            title.name = name
+        if title.name != book.name:
+            title.events.append(f"{getnow()}: updating title name to {book.name}")
+            title.name = book.name
 
         # Update title producer display fields from book
         if title.producer_display_name != book.producer_display_name:
@@ -44,14 +41,6 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             )
             title.producer_display_url = book.producer_display_url
 
-        # Compute target filename once for this book
-        target_filename = compute_target_filename(
-            session,
-            name=name,
-            flavour=book.flavour,
-            date=book.date,
-        )
-
         # Determine which warehouse paths to use based on title.in_prod
         path_type = "prod" if title.in_prod else "dev"
 
@@ -62,15 +51,12 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         )
         target_warehouse_paths = session.scalars(stmt).all()
 
-        # Create target locations for each applicable warehouse path
-        for title_warehouse_path in target_warehouse_paths:
-            create_book_location(
-                session=session,
-                book=book,
-                warehouse_path_id=title_warehouse_path.warehouse_path_id,
-                filename=target_filename,
-                status="target",
-            )
+        # Create target locations if not already at expected locations
+        create_book_target_locations(
+            session=session,
+            book=book,
+            target_warehouse_paths=list(target_warehouse_paths),
+        )
 
     except Exception as exc:
         book.events.append(

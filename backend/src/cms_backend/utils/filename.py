@@ -1,5 +1,7 @@
 """Utilities for computing and managing book target filenames."""
 
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
@@ -55,7 +57,12 @@ def get_next_suffix(current_suffix: str) -> str:
 
 
 def compute_target_filename(
-    session: OrmSession, *, name: str, flavour: str | None, date: str
+    session: OrmSession,
+    *,
+    name: str,
+    flavour: str | None,
+    date: str,
+    book_id: UUID | None = None,
 ) -> str:
     """
     Compute target filename: {name}[_{flavour}]_{period}[suffix]
@@ -67,7 +74,8 @@ def compute_target_filename(
     - YYYY-MMaa, YYYY-MMab, ... (multiple letters)
 
     Finds the last suffix already in use and generates the next one.
-    Queries ALL book locations (any status) with filenames starting with base pattern.
+    Queries ALL book locations (any status) with filenames starting with base pattern,
+    excluding locations from the current book to avoid self-collision.
 
     Important edge cases:
     - Books with same name but different flavours (including no flavour) never collide
@@ -79,6 +87,7 @@ def compute_target_filename(
         name: Book name
         flavour: Book flavour (optional)
         date: Book date (format: YYYY-MM-DD)
+        book_id: ID of the book being processed (to exclude its own locations)
 
     Returns:
         Target filename including .zim extension
@@ -107,9 +116,13 @@ def compute_target_filename(
 
     # Query all locations where filename starts with this pattern
     # Check ALL locations regardless of status (current or target)
+    # Exclude the current book's own locations to avoid self-collision
     stmt = select(BookLocation.filename).where(
         BookLocation.filename.like(f"{base_pattern}%")
     )
+    if book_id is not None:
+        stmt = stmt.where(BookLocation.book_id != book_id)
+
     existing_filenames = list(session.scalars(stmt).all())
 
     # If no existing files, use base pattern (no suffix)
