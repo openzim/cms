@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
+from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
+from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db.zimfarm_notification import (
     create_zimfarm_notification as db_create_zimfarm_notification,
@@ -20,8 +22,6 @@ from cms_backend.db.zimfarm_notification import (
 from cms_backend.db.zimfarm_notification import (
     get_zimfarm_notifications as db_get_zimfarm_notifications,
 )
-from cms_backend.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
-from cms_backend.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.schemas import BaseModel, WithExtraModel
 from cms_backend.schemas.orms import (
     ZimfarmNotificationFullSchema,

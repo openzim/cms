@@ -10,7 +10,10 @@ You are welcome to use it, report bugs and request features!
 
 As an internal tool, we don't provide releases nor changelogs for the CMS. Please check the respective source-code for the two components of the CMS:
 
-- `backend`: the python backend API available via `ghcr.io/openzim/cms-api` docker image.
+- `backend`: the python backend, with 3 sub-components:
+  - the `api`, responsible to provide an API (sic), available via `ghcr.io/openzim/cms-api` docker image
+  - the `mill`, responsible to process background tasks, available via `ghcr.io/openzim/cms-mill` docker image
+  - the `shuttle`, responsible to move files around, available via `ghcr.io/openzim/cms-shuttle` docker image
 - `frontend`: the Vue.js Web UI available via `ghcr.io/openzim/cms-ui` docker image.
 
 ```sh

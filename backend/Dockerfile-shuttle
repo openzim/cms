@@ -1,0 +1,24 @@
+FROM python:3.13-slim-bookworm
+LABEL org.opencontainers.image.source https://github.com/openzim/cms
+
+ENV ALEMBIC_UPGRADE_HEAD_ON_START=false
+
+# Install dependencies
+RUN apt-get update && apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies first (since they change more rarely than src code)
+COPY pyproject.toml README.md /app/
+COPY src/cms_backend/__about__.py /app/src/cms_backend/__about__.py
+RUN pip install --no-cache-dir /app
+
+COPY src /app/src
+
+RUN pip install --no-cache-dir /app \
+    && rm -rf /app/src \
+    && rm /app/pyproject.toml \
+    && rm /app/README.md
+
+WORKDIR /app
+
+CMD ["python", "-m", "cms_backend.shuttle.main"]

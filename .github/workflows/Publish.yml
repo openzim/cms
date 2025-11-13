@@ -42,17 +42,59 @@ jobs:
       - name: Retrieve source code
         uses: actions/checkout@v5
 
-      - name: Build and publish Docker Image
+      - name: Build and publish Docker Image for backend mill
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/cms-mill
+          on-master: latest
+          restrict-to: openzim/cms
+          context: backend
+          dockerfile: Dockerfile-mill
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and publish Docker Image for backend shuttle
+        uses: openzim/docker-publish-action@v10
+        with:
+          image-name: openzim/cms-shuttle
+          on-master: latest
+          restrict-to: openzim/cms
+          context: backend
+          dockerfile: Dockerfile-shuttle
+          registries: ghcr.io
+          credentials:
+            GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
+            GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and publish Docker Image for backend API
         uses: openzim/docker-publish-action@v10
         with:
           image-name: openzim/cms-api
           on-master: latest
           restrict-to: openzim/cms
           context: backend
+          dockerfile: Dockerfile-api
           registries: ghcr.io
           credentials:
             GHCRIO_USERNAME=${{ secrets.GHCR_USERNAME }}
             GHCRIO_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+      # mill should be first since it deploys the alembic migration
+      - name: Deploy CMS Mill changes to cms.openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments mill-deployment -n cms
+
+      - name: Deploy CMS Shuttle changes to cms.openzim.org
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: rollout restart deployments shuttle-deployment -n cms
 
       - name: Deploy CMS API changes to cms.openzim.org
         uses: actions-hub/kubectl@master

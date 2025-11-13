@@ -32,3 +32,8 @@ class Context:
 
     # URL to connect to the database
     database_url: str = get_mandatory_env("DATABASE_URL")
+
+    # should we run alembic migrations on startup
+    alembic_upgrade_head_on_start: bool = parse_bool(
+        get_mandatory_env("ALEMBIC_UPGRADE_HEAD_ON_START")
+    )
