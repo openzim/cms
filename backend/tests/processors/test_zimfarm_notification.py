@@ -58,7 +58,7 @@ def test_process_notification_success(
     assert notification.book is not None
     assert notification.book.title == title
     assert notification.book.title_id == title.id
-    assert notification.book.status == "processed"
+    assert notification.book.status == "pending_move"
     assert any(
         event
         for event in notification.events
@@ -421,7 +421,7 @@ def test_process_notification_with_existing_books(
 
     assert notification.book is not None
     assert notification.book.title == title
-    assert notification.book.status == "processed"
+    assert notification.book.status == "pending_move"
     assert len(title.books) == 2
     assert existing_book in title.books
     assert notification.book in title.books

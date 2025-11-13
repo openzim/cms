@@ -8,7 +8,6 @@ from cms_backend.processors.zimfarm_notification import process_notification
 def process_zimfarm_notifications(session: OrmSession):
     logger.info("Processing Zimfarm notifications")
     nb_notifications_processed = 0
-    raise Exception("foo")
     while True:
         with session.begin_nested():
             notification = get_next_notification_to_process_or_none(session)

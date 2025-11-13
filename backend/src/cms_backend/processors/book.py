@@ -157,6 +157,7 @@ def create_book_target_locations(
             f"{getnow()}: book already at all target locations, skipping target "
             "creation"
         )
+        book.status = "published"
         return
 
     # Create target locations for each applicable warehouse path
@@ -168,3 +169,5 @@ def create_book_target_locations(
             filename=target_filename,
             status="target",
         )
+
+    book.status = "pending_move"

@@ -9,12 +9,18 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.shuttle.context import Context as ShuttleContext
+from cms_backend.shuttle.move_files import move_files
 from cms_backend.utils.database import upgrade_db_schema
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.task_config import TaskConfig
 
 # Configure background tasks with their execution intervals
-tasks: list[TaskConfig] = []
+tasks: list[TaskConfig] = [
+    TaskConfig(
+        func=move_files,
+        interval=ShuttleContext.move_files_interval,
+    ),
+]
 
 
 def main():

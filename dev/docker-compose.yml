@@ -89,6 +89,7 @@ services:
       - ../backend/tests:/app/tests
     environment:
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cmstest
+      ALEMBIC_UPGRADE_HEAD_ON_START: false
     depends_on:
       - postgresdb
   frontend:

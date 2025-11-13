@@ -1,5 +1,6 @@
 from datetime import datetime
 from ipaddress import IPv4Address
+from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID
 
@@ -143,6 +144,12 @@ Index(
     postgresql_where=text("status = 'errored'"),
 )
 
+Index(
+    "idx_book_status_pending_move",
+    Book.status,
+    postgresql_where=text("status = 'pending_move'"),
+)
+
 
 class Title(Base):
     __tablename__ = "title"
@@ -225,3 +232,17 @@ class BookLocation(Base):
 
     book: Mapped["Book"] = relationship(back_populates="locations", init=False)
     warehouse_path: Mapped["WarehousePath"] = relationship(init=False)
+
+    def full_local_path(self, warehouse_local_folders_map: dict[UUID, str]) -> Path:
+        folder_in_warehouse = Path(self.warehouse_path.folder_name) / self.filename
+        warehouse_folder = Path(
+            warehouse_local_folders_map[self.warehouse_path.warehouse.id]
+        )
+        return warehouse_folder / folder_in_warehouse
+
+    @property
+    def full_str(self) -> str:
+        return (
+            f"{self.warehouse_path.warehouse.name}:"
+            f"{self.warehouse_path.folder_name}/{self.filename}"
+        )

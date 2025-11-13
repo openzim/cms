@@ -20,7 +20,6 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         title.books.append(book)
         book.events.append(f"{getnow()}: book added to title {title.id}")
         title.events.append(f"{getnow()}: book {book.id} added to title")
-        book.status = "processed"
 
         if title.name != book.name:
             title.events.append(f"{getnow()}: updating title name to {book.name}")

@@ -11,9 +11,13 @@
     <v-icon size="small" color="info" icon="mdi-book-search-outline"></v-icon>
     <span class="text-caption ml-1">Pending Title</span>
   </span>
-  <span v-else-if="book.status === 'processed'" class="d-flex align-center">
-    <v-icon size="small" color="success" icon="mdi-check-circle-outline"></v-icon>
-    <span class="text-caption ml-1">Processed</span>
+  <span v-else-if="book.status === 'pending_move'" class="d-flex align-center">
+    <v-icon size="small" color="info" icon="mdi-truck-delivery-outline"></v-icon>
+    <span class="text-caption ml-1">Pending Move</span>
+  </span>
+  <span v-else-if="book.status === 'published'" class="d-flex align-center">
+    <v-icon size="small" color="success" icon="mdi-check-circle"></v-icon>
+    <span class="text-caption ml-1">Published</span>
   </span>
   <span v-else-if="book.status === 'errored'" class="d-flex align-center">
     <v-icon size="small" color="error" icon="mdi-alert-circle-outline"></v-icon>
