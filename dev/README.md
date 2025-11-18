@@ -50,6 +50,64 @@ This sets up the containers, runs the migrations.
 
 Note that to run tests, we use a separate DB with the backend-tests container
 
+### Setup warehouse paths
+
+Before using the shuttle service for file operations, you need to initialize the warehouse paths in the database:
+
+```sh
+docker exec cms_shuttle python /scripts/setup_warehouses.py
+```
+
+This script will:
+- Create warehouse directories in `dev/warehouses/`
+- Create corresponding database records (Warehouse and WarehousePath)
+- Print the LOCAL_WAREHOUSE_PATHS configuration (already configured in docker-compose.yml)
+
+Current warehouse configuration:
+- **hidden**: 2 paths (`jail`, `dev`)
+- **prod**: 1 path (`other`)
+
+To modify warehouse configuration, edit the `WAREHOUSES_CONFIG` dict in [scripts/setup_warehouses.py](scripts/setup_warehouses.py) and re-run the script.
+
+### Setup titles
+
+After setting up warehouse paths, you can create sample titles with their warehouse path associations:
+
+```sh
+docker exec cms_mill python /scripts/setup_titles.py
+```
+
+This script will:
+- Create Title records in the database
+- Associate titles with dev and prod warehouse paths via TitleWarehousePath
+
+To modify title configuration, edit the `TITLES_CONFIG` list in [scripts/setup_titles.py](scripts/setup_titles.py) and re-run the script.
+
+### Setup notifications
+
+After setting up titles, you can create sample zimfarm notifications for testing the mill processor:
+
+```sh
+docker exec cms_shuttle python /scripts/setup_notifications.py
+```
+
+This script will:
+- Create ZimfarmNotification records with status "pending"
+- Create "fake" ZIMs in warehouse folders
+- Each notification references a warehouse path and matches a title's producer_unique_id
+
+After creating notifications, the mill will process them into books. To modify notification configuration, edit the `NOTIFICATIONS_CONFIG` list in [scripts/setup_notifications.py](scripts/setup_notifications.py) and re-run the script.
+
+### Wipe database and files
+
+To delete all data from the database and all ZIM files from warehouses:
+
+```sh
+docker exec cms_shuttle python /scripts/wipe.py
+```
+
+This is useful when you need to reset everything to a clean state before re-running setup scripts.
+
 ### Restart the backend
 
 The backend might typically fail if the DB schema is not up-to-date, or if you create some nasty bug while modifying the code.
