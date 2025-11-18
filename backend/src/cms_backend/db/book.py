@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, BookLocation, WarehousePath, ZimfarmNotification
@@ -97,3 +98,14 @@ def create_book_location(
     )
 
     return location
+
+
+def get_next_book_to_move_files_or_none(
+    session: OrmSession,
+) -> Book | None:
+    return session.scalars(
+        select(Book)
+        .where(Book.status == "pending_move")
+        .order_by(Book.created_at)
+        .limit(1)
+    ).one_or_none()

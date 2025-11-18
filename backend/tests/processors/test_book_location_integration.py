@@ -452,6 +452,9 @@ class TestTargetLocationOptimization:
             "book already at all target locations" in event for event in book.events
         )
 
+        # Book should be marked as published (no move needed)
+        assert book.status == "published"
+
     def test_no_target_when_current_matches_multiple_paths(
         self,
         dbsession: OrmSession,
@@ -522,6 +525,9 @@ class TestTargetLocationOptimization:
             "book already at all target locations" in event for event in book.events
         )
 
+        # Book should be marked as published (no move needed)
+        assert book.status == "published"
+
     def test_target_created_when_partial_match(
         self,
         dbsession: OrmSession,
@@ -574,6 +580,9 @@ class TestTargetLocationOptimization:
             "book already at all target locations" in event for event in book.events
         )
 
+        # Book should be marked as pending_move (needs file movement)
+        assert book.status == "pending_move"
+
     def test_target_created_when_filename_differs(
         self,
         dbsession: OrmSession,
@@ -619,3 +628,6 @@ class TestTargetLocationOptimization:
         assert not any(
             "book already at all target locations" in event for event in book.events
         )
+
+        # Book should be marked as pending_move (needs file movement)
+        assert book.status == "pending_move"
