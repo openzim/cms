@@ -246,3 +246,33 @@ class BookLocation(Base):
             f"{self.warehouse_path.warehouse.name}:"
             f"{self.warehouse_path.folder_name}/{self.filename}"
         )
+
+
+class Library(Base):
+    __tablename__ = "library"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    name: Mapped[str] = mapped_column(unique=True, index=True)
+
+    # Warehouse paths via junction table
+    warehouse_paths: Mapped[list["LibraryWarehousePath"]] = relationship(
+        back_populates="library",
+        cascade="all, delete-orphan",
+        init=False,
+    )
+
+
+class LibraryWarehousePath(Base):
+    __tablename__ = "library_warehouse_path"
+    library_id: Mapped[UUID] = mapped_column(
+        ForeignKey("library.id"), primary_key=True, init=False
+    )
+    warehouse_path_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse_path.id"), primary_key=True, init=False
+    )
+
+    library: Mapped["Library"] = relationship(
+        back_populates="warehouse_paths", init=False
+    )
+    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)

@@ -15,7 +15,7 @@ TITLES_CONFIG = [
         "name": "wikipedia_en_all",
         "producer_unique_id": "farm.openzim.org:wikipedia_en_all_maxi",
         "dev_paths": [("hidden", "dev")],
-        "prod_paths": [("prod", "other")],
+        "prod_paths": [("prod", "wikipedia")],
     },
     {
         "name": "wiktionary_fr_all",
