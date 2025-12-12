@@ -13,6 +13,8 @@ from cms_backend.db import Session
 from cms_backend.db.models import (
     Book,
     BookLocation,
+    Library,
+    LibraryWarehousePath,
     Title,
     TitleWarehousePath,
     Warehouse,
@@ -52,11 +54,19 @@ def wipe_database(session):
     count = session.query(Title).delete()
     print(f"  - Deleted {count} Title records")
 
-    # 6. WarehousePath (depends on Warehouse)
+    # 6. LibraryWarehousePath (depends on Library and WarehousePath)
+    count = session.query(LibraryWarehousePath).delete()
+    print(f"  - Deleted {count} LibraryWarehousePath records")
+
+    # 7. Library
+    count = session.query(Library).delete()
+    print(f"  - Deleted {count} Library records")
+
+    # 8. WarehousePath (depends on Warehouse)
     count = session.query(WarehousePath).delete()
     print(f"  - Deleted {count} WarehousePath records")
 
-    # 7. Warehouse
+    # 9. Warehouse
     count = session.query(Warehouse).delete()
     print(f"  - Deleted {count} Warehouse records")
 

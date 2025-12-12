@@ -16,6 +16,24 @@ from cms_backend.db.models import ZimfarmNotification
 # Base directory where warehouse folders are located (inside container)
 WAREHOUSE_BASE_PATH = Path("/warehouses")
 
+# Small 48x48 PNG icons encoded as base64 (for Illustration_48x48@1 metadata)
+# These are minimal valid PNGs with solid colors
+FAVICON_BLUE = (
+    "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+    "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+    "BJRU5ErkJggg=="
+)
+FAVICON_GREEN = (
+    "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+    "wfRf2u1gB4kfQebAoHANAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwEDCgQ8ugAAAA"
+    "BJRU5ErkJggg=="
+)
+FAVICON_RED = (
+    "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+    "wfRf2u1gB4kfQeYSCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED8gQ8ugAAAA"
+    "BJRU5ErkJggg=="
+)
+
 # Configuration: Define sample notifications
 # Each notification should match a title's producer_unique_id and warehouse path
 NOTIFICATIONS_CONFIG = [
@@ -32,6 +50,7 @@ NOTIFICATIONS_CONFIG = [
             "Description": "Wikipedia English offline",
             "Language": "eng",
             "Flavour": "maxi",
+            "Illustration_48x48@1": FAVICON_BLUE,
         },
         "zimcheck": {"status": "pass"},
         "warehouse_name": "hidden",
@@ -56,6 +75,7 @@ NOTIFICATIONS_CONFIG = [
             "Description": "Wiktionnaire hors-ligne",
             "Language": "fra",
             "Flavour": "maxi",
+            "Illustration_48x48@1": FAVICON_GREEN,
         },
         "zimcheck": {"status": "pass"},
         "warehouse_name": "hidden",
@@ -80,6 +100,7 @@ NOTIFICATIONS_CONFIG = [
             "Description": "Offline wiktionary",
             "Language": "eng",
             "Flavour": "maxi",
+            "Illustration_48x48@1": FAVICON_RED,
         },
         "zimcheck": {"status": "pass"},
         "warehouse_name": "hidden",

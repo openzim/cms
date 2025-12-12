@@ -13,6 +13,8 @@ from cms_backend.db.models import (
     Base,
     Book,
     BookLocation,
+    Library,
+    LibraryWarehousePath,
     Title,
     TitleWarehousePath,
     Warehouse,
@@ -291,3 +293,37 @@ def create_book_location(
         return location
 
     return _create_book_location
+
+
+@pytest.fixture
+def create_library(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., Library]:
+    def _create_library(
+        name: str | None = None,
+        warehouse_path_ids: list[UUID] | None = None,
+    ) -> Library:
+        library = Library(
+            name=name if name is not None else faker.slug(),
+        )
+
+        # Add warehouse path associations if provided
+        if warehouse_path_ids:
+            for path_id in warehouse_path_ids:
+                lwp = LibraryWarehousePath()
+                lwp.warehouse_path_id = path_id
+                library.warehouse_paths.append(lwp)
+
+        dbsession.add(library)
+        dbsession.flush()
+        return library
+
+    return _create_library
+
+
+@pytest.fixture
+def library(
+    create_library: Callable[..., Library],
+) -> Library:
+    return create_library()

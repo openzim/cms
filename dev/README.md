@@ -83,6 +83,30 @@ This script will:
 
 To modify title configuration, edit the `TITLES_CONFIG` list in [scripts/setup_titles.py](scripts/setup_titles.py) and re-run the script.
 
+### Setup libraries
+
+Libraries are collections of warehouse paths used to generate XML catalogs. After setting up warehouse paths, create libraries:
+
+```sh
+docker exec cms_mill python /scripts/setup_libraries.py
+```
+
+This script will:
+- Create Library records in the database
+- Associate libraries with warehouse paths via LibraryWarehousePath
+
+Default libraries:
+- **dev**: includes `hidden/dev` warehouse path
+- **prod**: includes `prod/other` and `prod/wikipedia` warehouse paths
+- **client1**: includes `client1/all` warehouse path
+
+Once created, library catalogs are accessible at:
+- `http://localhost:37601/v1/libraries/dev/catalog.xml`
+- `http://localhost:37601/v1/libraries/prod/catalog.xml`
+- `http://localhost:37601/v1/libraries/client1/catalog.xml`
+
+To modify library configuration, edit the `LIBRARIES_CONFIG` dict in [scripts/setup_libraries.py](scripts/setup_libraries.py) and re-run the script.
+
 ### Setup notifications
 
 After setting up titles, you can create sample zimfarm notifications for testing the mill processor:

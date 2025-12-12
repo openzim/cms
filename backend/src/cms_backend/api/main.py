@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from cms_backend.api.routes.books import router as books_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
+from cms_backend.api.routes.library import router as library_router
 from cms_backend.api.routes.titles import router as titles_router
 from cms_backend.api.routes.warehouse_paths import router as warehouse_paths_router
 from cms_backend.api.routes.zimfarm_notifications import (
@@ -58,6 +59,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=titles_router)
     main_router.include_router(router=books_router)
     main_router.include_router(router=warehouse_paths_router)
+    main_router.include_router(router=library_router)
 
     app.include_router(router=main_router)
 
