@@ -5,7 +5,6 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
-from tests.processors.test_zimfarm_notification import GOOD_NOTIFICATION_CONTENT
 
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Book, ZimfarmNotification
@@ -19,6 +18,12 @@ from cms_backend.db.zimfarm_notification import (
     get_zimfarm_notifications,
 )
 from cms_backend.utils.datetime import getnow
+
+# Example notification content for testing
+GOOD_NOTIFICATION_CONTENT = {
+    "requested_task_id": "test-task-123",
+    "status": "success",
+}
 
 
 def test_get_zimfarm_notification_or_none_(

@@ -19,19 +19,13 @@ class TitleLightSchema(BaseModel):
 
     id: UUID
     name: str
-    producer_unique_id: str
-    producer_display_name: str | None
-    producer_display_url: str | None
+    maturity: str
 
 
-class WarehousePathInfoSchema(BaseModel):
-    """
-    Schema for warehouse path information (with warehouse details)
-    """
-
-    path_id: UUID
-    folder_name: str
-    warehouse_name: str
+class TitleCollectionSchema(BaseModel):
+    collection_id: UUID
+    collection_name: str
+    path: str
 
 
 class TitleFullSchema(TitleLightSchema):
@@ -39,11 +33,9 @@ class TitleFullSchema(TitleLightSchema):
     Schema for reading a title model with all fields including books
     """
 
-    dev_warehouse_paths: list[WarehousePathInfoSchema]
-    prod_warehouse_paths: list[WarehousePathInfoSchema]
-    in_prod: bool
     events: list[str]
     books: list["BookLightSchema"]
+    collections: list["TitleCollectionSchema"]
 
 
 class ZimfarmNotificationLightSchema(BaseModel):
@@ -62,24 +54,13 @@ class ZimfarmNotificationFullSchema(ZimfarmNotificationLightSchema):
     events: list[str]
 
 
-class ProducerSchema(BaseModel):
-    """
-    Schema for producer information
-    """
-
-    display_name: str
-    display_url: str
-    unique_id: str
-
-
 class BookLocationSchema(BaseModel):
     """
     Schema for book location information
     """
 
-    warehouse_path_id: UUID
     warehouse_name: str
-    folder_name: str
+    path: str
     filename: str
     status: str  # 'current' or 'target'
 
@@ -105,7 +86,6 @@ class BookFullSchema(BookLightSchema):
     zimcheck_result: dict[str, Any]
     zim_metadata: dict[str, Any]
     events: list[str]
-    producer: ProducerSchema
     current_locations: list[BookLocationSchema]
     target_locations: list[BookLocationSchema]
 

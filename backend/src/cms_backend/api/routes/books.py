@@ -14,7 +14,6 @@ from cms_backend.schemas.orms import (
     BookFullSchema,
     BookLightSchema,
     BookLocationSchema,
-    ProducerSchema,
 )
 
 router = APIRouter(prefix="/books", tags=["books"])
@@ -67,9 +66,8 @@ async def get_book(
     # Separate current and target locations
     current_locations = [
         BookLocationSchema(
-            warehouse_path_id=location.warehouse_path_id,
-            warehouse_name=location.warehouse_path.warehouse.name,
-            folder_name=location.warehouse_path.folder_name,
+            warehouse_name=location.warehouse.name,
+            path=str(location.path),
             filename=location.filename,
             status=location.status,
         )
@@ -79,9 +77,8 @@ async def get_book(
 
     target_locations = [
         BookLocationSchema(
-            warehouse_path_id=location.warehouse_path_id,
-            warehouse_name=location.warehouse_path.warehouse.name,
-            folder_name=location.warehouse_path.folder_name,
+            warehouse_name=location.warehouse.name,
+            path=str(location.path),
             filename=location.filename,
             status=location.status,
         )
@@ -103,11 +100,6 @@ async def get_book(
         zimcheck_result=db_book.zimcheck_result,
         zim_metadata=db_book.zim_metadata,
         events=db_book.events,
-        producer=ProducerSchema(
-            display_name=db_book.producer_display_name,
-            display_url=db_book.producer_display_url,
-            unique_id=db_book.producer_unique_id,
-        ),
         current_locations=current_locations,
         target_locations=target_locations,
     )

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Warehouse, WarehousePath
+from cms_backend.db.models import Warehouse
 
 
 @pytest.fixture
@@ -25,24 +25,17 @@ def temp_warehouse_dirs(tmp_path: Path) -> dict[str, Path]:
 
 
 @pytest.fixture
-def create_warehouse_with_path(
+def create_warehouse_simple(
     dbsession: OrmSession,
-) -> Callable[..., tuple[Warehouse, WarehousePath]]:
-    """Factory to create a warehouse and its path for testing."""
+) -> Callable[..., Warehouse]:
+    """Factory to create a warehouse for testing."""
 
     def _create(
         name: str,
-        folder_name: str = "zims",
-    ) -> tuple[Warehouse, WarehousePath]:
-        warehouse = Warehouse(name=name, configuration={})
+    ) -> Warehouse:
+        warehouse = Warehouse(name=name)
         dbsession.add(warehouse)
         dbsession.flush()
-
-        warehouse_path = WarehousePath(folder_name=folder_name)
-        warehouse_path.warehouse = warehouse
-        dbsession.add(warehouse_path)
-        dbsession.flush()
-
-        return warehouse, warehouse_path
+        return warehouse
 
     return _create

@@ -2,50 +2,30 @@
 """
 Development titles setup script.
 
-Creates Title records and associates them with warehouse paths.
+Creates Title records and associates them with collection paths.
 """
 
 from cms_backend.db import Session
-from cms_backend.db.models import Title, TitleWarehousePath, Warehouse, WarehousePath
+from cms_backend.db.models import Title, CollectionTitle
 
-# Configuration: Define titles and their warehouse path associations
-# Format for paths: (warehouse_name, folder_name)
+# Configuration: Define titles and their collection path associations
 TITLES_CONFIG = [
     {
         "name": "wikipedia_en_all",
-        "producer_unique_id": "farm.openzim.org:wikipedia_en_all_maxi",
-        "dev_paths": [("hidden", "dev")],
-        "prod_paths": [("prod", "wikipedia")],
+        "maturity": "dev",
+        "collections": [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "path": "wikipedia"}
+        ],
     },
     {
         "name": "wiktionary_fr_all",
-        "producer_unique_id": "farm.openzim.org:wiktionary_fr",
-        "producer_display_name": "wiktionary_fr",
-        "producer_display_url": "https://farm.openzim.org/recipes/wiktionary_fr",
-        "in_prod": True,
-        "dev_paths": [("hidden", "dev")],
-        "prod_paths": [("prod", "other"), ("client1", "all")],
+        "maturity": "robust",
+        "collections": [
+            {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "path": "other"},
+            {"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "path": "all"},
+        ],
     },
 ]
-
-
-def get_warehouse_path(session, warehouse_name: str, folder_name: str) -> WarehousePath:
-    """Look up a WarehousePath by warehouse name and folder name."""
-    result = (
-        session.query(WarehousePath)
-        .join(Warehouse)
-        .filter(
-            Warehouse.name == warehouse_name,
-            WarehousePath.folder_name == folder_name,
-        )
-        .first()
-    )
-    if not result:
-        raise ValueError(
-            f"WarehousePath not found: {warehouse_name}/{folder_name}. "
-            "Run setup_warehouses.py first."
-        )
-    return result
 
 
 def create_titles():
@@ -67,41 +47,24 @@ def create_titles():
             # Create title record
             title = Title(
                 name=title_name,
-                producer_unique_id=title_config["producer_unique_id"],
             )
             # Set optional fields
-            if "in_prod" in title_config:
-                title.in_prod = title_config["in_prod"]
-            if "producer_display_name" in title_config:
-                title.producer_display_name = title_config["producer_display_name"]
-            if "producer_display_url" in title_config:
-                title.producer_display_url = title_config["producer_display_url"]
+            if "maturity" in title_config:
+                title.maturity = title_config["maturity"]
 
             session.add(title)
             session.flush()  # Get the generated UUID
             print(f"  + Created title '{title_name}' with ID {title.id}")
 
-            # Associate dev warehouse paths
-            for warehouse_name, folder_name in title_config.get("dev_paths", []):
-                warehouse_path = get_warehouse_path(
-                    session, warehouse_name, folder_name
+            # Associate collections
+            for collection in title_config.get("collections", []):
+                ct = CollectionTitle(path=collection["path"])
+                ct.title = title
+                ct.collection_id = collection["id"]
+                session.add(ct)
+                print(
+                    f"    + Added collection: {collection['id']}/{collection['path']}"
                 )
-                twp = TitleWarehousePath(path_type="dev")
-                twp.title = title
-                twp.warehouse_path = warehouse_path
-                session.add(twp)
-                print(f"    + Added dev path: {warehouse_name}/{folder_name}")
-
-            # Associate prod warehouse paths
-            for warehouse_name, folder_name in title_config.get("prod_paths", []):
-                warehouse_path = get_warehouse_path(
-                    session, warehouse_name, folder_name
-                )
-                twp = TitleWarehousePath(path_type="prod")
-                twp.title = title
-                twp.warehouse_path = warehouse_path
-                session.add(twp)
-                print(f"    + Added prod path: {warehouse_name}/{folder_name}")
 
         # Commit all changes
         session.commit()
@@ -112,17 +75,11 @@ def create_titles():
         print("Titles configured:")
         print("=" * 70)
         for title_config in TITLES_CONFIG:
-            dev_paths = ", ".join(
-                f"{w}/{f}" for w, f in title_config.get("dev_paths", [])
-            )
-            prod_paths = ", ".join(
-                f"{w}/{f}" for w, f in title_config.get("prod_paths", [])
-            )
             print(f"  {title_config['name']}")
-            if (in_prod := title_config.get("in_prod")) is not None:
-                print(f"    in_prod:  {in_prod}")
-            print(f"    dev:  {dev_paths or '(none)'}")
-            print(f"    prod: {prod_paths or '(none)'}")
+            if (maturity := title_config.get("maturity")) is not None:
+                print(f"    maturity:  {maturity}")
+            for collection in title_config.get("collections", []):
+                print(f"    - {collection['id']}/{collection['path']}")
         print("=" * 70)
 
     except Exception as e:

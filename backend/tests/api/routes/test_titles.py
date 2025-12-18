@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, Title, WarehousePath
+from cms_backend.db.models import Book, Title
 
 
 def test_get_titles_empty(client: TestClient):
@@ -41,9 +41,7 @@ def test_get_titles(
     assert set(data["items"][0].keys()) == {
         "id",
         "name",
-        "producer_unique_id",
-        "producer_display_name",
-        "producer_display_url",
+        "maturity",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
@@ -51,17 +49,10 @@ def test_get_titles(
 def test_create_title_required_fields_only(
     client: TestClient,
     dbsession: OrmSession,
-    create_warehouse_path: Callable[..., WarehousePath],
 ):
     """Test creating a title with only required fields"""
-    dev_warehouse_path = create_warehouse_path()
-    prod_warehouse_path = create_warehouse_path()
-
     title_data = {
         "name": "wikipedia_en_test",
-        "producer_unique_id": "550e8400-e29b-41d4-a716-446655440000",
-        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
-        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
     }
 
     response = client.post("/v1/titles", json=title_data)
@@ -76,107 +67,14 @@ def test_create_title_required_fields_only(
     title = dbsession.get(Title, data["id"])
     assert title is not None
     assert title.name == "wikipedia_en_test"
-    assert title.producer_unique_id == "550e8400-e29b-41d4-a716-446655440000"
-    assert title.producer_display_name is None
-    assert title.producer_display_url is None
-
-    # Verify warehouse paths
-    dev_paths = [
-        twp.warehouse_path_id for twp in title.warehouse_paths if twp.path_type == "dev"
-    ]
-    prod_paths = [
-        twp.warehouse_path_id
-        for twp in title.warehouse_paths
-        if twp.path_type == "prod"
-    ]
-    assert dev_warehouse_path.id in dev_paths
-    assert prod_warehouse_path.id in prod_paths
-    assert title.in_prod is False
-
-
-def test_create_title_with_optional_fields(
-    client: TestClient,
-    dbsession: OrmSession,
-    create_warehouse_path: Callable[..., WarehousePath],
-):
-    """Test creating a title with all fields including optional ones"""
-    dev_warehouse_path = create_warehouse_path()
-    prod_warehouse_path = create_warehouse_path()
-
-    title_data = {
-        "name": "wikipedia_fr_test",
-        "producer_unique_id": "550e8400-e29b-41d4-a716-446655440001",
-        "producer_display_name": "farm.openzim.org: wikipedia_fr_test",
-        "producer_display_url": "https://farm.openzim.org/recipes/wikipedia_fr_test",
-        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
-        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
-        "in_prod": True,
-    }
-
-    response = client.post("/v1/titles", json=title_data)
-    assert response.status_code == HTTPStatus.OK
-    data = response.json()
-
-    assert "id" in data
-    assert "name" in data
-    assert data["name"] == "wikipedia_fr_test"
-
-    # Verify all fields were stored correctly
-    title = dbsession.get(Title, data["id"])
-    assert title is not None
-    assert title.name == "wikipedia_fr_test"
-    assert title.producer_unique_id == "550e8400-e29b-41d4-a716-446655440001"
-    assert title.producer_display_name == "farm.openzim.org: wikipedia_fr_test"
-    assert (
-        title.producer_display_url
-        == "https://farm.openzim.org/recipes/wikipedia_fr_test"
-    )
-
-    # Verify warehouse paths
-    dev_paths = [
-        twp.warehouse_path_id for twp in title.warehouse_paths if twp.path_type == "dev"
-    ]
-    prod_paths = [
-        twp.warehouse_path_id
-        for twp in title.warehouse_paths
-        if twp.path_type == "prod"
-    ]
-    assert dev_warehouse_path.id in dev_paths
-    assert prod_warehouse_path.id in prod_paths
-    assert title.in_prod is True
-
-
-def test_create_title_missing_required_field(
-    client: TestClient,
-    create_warehouse_path: Callable[..., WarehousePath],
-):
-    """Test creating a title with missing required field returns validation error"""
-    dev_warehouse_path = create_warehouse_path()
-
-    title_data = {
-        "name": "wikipedia_en_incomplete",
-        "producer_unique_id": "550e8400-e29b-41d4-a716-446655440002",
-        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
-        # Missing prod_warehouse_path_ids
-    }
-
-    response = client.post("/v1/titles", json=title_data)
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_create_title_duplicate_name(
     client: TestClient,
-    create_warehouse_path: Callable[..., WarehousePath],
 ):
     """Test creating a title with duplicate name returns conflict error"""
-    dev_warehouse_path = create_warehouse_path()
-    prod_warehouse_path = create_warehouse_path()
-
     title_data = {
         "name": "wikipedia_en_duplicate",
-        "producer_unique_id": "550e8400-e29b-41d4-a716-446655440003",
-        "dev_warehouse_path_ids": [str(dev_warehouse_path.id)],
-        "prod_warehouse_path_ids": [str(prod_warehouse_path.id)],
     }
 
     # Create the first title
@@ -196,52 +94,28 @@ def test_get_title_by_id(
     """Test retrieving a title by ID returns full details"""
     title = create_title(
         name="wikipedia_en_test",
-        producer_unique_id="550e8400-e29b-41d4-a716-446655440000",
-        producer_display_name="farm.openzim.org: wikipedia_en_test",
-        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
     )
 
     response = client.get(f"/v1/titles/{title.id}")
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
-    # Verify all TitleFullSchema fields are present
+    # Verify TitleFullSchema fields
     assert set(data.keys()) == {
         "id",
         "name",
-        "producer_unique_id",
-        "producer_display_name",
-        "producer_display_url",
-        "dev_warehouse_paths",
-        "prod_warehouse_paths",
-        "in_prod",
+        "maturity",
         "events",
         "books",
+        "collections",
     }
 
     # Verify field values
     assert data["id"] == str(title.id)
     assert data["name"] == "wikipedia_en_test"
-    assert data["producer_unique_id"] == "550e8400-e29b-41d4-a716-446655440000"
-    assert data["producer_display_name"] == "farm.openzim.org: wikipedia_en_test"
-    assert (
-        data["producer_display_url"]
-        == "https://farm.openzim.org/recipes/wikipedia_en_test"
-    )
-    assert isinstance(data["dev_warehouse_paths"], list)
-    assert isinstance(data["prod_warehouse_paths"], list)
-    assert len(data["dev_warehouse_paths"]) >= 1
-    assert len(data["prod_warehouse_paths"]) >= 1
-    assert data["in_prod"] == title.in_prod
     assert isinstance(data["events"], list)
     assert isinstance(data["books"], list)
     assert len(data["books"]) == 0
-
-    # Verify warehouse path structure
-    dev_path = data["dev_warehouse_paths"][0]
-    assert set(dev_path.keys()) == {"path_id", "folder_name", "warehouse_name"}
-    prod_path = data["prod_warehouse_paths"][0]
-    assert set(prod_path.keys()) == {"path_id", "folder_name", "warehouse_name"}
 
 
 def test_get_title_by_id_with_books(
@@ -253,27 +127,20 @@ def test_get_title_by_id_with_books(
     """Test retrieving a title with associated books"""
     title = create_title(
         name="wikipedia_en_test",
-        producer_unique_id="550e8400-e29b-41d4-a716-446655440000",
     )
 
     # Create books associated with this title
     book1 = create_book(
         zim_metadata={"Name": "wikipedia_en_test"},
-        producer_unique_id=title.producer_unique_id,
-        producer_display_name="farm.openzim.org: wikipedia_en_test",
-        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
     )
     book2 = create_book(
         zim_metadata={"Name": "wikipedia_en_test"},
-        producer_unique_id=title.producer_unique_id,
-        producer_display_name="farm.openzim.org: wikipedia_en_test",
-        producer_display_url="https://farm.openzim.org/recipes/wikipedia_en_test",
     )
 
     # Associate books with title
     title.books.append(book1)
     title.books.append(book2)
-    dbsession.flush()  # Flush to update title_id on books
+    dbsession.flush()
 
     response = client.get(f"/v1/titles/{title.id}")
     assert response.status_code == HTTPStatus.OK

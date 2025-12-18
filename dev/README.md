@@ -60,12 +60,13 @@ docker exec cms_shuttle python /scripts/setup_warehouses.py
 
 This script will:
 - Create warehouse directories in `dev/warehouses/`
-- Create corresponding database records (Warehouse and WarehousePath)
+- Create corresponding database records (Warehouse)
 - Print the LOCAL_WAREHOUSE_PATHS configuration (already configured in docker-compose.yml)
 
 Current warehouse configuration:
 - **hidden**: 2 paths (`jail`, `dev`)
-- **prod**: 1 path (`other`)
+- **prod**: 1 path (`other`, `wikipedia`)
+- **client1**: 1 path (`all`)
 
 To modify warehouse configuration, edit the `WAREHOUSES_CONFIG` dict in [scripts/setup_warehouses.py](scripts/setup_warehouses.py) and re-run the script.
 

@@ -1,10 +1,11 @@
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, WarehousePath, ZimfarmNotification
+from cms_backend.db.models import Book, BookLocation, Warehouse, ZimfarmNotification
 from cms_backend.utils.datetime import getnow
 
 
@@ -18,9 +19,6 @@ def create_book(
     zim_metadata: dict[str, Any],
     zimcheck_result: dict[str, Any],
     zimfarm_notification: ZimfarmNotification,
-    producer_display_name: str,
-    producer_display_url: str,
-    producer_unique_id: str,
 ) -> Book:
     """Create a new book"""
 
@@ -41,9 +39,6 @@ def create_book(
         date=date,
         flavour=flavour,
         zimfarm_notification=zimfarm_notification,
-        producer_display_name=producer_display_name,
-        producer_display_url=producer_display_url,
-        producer_unique_id=producer_unique_id,
     )
     session.add(book)
     zimfarm_notification.events.append(
@@ -60,7 +55,8 @@ def create_book_location(
     session: OrmSession,
     *,
     book: Book,
-    warehouse_path_id: UUID,
+    warehouse_id: UUID,
+    path: Path,
     filename: str,
     status: str = "current",
 ) -> BookLocation:
@@ -69,32 +65,33 @@ def create_book_location(
     Args:
         session: SQLAlchemy session
         book: Book instance
-        warehouse_path_id: ID of the warehouse path
+        warehouse_id: ID of the warehouse
+        path: Folder path within the warehouse (e.g., "dev-zim")
         filename: Filename in warehouse
         status: Location status ('current' or 'target'), defaults to 'current'
 
     Returns:
         Created BookLocation instance
     """
-    # Get warehouse path info for event message
-    warehouse_path = session.get(WarehousePath, warehouse_path_id)
-    if not warehouse_path:
-        raise ValueError(f"WarehousePath with id {warehouse_path_id} not found")
+    # Get warehouse info for event message
+    warehouse = session.get(Warehouse, warehouse_id)
+    if not warehouse:
+        raise ValueError(f"Warehouse with id {warehouse_id} not found")
 
-    warehouse_name = warehouse_path.warehouse.name
-    folder_name = warehouse_path.folder_name
+    warehouse_name = warehouse.name
 
     location = BookLocation(
         book_id=book.id,
+        warehouse_id=warehouse_id,
+        path=path,
         status=status,
         filename=filename,
     )
-    location.warehouse_path_id = warehouse_path_id
     session.add(location)
     book.locations.append(location)
     book.events.append(
         f"{getnow()}: added {status} location: {filename} in {warehouse_name}: "
-        f"{folder_name} ({warehouse_path_id})"
+        f"{path} ({warehouse_id})"
     )
 
     return location

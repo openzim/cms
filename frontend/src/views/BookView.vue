@@ -65,16 +65,6 @@
             </td>
           </tr>
           <tr>
-            <th class="text-left" style="width: 200px">Producer</th>
-            <td>
-              <a :href="book.producer.display_url" target="_blank" rel="noopener noreferrer">
-                {{ book.producer.display_name }}
-              </a>
-              (<code>{{ book.producer.unique_id }}</code
-              >)
-            </td>
-          </tr>
-          <tr>
             <th class="text-left" style="width: 200px">Article Count</th>
             <td>
               {{ book.article_count.toLocaleString() }}
@@ -141,10 +131,10 @@
                   <tbody>
                     <tr
                       v-for="location in book.current_locations"
-                      :key="`current-${location.warehouse_path_id}`"
+                      :key="`current-${location.warehouse_name}-${location.path}`"
                     >
                       <td>{{ location.warehouse_name }}</td>
-                      <td>{{ location.folder_name }}</td>
+                      <td>{{ location.path }}</td>
                       <td>
                         <code>{{ location.filename }}</code>
                       </td>
@@ -170,10 +160,10 @@
                   <tbody>
                     <tr
                       v-for="location in book.target_locations"
-                      :key="`target-${location.warehouse_path_id}`"
+                      :key="`target-${location.warehouse_name}-${location.path}`"
                     >
                       <td>{{ location.warehouse_name }}</td>
-                      <td>{{ location.folder_name }}</td>
+                      <td>{{ location.path }}</td>
                       <td>
                         <code>{{ location.filename }}</code>
                       </td>

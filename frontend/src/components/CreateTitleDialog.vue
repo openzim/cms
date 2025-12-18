@@ -17,57 +17,12 @@
           />
 
           <v-text-field
-            v-model="formData.producer_unique_id"
-            label="Producer Unique ID (Zimfarm Recipe ID)"
+            v-model="formData.maturity"
+            label="Title Maturity"
             :rules="[rules.required]"
             variant="outlined"
             density="comfortable"
             class="mb-2"
-            hint="This is the Zimfarm recipe ID"
-            persistent-hint
-          />
-
-          <v-autocomplete
-            v-model="formData.dev_warehouse_path_ids"
-            :items="warehousePathStore.warehousePathOptions"
-            item-title="displayText"
-            item-value="value"
-            label="Dev Warehouse Paths"
-            :rules="[ruleDevWarehouseRequired]"
-            variant="outlined"
-            density="comfortable"
-            class="mb-2"
-            :loading="loadingWarehousePaths"
-            multiple
-            chips
-            closable-chips
-            hint="Select at least one dev warehouse path"
-            persistent-hint
-          />
-
-          <v-autocomplete
-            v-model="formData.prod_warehouse_path_ids"
-            :items="warehousePathStore.warehousePathOptions"
-            item-title="displayText"
-            item-value="value"
-            label="Prod Warehouse Paths"
-            :rules="[ruleProdWarehouseRequired]"
-            variant="outlined"
-            density="comfortable"
-            class="mb-2"
-            :loading="loadingWarehousePaths"
-            multiple
-            chips
-            closable-chips
-            hint="Select at least one prod warehouse path"
-            persistent-hint
-          />
-
-          <v-checkbox
-            v-model="formData.in_prod"
-            label="In Production"
-            density="comfortable"
-            hide-details
           />
         </v-form>
 
@@ -95,9 +50,8 @@
 
 <script setup lang="ts">
 import { useTitleStore } from '@/stores/title'
-import { useWarehousePathStore } from '@/stores/warehousePath'
 import type { TitleCreate } from '@/types/title'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -111,20 +65,15 @@ const emit = defineEmits<{
 }>()
 
 const titleStore = useTitleStore()
-const warehousePathStore = useWarehousePathStore()
 
 const formRef = ref()
 const formValid = ref(false)
 const loading = ref(false)
-const loadingWarehousePaths = ref(false)
 const error = ref('')
 
 const formData = ref<TitleCreate>({
   name: '',
-  producer_unique_id: '',
-  dev_warehouse_path_ids: [],
-  prod_warehouse_path_ids: [],
-  in_prod: false,
+  maturity: 'dev',
 })
 
 const isOpen = computed({
@@ -134,29 +83,6 @@ const isOpen = computed({
 
 const rules = {
   required: (value: string) => !!value || 'This field is required',
-}
-
-const ruleDevWarehouseRequired = (value: string[]) =>
-  (value && value.length > 0) || 'At least one dev warehouse path is required'
-
-const ruleProdWarehouseRequired = (value: string[]) =>
-  (value && value.length > 0) || 'At least one prod warehouse path is required'
-
-async function fetchWarehousePaths() {
-  loadingWarehousePaths.value = true
-  try {
-    await warehousePathStore.fetchWarehousePaths()
-
-    // Set default dev warehouse path to /.hidden/dev if it exists
-    if (warehousePathStore.defaultDevPath) {
-      formData.value.dev_warehouse_path_ids = [warehousePathStore.defaultDevPath.path_id]
-    }
-  } catch (err) {
-    console.error('Failed to fetch warehouse paths', err)
-    error.value = 'Failed to load warehouse paths'
-  } finally {
-    loadingWarehousePaths.value = false
-  }
 }
 
 async function handleSubmit() {
@@ -186,27 +112,9 @@ function handleCancel() {
 function resetForm() {
   formData.value = {
     name: '',
-    producer_unique_id: '',
-    dev_warehouse_path_ids: [],
-    prod_warehouse_path_ids: [],
-    in_prod: false,
+    maturity: 'dev',
   }
   error.value = ''
   formRef.value?.resetValidation()
 }
-
-watch(
-  () => props.modelValue,
-  (newValue) => {
-    if (newValue) {
-      fetchWarehousePaths()
-    }
-  },
-)
-
-onMounted(() => {
-  if (props.modelValue) {
-    fetchWarehousePaths()
-  }
-})
 </script>

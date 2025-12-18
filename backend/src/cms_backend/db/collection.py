@@ -1,0 +1,86 @@
+from uuid import UUID
+
+from sqlalchemy import and_, select
+from sqlalchemy.orm import Session as OrmSession
+
+from cms_backend.db.exceptions import RecordDoesNotExistError
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Title,
+)
+
+
+def get_collection_or_none(session: OrmSession, library_id: UUID) -> Collection | None:
+    """Get a collection by ID if possible else None"""
+    return session.scalars(
+        select(Collection).where(Collection.id == library_id)
+    ).one_or_none()
+
+
+def get_collection(session: OrmSession, library_id: UUID) -> Collection:
+    """Get a collection by ID if possible else raise an exception"""
+    if (collection := get_collection_or_none(session, library_id=library_id)) is None:
+        raise RecordDoesNotExistError(f"Collection with ID {library_id} does not exist")
+    return collection
+
+
+def get_collection_by_name_or_none(
+    session: OrmSession, collection_name: str
+) -> Collection | None:
+    """Get a collection by name if possible else None"""
+    return session.scalars(
+        select(Collection).where(Collection.name == collection_name)
+    ).one_or_none()
+
+
+def get_latest_books_for_collection(
+    session: OrmSession, collection_id: UUID
+) -> list[Book]:
+    """
+    Get the latest published book for each name+flavour combination in a collection.
+
+    A collection contains many books, this function return only the most recently
+     published book (by created_at) for each name+flavour combination.
+
+    Args:
+        session: ORM session
+        collection_id: ID of the collection
+
+    Returns:
+        List of Book objects, one per name+flavour combination
+    """
+    # Get all books in the library's warehouse paths that are published
+    # and currently located there
+    stmt = (
+        select(Book)
+        .join(BookLocation)
+        .join(Title, Book.title_id == Title.id)
+        .join(CollectionTitle)
+        .join(Collection)
+        .where(
+            and_(
+                BookLocation.status == "current",
+                BookLocation.warehouse_id == Collection.warehouse_id,
+                BookLocation.path == CollectionTitle.path,
+                Book.status == "published",
+                Collection.id == collection_id,
+            )
+        )
+        .order_by(Book.name, Book.flavour, Book.created_at.desc())
+    )
+
+    books = session.scalars(stmt).all()
+
+    # Filter to keep only the latest book per name+flavour combination
+    seen: set[tuple[str | None, str | None]] = set()
+    latest_books: list[Book] = []
+    for book in books:
+        key = (book.name, book.flavour)
+        if key not in seen:
+            seen.add(key)
+            latest_books.append(book)
+
+    return latest_books

@@ -53,14 +53,8 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_BLUE,
         },
         "zimcheck": {"status": "pass"},
-        "warehouse_name": "hidden",
-        "folder_name": "jail",
+        "folder_name": "wikipedia",
         "filename": "wikipedia_en_all_maxi_2025-01.zim",
-        "producer": {
-            "displayName": "farm.openzim.org: wikipedia_en_all_maxi",
-            "displayUrl": "https://farm.openzim.org/recipes/wikipedia_en_all_maxi",
-            "uniqueId": "farm.openzim.org:wikipedia_en_all_maxi",
-        },
     },
     {
         "article_count": 500,
@@ -78,14 +72,8 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_GREEN,
         },
         "zimcheck": {"status": "pass"},
-        "warehouse_name": "hidden",
-        "folder_name": "jail",
+        "folder_name": "wiktionary",
         "filename": "wiktionary_fr_all_maxi_2025-01.zim",
-        "producer": {
-            "displayName": "wiktionary_fr",
-            "displayUrl": "https://farm.openzim.org/recipes/wiktionary_fr",
-            "uniqueId": "farm.openzim.org:wiktionary_fr",
-        },
     },
     {
         "article_count": 1500,
@@ -103,14 +91,8 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_RED,
         },
         "zimcheck": {"status": "pass"},
-        "warehouse_name": "hidden",
-        "folder_name": "jail",
+        "folder_name": "",
         "filename": "wiktionary_en_all_maxi_2025-01.zim",
-        "producer": {
-            "displayName": "wiktionary_en",
-            "displayUrl": "https://farm.openzim.org/recipes/wiktionary_en",
-            "uniqueId": "farm.openzim.org:wiktionary_en",
-        },
     },
 ]
 
@@ -124,13 +106,12 @@ def create_notifications():
     try:
         for content in NOTIFICATIONS_CONFIG:
             filename = content.get("filename", "unknown")
-            warehouse_name = content["warehouse_name"]
             folder_name = content["folder_name"]
 
             print(f"\nProcessing notification: {filename}")
 
             # Check if file already exists in warehouse
-            file_path = WAREHOUSE_BASE_PATH / warehouse_name / folder_name / filename
+            file_path = WAREHOUSE_BASE_PATH / "hidden/jail" / folder_name / filename
             if file_path.exists():
                 print(f"  - File already exists at {file_path} (skipping)")
                 continue
@@ -154,9 +135,7 @@ def create_notifications():
             file_path.write_text(str(notification_id))
             print(f"  + Created file: {file_path}")
 
-            created_notifications.append(
-                (filename, warehouse_name, folder_name, notification_id)
-            )
+            created_notifications.append((filename, folder_name, notification_id))
 
         # Commit all changes
         session.commit()
@@ -169,12 +148,11 @@ def create_notifications():
             print("=" * 70)
             for (
                 filename,
-                warehouse_name,
                 folder_name,
                 notification_id,
             ) in created_notifications:
                 print(f"  {filename}")
-                print(f"    warehouse: {warehouse_name}/{folder_name}")
+                print(f"    folder: {folder_name}")
                 print(f"    id: {notification_id}")
             print("=" * 70)
             print("\nThe mill will now process these notifications into books.")

@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 from typing import ClassVar
 from uuid import UUID
 
@@ -10,12 +11,12 @@ WarehouseId = str
 LocalWarehousePath = str
 
 
-def _parse_local_warehouse_paths() -> dict[UUID, str]:
+def _parse_local_warehouse_paths() -> dict[UUID, Path]:
     env_value = os.getenv("LOCAL_WAREHOUSE_PATHS", default="")
     if not env_value:
         return {}
     return {
-        UUID(warehouse_id): local_path
+        UUID(warehouse_id): Path(local_path)
         for item in env_value.split(",")
         if item
         for (warehouse_id, local_path) in [item.split(":", 1)]
@@ -38,4 +39,4 @@ class Context:
         seconds=parse_timespan(os.getenv("MOVE_FILES_INTERVAL", default="1m"))
     )
 
-    local_warehouse_paths: ClassVar[dict[UUID, str]] = _parse_local_warehouse_paths()
+    local_warehouse_paths: ClassVar[dict[UUID, Path]] = _parse_local_warehouse_paths()

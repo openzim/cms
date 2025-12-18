@@ -13,7 +13,7 @@ from uuid import UUID
 sys.path.insert(0, "/usr/local/lib/python3.13/site-packages")
 
 from cms_backend.db import Session
-from cms_backend.db.models import Warehouse, WarehousePath
+from cms_backend.db.models import Warehouse
 
 
 # Configuration: Define warehouses and their paths
@@ -21,18 +21,15 @@ from cms_backend.db.models import Warehouse, WarehousePath
 WAREHOUSES_CONFIG = {
     "hidden": {
         "id": UUID("11111111-1111-1111-1111-111111111111"),
-        "paths": ["jail", "dev"],
-        "configuration": {},
+        "paths": ["jail", "staging"],
     },
     "prod": {
         "id": UUID("22222222-2222-2222-2222-222222222222"),
         "paths": ["other", "wikipedia"],
-        "configuration": {},
     },
     "client1": {
         "id": UUID("33333333-3333-3333-3333-333333333333"),
         "paths": ["all"],
-        "configuration": {},
     },
 }
 
@@ -61,7 +58,6 @@ def create_warehouse_structure():
                 # Create warehouse DB record with predefined ID
                 warehouse = Warehouse(
                     name=warehouse_name,
-                    configuration=config.get("configuration", {}),
                 )
                 warehouse.id = warehouse_id
                 session.add(warehouse)
@@ -72,31 +68,6 @@ def create_warehouse_structure():
 
             # Create paths for this warehouse
             for path_name in config["paths"]:
-                # Check if path already exists
-                existing_path = (
-                    session.query(WarehousePath)
-                    .filter(
-                        WarehousePath.warehouse_id == warehouse.id,
-                        WarehousePath.folder_name == path_name,
-                    )
-                    .first()
-                )
-
-                if existing_path:
-                    print(f"    ⊘ Path '{path_name}' already exists (skipping)")
-                    warehouse_path = existing_path
-                else:
-                    # Create warehouse path DB record
-                    warehouse_path = WarehousePath(
-                        folder_name=path_name,
-                    )
-                    warehouse_path.warehouse = warehouse
-                    session.add(warehouse_path)
-                    session.flush()
-                    print(
-                        f"    ✓ Created path '{path_name}' with ID {warehouse_path.id}"
-                    )
-
                 # Create physical directory
                 physical_path = WAREHOUSE_BASE_PATH / warehouse_name / path_name
                 if physical_path.exists():

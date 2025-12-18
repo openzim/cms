@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 from collections.abc import Callable, Generator
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -13,12 +14,10 @@ from cms_backend.db.models import (
     Base,
     Book,
     BookLocation,
-    Library,
-    LibraryWarehousePath,
+    Collection,
+    CollectionTitle,
     Title,
-    TitleWarehousePath,
     Warehouse,
-    WarehousePath,
     ZimfarmNotification,
 )
 from cms_backend.utils.datetime import getnow
@@ -95,10 +94,22 @@ def create_book(
         date: str | None = None,
         flavour: str | None = None,
         zimfarm_notification: ZimfarmNotification | None = None,
-        producer_display_name: str | None = None,
-        producer_display_url: str | None = None,
-        producer_unique_id: str | None = None,
     ) -> Book:
+        if zim_metadata is None:
+            zim_metadata = {}
+
+        # Extract name from zim_metadata if not explicitly provided
+        if name is None:
+            name = zim_metadata.get("Name")
+
+        # Extract date from zim_metadata if not explicitly provided
+        if date is None:
+            date = zim_metadata.get("Date")
+
+        # Extract flavour from zim_metadata if not explicitly provided
+        if flavour is None:
+            flavour = zim_metadata.get("Flavour")
+
         book = Book(
             id=_id if _id is not None else uuid4(),
             created_at=created_at if created_at is not None else getnow(),
@@ -107,29 +118,13 @@ def create_book(
             ),
             media_count=media_count if media_count is not None else faker.random_int(),
             size=size if size is not None else faker.random_int(),
-            zim_metadata=zim_metadata if zim_metadata else {},
+            zim_metadata=zim_metadata,
             zimcheck_result=zimcheck_result if zimcheck_result else {},
             name=name,
             date=date,
             flavour=flavour,
             zimfarm_notification=zimfarm_notification,
-            producer_display_name=(
-                producer_display_name
-                if producer_display_name is not None
-                else faker.company()
-            ),
-            producer_display_url=(
-                producer_display_url
-                if producer_display_url is not None
-                else faker.url()
-            ),
-            producer_unique_id=(
-                producer_unique_id
-                if producer_unique_id is not None
-                else str(faker.uuid4())
-            ),
         )
-        # book.events = []
         dbsession.add(book)
         dbsession.flush()
         return book
@@ -147,50 +142,14 @@ def book(
 @pytest.fixture
 def create_title(
     dbsession: OrmSession,
-    faker: Faker,
-    create_warehouse_path: Callable[..., WarehousePath],
 ) -> Callable[..., Title]:
     def _create_title(
         *,
         name: str = "test_en_all",
-        producer_unique_id: str | None = None,
-        producer_display_name: str | None = None,
-        producer_display_url: str | None = None,
-        dev_warehouse_path_ids: list[UUID] | None = None,
-        prod_warehouse_path_ids: list[UUID] | None = None,
-        in_prod: bool = False,
     ) -> Title:
         title = Title(
             name=name,
-            producer_unique_id=(
-                producer_unique_id
-                if producer_unique_id is not None
-                else str(faker.uuid4())
-            ),
         )
-        title.producer_display_name = producer_display_name
-        title.producer_display_url = producer_display_url
-        title.in_prod = in_prod
-
-        # Create default warehouse paths if not provided (None means create default)
-        # Empty list means explicitly no paths
-        if dev_warehouse_path_ids is None:
-            dev_warehouse_path = create_warehouse_path()
-            dev_warehouse_path_ids = [dev_warehouse_path.id]
-        if prod_warehouse_path_ids is None:
-            prod_warehouse_path = create_warehouse_path()
-            prod_warehouse_path_ids = [prod_warehouse_path.id]
-
-        # Add warehouse path associations
-        for path_id in dev_warehouse_path_ids:
-            twp = TitleWarehousePath(path_type="dev")
-            twp.warehouse_path_id = path_id
-            title.warehouse_paths.append(twp)
-        for path_id in prod_warehouse_path_ids:
-            twp = TitleWarehousePath(path_type="prod")
-            twp.warehouse_path_id = path_id
-            title.warehouse_paths.append(twp)
-
         dbsession.add(title)
         dbsession.flush()
         return title
@@ -212,11 +171,9 @@ def create_warehouse(
 ) -> Callable[..., Warehouse]:
     def _create_warehouse(
         name: str | None = None,
-        configuration: dict[str, Any] | None = None,
     ) -> Warehouse:
         warehouse = Warehouse(
             name=name if name is not None else faker.company(),
-            configuration=configuration if configuration is not None else {},
         )
         dbsession.add(warehouse)
         dbsession.flush()
@@ -233,61 +190,42 @@ def warehouse(
 
 
 @pytest.fixture
-def create_warehouse_path(
-    dbsession: OrmSession,
-    faker: Faker,
-    create_warehouse: Callable[..., Warehouse],
-) -> Callable[..., WarehousePath]:
-    def _create_warehouse_path(
-        folder_name: str | None = None,
-        warehouse: Warehouse | None = None,
-    ) -> WarehousePath:
-        warehouse_path = WarehousePath(
-            folder_name=folder_name if folder_name is not None else faker.file_path(),
-        )
-        warehouse_path.warehouse = (
-            warehouse if warehouse is not None else create_warehouse()
-        )
-        dbsession.add(warehouse_path)
-        dbsession.flush()
-        return warehouse_path
-
-    return _create_warehouse_path
-
-
-@pytest.fixture
-def warehouse_path(
-    create_warehouse_path: Callable[..., WarehousePath],
-    warehouse: Warehouse,
-) -> WarehousePath:
-    return create_warehouse_path(warehouse=warehouse)
-
-
-@pytest.fixture
 def create_book_location(
     dbsession: OrmSession,
+    faker: Faker,
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
+    create_warehouse: Callable[..., Warehouse],
 ) -> Callable[..., BookLocation]:
     def _create_book_location(
         book: Book | None = None,
-        warehouse_path: WarehousePath | None = None,
+        warehouse_id: UUID | None = None,
+        path: str | Path | None = None,
         filename: str | None = None,
         status: str = "current",
     ) -> BookLocation:
         if book is None:
             book = create_book()
-        if warehouse_path is None:
-            warehouse_path = create_warehouse_path()
+
+        if warehouse_id is None:
+            warehouse = create_warehouse()
+            warehouse_id = warehouse.id
+
+        if path is None:
+            path = Path(faker.file_path())
+        else:
+            # Convert string paths to Path objects
+            path = Path(path) if isinstance(path, str) else path
+
         if filename is None:
             filename = "test_file.zim"
 
         location = BookLocation(
             book_id=book.id,
+            warehouse_id=warehouse_id,
+            path=path,
             status=status,
             filename=filename,
         )
-        location.warehouse_path_id = warehouse_path.id
         dbsession.add(location)
         dbsession.flush()
         return location
@@ -296,34 +234,47 @@ def create_book_location(
 
 
 @pytest.fixture
-def create_library(
-    dbsession: OrmSession,
-    faker: Faker,
-) -> Callable[..., Library]:
-    def _create_library(
-        name: str | None = None,
-        warehouse_path_ids: list[UUID] | None = None,
-    ) -> Library:
-        library = Library(
-            name=name if name is not None else faker.slug(),
-        )
-
-        # Add warehouse path associations if provided
-        if warehouse_path_ids:
-            for path_id in warehouse_path_ids:
-                lwp = LibraryWarehousePath()
-                lwp.warehouse_path_id = path_id
-                library.warehouse_paths.append(lwp)
-
-        dbsession.add(library)
-        dbsession.flush()
-        return library
-
-    return _create_library
+def book_location(
+    create_book_location: Callable[..., BookLocation],
+) -> BookLocation:
+    return create_book_location()
 
 
 @pytest.fixture
-def library(
-    create_library: Callable[..., Library],
-) -> Library:
-    return create_library()
+def create_collection(
+    dbsession: OrmSession,
+    faker: Faker,
+    create_warehouse: Callable[..., Warehouse],
+) -> Callable[..., Collection]:
+    def _create_collection(
+        name: str | None = None,
+        warehouse: Warehouse | None = None,
+        title_ids_with_paths: list[tuple[UUID, str]] | None = None,
+    ) -> Collection:
+        if warehouse is None:
+            warehouse = create_warehouse()
+
+        collection = Collection(
+            name=name if name is not None else faker.slug(),
+            warehouse_id=warehouse.id,
+        )
+
+        # Add title associations if provided
+        if title_ids_with_paths:
+            for title_id, path in title_ids_with_paths:
+                ct = CollectionTitle(path=Path(path))
+                ct.title_id = title_id
+                collection.titles.append(ct)
+
+        dbsession.add(collection)
+        dbsession.flush()
+        return collection
+
+    return _create_collection
+
+
+@pytest.fixture
+def collection(
+    create_collection: Callable[..., Collection],
+) -> Collection:
+    return create_collection()
