@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.db.zimfarm_notification import get_next_notification_to_process_or_none
-from cms_backend.processors.zimfarm_notification import process_notification
+from cms_backend.mill.processors.zimfarm_notification import process_notification
 
 
 def process_zimfarm_notifications(session: OrmSession):

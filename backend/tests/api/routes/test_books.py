@@ -222,14 +222,7 @@ def test_get_book_by_id(
     assert response_doc["zim_metadata"] == book.zim_metadata
     assert "events" in response_doc
     assert response_doc["events"] == book.events
-    assert "producer" in response_doc
-    assert isinstance(response_doc["producer"], dict)
-    assert "display_name" in response_doc["producer"]
-    assert response_doc["producer"]["display_name"] == book.producer_display_name
-    assert "display_url" in response_doc["producer"]
-    assert response_doc["producer"]["display_url"] == book.producer_display_url
-    assert "unique_id" in response_doc["producer"]
-    assert response_doc["producer"]["unique_id"] == book.producer_unique_id
+    # Note: producer fields are no longer part of the Book model
 
 
 def test_get_book_by_id_not_found(

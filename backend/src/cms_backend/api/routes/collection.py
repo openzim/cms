@@ -8,15 +8,15 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import gen_dbsession
-from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.library import (
-    get_latest_books_for_library,
-    get_library,
-    get_library_by_name_or_none,
+from cms_backend.db.collection import (
+    get_collection,
+    get_collection_by_name_or_none,
+    get_latest_books_for_collection,
 )
+from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Book
 
-router = APIRouter(prefix="/libraries", tags=["libraries"])
+router = APIRouter(prefix="/collections", tags=["collections"])
 
 
 def _build_library_xml(books: list[Book]) -> str:
@@ -67,25 +67,25 @@ def _build_library_xml(books: list[Book]) -> str:
     return ET.tostring(library_elem, encoding="unicode")
 
 
-@router.get("/{library_id_or_name}/catalog.xml")
+@router.get("/{collection_id_or_name}/catalog.xml")
 async def get_library_catalog_xml(
-    library_id_or_name: Annotated[str, Path()],
+    collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ):
-    """Get library catalog as XML. Library can be specified by ID (UUID) or name."""
+    """Get collection catalog as XML library by collection ID (UUID) or name."""
     # Try to parse as UUID first, otherwise treat as name
-    library = None
+    collection = None
     try:
-        library_id = UUID(library_id_or_name)
+        collection_id = UUID(collection_id_or_name)
         try:
-            library = get_library(session, library_id)
+            collection = get_collection(session, collection_id)
         except RecordDoesNotExistError:
             pass
     except ValueError:
         # Not a valid UUID, try as name
-        library = get_library_by_name_or_none(session, library_id_or_name)
+        collection = get_collection_by_name_or_none(session, collection_id_or_name)
 
-    if library is None:
+    if collection is None:
         return Response(
             content='<?xml version="1.0" encoding="UTF-8"?>'
             '<library version="20110515"></library>',
@@ -93,7 +93,7 @@ async def get_library_catalog_xml(
             media_type="application/xml",
         )
 
-    books = get_latest_books_for_library(session, library.id)
+    books = get_latest_books_for_collection(session, collection.id)
     xml_content = _build_library_xml(books)
 
     return Response(

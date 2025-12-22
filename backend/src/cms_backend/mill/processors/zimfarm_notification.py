@@ -1,13 +1,10 @@
-from typing import cast
-
-from sqlalchemy import select
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
 from cms_backend.db.book import create_book, create_book_location
-from cms_backend.db.models import Warehouse, WarehousePath, ZimfarmNotification
-from cms_backend.processors.book import check_book_qa, get_matching_title
-from cms_backend.processors.title import add_book_to_title
+from cms_backend.db.models import ZimfarmNotification
+from cms_backend.mill.context import Context as MillContext
+from cms_backend.mill.processors.book import process_book
 from cms_backend.utils.datetime import getnow
 
 
@@ -16,8 +13,9 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
 
     - check all mandatory fields are present in notification
     - create a book
-    - check book for QA rules
+    - check book matches ZIM specification requirements
     - associate book with matching title if it already exists
+    - move book from jail to staging
     """
     try:
         missing_notification_keys = [
@@ -28,10 +26,8 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
                 "size",
                 "metadata",
                 "zimcheck",
-                "warehouse_name",
                 "folder_name",
                 "filename",
-                "producer",
             ]
             if key not in notification.content
         ]
@@ -44,34 +40,6 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
-        # Validate producer information
-        producer = notification.content.get("producer")
-        if not isinstance(producer, dict) or not all(
-            isinstance(k, str) and isinstance(v, str)
-            for k, v in producer.items()  # pyright: ignore[reportUnknownVariableType]
-        ):
-            notification.events.append(f"{getnow()}: producer must be a dict[str, str]")
-            notification.status = "bad_notification"
-            return
-        else:
-            producer = cast(dict[str, str], producer)
-
-        missing_producer_keys = [
-            key
-            for key in ["displayName", "displayUrl", "uniqueId"]
-            if key not in producer
-        ]
-
-        if missing_producer_keys:
-            notification.events.append(
-                f"{getnow()}: producer is missing mandatory keys: "
-                f"{','.join(missing_producer_keys)}"
-            )
-            notification.status = "bad_notification"
-            return
-
-        # Look up warehouse path by warehouse_name and folder_name
-        warehouse_name = notification.content.get("warehouse_name")
         folder_name = notification.content.get("folder_name")
         filename = notification.content.get("filename")
 
@@ -84,19 +52,11 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
-        stmt = (
-            select(WarehousePath)
-            .join(Warehouse)
-            .where(
-                Warehouse.name == warehouse_name,
-                WarehousePath.folder_name == folder_name,
-            )
-        )
-        warehouse_path = session.scalars(stmt).one_or_none()
-
-        if not warehouse_path:
+        # Validate folder_name is a non-empty string
+        if not isinstance(folder_name, str) or not folder_name:
             notification.events.append(
-                f"{getnow()}: warehouse path not found: {warehouse_name}/{folder_name}"
+                f"{getnow()}: folder_name must be a non-empty string, got "
+                f"{type(folder_name).__name__}: {folder_name}"
             )
             notification.status = "bad_notification"
             return
@@ -110,31 +70,22 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             zim_metadata=notification.content["metadata"],
             zimcheck_result=notification.content["zimcheck"],
             zimfarm_notification=notification,
-            producer_display_name=producer["displayName"],
-            producer_display_url=producer["displayUrl"],
-            producer_unique_id=producer["uniqueId"],
         )
 
         # Create current book location
         create_book_location(
             session=session,
             book=book,
-            warehouse_path_id=warehouse_path.id,
+            warehouse_id=MillContext.jail_warehouse_id,
+            path=MillContext.jail_base_path / folder_name,
             filename=filename,
             status="current",
         )
 
         notification.status = "processed"
 
-        if not check_book_qa(book):
-            return
-
-        title = get_matching_title(session, book)
-
-        if not title:
-            return
-
-        add_book_to_title(session, book, title)
+        # Try to move book to staging
+        process_book(session, book)
 
     except Exception as exc:
         notification.events.append(

@@ -7,16 +7,24 @@ from xml.etree import ElementTree as ET
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, Library, WarehousePath
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Title,
+    Warehouse,
+)
 from cms_backend.utils.datetime import getnow
 
 
-def test_get_library_catalog_xml_not_found_by_id(
+def test_get_collection_catalog_xml_not_found_by_id(
     client: TestClient,
 ):
-    """Test that requesting a non-existent library by ID returns 404 with empty XML"""
-    non_existent_library_id = uuid4()
-    response = client.get(f"/v1/libraries/{non_existent_library_id}/catalog.xml")
+    """Test that requesting a non-existent collection by ID returns 404
+    with empty XML"""
+    non_existent_collection_id = uuid4()
+    response = client.get(f"/v1/collections/{non_existent_collection_id}/catalog.xml")
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.headers["content-type"] == "application/xml"
     # Should return valid empty XML
@@ -26,11 +34,12 @@ def test_get_library_catalog_xml_not_found_by_id(
     assert len(list(root)) == 0
 
 
-def test_get_library_catalog_xml_not_found_by_name(
+def test_get_collection_catalog_xml_not_found_by_name(
     client: TestClient,
 ):
-    """Test that requesting a non-existent library by name returns 404 with empty XML"""
-    response = client.get("/v1/libraries/nonexistent_library/catalog.xml")
+    """Test that requesting a non-existent collection by name returns 404
+    with empty XML"""
+    response = client.get("/v1/collections/nonexistent_collection/catalog.xml")
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.headers["content-type"] == "application/xml"
     # Should return valid empty XML
@@ -40,14 +49,14 @@ def test_get_library_catalog_xml_not_found_by_name(
     assert len(list(root)) == 0
 
 
-def test_get_library_catalog_xml_empty(
+def test_get_collection_catalog_xml_empty(
     client: TestClient,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
 ):
-    """Test that an empty library returns valid XML with no books"""
-    library = create_library(name="empty_library")
+    """Test that an empty collection returns valid XML with no books"""
+    collection = create_collection(name="empty_collection")
 
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -57,22 +66,42 @@ def test_get_library_catalog_xml_empty(
     assert len(list(root)) == 0
 
 
-def test_get_library_catalog_xml_by_name(
+def _add_title_to_collection(
+    dbsession: OrmSession,
+    collection: Collection,
+    title: Title,
+    path: str,
+) -> None:
+    """Helper to add a title to a collection"""
+    from pathlib import Path
+
+    ct = CollectionTitle(path=Path(path))
+    ct.title = title
+    ct.collection = collection
+    dbsession.add(ct)
+    dbsession.flush()
+
+
+def test_get_collection_catalog_xml_by_name(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
-    """Test that library can be queried by name"""
+    """Test that collection can be queried by name"""
     # Setup
-    warehouse_path = create_warehouse_path()
-    create_library(name="my_library", warehouse_path_ids=[warehouse_path.id])
+    warehouse = create_warehouse()
+    collection = create_collection(name="my_collection", warehouse=warehouse)
+    title = create_title(name="test_title")
+
+    # Add title to collection with a path
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
 
     book = create_book(
-        name="test_title",
-        flavour="full",
         zim_metadata={
             "Name": "test_title",
             "Title": "Test Title",
@@ -83,12 +112,15 @@ def test_get_library_catalog_xml_by_name(
             "Date": "2025-01-01",
         },
     )
+    book.title = title
     book.status = "published"
-    create_book_location(book=book, warehouse_path=warehouse_path, status="current")
+    create_book_location(
+        book=book, warehouse_id=warehouse.id, path=path, status="current"
+    )
     dbsession.flush()
 
     # Test by name
-    response = client.get("/v1/libraries/my_library/catalog.xml")
+    response = client.get("/v1/collections/my_collection/catalog.xml")
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -98,22 +130,25 @@ def test_get_library_catalog_xml_by_name(
     assert books[0].get("title") == "Test Title"
 
 
-def test_get_library_catalog_xml_single_book(
+def test_get_collection_catalog_xml_single_book(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
-    """Test library XML with a single book"""
+    """Test collection XML with a single book"""
     # Setup
-    warehouse_path = create_warehouse_path()
-    library = create_library(warehouse_path_ids=[warehouse_path.id])
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test_title")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
 
     book = create_book(
-        name="test_title",
-        flavour="full",
         zim_metadata={
             "Name": "test_title",
             "Title": "Test Title",
@@ -125,12 +160,15 @@ def test_get_library_catalog_xml_single_book(
             "Tags": "_category:test;_pictures:yes",
         },
     )
+    book.title = title
     book.status = "published"
-    create_book_location(book=book, warehouse_path=warehouse_path, status="current")
+    create_book_location(
+        book=book, warehouse_id=warehouse.id, path=path, status="current"
+    )
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -156,89 +194,96 @@ def test_get_library_catalog_xml_single_book(
     assert book_elem.get("tags") == "_category:test;_pictures:yes"
 
 
-def test_get_library_catalog_xml_multiple_books_different_formats(
+def test_get_collection_catalog_xml_multiple_books_different_formats(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
-    """Test that books with different flavours are included"""
+    """Test that books with different flavours in same name are properly handled"""
     # Setup
-    warehouse_path = create_warehouse_path()
-    library = create_library(warehouse_path_ids=[warehouse_path.id])
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="wiki")
 
-    # Create books with same name but different flavours
-    book_full = create_book(
-        name="wiki",
-        flavour="full",
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    # Create old book that will be superseded
+    book_old = create_book(
         zim_metadata={
             "Name": "wiki",
-            "Title": "Wikipedia Full",
-            "Description": "Full version",
+            "Title": "Wikipedia Old",
+            "Description": "Old version",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-01",
+            "Flavour": "full",
+        },
+    )
+    book_old.title = title
+    book_old.status = "published"
+    dbsession.flush()
+    create_book_location(
+        book=book_old, warehouse_id=warehouse.id, path=path, status="current"
+    )
+
+    # Create newer book with same flavour (should supersede old)
+    book_new = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia New",
+            "Description": "New version",
             "Language": "eng",
             "Creator": "Kiwix",
             "Publisher": "Kiwix",
             "Date": "2025-01-15",
+            "Flavour": "full",
         },
     )
-    book_full.status = "published"
-
-    book_nopic = create_book(
-        name="wiki",
-        flavour="nopic",
-        zim_metadata={
-            "Name": "wiki",
-            "Title": "Wikipedia No Pics",
-            "Description": "No pictures version",
-            "Language": "eng",
-            "Creator": "Kiwix",
-            "Publisher": "Kiwix",
-            "Date": "2025-01-10",
-        },
-    )
-    book_nopic.status = "published"
-
+    book_new.title = title
+    book_new.status = "published"
+    dbsession.flush()
     create_book_location(
-        book=book_full, warehouse_path=warehouse_path, status="current"
-    )
-    create_book_location(
-        book=book_nopic, warehouse_path=warehouse_path, status="current"
+        book=book_new, warehouse_id=warehouse.id, path=path, status="current"
     )
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
     books = list(root.findall("book"))
-    assert len(books) == 2
-
-    # Check that we have both variants (full and nopic)
-    book_titles = {book.get("title") for book in books}
-    assert "Wikipedia Full" in book_titles
-    assert "Wikipedia No Pics" in book_titles
+    # Only the newest book should be returned
+    assert len(books) == 1
+    assert books[0].get("title") == "Wikipedia New"
 
 
-def test_get_library_catalog_xml_skips_unpublished_books(
+def test_get_collection_catalog_xml_skips_unpublished_books(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
     """Test that unpublished books are not included"""
     # Setup
-    warehouse_path = create_warehouse_path()
-    library = create_library(warehouse_path_ids=[warehouse_path.id])
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test")
+
+    path = "test"
+    _add_title_to_collection(dbsession, collection, title, path)
 
     # Create a published book
     published_book = create_book(
-        name="published",
-        flavour="full",
         zim_metadata={
             "Name": "published",
             "Title": "Published Book",
@@ -249,12 +294,11 @@ def test_get_library_catalog_xml_skips_unpublished_books(
             "Date": "2025-01-01",
         },
     )
+    published_book.title = title
     published_book.status = "published"
 
     # Create an unpublished book
     unpublished_book = create_book(
-        name="unpublished",
-        flavour="full",
         zim_metadata={
             "Name": "unpublished",
             "Title": "Unpublished Book",
@@ -265,18 +309,19 @@ def test_get_library_catalog_xml_skips_unpublished_books(
             "Date": "2025-01-01",
         },
     )
+    unpublished_book.title = title
     unpublished_book.status = "pending_processing"
 
     create_book_location(
-        book=published_book, warehouse_path=warehouse_path, status="current"
+        book=published_book, warehouse_id=warehouse.id, path=path, status="current"
     )
     create_book_location(
-        book=unpublished_book, warehouse_path=warehouse_path, status="current"
+        book=unpublished_book, warehouse_id=warehouse.id, path=path, status="current"
     )
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -285,26 +330,25 @@ def test_get_library_catalog_xml_skips_unpublished_books(
     assert books[0].get("title") == "Published Book"
 
 
-def test_get_library_catalog_xml_multiple_warehouse_paths(
+def test_get_collection_catalog_xml_single_warehouse(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
-    """Test that books from all warehouse paths in the library are included"""
-    # Setup
-    warehouse_path_1 = create_warehouse_path()
-    warehouse_path_2 = create_warehouse_path()
-    library = create_library(
-        warehouse_path_ids=[warehouse_path_1.id, warehouse_path_2.id]
-    )
+    """Test that a collection with a single warehouse returns correct books"""
+    # Each collection is tied to exactly one warehouse, so this tests that design
+    warehouse = create_warehouse(name="warehouse1")
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="book1")
 
-    # Create books in different warehouse paths
+    path = "book1"
+    _add_title_to_collection(dbsession, collection, title, path)
+
     book_1 = create_book(
-        name="book1",
-        flavour="full",
         zim_metadata={
             "Name": "book1",
             "Title": "Book 1",
@@ -315,57 +359,44 @@ def test_get_library_catalog_xml_multiple_warehouse_paths(
             "Date": "2025-01-01",
         },
     )
+    book_1.title = title
     book_1.status = "published"
 
-    book_2 = create_book(
-        name="book2",
-        flavour="full",
-        zim_metadata={
-            "Name": "book2",
-            "Title": "Book 2",
-            "Description": "In warehouse 2",
-            "Language": "eng",
-            "Creator": "Author",
-            "Publisher": "Publisher",
-            "Date": "2025-01-01",
-        },
+    create_book_location(
+        book=book_1, warehouse_id=warehouse.id, path=path, status="current"
     )
-    book_2.status = "published"
-
-    create_book_location(book=book_1, warehouse_path=warehouse_path_1, status="current")
-    create_book_location(book=book_2, warehouse_path=warehouse_path_2, status="current")
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
     books = list(root.findall("book"))
-    assert len(books) == 2
-
-    titles = {book.get("title") for book in books}
-    assert "Book 1" in titles
-    assert "Book 2" in titles
+    assert len(books) == 1
+    assert books[0].get("title") == "Book 1"
 
 
-def test_get_library_catalog_xml_latest_book_per_name_flavour(
+def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     client: TestClient,
     dbsession: OrmSession,
-    create_library: Callable[..., Library],
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
     create_book: Callable[..., Book],
-    create_warehouse_path: Callable[..., WarehousePath],
     create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
 ):
     """Test that only the latest book per name+flavour combination is returned"""
     # Setup
-    warehouse_path = create_warehouse_path()
-    library = create_library(warehouse_path_ids=[warehouse_path.id])
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="wiki")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
 
     # Create older book
     older_book = create_book(
-        name="wiki",
-        flavour="full",
         created_at=getnow() - timedelta(days=30),
         zim_metadata={
             "Name": "wiki",
@@ -377,12 +408,11 @@ def test_get_library_catalog_xml_latest_book_per_name_flavour(
             "Date": "2024-12-01",
         },
     )
+    older_book.title = title
     older_book.status = "published"
 
     # Create newer book with same name+flavour
     newer_book = create_book(
-        name="wiki",
-        flavour="full",
         created_at=getnow(),
         zim_metadata={
             "Name": "wiki",
@@ -394,18 +424,19 @@ def test_get_library_catalog_xml_latest_book_per_name_flavour(
             "Date": "2025-01-01",
         },
     )
+    newer_book.title = title
     newer_book.status = "published"
 
     create_book_location(
-        book=older_book, warehouse_path=warehouse_path, status="current"
+        book=older_book, warehouse_id=warehouse.id, path=path, status="current"
     )
     create_book_location(
-        book=newer_book, warehouse_path=warehouse_path, status="current"
+        book=newer_book, warehouse_id=warehouse.id, path=path, status="current"
     )
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/libraries/{library.id}/catalog.xml")
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)

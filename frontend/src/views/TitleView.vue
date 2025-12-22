@@ -23,53 +23,26 @@
               {{ title.name }}
             </td>
           </tr>
+
           <tr>
-            <th class="text-left" style="width: 200px">Producer</th>
+            <th class="text-left" style="width: 200px">Collections</th>
             <td>
-              <span v-if="title.producer_display_name && title.producer_display_url">
-                <a :href="title.producer_display_url" target="_blank" rel="noopener noreferrer">
-                  {{ title.producer_display_name }}
-                </a>
-                (<code>{{ title.producer_unique_id }}</code
-                >)
-              </span>
-              <code v-else>{{ title.producer_unique_id }}</code>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Dev Warehouse Paths</th>
-            <td>
-              <div v-if="title.dev_warehouse_paths && title.dev_warehouse_paths.length > 0">
+              <div v-if="title.collections && title.collections.length > 0">
                 <div
-                  v-for="path in title.dev_warehouse_paths"
-                  :key="`dev-${path.path_id}`"
+                  v-for="tc in title.collections"
+                  :key="`collection-${tc.collection_id}`"
                   class="mb-2"
                 >
-                  {{ path.warehouse_name }}: {{ path.folder_name }}
+                  {{ tc.collection_name }}: {{ tc.path }}
                 </div>
               </div>
-              <span v-else class="text-grey">No dev warehouse paths</span>
+              <span v-else class="text-grey">This title is not published in any collection</span>
             </td>
           </tr>
           <tr>
-            <th class="text-left" style="width: 200px">Prod Warehouse Paths</th>
+            <th class="text-left" style="width: 200px">Maturity</th>
             <td>
-              <div v-if="title.prod_warehouse_paths && title.prod_warehouse_paths.length > 0">
-                <div
-                  v-for="path in title.prod_warehouse_paths"
-                  :key="`prod-${path.path_id}`"
-                  class="mb-2"
-                >
-                  {{ path.warehouse_name }}: {{ path.folder_name }}
-                </div>
-              </div>
-              <span v-else class="text-grey">No prod warehouse paths</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">In Production</th>
-            <td>
-              {{ title.in_prod ? 'Yes' : 'No' }}
+              {{ title.maturity }}
             </td>
           </tr>
           <tr>

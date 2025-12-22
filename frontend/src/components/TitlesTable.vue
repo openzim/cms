@@ -60,17 +60,6 @@
           </router-link>
         </template>
 
-        <template #[`item.producer`]="{ item }">
-          <span v-if="item.producer_display_name && item.producer_display_url">
-            <a :href="item.producer_display_url" target="_blank" rel="noopener noreferrer">
-              {{ item.producer_display_name }}
-            </a>
-            (<code>{{ item.producer_unique_id }}</code
-            >)
-          </span>
-          <code v-else>{{ item.producer_unique_id }}</code>
-        </template>
-
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="x-large" class="mb-2">mdi-format-list-bulleted</v-icon>

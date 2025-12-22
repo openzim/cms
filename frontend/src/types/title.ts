@@ -6,33 +6,28 @@ export interface WarehousePathInfo {
   warehouse_name: string
 }
 
+export interface TitleCollection {
+  collection_id: string
+  collection_name: string
+  path: string
+}
+
 export interface Title {
   id: string
   name: string
-  producer_unique_id: string
-  producer_display_name: string | null
-  producer_display_url: string | null
-  dev_warehouse_paths: WarehousePathInfo[]
-  prod_warehouse_paths: WarehousePathInfo[]
-  in_prod: boolean
+  maturity: string
   events: string[]
   books: BookLight[]
+  collections: TitleCollection[]
 }
 
 export interface TitleLight {
   id: string
   name: string
-  producer_unique_id: string
-  producer_display_name: string | null
-  producer_display_url: string | null
+  maturity: string
 }
 
 export interface TitleCreate {
   name: string
-  producer_unique_id: string
-  producer_display_name?: string
-  producer_display_url?: string
-  dev_warehouse_path_ids: string[]
-  prod_warehouse_path_ids: string[]
-  in_prod?: boolean
+  maturity: string
 }

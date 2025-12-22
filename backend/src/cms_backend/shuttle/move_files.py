@@ -26,10 +26,9 @@ def move_files(session: OrmSession):
 
 def move_book_files(session: OrmSession, book: Book):
     inaccessible_warehouse_names = {
-        loc.warehouse_path.warehouse.name
+        loc.warehouse.name
         for loc in book.locations
-        if loc.warehouse_path.warehouse_id
-        not in ShuttleContext.local_warehouse_paths.keys()
+        if loc.warehouse_id not in ShuttleContext.local_warehouse_paths.keys()
     }
 
     # if any warehouse is not accessible, we do not proceed (complex scenarii not yet

@@ -1,3 +1,4 @@
+import typing
 from datetime import datetime
 from ipaddress import IPv4Address
 from pathlib import Path
@@ -21,6 +22,29 @@ from sqlalchemy.orm import (
     relationship,
 )
 from sqlalchemy.sql.schema import MetaData
+from sqlalchemy.types import TypeDecorator
+
+
+class PathType(TypeDecorator[Path]):
+    """A SQLAlchemy TypeDecorator that converts between Python Path objects
+    and strings."""
+
+    impl = String
+    cache_ok = True
+
+    @typing.override
+    def process_bind_param(self, value: Path | None, dialect: Any) -> str | None:
+        """Convert Path to string for storage in the database."""
+        if value is not None:
+            return str(value)
+        return value
+
+    @typing.override
+    def process_result_value(self, value: str | None, dialect: Any) -> Path | None:
+        """Convert string back to Path when retrieving from the database."""
+        if value is not None:
+            return Path(value)
+        return value
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
@@ -41,6 +65,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
             ARRAY(item_type=String)
         ),  # transform Python List[str] into PostgreSQL Array of strings
         IPv4Address: INET,  # transform Python IPV4Address into PostgreSQL INET
+        Path: PathType,
     }
 
     # This metadata specifies some naming conventions that will be used by
@@ -96,9 +121,6 @@ class Book(Base):
     name: Mapped[str | None]
     date: Mapped[str | None]
     flavour: Mapped[str | None]
-    producer_display_name: Mapped[str]
-    producer_display_url: Mapped[str]
-    producer_unique_id: Mapped[str]
     status: Mapped[str] = mapped_column(
         init=False, default="pending_processing", server_default="pending_processing"
     )
@@ -127,9 +149,9 @@ Index(
 )
 
 Index(
-    "idx_book_status_qa_failed",
+    "idx_book_status_bad_book",
     Book.status,
-    postgresql_where=text("status = 'qa_failed'"),
+    postgresql_where=text("status = 'bad_book'"),
 )
 
 Index(
@@ -157,20 +179,8 @@ class Title(Base):
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
     name: Mapped[str] = mapped_column(unique=True, index=True)
-    producer_unique_id: Mapped[str]
+    maturity: Mapped[str] = mapped_column(init=False, index=True, default="dev")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
-    producer_display_name: Mapped[str | None] = mapped_column(init=False, default=None)
-    producer_display_url: Mapped[str | None] = mapped_column(init=False, default=None)
-
-    # Warehouse paths via junction table
-    warehouse_paths: Mapped[list["TitleWarehousePath"]] = relationship(
-        back_populates="title",
-        cascade="all, delete-orphan",
-        init=False,
-    )
-    in_prod: Mapped[bool] = mapped_column(
-        init=False, default=False, server_default=text("false")
-    )
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
@@ -179,19 +189,44 @@ class Title(Base):
         foreign_keys=[Book.title_id],
     )
 
+    collections: Mapped[list["CollectionTitle"]] = relationship(
+        back_populates="title",
+        cascade="all, delete-orphan",
+        init=False,
+    )
 
-class TitleWarehousePath(Base):
-    __tablename__ = "title_warehouse_path"
+
+class Collection(Base):
+    __tablename__ = "collection"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    name: Mapped[str] = mapped_column(unique=True, index=True)
+    warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"))
+
+    titles: Mapped[list["CollectionTitle"]] = relationship(
+        back_populates="collection",
+        cascade="all, delete-orphan",
+        init=False,
+    )
+
+    warehouse: Mapped["Warehouse"] = relationship(
+        back_populates="collections", init=False
+    )
+
+
+class CollectionTitle(Base):
+    __tablename__ = "collection_title"
     title_id: Mapped[UUID] = mapped_column(
         ForeignKey("title.id"), primary_key=True, init=False
     )
-    warehouse_path_id: Mapped[UUID] = mapped_column(
-        ForeignKey("warehouse_path.id"), primary_key=True, init=False
+    collection_id: Mapped[UUID] = mapped_column(
+        ForeignKey("collection.id"), primary_key=True, init=False
     )
-    path_type: Mapped[str] = mapped_column(primary_key=True)  # 'dev' or 'prod'
+    path: Mapped[Path] = mapped_column()
 
-    title: Mapped["Title"] = relationship(back_populates="warehouse_paths", init=False)
-    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)
+    title: Mapped["Title"] = relationship(back_populates="collections", init=False)
+    collection: Mapped["Collection"] = relationship(back_populates="titles", init=False)
 
 
 class Warehouse(Base):
@@ -200,79 +235,34 @@ class Warehouse(Base):
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
     name: Mapped[str]
-    configuration: Mapped[dict[str, Any]]
-    warehouse_paths: Mapped[list["WarehousePath"]] = relationship(
+
+    collections: Mapped[list["Collection"]] = relationship(
         back_populates="warehouse",
         cascade="all, delete-orphan",
         init=False,
     )
 
 
-class WarehousePath(Base):
-    __tablename__ = "warehouse_path"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
-    folder_name: Mapped[str]
-    warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"), init=False)
-    warehouse: Mapped["Warehouse"] = relationship(
-        back_populates="warehouse_paths", init=False
-    )
-
-
 class BookLocation(Base):
     __tablename__ = "book_location"
     book_id: Mapped[UUID] = mapped_column(ForeignKey("book.id"), primary_key=True)
-    warehouse_path_id: Mapped[UUID] = mapped_column(
-        ForeignKey("warehouse_path.id"), primary_key=True, init=False
+    warehouse_id: Mapped[UUID] = mapped_column(
+        ForeignKey("warehouse.id"), primary_key=True
     )
+    path: Mapped[Path] = mapped_column(primary_key=True)
     status: Mapped[str] = mapped_column(primary_key=True)  # 'current' or 'target'
-
     filename: Mapped[str]
 
     book: Mapped["Book"] = relationship(back_populates="locations", init=False)
-    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)
+    warehouse: Mapped["Warehouse"] = relationship(init=False)
 
-    def full_local_path(self, warehouse_local_folders_map: dict[UUID, str]) -> Path:
-        folder_in_warehouse = Path(self.warehouse_path.folder_name) / self.filename
-        warehouse_folder = Path(
-            warehouse_local_folders_map[self.warehouse_path.warehouse.id]
-        )
-        return warehouse_folder / folder_in_warehouse
+    def full_local_path(self, warehouse_local_folders_map: dict[UUID, Path]) -> Path:
+        return warehouse_local_folders_map[self.warehouse.id] / self.path_in_warehouse
+
+    @property
+    def path_in_warehouse(self) -> Path:
+        return self.path / self.filename
 
     @property
     def full_str(self) -> str:
-        return (
-            f"{self.warehouse_path.warehouse.name}:"
-            f"{self.warehouse_path.folder_name}/{self.filename}"
-        )
-
-
-class Library(Base):
-    __tablename__ = "library"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
-    name: Mapped[str] = mapped_column(unique=True, index=True)
-
-    # Warehouse paths via junction table
-    warehouse_paths: Mapped[list["LibraryWarehousePath"]] = relationship(
-        back_populates="library",
-        cascade="all, delete-orphan",
-        init=False,
-    )
-
-
-class LibraryWarehousePath(Base):
-    __tablename__ = "library_warehouse_path"
-    library_id: Mapped[UUID] = mapped_column(
-        ForeignKey("library.id"), primary_key=True, init=False
-    )
-    warehouse_path_id: Mapped[UUID] = mapped_column(
-        ForeignKey("warehouse_path.id"), primary_key=True, init=False
-    )
-
-    library: Mapped["Library"] = relationship(
-        back_populates="warehouse_paths", init=False
-    )
-    warehouse_path: Mapped["WarehousePath"] = relationship(init=False)
+        return f"{self.warehouse.name}:{self.path_in_warehouse}"

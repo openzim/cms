@@ -5,9 +5,8 @@ export interface Producer {
 }
 
 export interface BookLocation {
-  warehouse_path_id: string
   warehouse_name: string
-  folder_name: string
+  path: string
   filename: string
   status: string
 }
@@ -26,7 +25,6 @@ export interface Book {
   zimcheck_result: Record<string, unknown>
   zim_metadata: Record<string, unknown>
   events: string[]
-  producer: Producer
   current_locations: BookLocation[]
   target_locations: BookLocation[]
 }
