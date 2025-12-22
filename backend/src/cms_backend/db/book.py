@@ -102,7 +102,21 @@ def get_next_book_to_move_files_or_none(
 ) -> Book | None:
     return session.scalars(
         select(Book)
-        .where(Book.status == "pending_move")
+        .where(Book.needs_file_operation.is_(True))
+        .where(Book.has_error.is_(False))
+        .order_by(Book.created_at)
+        .limit(1)
+    ).one_or_none()
+
+
+def get_next_book_to_process_or_none(
+    session: OrmSession,
+) -> Book | None:
+    """Get next book that needs processing (not errored)."""
+    return session.scalars(
+        select(Book)
+        .where(Book.needs_processing.is_(True))
+        .where(Book.has_error.is_(False))
         .order_by(Book.created_at)
         .limit(1)
     ).one_or_none()

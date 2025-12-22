@@ -17,9 +17,17 @@ def move_files(session: OrmSession):
             book = get_next_book_to_move_files_or_none(session)
             if not book:
                 break
-            logger.debug(f"Processing ZIM file of book {book.id}")
-            move_book_files(session, book)
-            nb_zim_files_moved += 1
+
+            try:
+                logger.debug(f"Processing ZIM file of book {book.id}")
+                move_book_files(session, book)
+                nb_zim_files_moved += 1
+            except Exception as exc:
+                book.events.append(
+                    f"{getnow()}: error encountered while moving file\n{exc}"
+                )
+                logger.exception(f"Failed to move file for {book.id}")
+                book.has_error = True
 
     logger.info(f"Done moving {nb_zim_files_moved} ZIM files")
 
@@ -52,14 +60,13 @@ def move_book_files(session: OrmSession, book: Book):
         book.events.append(
             f"{getnow()}: error encountered while moving files, no current location"
         )
-        book.status = "errored"
+        book.has_error = True
         return
 
     if len(target_locations) == 0:
         book.events.append(
             f"{getnow()}: ignoring move files operation, no target location set"
         )
-        book.status = "published"
         return
 
     # start with copies
@@ -127,5 +134,3 @@ def move_book_files(session: OrmSession, book: Book):
         current_locations.remove(current_location)
         book.locations.remove(current_location)
         session.delete(current_location)
-
-    book.status = "published"

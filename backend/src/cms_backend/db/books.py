@@ -35,14 +35,20 @@ def get_books(
     limit: int,
     book_id: str | None = None,
     has_title: bool | None = None,
-    status: str | None = None,
+    needs_processing: bool | None = None,
+    has_error: bool | None = None,
+    needs_file_operation: bool | None = None,
+    location_kind: str | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
     stmt = select(
         Book.id,
         Book.title_id,
-        Book.status,
+        Book.needs_processing,
+        Book.has_error,
+        Book.needs_file_operation,
+        Book.location_kind,
         Book.created_at,
         Book.name,
         Book.date,
@@ -58,8 +64,17 @@ def get_books(
         else:
             stmt = stmt.where(Book.title_id.is_(None))
 
-    if status is not None:
-        stmt = stmt.where(Book.status == status)
+    if needs_processing is not None:
+        stmt = stmt.where(Book.needs_processing == needs_processing)
+
+    if has_error is not None:
+        stmt = stmt.where(Book.has_error == has_error)
+
+    if needs_file_operation is not None:
+        stmt = stmt.where(Book.needs_file_operation == needs_file_operation)
+
+    if location_kind is not None:
+        stmt = stmt.where(Book.location_kind == location_kind)
 
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),
@@ -67,7 +82,10 @@ def get_books(
             BookLightSchema(
                 id=book_id_result,
                 title_id=book_title_id,
-                status=book_status,
+                needs_processing=needs_processing,
+                has_error=has_error,
+                needs_file_operation=needs_file_operation,
+                location_kind=location_kind,
                 created_at=created_at,
                 name=name,
                 date=date,
@@ -76,7 +94,10 @@ def get_books(
             for (
                 book_id_result,
                 book_title_id,
-                book_status,
+                needs_processing,
+                has_error,
+                needs_file_operation,
+                location_kind,
                 created_at,
                 name,
                 date,

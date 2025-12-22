@@ -8,15 +8,19 @@ from cms_backend.utils.datetime import getnow
 
 
 def process_book(session: ORMSession, book: Book):
-    if not check_book_zim_spec(book):
-        return
+    try:
+        if not check_book_zim_spec(book):
+            return
 
-    title = get_matching_title(session, book)
+        title = get_matching_title(session, book)
 
-    if not title:
-        return
+        if not title:
+            return
 
-    add_book_to_title(session, book, title)
+        add_book_to_title(session, book, title)
+
+    finally:
+        book.needs_processing = False
 
 
 def check_book_zim_spec(book: Book) -> bool:
@@ -42,7 +46,7 @@ def check_book_zim_spec(book: Book) -> bool:
                 f"{getnow()}: book is missing mandatory metadata: "
                 f"{','.join(missing_metadata_keys)}"
             )
-            book.status = "bad_book"
+            book.has_error = True
             return False
 
         book.events.append(f"{getnow()}: book passed ZIM specification checks")
@@ -53,7 +57,7 @@ def check_book_zim_spec(book: Book) -> bool:
             f"{getnow()}: error encountered while checking ZIM specification\n{exc}"
         )
         logger.exception(f"Failed to check ZIM specification for book {book.id}")
-        book.status = "errored"
+        book.has_error = True
         return False
 
 
@@ -63,14 +67,13 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             book.events.append(
                 f"{getnow()}: no title can be found because name is missing"
             )
-            book.status = "bad_book"
+            book.has_error = True
             return None
 
         title = get_title_by_name_or_none(session, name=book.name)
 
         if not title:
             book.events.append(f"{getnow()}: no matching title found for book")
-            book.status = "pending_title"
             return None
 
         book.events.append(f"{getnow()}: found matching title {title.id}")
@@ -81,5 +84,5 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             f"{getnow()}: error encountered while get matching title\n{exc}"
         )
         logger.exception(f"Failed to get matching title for {book.id}")
-        book.status = "errored"
+        book.has_error = True
         return None

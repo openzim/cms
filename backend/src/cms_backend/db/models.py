@@ -121,8 +121,17 @@ class Book(Base):
     name: Mapped[str | None]
     date: Mapped[str | None]
     flavour: Mapped[str | None]
-    status: Mapped[str] = mapped_column(
-        init=False, default="pending_processing", server_default="pending_processing"
+    needs_processing: Mapped[bool] = mapped_column(
+        init=False, default=True, server_default="true"
+    )
+    has_error: Mapped[bool] = mapped_column(
+        init=False, default=False, server_default="false"
+    )
+    needs_file_operation: Mapped[bool] = mapped_column(
+        init=False, default=False, server_default="false"
+    )
+    location_kind: Mapped[str] = mapped_column(
+        init=False, default="jail", server_default="jail"
     )
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
@@ -143,33 +152,33 @@ class Book(Base):
 
 
 Index(
-    "idx_book_status_pending_processing",
-    Book.status,
-    postgresql_where=text("status = 'pending_processing'"),
+    "idx_book_needs_processing",
+    Book.needs_processing,
+    postgresql_where=text("needs_processing = TRUE"),
 )
 
 Index(
-    "idx_book_status_bad_book",
-    Book.status,
-    postgresql_where=text("status = 'bad_book'"),
+    "idx_book_has_error",
+    Book.has_error,
+    postgresql_where=text("has_error = TRUE"),
 )
 
 Index(
-    "idx_book_status_pending_title",
-    Book.status,
-    postgresql_where=text("status = 'pending_title'"),
+    "idx_book_needs_file_operation",
+    Book.needs_file_operation,
+    postgresql_where=text("needs_file_operation = TRUE"),
 )
 
 Index(
-    "idx_book_status_errored",
-    Book.status,
-    postgresql_where=text("status = 'errored'"),
+    "idx_book_location_kind_jail",
+    Book.location_kind,
+    postgresql_where=text("location_kind = 'jail'"),
 )
 
 Index(
-    "idx_book_status_pending_move",
-    Book.status,
-    postgresql_where=text("status = 'pending_move'"),
+    "idx_book_location_kind_staging",
+    Book.location_kind,
+    postgresql_where=text("location_kind = 'staging'"),
 )
 
 

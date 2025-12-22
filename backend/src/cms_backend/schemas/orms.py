@@ -72,7 +72,10 @@ class BookLightSchema(BaseModel):
 
     id: UUID
     title_id: UUID | None
-    status: str
+    location_kind: str  # 'jail', 'staging', or 'prod'
+    needs_processing: bool
+    has_error: bool
+    needs_file_operation: bool
     created_at: datetime
     name: str | None
     date: str | None

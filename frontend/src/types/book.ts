@@ -14,7 +14,10 @@ export interface BookLocation {
 export interface Book {
   id: string
   title_id?: string
-  status: string
+  needs_processing: boolean
+  has_error: boolean
+  needs_file_operation: boolean
+  location_kind: 'jail' | 'staging' | 'prod'
   created_at: string
   name?: string
   date?: string
@@ -32,7 +35,10 @@ export interface Book {
 export interface BookLight {
   id: string
   title_id?: string
-  status: string
+  needs_processing: boolean
+  has_error: boolean
+  needs_file_operation: boolean
+  location_kind: 'jail' | 'staging' | 'prod'
   created_at: string
   name?: string
   date?: string
