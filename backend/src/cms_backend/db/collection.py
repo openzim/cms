@@ -65,7 +65,9 @@ def get_latest_books_for_collection(
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Collection.warehouse_id,
                 BookLocation.path == CollectionTitle.path,
-                Book.status == "published",
+                Book.needs_processing.is_(False),
+                Book.has_error.is_(False),
+                Book.needs_file_operation.is_(False),
                 Collection.id == collection_id,
             )
         )

@@ -50,11 +50,12 @@ def test_add_book_to_title_adds_book_to_relationship(
     book = create_book(zim_metadata=GOOD_ZIM_METADATA)
     dbsession.flush()
 
-    with patch("cms_backend.mill.processors.title.create_book_target_locations"):
-        add_book_to_title(dbsession, book, title)
+    # with patch("cms_backend.mill.processors.title.create_book_target_locations"):
+    add_book_to_title(dbsession, book, title)
 
     assert book in title.books
     assert book.title_id == title.id
+    assert book.needs_file_operation is True
 
 
 def test_add_book_to_title_updates_title_name_when_different(

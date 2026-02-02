@@ -20,6 +20,7 @@ def test_move_book_files_inaccessible_warehouse(
     """Test that move_book_files returns early if a warehouse is not accessible"""
     warehouse = create_warehouse(name="inaccessible_warehouse")
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     create_book_location(book=book, warehouse_id=warehouse.id)
@@ -31,9 +32,9 @@ def test_move_book_files_inaccessible_warehouse(
 
         move_book_files(dbsession, book)
 
-    # Book should not be modified (status should remain default "pending_processing")
-    assert book.status == "pending_processing"
-    # No events should be added (the code just logs and returns early)
+    assert book.has_error is False
+    assert book.needs_processing is False
+    assert book.needs_file_operation is True
     assert len(book.events) == 0
 
 
@@ -45,6 +46,7 @@ def test_move_book_files_no_current_location(
     """Test that move_book_files errors if there's no current location"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     # Create a target location but no current location
@@ -63,7 +65,9 @@ def test_move_book_files_no_current_location(
 
         move_book_files(dbsession, book)
 
-    assert book.status == "errored"
+    assert book.has_error is True
+    assert book.needs_processing is False
+    assert book.needs_file_operation is True
     assert any("no current location" in event for event in book.events)
 
 
@@ -77,6 +81,7 @@ def test_move_book_files_no_target_location(
     no target location"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     create_book_location(book=book, warehouse_id=warehouse.id, status="current")
@@ -87,7 +92,9 @@ def test_move_book_files_no_target_location(
 
         move_book_files(dbsession, book)
 
-    assert book.status == "published"
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
     assert any("no target location set" in event for event in book.events)
 
 
@@ -100,6 +107,7 @@ def test_move_book_files_copy_operation(
     """Test that move_book_files performs copy when more targets than current"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     # One current location
@@ -130,7 +138,9 @@ def test_move_book_files_copy_operation(
         # Should have copied once (target_loc2 > current_loc)
         assert mock_copy.call_count == 1
 
-    assert book.status == "published"
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
     assert any("copied book from" in event for event in book.events)
     # One target should now be current
     assert sum(1 for loc in book.locations if loc.status == "current") >= 1
@@ -145,6 +155,7 @@ def test_move_book_files_move_operation(
     """Test that move_book_files performs move when targets equal current"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     # One current location
@@ -171,7 +182,9 @@ def test_move_book_files_move_operation(
         # Should have moved once
         assert mock_move.call_count == 1
 
-    assert book.status == "published"
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
     assert any("moved book from" in event for event in book.events)
     # Current location should be removed
     assert len([loc for loc in book.locations if loc.status == "current"]) == 1
@@ -186,6 +199,7 @@ def test_move_book_files_delete_operation(
     """Test that move_book_files deletes extra current locations"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     # Two current locations
@@ -216,7 +230,9 @@ def test_move_book_files_delete_operation(
         # Should have deleted one extra location
         assert mock_unlink.call_count == 1
 
-    assert book.status == "published"
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
     assert any("deleted old location" in event for event in book.events)
 
 
@@ -229,6 +245,7 @@ def test_move_book_files_updates_book_locations(
     """Test that move_book_files updates target locations to current status"""
     warehouse = create_warehouse()
     book = create_book()
+    book.needs_file_operation = True
     dbsession.flush()
 
     # One current location

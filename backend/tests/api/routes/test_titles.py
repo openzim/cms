@@ -151,7 +151,10 @@ def test_get_title_by_id_with_books(
     assert set(data["books"][0].keys()) == {
         "id",
         "title_id",
-        "status",
+        "needs_processing",
+        "has_error",
+        "needs_file_operation",
+        "location_kind",
         "created_at",
         "name",
         "date",

@@ -122,7 +122,7 @@ class Book(Base):
     date: Mapped[str | None]
     flavour: Mapped[str | None]
     needs_processing: Mapped[bool] = mapped_column(
-        init=False, default=True, server_default="true"
+        init=False, default=False, server_default="false"
     )
     has_error: Mapped[bool] = mapped_column(
         init=False, default=False, server_default="false"

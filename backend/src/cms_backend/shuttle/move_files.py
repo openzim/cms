@@ -67,6 +67,7 @@ def move_book_files(session: OrmSession, book: Book):
         book.events.append(
             f"{getnow()}: ignoring move files operation, no target location set"
         )
+        book.needs_file_operation = False
         return
 
     # start with copies
@@ -134,3 +135,5 @@ def move_book_files(session: OrmSession, book: Book):
         current_locations.remove(current_location)
         book.locations.remove(current_location)
         session.delete(current_location)
+
+    book.needs_file_operation = False

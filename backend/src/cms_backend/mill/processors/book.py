@@ -74,6 +74,10 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
 
         if not title:
             book.events.append(f"{getnow()}: no matching title found for book")
+            # Set all flags to False for pending_title state (passive wait)
+            book.needs_processing = False
+            book.has_error = False
+            book.needs_file_operation = False
             return None
 
         book.events.append(f"{getnow()}: found matching title {title.id}")

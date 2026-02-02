@@ -48,7 +48,7 @@ def test_check_book_zim_spec_missing_metadata(
     book = create_book(zim_metadata=metadata)
 
     assert check_book_zim_spec(book) is False
-    assert book.status == "bad_book"
+    assert book.has_error is True
     assert any(
         "missing mandatory metadata" in event and "Title" in event
         for event in book.events
@@ -64,7 +64,7 @@ def test_check_book_zim_spec_empty_metadata_value(
     book = create_book(zim_metadata=metadata)
 
     assert check_book_zim_spec(book) is False
-    assert book.status == "bad_book"
+    assert book.has_error is True
     assert any(
         "missing mandatory metadata" in event and "Title" in event
         for event in book.events
@@ -101,7 +101,6 @@ def test_get_matching_title_no_match(
     found_title = get_matching_title(dbsession, book)
 
     assert found_title is None
-    assert book.status == "pending_title"
     assert any("no matching title found for book" in event for event in book.events)
 
 
@@ -117,7 +116,7 @@ def test_get_matching_title_missing_book_name(
     found_title = get_matching_title(dbsession, book)
 
     assert found_title is None
-    assert book.status == "bad_book"
+    assert book.has_error is True
     assert any(
         "no title can be found because name is missing" in event
         for event in book.events
@@ -157,13 +156,15 @@ def test_process_book_bad_zim_spec(
     # Missing Title
     metadata = {k: v for k, v in GOOD_ZIM_METADATA.items() if k != "Title"}
     book = create_book(zim_metadata=metadata)
+    book.needs_processing = True
     dbsession.flush()
 
     with patch("cms_backend.mill.processors.book.add_book_to_title") as mock_add:
         process_book(dbsession, book)
 
     # Should have failed ZIM spec check
-    assert book.status == "bad_book"
+    assert book.has_error is True
+    assert book.needs_processing is False
 
     # Should NOT have called add_book_to_title
     mock_add.assert_not_called()
@@ -184,7 +185,9 @@ def test_process_book_no_matching_title(
     assert any("passed ZIM specification checks" in event for event in book.events)
 
     # Should have no matching title
-    assert book.status == "pending_title"
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
 
     # Should NOT have called add_book_to_title
     mock_add.assert_not_called()

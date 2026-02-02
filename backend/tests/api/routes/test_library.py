@@ -113,7 +113,9 @@ def test_get_collection_catalog_xml_by_name(
         },
     )
     book.title = title
-    book.status = "published"
+    book.needs_processing = False
+    book.has_error = False
+    book.needs_file_operation = False
     create_book_location(
         book=book, warehouse_id=warehouse.id, path=path, status="current"
     )
@@ -161,7 +163,9 @@ def test_get_collection_catalog_xml_single_book(
         },
     )
     book.title = title
-    book.status = "published"
+    book.needs_processing = False
+    book.has_error = False
+    book.needs_file_operation = False
     create_book_location(
         book=book, warehouse_id=warehouse.id, path=path, status="current"
     )
@@ -226,7 +230,9 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
         },
     )
     book_old.title = title
-    book_old.status = "published"
+    book_old.needs_processing = False
+    book_old.has_error = False
+    book_old.needs_file_operation = False
     dbsession.flush()
     create_book_location(
         book=book_old, warehouse_id=warehouse.id, path=path, status="current"
@@ -246,7 +252,9 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
         },
     )
     book_new.title = title
-    book_new.status = "published"
+    book_new.needs_processing = False
+    book_new.has_error = False
+    book_new.needs_file_operation = False
     dbsession.flush()
     create_book_location(
         book=book_new, warehouse_id=warehouse.id, path=path, status="current"
@@ -295,7 +303,9 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
         },
     )
     published_book.title = title
-    published_book.status = "published"
+    published_book.needs_processing = False
+    published_book.has_error = False
+    published_book.needs_file_operation = False
 
     # Create an unpublished book
     unpublished_book = create_book(
@@ -310,7 +320,9 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
         },
     )
     unpublished_book.title = title
-    unpublished_book.status = "pending_processing"
+    unpublished_book.needs_processing = True
+    unpublished_book.has_error = False
+    unpublished_book.needs_file_operation = False
 
     create_book_location(
         book=published_book, warehouse_id=warehouse.id, path=path, status="current"
@@ -360,7 +372,9 @@ def test_get_collection_catalog_xml_single_warehouse(
         },
     )
     book_1.title = title
-    book_1.status = "published"
+    book_1.needs_processing = False
+    book_1.has_error = False
+    book_1.needs_file_operation = False
 
     create_book_location(
         book=book_1, warehouse_id=warehouse.id, path=path, status="current"
@@ -409,7 +423,9 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
         },
     )
     older_book.title = title
-    older_book.status = "published"
+    older_book.needs_processing = False
+    older_book.has_error = False
+    older_book.needs_file_operation = False
 
     # Create newer book with same name+flavour
     newer_book = create_book(
@@ -425,7 +441,9 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
         },
     )
     newer_book.title = title
-    newer_book.status = "published"
+    newer_book.needs_processing = False
+    newer_book.has_error = False
+    newer_book.needs_file_operation = False
 
     create_book_location(
         book=older_book, warehouse_id=warehouse.id, path=path, status="current"

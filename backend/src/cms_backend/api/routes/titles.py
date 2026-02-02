@@ -71,7 +71,10 @@ def get_title(
             BookLightSchema(
                 id=book.id,
                 title_id=book.title_id,
-                status=book.status,
+                needs_processing=book.needs_processing,
+                has_error=book.has_error,
+                needs_file_operation=book.needs_file_operation,
+                location_kind=book.location_kind,
                 created_at=book.created_at,
                 name=book.name,
                 date=book.date,
