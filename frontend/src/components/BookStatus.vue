@@ -37,8 +37,8 @@ const isMovingFiles = computed(() => props.book.needs_file_operation && !props.b
 
 const locationLabel = computed(() => {
   switch (props.book.location_kind) {
-    case 'jail':
-      return 'Jail'
+    case 'quarantine':
+      return 'Quarantine'
     case 'staging':
       return 'Staging'
     case 'prod':
@@ -50,7 +50,7 @@ const locationLabel = computed(() => {
 
 const locationColor = computed(() => {
   switch (props.book.location_kind) {
-    case 'jail':
+    case 'quarantine':
       return 'grey'
     case 'staging':
       return 'info'

@@ -62,7 +62,7 @@ def upgrade():
     op.execute(
         text(
             """
-        UPDATE book SET location_kind = 'jail'
+        UPDATE book SET location_kind = 'quarantine'
         WHERE location_kind IS NULL
         """
         )
@@ -94,7 +94,7 @@ def upgrade():
         "book",
         "location_kind",
         nullable=False,
-        server_default="jail",
+        server_default="quarantine",
         existing_type=sa.String(),
     )
 
@@ -148,13 +148,13 @@ def upgrade():
         postgresql_where=sa.text("needs_file_operation = TRUE"),
     )
 
-    # Create partial indexes for location_kind (only jail and staging, not prod)
+    # Create partial indexes for location_kind (only quarantine and staging, not prod)
     op.create_index(
-        "idx_book_location_kind_jail",
+        "idx_book_location_kind_quarantine",
         "book",
         ["location_kind"],
         unique=False,
-        postgresql_where=sa.text("location_kind = 'jail'"),
+        postgresql_where=sa.text("location_kind = 'quarantine'"),
     )
     op.create_index(
         "idx_book_location_kind_staging",
@@ -197,7 +197,7 @@ def downgrade():
 
     # Drop new indexes
     op.drop_index("idx_book_location_kind_staging", table_name="book")
-    op.drop_index("idx_book_location_kind_jail", table_name="book")
+    op.drop_index("idx_book_location_kind_quarantine", table_name="book")
     op.drop_index(
         "idx_book_needs_file_operation",
         table_name="book",

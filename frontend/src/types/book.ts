@@ -17,7 +17,7 @@ export interface Book {
   needs_processing: boolean
   has_error: boolean
   needs_file_operation: boolean
-  location_kind: 'jail' | 'staging' | 'prod'
+  location_kind: 'quarantine' | 'staging' | 'prod'
   created_at: string
   name?: string
   date?: string
@@ -38,7 +38,7 @@ export interface BookLight {
   needs_processing: boolean
   has_error: boolean
   needs_file_operation: boolean
-  location_kind: 'jail' | 'staging' | 'prod'
+  location_kind: 'quarantine' | 'staging' | 'prod'
   created_at: string
   name?: string
   date?: string

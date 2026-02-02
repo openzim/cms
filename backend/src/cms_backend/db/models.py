@@ -131,7 +131,7 @@ class Book(Base):
         init=False, default=False, server_default="false"
     )
     location_kind: Mapped[str] = mapped_column(
-        init=False, default="jail", server_default="jail"
+        init=False, default="quarantine", server_default="quarantine"
     )
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
@@ -170,9 +170,9 @@ Index(
 )
 
 Index(
-    "idx_book_location_kind_jail",
+    "idx_book_location_kind_quarantine",
     Book.location_kind,
-    postgresql_where=text("location_kind = 'jail'"),
+    postgresql_where=text("location_kind = 'quarantine'"),
 )
 
 Index(

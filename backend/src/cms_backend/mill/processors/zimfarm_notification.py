@@ -15,7 +15,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
     - create a book
     - check book matches ZIM specification requirements
     - associate book with matching title if it already exists
-    - move book from jail to staging
+    - move book from quarantine to staging
     """
     try:
         missing_notification_keys = [
@@ -76,8 +76,8 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
         create_book_location(
             session=session,
             book=book,
-            warehouse_id=MillContext.jail_warehouse_id,
-            path=MillContext.jail_base_path / folder_name,
+            warehouse_id=MillContext.quarantine_warehouse_id,
+            path=MillContext.quarantine_base_path / folder_name,
             filename=filename,
             status="current",
         )

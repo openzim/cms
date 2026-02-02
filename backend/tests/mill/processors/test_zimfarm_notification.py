@@ -103,8 +103,8 @@ def test_process_notification_valid_creates_book_and_location(
 ):
     """Test that valid notification creates book and location,
     then calls process_book"""
-    # Create the jail warehouse that MillContext expects
-    jail_warehouse = create_warehouse(name="jail")
+    # Create the quarantine warehouse that MillContext expects
+    quarantine_warehouse = create_warehouse(name="quarantine")
     dbsession.flush()
 
     notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -112,8 +112,8 @@ def test_process_notification_valid_creates_book_and_location(
 
     # Mock MillContext to use our test warehouse
     mock_context = MagicMock()
-    mock_context.jail_warehouse_id = jail_warehouse.id
-    mock_context.jail_base_path = Path("/jail")
+    mock_context.quarantine_warehouse_id = quarantine_warehouse.id
+    mock_context.quarantine_base_path = Path("/quarantine")
 
     with patch(
         "cms_backend.mill.processors.zimfarm_notification.MillContext", mock_context
@@ -138,12 +138,12 @@ def test_process_notification_valid_creates_book_and_location(
     assert called_book.zim_metadata == VALID_NOTIFICATION_CONTENT["metadata"]
     assert called_book.zimcheck_result == VALID_NOTIFICATION_CONTENT["zimcheck"]
 
-    # Book should have a location in jail warehouse
+    # Book should have a location in quarantine warehouse
     assert len(called_book.locations) == 1
     location = called_book.locations[0]
     assert location.filename == VALID_NOTIFICATION_CONTENT["filename"]
     assert location.status == "current"
-    assert location.warehouse_id == jail_warehouse.id
+    assert location.warehouse_id == quarantine_warehouse.id
 
     # Notification should have events
     assert any(
