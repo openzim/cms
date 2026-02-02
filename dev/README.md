@@ -64,53 +64,41 @@ This script will:
 - Print the LOCAL_WAREHOUSE_PATHS configuration (already configured in docker-compose.yml)
 
 Current warehouse configuration:
-- **hidden**: 2 paths (`quarantine`, `dev`)
+- **hidden**: 2 paths (`quarantine`, `staging`)
 - **prod**: 1 path (`other`, `wikipedia`)
 - **client1**: 1 path (`all`)
 
 To modify warehouse configuration, edit the `WAREHOUSES_CONFIG` dict in [scripts/setup_warehouses.py](scripts/setup_warehouses.py) and re-run the script.
 
+### Setup collections
+
+After setting up warehouses, you can create sample collections:
+
+```sh
+docker exec cms_mill python /scripts/setup_collections.py
+```
+
+Currently two collections are configured: **prod** (associated with **prod** warehouse) and **client1** (associated with **client1** warehouse)
+
+To modify collections configuration, edit the `COLLECTIONS_CONFIG` list in [scripts/setup_collections.py](scripts/setup_collections.py) and re-run the script.
+
+Once created, collection catalogs are accessible at:
+- `http://localhost:37601/v1/libraries/prod/catalog.xml` or `http://localhost:37601/v1/libraries/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
+- `http://localhost:37601/v1/libraries/client1/catalog.xml` or `http://localhost:37601/v1/libraries/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
+
 ### Setup titles
 
-After setting up warehouse paths, you can create sample titles with their warehouse path associations:
+After setting up warehouses and collections, you can create sample titles with their collections, maturity and path associations:
 
 ```sh
 docker exec cms_mill python /scripts/setup_titles.py
 ```
 
-This script will:
-- Create Title records in the database
-- Associate titles with dev and prod warehouse paths via TitleWarehousePath
-
 To modify title configuration, edit the `TITLES_CONFIG` list in [scripts/setup_titles.py](scripts/setup_titles.py) and re-run the script.
-
-### Setup libraries
-
-Libraries are collections of warehouse paths used to generate XML catalogs. After setting up warehouse paths, create libraries:
-
-```sh
-docker exec cms_mill python /scripts/setup_libraries.py
-```
-
-This script will:
-- Create Library records in the database
-- Associate libraries with warehouse paths via LibraryWarehousePath
-
-Default libraries:
-- **dev**: includes `hidden/dev` warehouse path
-- **prod**: includes `prod/other` and `prod/wikipedia` warehouse paths
-- **client1**: includes `client1/all` warehouse path
-
-Once created, library catalogs are accessible at:
-- `http://localhost:37601/v1/libraries/dev/catalog.xml`
-- `http://localhost:37601/v1/libraries/prod/catalog.xml`
-- `http://localhost:37601/v1/libraries/client1/catalog.xml`
-
-To modify library configuration, edit the `LIBRARIES_CONFIG` dict in [scripts/setup_libraries.py](scripts/setup_libraries.py) and re-run the script.
 
 ### Setup notifications
 
-After setting up titles, you can create sample zimfarm notifications for testing the mill processor:
+After setting up warehouses, collections and titles, you can create sample zimfarm notifications for testing the mill processor:
 
 ```sh
 docker exec cms_shuttle python /scripts/setup_notifications.py
@@ -118,10 +106,11 @@ docker exec cms_shuttle python /scripts/setup_notifications.py
 
 This script will:
 - Create ZimfarmNotification records with status "pending"
-- Create "fake" ZIMs in warehouse folders
-- Each notification references a warehouse path and matches a title's producer_unique_id
+- Create "fake" ZIMs in quarantine folder and subfolders
 
-After creating notifications, the mill will process them into books. To modify notification configuration, edit the `NOTIFICATIONS_CONFIG` list in [scripts/setup_notifications.py](scripts/setup_notifications.py) and re-run the script.
+After creating notifications, the mill will process them into books. And the shuttle will move files to proper target folder when appropriate.
+
+To modify notification configuration, edit the `NOTIFICATIONS_CONFIG` list in [scripts/setup_notifications.py](scripts/setup_notifications.py) and re-run the script.
 
 ### Wipe database and files
 
