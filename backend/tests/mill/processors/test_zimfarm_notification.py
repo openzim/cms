@@ -1,12 +1,25 @@
-"""Tests for zimfarm notification processor."""
+"""Integration tests for zimfarm notification processor.
+
+Tests the complete processing flow from notification ingestion through book
+and title association, verifying observable final states rather than
+implementation details.
+"""
 
 from collections.abc import Callable
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Warehouse, ZimfarmNotification
+from cms_backend.db.models import (
+    Book,
+    Collection,
+    CollectionTitle,
+    Title,
+    Warehouse,
+    ZimfarmNotification,
+)
+from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.processors.zimfarm_notification import process_notification
 
 VALID_NOTIFICATION_CONTENT = {
@@ -28,145 +41,255 @@ VALID_NOTIFICATION_CONTENT = {
 }
 
 
-def test_process_notification_missing_mandatory_keys(
-    dbsession: OrmSession,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-):
-    """Test that notification with missing mandatory keys is marked as
-    bad_notification"""
-    # Missing article_count and media_count
-    content = {
-        "size": 1000000,
-        "metadata": {"Name": "test"},
-        "zimcheck": {},
-        "folder_name": "test",
-        "filename": "test.zim",
-    }
+class TestBadNotifications:
+    """Test notifications that fail validation and are marked as bad_notification."""
 
-    notification = create_zimfarm_notification(content=content)
-    dbsession.flush()
-
-    with patch("cms_backend.mill.processors.zimfarm_notification.process_book"):
-        process_notification(dbsession, notification)
-
-    assert notification.status == "bad_notification"
-    assert any("missing mandatory keys" in event for event in notification.events)
-    assert "article_count" in notification.events[0]
-    assert "media_count" in notification.events[0]
-
-
-def test_process_notification_invalid_filename(
-    dbsession: OrmSession,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-):
-    """Test that notification with invalid filename is marked as bad_notification"""
-    content = VALID_NOTIFICATION_CONTENT.copy()
-    content["filename"] = 123  # Invalid: should be string
-
-    notification = create_zimfarm_notification(content=content)
-    dbsession.flush()
-
-    with patch("cms_backend.mill.processors.zimfarm_notification.process_book"):
-        process_notification(dbsession, notification)
-
-    assert notification.status == "bad_notification"
-    assert any(
-        "filename must be a non-empty string" in event for event in notification.events
-    )
-
-
-def test_process_notification_invalid_folder_name(
-    dbsession: OrmSession,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-):
-    """Test that notification with invalid folder_name is marked as bad_notification"""
-    content = VALID_NOTIFICATION_CONTENT.copy()
-    content["folder_name"] = None  # type: ignore[assignment]  # Invalid: should be string
-
-    notification = create_zimfarm_notification(content=content)
-    dbsession.flush()
-
-    with patch("cms_backend.mill.processors.zimfarm_notification.process_book"):
-        process_notification(dbsession, notification)
-
-    assert notification.status == "bad_notification"
-    assert any(
-        "folder_name must be a non-empty string" in event
-        for event in notification.events
-    )
-
-
-def test_process_notification_valid_creates_book_and_location(
-    dbsession: OrmSession,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-    create_warehouse: Callable[..., Warehouse],
-):
-    """Test that valid notification creates book and location,
-    then calls process_book"""
-    # Create the jail warehouse that MillContext expects
-    jail_warehouse = create_warehouse(name="jail")
-    dbsession.flush()
-
-    notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
-    dbsession.flush()
-
-    # Mock MillContext to use our test warehouse
-    mock_context = MagicMock()
-    mock_context.jail_warehouse_id = jail_warehouse.id
-    mock_context.jail_base_path = Path("/jail")
-
-    with patch(
-        "cms_backend.mill.processors.zimfarm_notification.MillContext", mock_context
+    def test_missing_mandatory_keys(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
     ):
-        with patch(
-            "cms_backend.mill.processors.zimfarm_notification.process_book"
-        ) as mock_process_book:
-            process_notification(dbsession, notification)
+        """Notification missing article_count and media_count → bad_notification."""
+        content = {
+            "size": 1000000,
+            "metadata": {"Name": "test"},
+            "zimcheck": {},
+            "folder_name": "test",
+            "filename": "test.zim",
+        }
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
 
-    # Notification should be marked as processed
-    assert notification.status == "processed"
-
-    # process_book should have been called
-    mock_process_book.assert_called_once()
-    called_book = mock_process_book.call_args[0][1]
-
-    # Book should be created with correct properties
-    assert called_book.id == notification.id
-    assert called_book.article_count == VALID_NOTIFICATION_CONTENT["article_count"]
-    assert called_book.media_count == VALID_NOTIFICATION_CONTENT["media_count"]
-    assert called_book.size == VALID_NOTIFICATION_CONTENT["size"]
-    assert called_book.zim_metadata == VALID_NOTIFICATION_CONTENT["metadata"]
-    assert called_book.zimcheck_result == VALID_NOTIFICATION_CONTENT["zimcheck"]
-
-    # Book should have a location in jail warehouse
-    assert len(called_book.locations) == 1
-    location = called_book.locations[0]
-    assert location.filename == VALID_NOTIFICATION_CONTENT["filename"]
-    assert location.status == "current"
-    assert location.warehouse_id == jail_warehouse.id
-
-    # Notification should have events
-    assert any(
-        "created from Zimfarm notification" in event for event in called_book.events
-    )
-
-
-def test_process_notification_error_handling(
-    dbsession: OrmSession,
-    create_zimfarm_notification: Callable[..., ZimfarmNotification],
-):
-    """Test that errors during processing are caught and status is set to errored"""
-    notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
-    dbsession.flush()
-
-    with patch(
-        "cms_backend.mill.processors.zimfarm_notification.process_book",
-        side_effect=Exception("Test error"),
-    ):
         process_notification(dbsession, notification)
 
-    assert notification.status == "errored"
-    assert any(
-        "error encountered while processing notification" in event
-        for event in notification.events
-    )
+        assert notification.status == "bad_notification"
+        assert any("missing mandatory keys" in event for event in notification.events)
+
+    def test_invalid_filename_type(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    ):
+        """Notification with filename as int instead of string → bad_notification."""
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["filename"] = 123  # Invalid: should be string
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "bad_notification"
+        assert any(
+            "filename must be a non-empty string" in event
+            for event in notification.events
+        )
+
+    def test_empty_filename(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    ):
+        """Notification with empty filename → bad_notification."""
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["filename"] = ""
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "bad_notification"
+
+    def test_invalid_folder_name_type(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    ):
+        """Notification with folder_name as None → bad_notification."""
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["folder_name"] = None  # pyright: ignore[reportArgumentType]
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "bad_notification"
+        assert any(
+            "folder_name must be a non-empty string" in event
+            for event in notification.events
+        )
+
+
+class TestValidNotificationNoMatchingTitle:
+    """Test valid notifications when no matching title exists in the system."""
+
+    def test_creates_book_in_quarantine(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    ):
+        """Valid notification, no matching title → book created in quarantine."""
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        # Verify notification marked as processed
+        assert notification.status == "processed"
+
+        # Verify book was created
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.article_count == VALID_NOTIFICATION_CONTENT["article_count"]
+        assert book.media_count == VALID_NOTIFICATION_CONTENT["media_count"]
+        assert book.size == VALID_NOTIFICATION_CONTENT["size"]
+
+        # Verify book has location in quarantine
+        assert len(book.locations) == 1
+        location = book.locations[0]
+        assert location.filename == VALID_NOTIFICATION_CONTENT["filename"]
+        assert location.status == "current"
+
+        # Verify book is not in error state (waiting passively for title)
+        assert book.has_error is False
+        assert book.needs_processing is False
+
+
+class TestValidNotificationMissingZimMetadata:
+    """Test valid notifications where book metadata is incomplete."""
+
+    def test_missing_metadata_sets_error_flag(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    ):
+        """Valid notification but missing ZIM metadata → book marked with error."""
+        # Create notification with valid structure but missing metadata field
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["metadata"] = {
+            "Name": "test_en_all",
+            # Missing Title, Creator, Publisher, Date, Description, Language
+        }
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        # Notification still processed
+        assert notification.status == "processed"
+
+        # But book has error flag
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.has_error is True
+        assert any("missing mandatory metadata" in event for event in book.events)
+        assert book.needs_processing is False
+
+
+class TestValidNotificationWithMatchingTitleDevMaturity:
+    """Test valid notifications that match an existing title with dev maturity.
+
+    Dev maturity titles should have their books moved to staging.
+    """
+
+    def test_moves_book_to_staging(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+    ):
+        """Valid notification + matching dev maturity title → book moves to staging."""
+        # Create title that matches book name
+        title = create_title(name="test_en_all")
+        title.maturity = "dev"
+        dbsession.flush()
+
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        assert len(current_locations) == 1
+        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
+        assert current_locations[0].path == MillContext.quarantine_base_path / str(
+            VALID_NOTIFICATION_CONTENT["folder_name"]
+        )
+
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+        assert len(target_locations) == 1
+        assert target_locations[0].warehouse_id == MillContext.staging_warehouse_id
+        assert target_locations[0].path == MillContext.staging_base_path
+
+        assert book.location_kind == "staging"
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
+
+class TestValidNotificationWithMatchingTitleRobustMaturity:
+    """Test valid notifications that match a robust maturity title.
+
+    Robust maturity titles have their books moved directly to production collections.
+    """
+
+    def test_moves_book_to_collection_warehouses(
+        self,
+        dbsession: OrmSession,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        """Valid notification + robust title → book has collection warehouse targets."""
+
+        title = create_title(name="test_en_all")
+        title.maturity = "robust"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+
+        current_locations = [loc for loc in book.locations if loc.status == "current"]
+        assert len(current_locations) == 1
+        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
+        assert current_locations[0].path == MillContext.quarantine_base_path / str(
+            VALID_NOTIFICATION_CONTENT["folder_name"]
+        )
+
+        target_locations = [loc for loc in book.locations if loc.status == "target"]
+        assert len(target_locations) == 1
+        assert target_locations[0].warehouse_id == prod.id
+        assert target_locations[0].path == ct.path
+
+        assert book.location_kind == "prod"
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False

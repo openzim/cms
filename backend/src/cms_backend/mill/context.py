@@ -30,10 +30,12 @@ class Context:
         )
     )
 
-    jail_warehouse_id: UUID = field(
-        default=UUID(get_mandatory_env("JAIL_WAREHOUSE_ID"))
+    quarantine_warehouse_id: UUID = field(
+        default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
     )
-    jail_base_path: Path = field(default=Path(os.getenv("JAIL_BASE_PATH", "")))
+    quarantine_base_path: Path = field(
+        default=Path(os.getenv("QUARANTINE_BASE_PATH", ""))
+    )
 
     staging_warehouse_id: UUID = field(
         default=UUID(get_mandatory_env("STAGING_WAREHOUSE_ID"))

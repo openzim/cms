@@ -24,7 +24,10 @@ class BooksGetSchema(BaseModel):
     limit: LimitFieldMax200 = 20
     id: NotEmptyString | None = None
     has_title: bool | None = None
-    status: NotEmptyString | None = None
+    needs_processing: bool | None = None
+    has_error: bool | None = None
+    needs_file_operation: bool | None = None
+    location_kind: NotEmptyString | None = None
 
 
 @router.get("")
@@ -40,7 +43,10 @@ async def get_books(
         limit=params.limit,
         book_id=params.id,
         has_title=params.has_title,
-        status=params.status,
+        needs_processing=params.needs_processing,
+        has_error=params.has_error,
+        needs_file_operation=params.needs_file_operation,
+        location_kind=params.location_kind,
     )
 
     return ListResponse[BookLightSchema](
@@ -89,7 +95,10 @@ async def get_book(
     return BookFullSchema(
         id=db_book.id,
         title_id=db_book.title_id,
-        status=db_book.status,
+        needs_processing=db_book.needs_processing,
+        has_error=db_book.has_error,
+        needs_file_operation=db_book.needs_file_operation,
+        location_kind=db_book.location_kind,
         created_at=db_book.created_at,
         name=db_book.name,
         date=db_book.date,

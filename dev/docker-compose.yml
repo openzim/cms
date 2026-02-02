@@ -63,8 +63,8 @@ services:
     environment:
       DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
-      JAIL_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
-      JAIL_BASE_PATH: jail
+      QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
+      QUARANTINE_BASE_PATH: quarantine
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
     depends_on:

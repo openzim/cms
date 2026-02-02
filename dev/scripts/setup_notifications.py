@@ -111,7 +111,9 @@ def create_notifications():
             print(f"\nProcessing notification: {filename}")
 
             # Check if file already exists in warehouse
-            file_path = WAREHOUSE_BASE_PATH / "hidden/jail" / folder_name / filename
+            file_path = (
+                WAREHOUSE_BASE_PATH / "hidden/quarantine" / folder_name / filename
+            )
             if file_path.exists():
                 print(f"  - File already exists at {file_path} (skipping)")
                 continue

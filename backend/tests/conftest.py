@@ -171,10 +171,13 @@ def create_warehouse(
 ) -> Callable[..., Warehouse]:
     def _create_warehouse(
         name: str | None = None,
+        warehouse_id: UUID | None = None,
     ) -> Warehouse:
         warehouse = Warehouse(
             name=name if name is not None else faker.company(),
         )
+        if warehouse_id:
+            warehouse.id = warehouse_id
         dbsession.add(warehouse)
         dbsession.flush()
         return warehouse

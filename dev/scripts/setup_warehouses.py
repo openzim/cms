@@ -21,7 +21,7 @@ from cms_backend.db.models import Warehouse
 WAREHOUSES_CONFIG = {
     "hidden": {
         "id": UUID("11111111-1111-1111-1111-111111111111"),
-        "paths": ["jail", "staging"],
+        "paths": ["quarantine", "staging"],
     },
     "prod": {
         "id": UUID("22222222-2222-2222-2222-222222222222"),

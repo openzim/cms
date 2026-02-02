@@ -48,8 +48,11 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             book_id=book.id,
         )
 
-        # For now, only 'robust' maturity move straight to prod,
-        # other maturity moves through staging first
+        # Determine if this book goes to staging or prod based on title maturity
+        # For now, only 'robust' maturity move straight to prod, other maturity moves
+        # through staging first
+        goes_to_staging = title.maturity != "robust"
+
         target_locations = (
             [
                 FileLocation(
@@ -58,7 +61,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
                     target_filename,
                 )
             ]
-            if title.maturity != "robust"
+            if goes_to_staging
             else [
                 FileLocation(tc.collection.warehouse_id, tc.path, target_filename)
                 for tc in title.collections
@@ -71,6 +74,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             book=book,
             target_locations=target_locations,
         )
+        book.location_kind = "staging" if goes_to_staging else "prod"
 
     except Exception as exc:
         book.events.append(
@@ -79,7 +83,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         title.events.append(
             f"{getnow()}: error encountered while adding book {book.id}\n{exc}"
         )
-        book.status = "errored"
+        book.has_error = True
         logger.exception(f"Failed to add book {book.id} to title {title.id}")
 
 
@@ -132,6 +136,7 @@ def create_book_target_locations(
     Side effects:
         - Adds event to book if targets already match current locations
         - Creates BookLocation records if targets don't match current locations
+        - Updates book needs_file_operation flag
     """
 
     if not book.name:
@@ -147,7 +152,7 @@ def create_book_target_locations(
             f"{getnow()}: book already at all target locations, skipping target "
             "creation"
         )
-        book.status = "published"
+        book.needs_file_operation = False
         return
 
     # Create target locations for each applicable warehouse path
@@ -161,4 +166,4 @@ def create_book_target_locations(
             status="target",
         )
 
-    book.status = "pending_move"
+    book.needs_file_operation = True

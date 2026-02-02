@@ -64,7 +64,7 @@ This script will:
 - Print the LOCAL_WAREHOUSE_PATHS configuration (already configured in docker-compose.yml)
 
 Current warehouse configuration:
-- **hidden**: 2 paths (`jail`, `dev`)
+- **hidden**: 2 paths (`quarantine`, `dev`)
 - **prod**: 1 path (`other`, `wikipedia`)
 - **client1**: 1 path (`all`)
 
