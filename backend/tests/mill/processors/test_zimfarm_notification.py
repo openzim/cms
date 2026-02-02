@@ -154,7 +154,9 @@ class TestValidNotificationNoMatchingTitle:
 
         # Verify book is not in error state (waiting passively for title)
         assert book.has_error is False
+        assert book.location_kind == "quarantine"
         assert book.needs_processing is False
+        assert book.needs_file_operation is False
 
 
 class TestValidNotificationMissingZimMetadata:
@@ -184,9 +186,11 @@ class TestValidNotificationMissingZimMetadata:
         # But book has error flag
         book = dbsession.query(Book).filter_by(id=notification.id).first()
         assert book is not None
+        assert book.location_kind == "quarantine"
         assert book.has_error is True
         assert any("missing mandatory metadata" in event for event in book.events)
         assert book.needs_processing is False
+        assert book.needs_file_operation is False
 
 
 class TestValidNotificationWithMatchingTitleDevMaturity:
