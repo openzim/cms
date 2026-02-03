@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    false,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
@@ -275,3 +276,11 @@ class BookLocation(Base):
     @property
     def full_str(self) -> str:
         return f"{self.warehouse.name}:{self.path_in_warehouse}"
+
+
+class User(Base):
+    __tablename__ = "user"
+    idp_sub: Mapped[UUID] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(unique=True, index=True)
+    role: Mapped[str]
+    deleted: Mapped[bool] = mapped_column(default=False, server_default=false())

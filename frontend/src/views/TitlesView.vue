@@ -20,7 +20,13 @@
     @selection-changed="handleSelectionChanged"
   >
     <template #actions>
-      <v-btn color="primary" variant="elevated" size="small" @click="showCreateDialog = true">
+      <v-btn
+        v-if="canCreateTitle"
+        color="primary"
+        variant="elevated"
+        size="small"
+        @click="showCreateDialog = true"
+      >
         <v-icon size="small" class="mr-1">mdi-plus</v-icon>
         Create Title
       </v-btn>
@@ -37,6 +43,7 @@
 import CreateTitleDialog from '@/components/CreateTitleDialog.vue'
 import TitlesFilter from '@/components/TitlesFilters.vue'
 import TitlesTable from '@/components/TitlesTable.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
@@ -69,9 +76,13 @@ const showCreateDialog = ref(false)
 
 // Stores
 const router = useRouter()
+const authStore = useAuthStore()
 const titleStore = useTitleStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
+
+// Permissions
+const canCreateTitle = computed(() => authStore.hasPermission('title', 'create'))
 
 // Methods
 async function loadData(limit: number, skip: number, hideLoading: boolean = false) {

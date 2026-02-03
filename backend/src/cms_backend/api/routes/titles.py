@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.routes.dependencies import require_permission
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -93,7 +94,9 @@ def get_title(
     )
 
 
-@router.post("")
+@router.post(
+    "", dependencies=[Depends(require_permission(namespace="title", name="create"))]
+)
 def create_title(
     title_data: TitleCreateSchema,
     session: OrmSession = Depends(gen_dbsession),

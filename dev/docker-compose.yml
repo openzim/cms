@@ -5,7 +5,7 @@ services:
     ports:
       - 127.0.0.1:37602:5432
     volumes:
-      - pg_data_cms:/var/lib/postgresql/data
+      - pg_data_cms:/var/lib/postgresql
       - ./postgres-initdb:/docker-entrypoint-initdb.d
     # - /tmp/foo/root/.borgmatic/postgresql_databases/api-db-service/cms:/data/cms
     environment:
@@ -36,6 +36,11 @@ services:
       WEB_CONCURRENCY: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
       ALLOWED_ORIGINS: http://localhost:37600,http://localhost:37603
+      OAUTH_JWKS_URI: https://login-staging.kiwix.org/.well-known/jwks.json
+      OAUTH_ISSUER: https://login-staging.kiwix.org
+      OAUTH_SESSION_AUDIENCE_ID: 309693e7-ad5e-4379-bf93-ba89314230fd
+      OAUTH_SESSION_LOGIN_REQUIRE_2FA: true
+      CREATE_NEW_OAUTH_ACCOUNT: true
     command:
       - uvicorn
       - cms_backend.api.main:app

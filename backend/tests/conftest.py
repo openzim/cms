@@ -9,6 +9,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.token import JWTClaims
 from cms_backend.db import Session
 from cms_backend.db.models import (
     Base,
@@ -17,9 +18,11 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    User,
     Warehouse,
     ZimfarmNotification,
 )
+from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
 
 
@@ -281,3 +284,51 @@ def collection(
     create_collection: Callable[..., Collection],
 ) -> Collection:
     return create_collection()
+
+
+@pytest.fixture
+def create_user(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., User]:
+    def _create_user(
+        *,
+        username: str | None = None,
+        permission: RoleEnum = RoleEnum.EDITOR,
+    ):
+        user = User(
+            username=username or faker.first_name(),
+            role=permission,
+            idp_sub=uuid4(),
+        )
+        dbsession.add(user)
+
+        dbsession.flush()
+
+        return user
+
+    return _create_user
+
+
+@pytest.fixture
+def user(create_user: Callable[..., User]):
+    return create_user()
+
+
+@pytest.fixture
+def mock_token_for_user(monkeypatch: pytest.MonkeyPatch) -> Callable[[User], None]:
+    def _mock_for_user(user: User) -> None:
+        def mock_decode(_: str) -> JWTClaims:
+            return JWTClaims(
+                iss="https://test.kiwix.org",
+                subject=user.idp_sub,
+                name=user.username,
+                iat=getnow(),
+                exp=getnow(),
+            )
+
+        monkeypatch.setattr(
+            "cms_backend.api.routes.dependencies.token_decoder.decode", mock_decode
+        )
+
+    return _mock_for_user

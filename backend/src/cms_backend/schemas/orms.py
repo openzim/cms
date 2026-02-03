@@ -102,3 +102,14 @@ class WarehousePathSchema(BaseModel):
     folder_name: str
     warehouse_id: UUID
     warehouse_name: str
+
+
+class UserSchema(BaseModel):
+    """
+    Schema for reading a user model
+    """
+
+    username: str
+    role: str
+    idp_sub: UUID
+    scope: dict[str, dict[str, bool]]

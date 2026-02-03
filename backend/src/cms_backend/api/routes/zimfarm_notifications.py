@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
+from cms_backend.api.routes.dependencies import require_permission
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -76,7 +77,12 @@ async def get_zimfarm_notifications(
     )
 
 
-@router.post("")
+@router.post(
+    "",
+    dependencies=[
+        Depends(require_permission(namespace="zimfarm_notification", name="create"))
+    ],
+)
 async def create_zimfarm_notification(
     request: ZimfarmNotificationCreateSchema,
     session: Annotated[OrmSession, Depends(gen_dbsession)],

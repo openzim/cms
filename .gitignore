@@ -136,3 +136,7 @@ test.db
 # dump of scripts
 scripts/*csv
 *.zim
+
+# Editors & Dev
+*.vim
+docker-compose.override.yml

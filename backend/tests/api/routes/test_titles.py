@@ -2,10 +2,12 @@ from collections.abc import Callable
 from http import HTTPStatus
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, Title
+from cms_backend.db.models import Book, Title, User
+from cms_backend.roles import RoleEnum
 
 
 def test_get_titles_empty(client: TestClient):
@@ -44,6 +46,32 @@ def test_get_titles(
         "maturity",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_create_title_required_permissions(
+    client: TestClient,
+    create_user: Callable[..., User],
+    mock_token_for_user: Callable[[User], None],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test creating a title with different roles"""
+    title_data = {
+        "name": "wikipedia_en_test",
+    }
+
+    user = create_user(permission=permission)
+    mock_token_for_user(user)
+
+    response = client.post("/v1/titles", json=title_data)
+    assert response.status_code == expected_status_code
 
 
 def test_create_title_required_fields_only(
