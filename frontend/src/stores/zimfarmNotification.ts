@@ -13,12 +13,12 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
   const zimfarmNotification = ref<ZimfarmNotification | null>(null)
   const errors = ref<string[]>([])
   const zimfarmNotifications = ref<ZimfarmNotificationLight[]>([])
-  const limit = Number($cookies?.get('zimfarm-notifications-table-limit') || 20)
+  const defaultLimit = ref<number>(Number($cookies?.get('zimfarm-notifications-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
-    page_size: limit,
+    page_size: defaultLimit.value,
     skip: 0,
-    limit: limit,
+    limit: defaultLimit.value,
     count: 0,
   })
   const authStore = useAuthStore()
@@ -96,6 +96,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
 
   return {
     // State
+    defaultLimit,
     zimfarmNotification,
     zimfarmNotifications,
     paginator,

@@ -13,12 +13,12 @@ export const useBookStore = defineStore('book', () => {
   const book = ref<Book | null>(null)
   const errors = ref<string[]>([])
   const books = ref<BookLight[]>([])
-  const limit = Number($cookies?.get('books-table-limit') || 20)
+  const defaultLimit = ref<number>(Number($cookies?.get('books-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
-    page_size: limit,
+    page_size: defaultLimit.value,
     skip: 0,
-    limit: limit,
+    limit: defaultLimit.value,
     count: 0,
   })
   const authStore = useAuthStore()
@@ -49,6 +49,7 @@ export const useBookStore = defineStore('book', () => {
     skip: number,
     has_title: boolean | undefined = undefined,
     id: string | undefined = undefined,
+    location_kind: string | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
     // filter out undefined values from params
@@ -58,6 +59,7 @@ export const useBookStore = defineStore('book', () => {
         skip,
         has_title,
         id,
+        location_kind,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),
@@ -83,6 +85,7 @@ export const useBookStore = defineStore('book', () => {
 
   return {
     // State
+    defaultLimit,
     book,
     books,
     paginator,
