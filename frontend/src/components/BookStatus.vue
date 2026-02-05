@@ -14,6 +14,13 @@
       {{ locationLabel }}
     </v-chip>
   </span>
+  <span v-else-if="!hasTitle" class="d-flex align-center">
+    <v-icon size="small" color="warning" icon="mdi-alert-circle-outline"></v-icon>
+    <span class="text-caption ml-1">Pending Title</span>
+    <v-chip size="x-small" class="ml-1" :color="locationColor">
+      {{ locationLabel }}
+    </v-chip>
+  </span>
   <span v-else class="d-flex align-center">
     <v-icon size="small" color="success" icon="mdi-check-circle"></v-icon>
     <span class="text-caption ml-1">Published</span>
@@ -34,6 +41,7 @@ const props = defineProps<{
 const isErrored = computed(() => props.book.has_error)
 const isProcessing = computed(() => props.book.needs_processing && !props.book.has_error)
 const isMovingFiles = computed(() => props.book.needs_file_operation && !props.book.has_error)
+const hasTitle = computed(() => props.book.title_id)
 
 const locationLabel = computed(() => {
   switch (props.book.location_kind) {

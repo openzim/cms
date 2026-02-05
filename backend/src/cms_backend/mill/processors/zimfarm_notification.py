@@ -52,10 +52,10 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
-        # Validate folder_name is a non-empty string
-        if not isinstance(folder_name, str) or not folder_name:
+        # Validate folder_name is a string (can be empty for files at quarantine root)
+        if not isinstance(folder_name, str):
             notification.events.append(
-                f"{getnow()}: folder_name must be a non-empty string, got "
+                f"{getnow()}: folder_name must be a string, got "
                 f"{type(folder_name).__name__}: {folder_name}"
             )
             notification.status = "bad_notification"
