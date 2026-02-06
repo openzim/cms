@@ -2,6 +2,7 @@ import InboxView from '@/views/InboxView.vue'
 import NotFoundView from '@/views/NotFound.vue'
 import SupportUsView from '@/views/SupportUs.vue'
 import SignInView from '@/views/SignInView.vue'
+import OAuthCallbackView from '@/views/OAuthCallbackView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
@@ -25,6 +26,12 @@ const routes = [
     name: 'sign-in',
     component: SignInView,
     meta: { title: 'CMS | Sign In' },
+  },
+  {
+    path: '/oauth/callback',
+    name: 'oauth-callback',
+    component: OAuthCallbackView,
+    meta: { title: 'CMS | Authenticating...' },
   },
   {
     path: '/inbox',

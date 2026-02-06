@@ -30,6 +30,8 @@ dynamic = ["version"]
 [project.optional-dependencies]
 api = [
     "fastapi[all] == 0.115.2",
+    "PyJWT == 2.11.0",
+    "cryptography == 46.0.4"
 ]
 scripts = [
     "invoke == 2.2.0",

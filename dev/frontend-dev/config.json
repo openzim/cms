@@ -1,3 +1,4 @@
 {
-    "CMS_API": "http://localhost:37601/v1"
+  "CMS_API": "http://localhost:37601/v1",
+  "OAUTH_BASE_URL": "https://login-staging.kiwix.org"
 }

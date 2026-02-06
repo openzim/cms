@@ -5,14 +5,17 @@ import NotificationSystem from '@/components/NotificationSystem.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { onMounted, ref } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 // Store and router
 const loadingStore = useLoadingStore()
+const authStore = useAuthStore()
 
 const router = useRouter()
 const ready = ref(false)
 
 onMounted(async () => {
+  await authStore.loadToken()
   loadingStore.startLoading('Loading application data...')
 
   loadingStore.stopLoading()
@@ -39,7 +42,7 @@ const navigationItems: NavigationItem[] = [
 ]
 
 const handleSignOut = () => {
-  // authStore.logout()
+  authStore.logout()
   router.push({ name: 'home' })
 }
 </script>
@@ -50,9 +53,9 @@ const handleSignOut = () => {
     <header>
       <NavBar
         :navigation-items="navigationItems"
-        :username="null"
-        :is-logged-in="false"
-        :access-token="null"
+        :username="authStore.username"
+        :is-logged-in="authStore.isLoggedIn"
+        :access-token="authStore.accessToken"
         :is-loading="loadingStore.isLoading"
         :loading-text="loadingStore.loadingText"
         @sign-out="handleSignOut"
