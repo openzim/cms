@@ -6,10 +6,13 @@ export interface WarehousePathInfo {
   warehouse_name: string
 }
 
-export interface TitleCollection {
-  collection_id: string
+export interface BaseTitleCollection {
   collection_name: string
   path: string
+}
+
+export interface TitleCollection extends BaseTitleCollection {
+  collection_id: string
 }
 
 export interface Title {
@@ -30,4 +33,5 @@ export interface TitleLight {
 export interface TitleCreate {
   name: string
   maturity: string
+  collection_titles: BaseTitleCollection[]
 }

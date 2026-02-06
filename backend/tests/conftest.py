@@ -287,6 +287,36 @@ def collection(
 
 
 @pytest.fixture
+def create_collection_title(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+) -> Callable[..., CollectionTitle]:
+    def _create_collection_title(
+        title: Title | None = None,
+        collection: Collection | None = None,
+        path: str | Path = "/test/path",
+    ) -> CollectionTitle:
+        if title is None:
+            title = create_title()
+
+        if collection is None:
+            collection = create_collection()
+
+        collection_title = CollectionTitle(
+            path=Path(path) if isinstance(path, str) else path
+        )
+        collection_title.title_id = title.id
+        collection_title.collection_id = collection.id
+
+        dbsession.add(collection_title)
+        dbsession.flush()
+        return collection_title
+
+    return _create_collection_title
+
+
+@pytest.fixture
 def create_user(
     dbsession: OrmSession,
     faker: Faker,

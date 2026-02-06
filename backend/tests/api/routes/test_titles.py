@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, Title, User
+from cms_backend.db.models import Book, Collection, Title, User
 from cms_backend.roles import RoleEnum
 
 
@@ -95,6 +95,62 @@ def test_create_title_required_fields_only(
     title = dbsession.get(Title, data["id"])
     assert title is not None
     assert title.name == "wikipedia_en_test"
+
+
+def test_create_title_all_fields(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    """Test creating a title with all fields"""
+    collection = create_collection(name="wikipedia")
+    title_data = {
+        "name": "wikipedia_en_test",
+        "maturity": "dev",
+        "collection_titles": [
+            {
+                "collection_name": "wikipedia",
+                "path": "wikis",
+            }
+        ],
+    }
+
+    response = client.post("/v1/titles", json=title_data)
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    assert "id" in data
+    assert "name" in data
+    assert data["name"] == "wikipedia_en_test"
+    assert "maturity" in data
+    assert data["maturity"] == "dev"
+
+    # Verify the title was created in the database and belongs to the collection
+    title = dbsession.get(Title, data["id"])
+    assert title is not None
+    assert title.name == "wikipedia_en_test"
+    assert str(title.collections[0].path) == "wikis"
+    assert title.collections[0].collection_id == collection.id
+
+
+def test_create_title_with_duplicate_collection_name(
+    client: TestClient,
+):
+    """Test creating a title with the same collection repeated."""
+    title_data = {
+        "name": "wikipedia_en_test",
+        "maturity": "dev",
+        "collection_titles": [
+            {
+                "collection_name": "wikipedia",
+                "path": "wikis",
+            },
+            {"collection_name": "wikipedia", "path": "other"},
+        ],
+    }
+
+    response = client.post("/v1/titles", json=title_data)
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_create_title_duplicate_name(

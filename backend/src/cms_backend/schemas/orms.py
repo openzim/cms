@@ -1,7 +1,9 @@
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
+from cms_backend.api.routes.fields import NotEmptyString
 from cms_backend.schemas import BaseModel
 
 T = TypeVar("T")
@@ -19,13 +21,16 @@ class TitleLightSchema(BaseModel):
 
     id: UUID
     name: str
-    maturity: str
+    maturity: str | None
 
 
-class TitleCollectionSchema(BaseModel):
-    collection_id: UUID
-    collection_name: str
+class BaseTitleCollectionSchema(BaseModel):
+    collection_name: NotEmptyString
     path: str
+
+
+class TitleCollectionSchema(BaseTitleCollectionSchema):
+    collection_id: UUID
 
 
 class TitleFullSchema(TitleLightSchema):
@@ -36,6 +41,14 @@ class TitleFullSchema(TitleLightSchema):
     events: list[str]
     books: list["BookLightSchema"]
     collections: list["TitleCollectionSchema"]
+
+
+class CollectionLightSchema(BaseModel):
+    """Collection for reading a collection with all the paths in it."""
+
+    id: UUID
+    name: str
+    paths: list[Path]
 
 
 class ZimfarmNotificationLightSchema(BaseModel):

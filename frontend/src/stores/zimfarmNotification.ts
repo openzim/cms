@@ -1,19 +1,18 @@
-import constants from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import type { ZimfarmNotification, ZimfarmNotificationLight } from '@/types/zimfarmNotification'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
-import { inject, ref } from 'vue'
-import type { VueCookies } from 'vue-cookies'
+import { ref } from 'vue'
 
 export const useZimfarmNotificationStore = defineStore('zimfarm-notification', () => {
-  const $cookies = inject<VueCookies>('$cookies')
   const zimfarmNotification = ref<ZimfarmNotification | null>(null)
   const errors = ref<string[]>([])
   const zimfarmNotifications = ref<ZimfarmNotificationLight[]>([])
-  const defaultLimit = ref<number>(Number($cookies?.get('zimfarm-notifications-table-limit') || 20))
+  const defaultLimit = ref<number>(
+    Number(localStorage.getItem('zimfarm-notifications-table-limit') || 20),
+  )
   const paginator = ref<Paginator>({
     page: 1,
     page_size: defaultLimit.value,
@@ -91,7 +90,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
   }
 
   const savePaginatorLimit = (limit: number) => {
-    $cookies?.set('zimfarm-notifications-table-limit', limit, constants.COOKIE_LIFETIME_EXPIRY)
+    localStorage.setItem('zimfarm-notifications-table-limit', limit.toString())
   }
 
   return {

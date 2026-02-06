@@ -1,8 +1,9 @@
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
     Book,
@@ -11,6 +12,7 @@ from cms_backend.db.models import (
     CollectionTitle,
     Title,
 )
+from cms_backend.schemas.orms import CollectionLightSchema, ListResult
 
 
 def get_collection_or_none(session: OrmSession, library_id: UUID) -> Collection | None:
@@ -34,6 +36,17 @@ def get_collection_by_name_or_none(
     return session.scalars(
         select(Collection).where(Collection.name == collection_name)
     ).one_or_none()
+
+
+def get_collection_by_name(session: OrmSession, collection_name: str) -> Collection:
+    """Get a collection by name if possible else raise an exception"""
+    if (
+        collection := get_collection_by_name_or_none(
+            session, collection_name=collection_name
+        )
+    ) is None:
+        raise RecordDoesNotExistError(f"Collection '{collection_name} does not exist")
+    return collection
 
 
 def get_latest_books_for_collection(
@@ -86,3 +99,37 @@ def get_latest_books_for_collection(
             latest_books.append(book)
 
     return latest_books
+
+
+def get_collections(
+    session: OrmSession, *, skip: int, limit: int
+) -> ListResult[CollectionLightSchema]:
+    """Get the list of collections."""
+    stmt = (
+        select(
+            Collection.id,
+            Collection.name,
+            func.coalesce(
+                func.array_agg(func.distinct(CollectionTitle.path)).filter(
+                    CollectionTitle.path.is_not(None)
+                ),
+                [],
+            ).label("paths"),
+        )
+        .outerjoin(CollectionTitle)
+        .group_by(Collection.id)
+    )
+
+    return ListResult[CollectionLightSchema](
+        nb_records=count_from_stmt(session, select(Collection.id)),
+        records=[
+            CollectionLightSchema(
+                id=collection_id,
+                name=collection_name,
+                paths=paths,
+            )
+            for collection_id, collection_name, paths in session.execute(
+                stmt.offset(skip).limit(limit)
+            ).all()
+        ],
+    )
