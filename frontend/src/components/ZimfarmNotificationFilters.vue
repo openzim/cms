@@ -13,13 +13,23 @@
             @change="emitFilters"
           />
         </v-col>
+        <v-col
+          v-if="hasActiveFilters"
+          cols="12"
+          class="d-flex flex-sm-row flex-column align-sm-center"
+        >
+          <v-btn size="small" variant="outlined" @click="handleClearFilters">
+            <v-icon size="small" class="mr-1">mdi-close-circle</v-icon>
+            clear filters
+          </v-btn>
+        </v-col>
       </v-row>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 // Props
 interface Props {
@@ -37,6 +47,7 @@ const emit = defineEmits<{
       id: string
     },
   ]
+  clearFilters: []
 }>()
 
 // Local filters state
@@ -55,10 +66,18 @@ watch(
   { deep: true },
 )
 
+const hasActiveFilters = computed(() => {
+  return props.filters.id.length > 0
+})
+
 // Emit filters when they change
 function emitFilters() {
   emit('filtersChanged', {
     id: localFilters.value.id,
   })
+}
+
+function handleClearFilters() {
+  emit('clearFilters')
 }
 </script>

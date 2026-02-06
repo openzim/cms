@@ -2,7 +2,7 @@
   <div>
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
       <v-card-title
-        v-if="showSelection || showFilters || $slots.actions"
+        v-if="showSelection || $slots.actions"
         class="d-flex flex-column-reverse flex-sm-row align-sm-center justify-sm-end ga-2"
       >
         <slot name="actions" />
@@ -17,25 +17,18 @@
           <v-icon size="small" class="mr-1">mdi-checkbox-multiple-blank-outline</v-icon>
           clear selections
         </v-btn>
-        <v-btn
-          v-if="showFilters"
-          size="small"
-          variant="outlined"
-          :disabled="!hasActiveFilters"
-          @click="handleClearFilters"
-        >
-          <v-icon size="small" class="mr-1">mdi-close-circle</v-icon>
-          clear filters
-        </v-btn>
       </v-card-title>
 
       <v-data-table-server
         :headers="headers"
         :items="zimfarmNotifications"
         :loading="loading"
-        :items-per-page="selectedLimit"
+        :page="props.paginator.page"
+        :items-per-page="props.paginator.limit"
         :items-length="paginator.count"
         :items-per-page-options="limits"
+        :mobile="smAndDown"
+        :density="smAndDown ? 'compact' : 'comfortable'"
         class="elevation-1"
         item-value="name"
         :show-select="showSelection"
@@ -91,9 +84,16 @@
 <script setup lang="ts">
 import type { Paginator } from '@/types/base'
 import type { ZimfarmNotificationLight } from '@/types/zimfarmNotification'
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { formatDt, fromNow } from '@/utils/format'
 import ZimfarmNotificationStatus from '@/components/ZimfarmNotificationStatus.vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useDisplay } from 'vuetify'
+
+const router = useRouter()
+const route = useRoute()
+
+const { smAndDown } = useDisplay()
 
 // Props
 interface Props {
@@ -108,47 +108,40 @@ interface Props {
   }
   selectedZimfarmNotifications?: string[]
   showSelection?: boolean
-  showFilters?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   filters: () => ({ id: '' }),
   selectedZimfarmNotifications: () => [],
   showSelection: true,
-  showFilters: true,
 })
 
 // Define emits
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]
-  clearFilters: []
   selectionChanged: [selectedTitles: string[]]
 }>()
 
 const limits = [10, 20, 50, 100]
-const selectedLimit = ref(props.paginator.limit)
 
 const selectedZimfarmNotifications = computed(() => props.selectedZimfarmNotifications)
 
-// Check if any filters are active
-const hasActiveFilters = computed(() => {
-  return props.filters.id.length > 0
-})
-
 function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
-  // page is 1-indexed, we need to calculate the skip for the request
-  const page = options.page > 1 ? options.page - 1 : 0
-  emit('loadData', options.itemsPerPage, page * options.itemsPerPage)
-}
+  const query = { ...route.query }
 
-watch(
-  () => props.paginator,
-  (newPaginator) => {
-    selectedLimit.value = newPaginator.limit
-  },
-  { immediate: true },
-)
+  if (options.page > 1) {
+    query.page = options.page.toString()
+  } else {
+    delete query.page
+  }
+
+  router.push({ query })
+
+  if (options.itemsPerPage != props.paginator.limit) {
+    emit('limitChanged', options.itemsPerPage)
+  }
+}
 
 function handleSelectionChange(selection: string[]) {
   emit('selectionChanged', selection)
@@ -156,9 +149,5 @@ function handleSelectionChange(selection: string[]) {
 
 function clearSelections() {
   emit('selectionChanged', [])
-}
-
-function handleClearFilters() {
-  emit('clearFilters')
 }
 </script>
