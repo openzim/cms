@@ -83,8 +83,8 @@ Currently two collections are configured: **prod** (associated with **prod** war
 To modify collections configuration, edit the `COLLECTIONS_CONFIG` list in [scripts/setup_collections.py](scripts/setup_collections.py) and re-run the script.
 
 Once created, collection catalogs are accessible at:
-- `http://localhost:37601/v1/libraries/prod/catalog.xml` or `http://localhost:37601/v1/libraries/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
-- `http://localhost:37601/v1/libraries/client1/catalog.xml` or `http://localhost:37601/v1/libraries/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
+- `http://localhost:37601/v1/collections/prod/catalog.xml` or `http://localhost:37601/v1/collections/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
+- `http://localhost:37601/v1/collections/client1/catalog.xml` or `http://localhost:37601/v1/collections/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
 
 ### Setup titles
 
