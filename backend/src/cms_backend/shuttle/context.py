@@ -39,4 +39,8 @@ class Context:
         seconds=parse_timespan(os.getenv("MOVE_FILES_INTERVAL", default="1m"))
     )
 
+    delete_files_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("DELETE_FILES_INTERVAL", default="1h"))
+    )
+
     local_warehouse_paths: ClassVar[dict[UUID, Path]] = _parse_local_warehouse_paths()

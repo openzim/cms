@@ -134,6 +134,7 @@ class Book(Base):
     location_kind: Mapped[str] = mapped_column(
         init=False, default="quarantine", server_default="quarantine"
     )
+    deletion_date: Mapped[datetime | None] = mapped_column(default=None, init=False)
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     title_id: Mapped[UUID | None] = mapped_column(
