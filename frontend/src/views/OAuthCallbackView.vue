@@ -48,7 +48,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const success = await authStore.handleCallBack()
+    const success = await authStore.handleCallBack('oauth', window.location.href)
     if (!success) {
       throw new Error(authStore.errors.join(', ') || 'Authentication failed')
     }

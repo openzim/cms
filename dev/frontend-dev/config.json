@@ -1,4 +1,5 @@
 {
   "CMS_API": "http://localhost:37601/v1",
-  "OAUTH_BASE_URL": "https://login-staging.kiwix.org"
+  "OAUTH_BASE_URL": "https://login-staging.kiwix.org",
+  "LOGIN_MODES": ["local", "oauth"]
 }

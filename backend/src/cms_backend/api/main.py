@@ -15,6 +15,7 @@ from cms_backend.api.routes.collection import router as collection_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
 from cms_backend.api.routes.titles import router as titles_router
+from cms_backend.api.routes.user import router as user_router
 from cms_backend.api.routes.zimfarm_notifications import (
     router as zimfarm_notification_router,
 )
@@ -62,6 +63,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=books_router)
     main_router.include_router(router=collection_router)
     main_router.include_router(router=auth_router)
+    main_router.include_router(router=user_router)
 
     app.include_router(router=main_router)
 

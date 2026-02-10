@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
@@ -27,7 +27,9 @@ def get_user_by_username(session: OrmSession, *, username: str) -> User:
 
 def get_user_by_id_or_none(session: OrmSession, *, user_id: UUID) -> User | None:
     """Get a user by id or return None if the user does not exist"""
-    return session.scalars(select(User).where(User.idp_sub == user_id)).one_or_none()
+    return session.scalars(
+        select(User).where((User.idp_sub == user_id) | (User.id == user_id))
+    ).one_or_none()
 
 
 def get_user_by_id(session: OrmSession, *, user_id: UUID) -> User:
@@ -55,7 +57,6 @@ def create_user_schema(user: User) -> UserSchema:
     return UserSchema(
         username=user.username,
         role=user.role,
-        idp_sub=user.idp_sub,
         scope=merge_scopes(ROLES.get(user.role, {}), ROLES[RoleEnum.EDITOR]),
     )
 
@@ -65,7 +66,8 @@ def create_user(
     *,
     username: str,
     role: str,
-    idp_sub: UUID,
+    idp_sub: UUID | None = None,
+    password_hash: str | None = None,
 ) -> User:
     """Create a new user"""
     user = User(
@@ -73,6 +75,7 @@ def create_user(
         role=role,
         deleted=False,
         idp_sub=idp_sub,
+        password_hash=password_hash,
     )
     session.add(user)
     try:
@@ -80,3 +83,24 @@ def create_user(
     except IntegrityError as exc:
         raise RecordAlreadyExistsError("User already exists") from exc
     return user
+
+
+def update_user_password(
+    session: OrmSession,
+    *,
+    user_id: UUID,
+    password_hash: str,
+) -> None:
+    """Update a user's password"""
+    session.execute(
+        update(User).where(User.id == user_id).values(password_hash=password_hash)
+    )
+
+
+def delete_user(
+    session: OrmSession,
+    *,
+    user_id: UUID,
+) -> None:
+    """Delete a user"""
+    session.execute(update(User).where(User.id == user_id).values(deleted=True))
