@@ -1,19 +1,16 @@
-import constants from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { Book, BookLight } from '@/types/book'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
-import { inject, ref } from 'vue'
-import type { VueCookies } from 'vue-cookies'
+import { ref } from 'vue'
 
 export const useBookStore = defineStore('book', () => {
-  const $cookies = inject<VueCookies>('$cookies')
   const book = ref<Book | null>(null)
   const errors = ref<string[]>([])
   const books = ref<BookLight[]>([])
-  const defaultLimit = ref<number>(Number($cookies?.get('books-table-limit') || 20))
+  const defaultLimit = ref<number>(Number(localStorage.getItem('books-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
     page_size: defaultLimit.value,
@@ -80,7 +77,7 @@ export const useBookStore = defineStore('book', () => {
   }
 
   const savePaginatorLimit = (limit: number) => {
-    $cookies?.set('books-table-limit', limit, constants.COOKIE_LIFETIME_EXPIRY)
+    localStorage.setItem('books-table-limit', limit.toString())
   }
 
   return {

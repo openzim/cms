@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
@@ -7,9 +8,14 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
+from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.exceptions import RecordAlreadyExistsError
-from cms_backend.db.models import Title
-from cms_backend.schemas.orms import ListResult, TitleLightSchema
+from cms_backend.db.models import CollectionTitle, Title
+from cms_backend.schemas.orms import (
+    BaseTitleCollectionSchema,
+    ListResult,
+    TitleLightSchema,
+)
 from cms_backend.utils.datetime import getnow
 
 
@@ -82,15 +88,9 @@ def create_title(
     *,
     name: str,
     maturity: str | None,
+    collection_titles: list[BaseTitleCollectionSchema] | None,
 ) -> Title:
-    """Create a new title
-
-    Args:
-        name: name of the title
-
-    Raises:
-        RecordAlreadyExistsError: If title with same name already exists
-    """
+    """Create a new title"""
 
     title = Title(
         name=name,
@@ -100,6 +100,20 @@ def create_title(
     title.events.append(f"{getnow()}: title created")
 
     session.add(title)
+
+    if collection_titles:
+        # Create the collection titles for the title
+        for entry in collection_titles:
+            collection = get_collection_by_name(
+                session, collection_name=entry.collection_name
+            )
+
+            collection_title = CollectionTitle(path=Path(entry.path))
+            collection_title.collection = collection
+            collection_title.title = title
+
+            session.add(collection_title)
+
     try:
         session.flush()
     except IntegrityError as exc:

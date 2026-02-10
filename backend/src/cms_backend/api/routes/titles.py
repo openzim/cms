@@ -1,7 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import model_validator
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import require_permission
@@ -13,6 +14,7 @@ from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import (
+    BaseTitleCollectionSchema,
     BookLightSchema,
     TitleCollectionSchema,
     TitleFullSchema,
@@ -29,8 +31,23 @@ class TitlesGetSchema(BaseModel):
 
 
 class TitleCreateSchema(BaseModel):
-    name: str
-    maturity: str | None = None
+    name: NotEmptyString
+    maturity: Literal["dev", "robust"] = "dev"
+    collection_titles: list[BaseTitleCollectionSchema] | None = None
+
+    @model_validator(mode="after")
+    def validate_unique_collection_titles(self) -> Self:
+        if self.collection_titles:
+            seen: set[str] = set()
+            for entry in self.collection_titles:
+                if entry.collection_name in seen:
+                    raise ValueError(
+                        f"Collection title {entry.collection_name} duplicated, "
+                        "cannot use a collection twice in a given title"
+                    )
+                else:
+                    seen.add(entry.collection_name)
+        return self
 
 
 @router.get("")
@@ -106,6 +123,7 @@ def create_title(
         session,
         name=title_data.name,
         maturity=title_data.maturity,
+        collection_titles=title_data.collection_titles,
     )
     return TitleLightSchema(
         id=title.id,
