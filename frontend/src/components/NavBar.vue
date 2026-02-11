@@ -1,9 +1,9 @@
 <template>
-  <v-app-bar color="primary" dark elevation="2">
+  <v-app-bar color="primary" dark elevation="2" class="navbar">
     <!-- Logo and Brand -->
     <v-app-bar-nav-icon @click="drawer = !drawer" class="d-md-none"></v-app-bar-nav-icon>
 
-    <v-app-bar-title class="d-flex align-center">
+    <v-app-bar-title class="d-flex align-center title-no-shrink">
       <router-link :to="{ name: 'home' }" class="branding d-flex align-center text-decoration-none">
         <div class="icon position-relative">
           <img src="/assets/logo.svg" width="32" height="32" alt="CMS Logo" class="logo-img" />
@@ -12,10 +12,12 @@
         <span class="ml-2 text-white">CMS</span>
       </router-link>
     </v-app-bar-title>
+    <v-spacer class="d-flex"></v-spacer>
+
     <!-- Navigation Links -->
     <v-tabs class="d-none d-md-flex" color="white" slider-color="white">
       <v-tab
-        v-for="item in navigationItems"
+        v-for="item in visibleNavigationItems"
         :key="item.name"
         :disabled="item.disabled"
         :to="{ name: item.name }"
@@ -26,7 +28,7 @@
       </v-tab>
     </v-tabs>
 
-    <v-spacer class="d-none d-sm-flex"></v-spacer>
+    <v-spacer class="d-none d-md-flex"></v-spacer>
 
     <!-- Support Us Button -->
     <v-btn
@@ -55,7 +57,7 @@
   <v-navigation-drawer v-model="drawer" temporary location="left" class="d-md-none">
     <v-list>
       <v-list-item
-        v-for="item in navigationItems"
+        v-for="item in visibleNavigationItems"
         :key="item.name"
         :disabled="item.disabled"
         :prepend-icon="item.icon"
@@ -79,7 +81,7 @@
 <script setup lang="ts">
 import UserButton from '@/components/UserButton.vue'
 import Loading from '@/components/Loading.vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 // Props
 export interface NavigationItem {
@@ -91,7 +93,7 @@ export interface NavigationItem {
   show: boolean
 }
 
-defineProps<{
+const props = defineProps<{
   navigationItems: NavigationItem[]
   username: string | null
   isLoggedIn: boolean
@@ -106,9 +108,22 @@ defineEmits<{
 
 // Reactive data
 const drawer = ref(false)
+
+const visibleNavigationItems = computed(() => {
+  return props.navigationItems.filter((item) => item.show)
+})
 </script>
 
 <style scoped>
+.navbar.v-theme--dark {
+  background-color: rgb(37, 59, 106) !important;
+}
+
+.title-no-shrink {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
 .branding {
   font-weight: 500;
 }
