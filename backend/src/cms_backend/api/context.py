@@ -1,10 +1,10 @@
 import os
-from dataclasses import dataclass
+
+from humanfriendly import parse_timespan
 
 from cms_backend.context import parse_bool
 
 
-@dataclass(kw_only=True)
 class Context:
     """Class holding every contextual / configuration bits which can be moved
 
@@ -26,4 +26,19 @@ class Context:
     )
     create_new_oauth_account = parse_bool(
         os.getenv("CREATE_NEW_OAUTH_ACCOUNT", default="true")
+    )
+    # List of authentication modes. Allowed values are "local", "oauth-session"
+    auth_modes: list[str] = os.getenv(
+        "AUTH_MODES",
+        default="oauth-session",
+    ).split(",")
+
+    # Local Authentication JWT settings
+    jwt_secret: str = os.getenv("JWT_SECRET", default="")
+    jwt_token_issuer: str = os.getenv("JWT_TOKEN_ISSUER", default="cms_backend")
+    jwt_token_expiry_duration = parse_timespan(
+        os.getenv("JWT_TOKEN_EXPIRY_DURATION", default="1d")
+    )
+    refresh_token_expiry_duration = parse_timespan(
+        os.getenv("REFRESH_TOKEN_EXPIRY_DURATION", default="30d")
     )

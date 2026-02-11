@@ -31,6 +31,7 @@ dynamic = ["version"]
 api = [
     "fastapi[all] == 0.115.2",
     "PyJWT == 2.11.0",
+    "Werkzeug == 3.1.5",
     "cryptography == 46.0.4"
 ]
 scripts = [

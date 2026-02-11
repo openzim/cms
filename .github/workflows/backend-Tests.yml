@@ -90,6 +90,7 @@ jobs:
           DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
           JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
           ALEMBIC_UPGRADE_HEAD_ON_START: false
+          AUTH_MODES: local
         run: inv coverage --args "-vvv"
 
       - name: Upload coverage report to codecov

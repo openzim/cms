@@ -19,7 +19,81 @@
 
             <h1 class="text-h5 mb-4 font-weight-medium">Please sign in</h1>
 
+            <!-- Sign In Form -->
+            <v-form v-if="showLocalLogin" @submit.prevent="authenticate" ref="form">
+              <!-- Error Snackbar -->
+              <v-alert
+                v-for="error in errors"
+                :key="error"
+                type="error"
+                variant="tonal"
+                class="mb-3"
+              >
+                {{ error }}
+              </v-alert>
+
+              <!-- Loading Alert -->
+              <v-alert v-if="working" type="info" variant="tonal" class="mb-3" density="compact">
+                <template v-slot:prepend>
+                  <v-progress-circular indeterminate size="16" />
+                </template>
+                Signing you in...
+              </v-alert>
+              <v-text-field
+                v-model="username"
+                label="Username"
+                prepend-inner-icon="mdi-account"
+                variant="outlined"
+                :rules="[rules.required, rules.minLength(3)]"
+                required
+                class="mb-3"
+                density="compact"
+                hide-details="auto"
+                validate-on="blur lazy"
+              />
+
+              <v-text-field
+                v-model="password"
+                label="Password"
+                prepend-inner-icon="mdi-lock"
+                variant="outlined"
+                type="password"
+                :rules="[rules.required, rules.minLength(3)]"
+                required
+                class="mb-3"
+                density="compact"
+                hide-details="auto"
+                validate-on="blur lazy"
+              />
+
+              <v-checkbox
+                v-model="remember"
+                label="Remember me"
+                class="mb-3"
+                density="compact"
+                hide-details
+              />
+
+              <!-- Sign In Button -->
+              <v-btn
+                type="submit"
+                color="primary"
+                size="default"
+                block
+                :loading="working"
+                :disabled="working"
+                class="mb-3"
+              >
+                Sign in with Username
+              </v-btn>
+            </v-form>
+
+            <v-divider v-if="showDivider" class="my-4">
+              <span class="text-medium-emphasis px-2">OR</span>
+            </v-divider>
+
             <v-btn
+              v-if="showOAuthLogin"
               variant="outlined"
               color="primary"
               size="large"
@@ -38,10 +112,80 @@
 </template>
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import type { Config } from '@/config'
+import constants from '@/constants'
+import { computed, inject, ref, watch } from 'vue'
+
+// Inject config
+const config = inject<Config>(constants.config)
+if (!config) {
+  throw new Error('Config is not defined')
+}
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
+
+const form = ref()
+
+// Reactive data
+const username = ref('')
+const password = ref('')
+const remember = ref(true)
+const working = ref(false)
+const errors = ref<string[]>([])
+
+const showLocalLogin = computed(() => {
+  return config.LOGIN_MODES.includes('local')
+})
+
+const showOAuthLogin = computed(() => {
+  return config.LOGIN_MODES.includes('oauth')
+})
+
+const showDivider = computed(() => {
+  return showLocalLogin.value && showOAuthLogin.value
+})
+
+// Form validation rules
+const rules = {
+  required: (value: string) => !!value || 'This field is required',
+  minLength: (minLength: number) => (value: string) =>
+    value.length >= minLength || `This field must be at least ${minLength} characters long`,
+}
+
+// Watch for input changes to clear errors
+watch([username, password], () => {
+  if (errors.value.length > 0) {
+    errors.value = []
+  }
+})
+
+const authenticate = async () => {
+  const { valid } = await form.value?.validate()
+  if (!valid) return
+
+  working.value = true
+  errors.value = []
+
+  try {
+    const success = await authStore.authenticate('local', username.value, password.value)
+
+    if (success && authStore.isLoggedIn) {
+      router.back()
+    } else {
+      // Copy errors from auth store to component errors
+      errors.value = [...authStore.errors]
+    }
+  } catch (err) {
+    console.error('Authentication error:', err)
+    errors.value =
+      authStore.errors.length > 0 ? [...authStore.errors] : ['An unexpected error occurred']
+  } finally {
+    working.value = false
+  }
+}
 
 const signInWithKiwix = async () => {
   // Store current route for redirect after authentication
@@ -49,7 +193,7 @@ const signInWithKiwix = async () => {
   if (redirect) {
     sessionStorage.setItem('auth_redirect', redirect)
   }
-  await authStore.authenticate()
+  await authStore.authenticate('oauth')
 }
 </script>
 

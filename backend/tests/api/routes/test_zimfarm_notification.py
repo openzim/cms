@@ -46,6 +46,7 @@ from cms_backend.utils.datetime import getnow
 )
 def test_create_zimfarm_notification(
     client: TestClient,
+    access_token: str,
     payload: dict[str, Any],
     expected_status_code: HTTPStatus,
 ):
@@ -54,6 +55,7 @@ def test_create_zimfarm_notification(
     response = client.post(
         "/v1/zimfarm-notifications",
         json=payload,
+        headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
     if expected_status_code == HTTPStatus.ACCEPTED:
@@ -81,10 +83,14 @@ def test_create_zimfarm_notification(
 def test_create_zimfarm_notification_is_idempotent(
     client: TestClient,
     zimfarm_notification: ZimfarmNotification,
+    access_token: str,
 ):
     """Test create zimfarm_notification endpoint"""
 
-    response = client.get(f"/v1/zimfarm-notifications/{zimfarm_notification.id}")
+    response = client.get(
+        f"/v1/zimfarm-notifications/{zimfarm_notification.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     # try to recreate same Zimfarm notification with different data (to check this
@@ -98,6 +104,7 @@ def test_create_zimfarm_notification_is_idempotent(
     response = client.post(
         "/v1/zimfarm-notifications",
         json=payload,
+        headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.ACCEPTED

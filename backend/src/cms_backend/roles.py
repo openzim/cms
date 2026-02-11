@@ -30,6 +30,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "book": ResourcePermissions.get_all(),
         "title": ResourcePermissions.get_all(),
         "zimfarm_notification": ResourcePermissions.get_all(),
+        "user": ResourcePermissions.get_all(),
     },
     RoleEnum.ZIMFARM: {
         "zimfarm_notification": ResourcePermissions.get(read=True, create=True),

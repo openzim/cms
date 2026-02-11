@@ -5,9 +5,11 @@ import httpRequest from '@/utils/httpRequest'
 import type { ErrorResponse, OAuth2ErrorResponse } from '@/types/errors'
 import { defineStore } from 'pinia'
 import { inject, ref, computed } from 'vue'
-import type { StoredToken } from '@/types/auth'
+import type { StoredToken, AuthProviderType } from '@/types/auth'
 import { getOAuthConfig } from '@/services/auth/base'
 import { OAuthSessionProvider } from '@/services/auth/OAuthSessionProvider'
+import { LocalAuthProvider } from '@/services/auth/LocalAuthProvider'
+import type { AuthProvider } from '@/services/auth/base'
 import type { User } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -22,6 +24,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const oauthProvider = new OAuthSessionProvider(getOAuthConfig(config))
+  const localauthProvider = new LocalAuthProvider(config.CMS_API)
+
+  const getAuthProvider = (providerType: AuthProviderType): AuthProvider => {
+    switch (providerType) {
+      case 'oauth':
+        if (!oauthProvider) {
+          throw new Error('No oauth provider configured.')
+        }
+        return oauthProvider
+      case 'local':
+        return localauthProvider
+      default:
+        throw new Error(`Unknown auth provider type: ${providerType}`)
+    }
+  }
 
   // Track refresh state to prevent duplicate requests
   const isRefreshFailed = ref(false)
@@ -88,13 +105,18 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
-  const authenticate = async () => {
+  const authenticate = async (
+    providerType: AuthProviderType,
+    username?: string,
+    password?: string,
+  ) => {
     try {
-      await oauthProvider.initiateLogin()
+      const provider = getAuthProvider(providerType)
+      await provider.initiateLogin(username, password)
       // Oauth providers typically redirect to a new url as part of the
       // login process. If we are still here, it means this is from the local
       // provider which has stored the token
-      const newToken = await oauthProvider.loadToken()
+      const newToken = await provider.loadToken()
       if (!newToken) {
         throw new Error('Invalid authentication token')
       }
@@ -102,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchUserInfo(newToken.access_token)
 
       errors.value = []
-      oauthProvider.saveToken(newToken)
+      provider.saveToken(newToken)
 
       isRefreshFailed.value = false
 
@@ -155,8 +177,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     let storedToken: StoredToken | null = null
+    // Try to load from kiwx/local providers as we don't know which
     try {
-      storedToken = await oauthProvider.loadToken()
+      if (oauthProvider) {
+        storedToken = await oauthProvider.loadToken()
+      }
+
+      if (!storedToken) {
+        storedToken = await localauthProvider.loadToken()
+      }
     } catch (error: unknown) {
       console.error('Failed to load token:', error)
       await logout()
@@ -196,8 +225,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const renewToken = async (storedToken: StoredToken): Promise<StoredToken | null> => {
     // If refresh has already failed permanently, don't retry
+    const provider = getAuthProvider(storedToken.token_type)
     if (isRefreshFailed.value) {
-      oauthProvider.removeToken()
+      provider.removeToken()
       return null
     }
 
@@ -212,7 +242,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     // Create and store the refresh promise to prevent duplicate requests
-    refreshPromise.value = oauthProvider.refreshAuth()
+    refreshPromise.value = provider.refreshAuth(storedToken.refresh_token)
 
     try {
       const newToken = await refreshPromise.value
@@ -228,7 +258,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Check if this is a permanent failure
       if (isPermanentRefreshFailure(error)) {
         isRefreshFailed.value = true
-        oauthProvider.removeToken()
+        provider.removeToken()
       }
 
       token.value = null
@@ -245,7 +275,8 @@ export const useAuthStore = defineStore('auth', () => {
     // If we have a Kiwix token, revoke it
     if (token.value?.token_type) {
       try {
-        await oauthProvider.logout()
+        const provider = getAuthProvider(token.value?.token_type)
+        await provider.logout()
       } catch (error) {
         console.error('Error revoking token:', error)
       }
@@ -259,16 +290,17 @@ export const useAuthStore = defineStore('auth', () => {
     refreshPromise.value = null
   }
 
-  const handleCallBack = async () => {
+  const handleCallBack = async (providerType: AuthProviderType, callbackUrl: string) => {
     try {
-      const newToken = await oauthProvider.onCallback()
+      const provider = getAuthProvider(providerType)
+      const newToken = await provider.onCallback(callbackUrl)
       token.value = newToken
 
       // Fetch user info from backend using the Kiwix token
       await fetchUserInfo(newToken.access_token)
 
       errors.value = []
-      oauthProvider.saveToken(newToken)
+      provider.saveToken(newToken)
 
       // Reset refresh failure state on successful login
       isRefreshFailed.value = false
@@ -281,6 +313,7 @@ export const useAuthStore = defineStore('auth', () => {
       return false
     }
   }
+
   return {
     // State
     errors,

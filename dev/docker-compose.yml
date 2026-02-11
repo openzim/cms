@@ -41,6 +41,8 @@ services:
       OAUTH_SESSION_AUDIENCE_ID: 309693e7-ad5e-4379-bf93-ba89314230fd
       OAUTH_SESSION_LOGIN_REQUIRE_2FA: true
       CREATE_NEW_OAUTH_ACCOUNT: true
+      AUTH_MODES: local
+      JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
     command:
       - uvicorn
       - cms_backend.api.main:app
@@ -103,6 +105,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cmstest
       ALEMBIC_UPGRADE_HEAD_ON_START: false
+      AUTH_MODES: local
+      JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
     depends_on:
       - postgresdb
   frontend:

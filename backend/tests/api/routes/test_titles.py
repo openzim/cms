@@ -6,8 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.token import generate_access_token
 from cms_backend.db.models import Book, Collection, Title, User
 from cms_backend.roles import RoleEnum
+from cms_backend.utils.datetime import getnow
 
 
 def test_get_titles_empty(client: TestClient):
@@ -58,7 +60,6 @@ def test_get_titles(
 def test_create_title_required_permissions(
     client: TestClient,
     create_user: Callable[..., User],
-    mock_token_for_user: Callable[[User], None],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
@@ -68,22 +69,30 @@ def test_create_title_required_permissions(
     }
 
     user = create_user(permission=permission)
-    mock_token_for_user(user)
-
-    response = client.post("/v1/titles", json=title_data)
+    access_token = generate_access_token(user_id=str(user.id), issue_time=getnow())
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == expected_status_code
 
 
 def test_create_title_required_fields_only(
     client: TestClient,
     dbsession: OrmSession,
+    access_token: str,
 ):
     """Test creating a title with only required fields"""
     title_data = {
         "name": "wikipedia_en_test",
     }
 
-    response = client.post("/v1/titles", json=title_data)
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
@@ -101,6 +110,7 @@ def test_create_title_all_fields(
     client: TestClient,
     dbsession: OrmSession,
     create_collection: Callable[..., Collection],
+    access_token: str,
 ):
     """Test creating a title with all fields"""
     collection = create_collection(name="wikipedia")
@@ -115,7 +125,11 @@ def test_create_title_all_fields(
         ],
     }
 
-    response = client.post("/v1/titles", json=title_data)
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
@@ -135,6 +149,7 @@ def test_create_title_all_fields(
 
 def test_create_title_with_duplicate_collection_name(
     client: TestClient,
+    access_token: str,
 ):
     """Test creating a title with the same collection repeated."""
     title_data = {
@@ -149,12 +164,17 @@ def test_create_title_with_duplicate_collection_name(
         ],
     }
 
-    response = client.post("/v1/titles", json=title_data)
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_create_title_duplicate_name(
     client: TestClient,
+    access_token: str,
 ):
     """Test creating a title with duplicate name returns conflict error"""
     title_data = {
@@ -162,11 +182,19 @@ def test_create_title_duplicate_name(
     }
 
     # Create the first title
-    response = client.post("/v1/titles", json=title_data)
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     # Try to create another title with the same name
-    response = client.post("/v1/titles", json=title_data)
+    response = client.post(
+        "/v1/titles",
+        json=title_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.CONFLICT
     assert "already exists" in response.json()["message"].lower()
 

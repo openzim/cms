@@ -124,5 +124,4 @@ class UserSchema(BaseModel):
 
     username: str
     role: str
-    idp_sub: UUID
     scope: dict[str, dict[str, bool]]

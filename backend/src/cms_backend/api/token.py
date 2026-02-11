@@ -18,7 +18,7 @@ class JWTClaims(BaseModel):
     exp: datetime.datetime
     iat: datetime.datetime
     sub: uuid.UUID = Field(alias="subject")
-    name: str
+    name: str | None = Field(exclude=True, default=None)
 
 
 class TokenDecoder(abc.ABC):
@@ -46,6 +46,29 @@ class TokenDecoder(abc.ABC):
         Check if this decoder can potentially decode the given token.
         """
         pass
+
+
+class LocalTokenDecoder(TokenDecoder):
+    """Decoder for local CMS JWT tokens."""
+
+    def __init__(self, secret: str = Context.jwt_secret, algorithm: str = "HS256"):
+        self.secret = secret
+        self.algorithm = algorithm
+
+    def decode(self, token: str) -> JWTClaims:
+        """
+        Decode and validate a local CMS token.
+        """
+        jwt_claims = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+        return JWTClaims(**jwt_claims)
+
+    @property
+    def name(self) -> str:
+        return "local"
+
+    @property
+    def can_decode(self) -> bool:
+        return "local" in Context.auth_modes
 
 
 class OAuthSessionTokenDecoder(TokenDecoder):
@@ -92,7 +115,7 @@ class OAuthSessionTokenDecoder(TokenDecoder):
 
     @property
     def can_decode(self) -> bool:
-        return True
+        return "oauth-session" in Context.auth_modes
 
 
 class TokenDecoderChain:
@@ -132,4 +155,25 @@ class TokenDecoderChain:
         raise ValueError("Inavlid token")
 
 
-token_decoder = TokenDecoderChain(decoders=[OAuthSessionTokenDecoder()])
+token_decoder = TokenDecoderChain(
+    decoders=[OAuthSessionTokenDecoder(), LocalTokenDecoder()]
+)
+
+
+def generate_access_token(
+    *,
+    user_id: str,
+    issue_time: datetime.datetime,
+) -> str:
+    """Generate a JWT access token for the given user ID with configured expiry."""
+
+    expire_time = issue_time + datetime.timedelta(
+        seconds=Context.jwt_token_expiry_duration
+    )
+    payload = {
+        "iss": Context.jwt_token_issuer,  # issuer
+        "exp": expire_time.timestamp(),  # expiration time
+        "iat": issue_time.timestamp(),  # issued at
+        "subject": user_id,
+    }
+    return jwt.encode(payload, key=Context.jwt_secret, algorithm="HS256")

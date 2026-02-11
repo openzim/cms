@@ -281,7 +281,29 @@ class BookLocation(Base):
 
 class User(Base):
     __tablename__ = "user"
-    idp_sub: Mapped[UUID] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    idp_sub: Mapped[UUID | None]
     username: Mapped[str] = mapped_column(unique=True, index=True)
     role: Mapped[str]
+    password_hash: Mapped[str | None]
     deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
+
+    refresh_tokens: Mapped[list["Refreshtoken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", init=False
+    )
+
+
+class Refreshtoken(Base):
+    __tablename__ = "refresh_token"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    token: Mapped[UUID] = mapped_column(server_default=text("uuid_generate_v4()"))
+    expire_time: Mapped[datetime]
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("user.id"), init=False)
+
+    user: Mapped["User"] = relationship(back_populates="refresh_tokens", init=False)
+
+    __table__args = (Index("user_id", "token", unique=True),)
