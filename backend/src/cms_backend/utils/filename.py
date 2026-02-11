@@ -1,5 +1,6 @@
 """Utilities for computing and managing book target filenames."""
 
+import re
 from uuid import UUID
 
 from sqlalchemy import select
@@ -8,6 +9,9 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.db.models import BookLocation
 
 PERIOD_LENGTH = 7
+FILENAME_PERIOD_SUFFIX_PATTERN = re.compile(
+    r".*_(?P<period>\d{4}-\d{2})(?P<suffix>[a-z]*)\.zim"
+)
 
 
 def get_next_suffix(current_suffix: str) -> str:
@@ -162,3 +166,12 @@ def compute_target_filename(
     next_suffix = get_next_suffix(last_suffix)
 
     return f"{base_pattern}{next_suffix}.zim"
+
+
+def get_period_and_suffix_from_filename(filename: str) -> tuple[str, str]:
+    """Get the (period, suffix) tuple from filename."""
+    match = FILENAME_PERIOD_SUFFIX_PATTERN.match(filename)
+    if match is None:
+        raise ValueError("Unable to retrieve period from filename")
+    groupdict = match.groupdict()
+    return (groupdict["period"], groupdict["suffix"])

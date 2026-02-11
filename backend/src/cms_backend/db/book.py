@@ -102,8 +102,11 @@ def get_next_book_to_move_files_or_none(
 ) -> Book | None:
     return session.scalars(
         select(Book)
-        .where(Book.needs_file_operation.is_(True))
-        .where(Book.has_error.is_(False))
+        .where(
+            Book.needs_file_operation.is_(True),
+            Book.has_error.is_(False),
+            Book.location_kind.not_in(["to_delete", "deleted"]),
+        )
         .order_by(Book.created_at)
         .limit(1)
     ).one_or_none()

@@ -41,3 +41,7 @@ class Context:
         default=UUID(get_mandatory_env("STAGING_WAREHOUSE_ID"))
     )
     staging_base_path: Path = field(default=Path(os.getenv("STAGING_BASE_PATH", "")))
+
+    old_book_deletion_delay: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("OLD_BOOK_DELETION_DELAY", default="1d"))
+    )
