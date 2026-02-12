@@ -55,6 +55,9 @@ test = [
     "python-dateutil==2.9.0.post0",
     "cms_backend[api]",
 ]
+maint-scripts = [
+    "libzim == 3.8.0",
+]
 dev = [
     "pre-commit == 4.2.0",
     "ipykernel == 6.29.5",
@@ -63,6 +66,7 @@ dev = [
     "cms_backend[lint]",
     "cms_backend[test]",
     "cms_backend[check]",
+    "cms_backend[maint-scripts]",
 ]
 
 [project.urls]
