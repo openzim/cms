@@ -184,7 +184,7 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         skip,
         false,
         bookFilters.value.id || undefined,
-        bookFilters.value.location_kind || undefined,
+        bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
       )
       books.value = bookStore.books
       errors.value = bookStore.errors

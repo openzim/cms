@@ -1,0 +1,22 @@
+<!-- Save as cms-logo-color.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-labelledby="titleDesc">
+  <title id="titleDesc">CMS logo</title>
+  <rect x="10" y="10" width="160" height="160" rx="28" ry="28" fill="#0B74FF"/>
+  <!-- stacked pages -->
+  <g transform="translate(44,44)">
+    <!-- back page -->
+    <rect x="18" y="12" width="72" height="84" rx="6" fill="#8FC9FF"/>
+    <!-- middle page -->
+    <rect x="10" y="6" width="72" height="84" rx="6" fill="#BFE0FF"/>
+    <!-- front page -->
+    <rect x="2" y="0" width="72" height="84" rx="6" fill="#FFFFFF"/>
+  </g>
+
+  <!-- angle brackets over pages -->
+  <g transform="translate(44,44)" fill="none" stroke="#0B74FF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- left bracket -->
+    <path d="M-2 20 L16 42 L-2 64" transform="translate(24,0)" />
+    <!-- right bracket -->
+    <path d="M74 20 L56 42 L74 64" transform="translate(24,0)" />
+  </g>
+</svg>
