@@ -214,6 +214,8 @@ class Collection(Base):
     )
     name: Mapped[str] = mapped_column(unique=True, index=True)
     warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"))
+    download_base_url: Mapped[str | None] = mapped_column(default=None)
+    view_base_url: Mapped[str | None] = mapped_column(default=None)
 
     titles: Mapped[list["CollectionTitle"]] = relationship(
         back_populates="collection",

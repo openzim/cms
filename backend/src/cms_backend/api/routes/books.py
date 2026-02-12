@@ -9,7 +9,9 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.db import gen_dbsession
 from cms_backend.db.books import get_book as db_get_book
 from cms_backend.db.books import get_books as db_get_books
+from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.models import ZimUrlsSchema
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookLightSchema,
@@ -31,7 +33,7 @@ class BooksGetSchema(BaseModel):
 
 
 @router.get("")
-async def get_books(
+def get_books(
     params: Annotated[BooksGetSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ListResponse[BookLightSchema]:
@@ -61,7 +63,7 @@ async def get_books(
 
 
 @router.get("/{book_id}")
-async def get_book(
+def get_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
@@ -112,3 +114,11 @@ async def get_book(
         current_locations=current_locations,
         target_locations=target_locations,
     )
+
+
+@router.get("/zims")
+def get_zim_urls(
+    zim_ids: Annotated[list[UUID], Query()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> ZimUrlsSchema:
+    return db_get_zim_urls(session, zim_ids)

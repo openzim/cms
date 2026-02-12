@@ -1,12 +1,20 @@
 from collections.abc import Callable
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.books import get_book, get_book_or_none, get_books
+from cms_backend.db.books import get_book, get_book_or_none, get_books, get_zim_urls
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, Title
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Title,
+    Warehouse,
+)
 
 
 def test_get_book_or_none_not_found(
@@ -245,3 +253,107 @@ def test_get_books_book_id_combined_with_other_filters(
     results = get_books(dbsession, skip=0, limit=20, book_id="bbbb", has_title=True)
     assert results.nb_records == 1
     assert results.records[0].id == book3.id
+
+
+def test_get_zim_urls(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    """Test get_zim_urls returns the download and view urls for zims"""
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(
+        warehouse=warehouse,
+        download_base_url="https://download.kiwix.org",
+        view_base_url="https://browse.library.kiwix.org",
+    )
+    create_collection_title(title=title, collection=collection, path=Path(""))
+
+    book = create_book(zim_metadata={"Name": title.name})
+    book.title = title
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book.id])
+
+    assert book.id in result.urls
+    assert len(result.urls[book.id]) == 2
+
+    download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
+    assert download_url is not None
+    assert str(download_url.url) == "https://download.kiwix.org/zim/test_en_all.zim"
+    assert download_url.collection == collection.name
+
+    view_url = next((u for u in result.urls[book.id] if u.kind == "view"), None)
+    assert view_url is not None
+    assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
+    assert view_url.collection == collection.name
+
+
+def test_get_zim_urls_book_with_subpath(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    """Download URL includes subpath when book is not at root"""
+    from pathlib import Path
+
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(
+        warehouse=warehouse,
+        download_base_url="https://download.kiwix.org",
+        view_base_url="https://browse.library.kiwix.org",
+    )
+
+    subpath = Path("wikipedia")
+    create_collection_title(title=title, collection=collection, path=subpath)
+
+    book = create_book(zim_metadata={"Name": title.name})
+    book.title = title
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=subpath,
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book.id])
+    assert book.id in result.urls
+    assert len(result.urls[book.id]) == 2
+
+    download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
+    assert download_url is not None
+    assert (
+        str(download_url.url)
+        == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim"
+    )
+    assert download_url.collection == collection.name
+
+    view_url = next((u for u in result.urls[book.id] if u.kind == "view"), None)
+    assert view_url is not None
+    assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
+    assert view_url.collection == collection.name
