@@ -1,8 +1,8 @@
-"""initial schema
+"""set up database models
 
-Revision ID: 5376af219730
+Revision ID: 222139c5c331
 Revises:
-Create Date: 2025-12-19 16:29:46.586314
+Create Date: 2026-02-12 16:05:17.118056
 
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "5376af219730"
+revision = "222139c5c331"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -36,8 +36,16 @@ def upgrade():
         sa.Column("date", sa.String(), nullable=True),
         sa.Column("flavour", sa.String(), nullable=True),
         sa.Column(
-            "status", sa.String(), server_default="pending_processing", nullable=False
+            "needs_processing", sa.Boolean(), server_default="false", nullable=False
         ),
+        sa.Column("has_error", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "needs_file_operation", sa.Boolean(), server_default="false", nullable=False
+        ),
+        sa.Column(
+            "location_kind", sa.String(), server_default="quarantine", nullable=False
+        ),
+        sa.Column("deletion_date", sa.DateTime(), nullable=True),
         sa.Column("events", postgresql.ARRAY(sa.String()), nullable=False),
         sa.Column("title_id", sa.Uuid(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -49,39 +57,39 @@ def upgrade():
         sa.PrimaryKeyConstraint("id", name=op.f("pk_book")),
     )
     op.create_index(
-        "idx_book_status_bad_book",
+        "idx_book_has_error",
         "book",
-        ["status"],
+        ["has_error"],
         unique=False,
-        postgresql_where=sa.text("status = 'bad_book'"),
+        postgresql_where=sa.text("has_error = TRUE"),
     )
     op.create_index(
-        "idx_book_status_errored",
+        "idx_book_location_kind_quarantine",
         "book",
-        ["status"],
+        ["location_kind"],
         unique=False,
-        postgresql_where=sa.text("status = 'errored'"),
+        postgresql_where=sa.text("location_kind = 'quarantine'"),
     )
     op.create_index(
-        "idx_book_status_pending_move",
+        "idx_book_location_kind_staging",
         "book",
-        ["status"],
+        ["location_kind"],
         unique=False,
-        postgresql_where=sa.text("status = 'pending_move'"),
+        postgresql_where=sa.text("location_kind = 'staging'"),
     )
     op.create_index(
-        "idx_book_status_pending_processing",
+        "idx_book_needs_file_operation",
         "book",
-        ["status"],
+        ["needs_file_operation"],
         unique=False,
-        postgresql_where=sa.text("status = 'pending_processing'"),
+        postgresql_where=sa.text("needs_file_operation = TRUE"),
     )
     op.create_index(
-        "idx_book_status_pending_title",
+        "idx_book_needs_processing",
         "book",
-        ["status"],
+        ["needs_processing"],
         unique=False,
-        postgresql_where=sa.text("status = 'pending_title'"),
+        postgresql_where=sa.text("needs_processing = TRUE"),
     )
     op.create_table(
         "title",
@@ -98,6 +106,24 @@ def upgrade():
     )
     op.create_index(op.f("ix_title_maturity"), "title", ["maturity"], unique=False)
     op.create_index(op.f("ix_title_name"), "title", ["name"], unique=True)
+    op.create_table(
+        "user",
+        sa.Column(
+            "id",
+            sa.Uuid(),
+            server_default=sa.text("uuid_generate_v4()"),
+            nullable=False,
+        ),
+        sa.Column("idp_sub", sa.Uuid(), nullable=True),
+        sa.Column("username", sa.String(), nullable=False),
+        sa.Column("role", sa.String(), nullable=False),
+        sa.Column("password_hash", sa.String(), nullable=True),
+        sa.Column(
+            "deleted", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_user")),
+    )
+    op.create_index(op.f("ix_user_username"), "user", ["username"], unique=True)
     op.create_table(
         "warehouse",
         sa.Column(
@@ -146,6 +172,27 @@ def upgrade():
         sa.PrimaryKeyConstraint("id", name=op.f("pk_collection")),
     )
     op.create_index(op.f("ix_collection_name"), "collection", ["name"], unique=True)
+    op.create_table(
+        "refresh_token",
+        sa.Column(
+            "id",
+            sa.Uuid(),
+            server_default=sa.text("uuid_generate_v4()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "token",
+            sa.Uuid(),
+            server_default=sa.text("uuid_generate_v4()"),
+            nullable=False,
+        ),
+        sa.Column("expire_time", sa.DateTime(), nullable=False),
+        sa.Column("user_id", sa.Uuid(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["user.id"], name=op.f("fk_refresh_token_user_id_user")
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_refresh_token")),
+    )
     op.create_table(
         "zimfarm_notification",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -207,37 +254,40 @@ def downgrade():
         postgresql_where=sa.text("status = 'bad_notification'"),
     )
     op.drop_table("zimfarm_notification")
+    op.drop_table("refresh_token")
     op.drop_index(op.f("ix_collection_name"), table_name="collection")
     op.drop_table("collection")
     op.drop_table("book_location")
     op.drop_table("warehouse")
+    op.drop_index(op.f("ix_user_username"), table_name="user")
+    op.drop_table("user")
     op.drop_index(op.f("ix_title_name"), table_name="title")
     op.drop_index(op.f("ix_title_maturity"), table_name="title")
     op.drop_table("title")
     op.drop_index(
-        "idx_book_status_pending_title",
+        "idx_book_needs_processing",
         table_name="book",
-        postgresql_where=sa.text("status = 'pending_title'"),
+        postgresql_where=sa.text("needs_processing = TRUE"),
     )
     op.drop_index(
-        "idx_book_status_pending_processing",
+        "idx_book_needs_file_operation",
         table_name="book",
-        postgresql_where=sa.text("status = 'pending_processing'"),
+        postgresql_where=sa.text("needs_file_operation = TRUE"),
     )
     op.drop_index(
-        "idx_book_status_pending_move",
+        "idx_book_location_kind_staging",
         table_name="book",
-        postgresql_where=sa.text("status = 'pending_move'"),
+        postgresql_where=sa.text("location_kind = 'staging'"),
     )
     op.drop_index(
-        "idx_book_status_errored",
+        "idx_book_location_kind_quarantine",
         table_name="book",
-        postgresql_where=sa.text("status = 'errored'"),
+        postgresql_where=sa.text("location_kind = 'quarantine'"),
     )
     op.drop_index(
-        "idx_book_status_bad_book",
+        "idx_book_has_error",
         table_name="book",
-        postgresql_where=sa.text("status = 'bad_book'"),
+        postgresql_where=sa.text("has_error = TRUE"),
     )
     op.drop_table("book")
     # ### end Alembic commands ###
