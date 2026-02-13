@@ -41,7 +41,7 @@ def get_books(
     needs_processing: bool | None = None,
     has_error: bool | None = None,
     needs_file_operation: bool | None = None,
-    location_kind: str | None = None,
+    location_kinds: list[str] | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -76,8 +76,8 @@ def get_books(
     if needs_file_operation is not None:
         stmt = stmt.where(Book.needs_file_operation == needs_file_operation)
 
-    if location_kind is not None:
-        stmt = stmt.where(Book.location_kind == location_kind)
+    if location_kinds is not None:
+        stmt = stmt.where(Book.location_kind.in_(location_kinds))
 
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),

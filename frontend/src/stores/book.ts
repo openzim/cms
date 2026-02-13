@@ -46,7 +46,7 @@ export const useBookStore = defineStore('book', () => {
     skip: number,
     has_title: boolean | undefined = undefined,
     id: string | undefined = undefined,
-    location_kind: string | undefined = undefined,
+    location_kinds: string[] | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
     // filter out undefined values from params
@@ -56,7 +56,7 @@ export const useBookStore = defineStore('book', () => {
         skip,
         has_title,
         id,
-        location_kind,
+        location_kinds,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),

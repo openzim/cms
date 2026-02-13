@@ -1,0 +1,85 @@
+import os
+from asyncio import gather
+from collections.abc import Callable
+from http import HTTPStatus
+
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from healthcheck.status.auth import authenticate
+from healthcheck.status.books import check_books_need_deletion, check_books_need_move
+from healthcheck.status.database import (
+    check_database_connection,
+)
+from healthcheck.status.frontend import check_frontend
+from healthcheck.status.zimfarm_notification import (
+    check_zimfarm_notifications_processed,
+)
+
+router = APIRouter(prefix="/healthcheck", tags=["healthcheck"])
+
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=templates_dir)
+
+
+def status_class(success: bool) -> str:  # noqa: FBT001
+    return "text-success" if success else "text-danger"
+
+
+def status_text(success: bool) -> str:  # noqa: FBT001
+    return "Operational" if success else "Issue Detected"
+
+
+# Register custom template filters
+filters: list[tuple[str, Callable[..., str]]] = [
+    ("status_class", status_class),
+    ("status_text", status_text),
+]
+for name, func in filters:
+    templates.env.filters[name] = func  # type: ignore
+
+
+@router.get("")
+async def healthcheck(request: Request) -> HTMLResponse:
+    (
+        auth_check,
+        db_check,
+        frontend_check,
+        zimfarm_notifications_check,
+        file_needs_move_check,
+        file_needs_deletion_check,
+    ) = await gather(
+        authenticate(),
+        check_database_connection(),
+        check_frontend(),
+        check_zimfarm_notifications_processed(),
+        check_books_need_move(),
+        check_books_need_deletion(),
+    )
+
+    global_status = all(
+        [
+            auth_check.success,
+            db_check.success,
+            frontend_check.success,
+            zimfarm_notifications_check.success,
+            file_needs_move_check.success,
+            file_needs_deletion_check.success,
+        ]
+    )
+
+    return templates.TemplateResponse(
+        "healthcheck.html",
+        {
+            "request": request,
+            "global_status": global_status,
+            "auth": auth_check,
+            "database": db_check,
+            "frontend": frontend_check,
+            "zimfarm_notifications": zimfarm_notifications_check,
+            "file_needs_move": file_needs_move_check,
+            "file_needs_deletion": file_needs_deletion_check,
+        },
+        status_code=HTTPStatus.OK if global_status else HTTPStatus.SERVICE_UNAVAILABLE,
+    )
