@@ -164,6 +164,8 @@ def upgrade():
         ),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("warehouse_id", sa.Uuid(), nullable=False),
+        sa.Column("download_base_url", sa.String(), nullable=True),
+        sa.Column("view_base_url", sa.String(), nullable=True),
         sa.ForeignKeyConstraint(
             ["warehouse_id"],
             ["warehouse.id"],

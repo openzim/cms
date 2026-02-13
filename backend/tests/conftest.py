@@ -256,6 +256,8 @@ def create_collection(
     def _create_collection(
         name: str | None = None,
         warehouse: Warehouse | None = None,
+        download_base_url: str = "https://download.kiwix.org",
+        view_base_url: str = "https://browse.library.kiwix.org",
         title_ids_with_paths: list[tuple[UUID, str]] | None = None,
     ) -> Collection:
         if warehouse is None:
@@ -264,6 +266,8 @@ def create_collection(
         collection = Collection(
             name=name if name is not None else faker.slug(),
             warehouse_id=warehouse.id,
+            download_base_url=download_base_url,
+            view_base_url=view_base_url,
         )
 
         # Add title associations if provided

@@ -1,6 +1,8 @@
+from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import String, select
+from pydantic import AnyUrl
+from sqlalchemy import String, and_, select
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
@@ -8,7 +10,8 @@ from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
-from cms_backend.db.models import Book
+from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
+from cms_backend.schemas.models import ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
 
 
@@ -105,3 +108,71 @@ def get_books(
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
+
+
+def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
+    """
+    Get view and download URLs for a list of ZIM IDs (Book IDs).
+    """
+    stmt = (
+        select(
+            Book.id.label("book_id"),
+            Collection.name.label("collection_name"),
+            Collection.download_base_url,
+            Collection.view_base_url,
+            CollectionTitle.path.label("subpath"),
+            BookLocation.filename,
+        )
+        .join(Title, Book.title_id == Title.id)
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id)
+        .join(Collection, Collection.id == CollectionTitle.collection_id)
+        .join(
+            BookLocation,
+            and_(
+                BookLocation.book_id == Book.id,
+                BookLocation.status == "current",
+                BookLocation.warehouse_id == Collection.warehouse_id,
+                BookLocation.path == CollectionTitle.path,
+            ),
+        )
+        .where(
+            and_(
+                Book.id.in_(zim_ids),
+                Book.needs_processing.is_(False),
+                Book.has_error.is_(False),
+                Book.needs_file_operation.is_(False),
+            )
+        )
+    )
+
+    result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
+
+    for row in session.execute(stmt).all():
+        if row.download_base_url:
+            if row.subpath == Path(""):  # root folder
+                download_url = f"{row.download_base_url}/zim/{row.filename}"
+            else:
+                download_url = (
+                    f"{row.download_base_url}/zim/{row.subpath}/{row.filename}"
+                )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="download",
+                    url=AnyUrl(download_url),
+                    collection=row.collection_name,
+                )
+            )
+
+        if row.view_base_url:
+            filename_without_suffix = (
+                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+            )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="view",
+                    url=AnyUrl(f"{row.view_base_url}/viewer#{filename_without_suffix}"),
+                    collection=row.collection_name,
+                )
+            )
+
+    return result
