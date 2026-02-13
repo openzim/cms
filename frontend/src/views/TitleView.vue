@@ -9,6 +9,12 @@
     </div>
 
     <div v-if="dataLoaded && title">
+      <div class="d-flex justify-end mb-4" v-if="canEditTitle">
+        <v-btn color="primary" prepend-icon="mdi-pencil" @click="openEditDialog">
+          Edit Title
+        </v-btn>
+      </div>
+
       <v-table>
         <tbody>
           <tr>
@@ -114,13 +120,17 @@
         </tbody>
       </v-table>
     </div>
+
+    <EditTitleDialog v-model="editDialogOpen" :title="title" @updated="handleTitleUpdated" />
   </v-container>
 </template>
 
 <script setup lang="ts">
+import EditTitleDialog from '@/components/EditTitleDialog.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
+import { useAuthStore } from '@/stores/auth'
 import type { Title } from '@/types/title'
 import { formatDt, fromNow } from '@/utils/format'
 import { computed, onMounted, ref } from 'vue'
@@ -128,10 +138,12 @@ import { computed, onMounted, ref } from 'vue'
 const loadingStore = useLoadingStore()
 const titleStore = useTitleStore()
 const notificationStore = useNotificationStore()
+const authStore = useAuthStore()
 
 const error = ref<string | null>(null)
 const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
+const editDialogOpen = ref(false)
 
 interface Props {
   id: string
@@ -148,6 +160,8 @@ const bookHeaders = [
   { title: 'ID', value: 'id', sortable: false },
 ]
 
+const canEditTitle = computed(() => authStore.hasPermission('title', 'update'))
+
 const sortedBooks = computed(() => {
   if (!title.value?.books) return []
   return [...title.value.books].sort(
@@ -155,10 +169,10 @@ const sortedBooks = computed(() => {
   )
 })
 
-const loadData = async () => {
+const loadData = async (forceReload: boolean = false) => {
   loadingStore.startLoading('Fetching title...')
 
-  const data = await titleStore.fetchTitleById(props.id)
+  const data = await titleStore.fetchTitleById(props.id, forceReload)
   if (data) {
     error.value = null
     title.value = data
@@ -186,5 +200,14 @@ const copyToClipboard = async (text: string) => {
   } catch {
     notificationStore.showError(`Unable to copy to clipboard 😞. Please copy it manually.`)
   }
+}
+
+const openEditDialog = () => {
+  editDialogOpen.value = true
+}
+
+const handleTitleUpdated = async () => {
+  notificationStore.showSuccess('Title updated successfully!')
+  await loadData(true)
 }
 </script>

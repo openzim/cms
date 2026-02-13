@@ -12,6 +12,7 @@ from cms_backend.db import gen_dbsession
 from cms_backend.db.title import create_title as db_create_title
 from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_titles as db_get_titles
+from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
@@ -30,9 +31,7 @@ class TitlesGetSchema(BaseModel):
     name: NotEmptyString | None = None
 
 
-class TitleCreateSchema(BaseModel):
-    name: NotEmptyString
-    maturity: Literal["dev", "robust"] = "dev"
+class BaseTitleCreateUpdateSchema(BaseModel):
     collection_titles: list[BaseTitleCollectionSchema] | None = None
 
     @model_validator(mode="after")
@@ -48,6 +47,15 @@ class TitleCreateSchema(BaseModel):
                 else:
                     seen.add(entry.collection_name)
         return self
+
+
+class TitleCreateSchema(BaseTitleCreateUpdateSchema):
+    name: NotEmptyString
+    maturity: Literal["dev", "robust"] = "dev"
+
+
+class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
+    maturity: Literal["dev", "robust"] | None = None
 
 
 @router.get("")
@@ -122,6 +130,29 @@ def create_title(
     title = db_create_title(
         session,
         name=title_data.name,
+        maturity=title_data.maturity,
+        collection_titles=title_data.collection_titles,
+    )
+    return TitleLightSchema(
+        id=title.id,
+        name=title.name,
+        maturity=title.maturity,
+    )
+
+
+@router.patch(
+    "/{title_id}",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def update_title(
+    title_id: UUID,
+    title_data: TitleUpdateSchema,
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleLightSchema:
+    """Update a title's maturity and/or collection_titles"""
+    title = db_update_title(
+        session,
+        title_id=title_id,
         maturity=title_data.maturity,
         collection_titles=title_data.collection_titles,
     )

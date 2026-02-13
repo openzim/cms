@@ -1,20 +1,22 @@
 <template>
-  <TitleFormDialog v-model="isOpen" @created="handleCreated" />
+  <TitleFormDialog v-model="isOpen" :title="title" @updated="handleUpdated" />
 </template>
 
 <script setup lang="ts">
 import TitleFormDialog from '@/components/TitleFormDialog.vue'
+import type { Title } from '@/types/title'
 import { computed } from 'vue'
 
 interface Props {
   modelValue: boolean
+  title: Title | null
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  created: []
+  updated: []
 }>()
 
 const isOpen = computed({
@@ -22,7 +24,7 @@ const isOpen = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
-function handleCreated() {
-  emit('created')
+function handleUpdated() {
+  emit('updated')
 }
 </script>
