@@ -19,6 +19,8 @@ RUN pip install --no-cache-dir /app \
     && rm /app/pyproject.toml \
     && rm /app/README.md
 
+COPY maint-scripts /app/maint-scripts
+
 WORKDIR /app
 
 CMD ["python", "-m", "cms_backend.mill.main"]
