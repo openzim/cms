@@ -44,6 +44,8 @@ services:
       CREATE_NEW_OAUTH_ACCOUNT: true
       AUTH_MODES: local
       JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
+      INIT_USERNAME: admin
+      INIT_PASSWORD: admin_pass
     command:
       - uvicorn
       - cms_backend.api.main:app
