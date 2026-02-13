@@ -32,3 +32,6 @@ class Context:
     cms_username = get_mandatory_env("CMS_USERNAME")
     cms_password = get_mandatory_env("CMS_PASSWORD")
     cms_database_url = get_mandatory_env("CMS_DATABASE_URL")
+    catalog_generation_timeout = parse_timespan(
+        os.getenv("CATALOG_GENERATION_TIMEOUT", default="10s")
+    )
