@@ -26,6 +26,8 @@ from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
 from cms_backend.utils.database import (
+    check_if_schema_is_up_to_date,
+    create_initial_user,
     upgrade_db_schema,
 )
 
@@ -34,6 +36,8 @@ from cms_backend.utils.database import (
 async def lifespan(_: FastAPI):
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
+    check_if_schema_is_up_to_date()
+    create_initial_user()
     yield
 
 
