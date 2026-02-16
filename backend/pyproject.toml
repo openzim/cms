@@ -24,6 +24,8 @@ dependencies = [
     "psycopg[binary,pool] == 3.2.11",
     "regex == 2025.10.23",
     "humanfriendly == 10.0",
+    "cryptography == 46.0.4",
+    "Werkzeug == 3.1.5",
 ]
 dynamic = ["version"]
 
@@ -31,8 +33,6 @@ dynamic = ["version"]
 api = [
     "fastapi[all] == 0.115.2",
     "PyJWT == 2.11.0",
-    "Werkzeug == 3.1.5",
-    "cryptography == 46.0.4"
 ]
 scripts = [
     "invoke == 2.2.0",
