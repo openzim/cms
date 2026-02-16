@@ -32,7 +32,8 @@ jobs:
           --health-retries 5
 
     env:
-      POSTGRES_URI: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
+      DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
+      ALEMBIC_UPGRADE_HEAD_ON_START: false
 
     steps:
       - name: Retrieve source code
@@ -55,6 +56,10 @@ jobs:
           psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
           "host=localhost port=5432 dbname=cmstest user=cms password=cmspass"
 
+      - name: Run Alembic Migrations
+        working-directory: backend/src/cms_backend
+        run: alembic upgrade head
+
       - name: Build backend mill Docker image
         working-directory: backend
         run: docker build -t cms-backend-mill:test -f Dockerfile-mill .
@@ -70,26 +75,47 @@ jobs:
       - name: Run backend api container
         run: |
           docker run -d --name cms-backend-test \
-            -e POSTGRES_URI=$POSTGRES_URI \
+            --network host \
+            -e DATABASE_URL=$DATABASE_URL \
             -e JWT_SECRET=DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw \
             -p 8000:80 \
             cms-backend-api:test
           # wait for container to be ready
           for i in {1..10}; do
-            if curl -s http://localhost:8000/v2/healthcheck > /dev/null; then
+            http_code=$(curl -s -o /dev/null -w "%{http_code}" 'http://localhost:80/v1/healthcheck' || echo 0000)
+            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
               echo "Backend API is up!"
-              break
+              exit 0
+            else
+              echo "Waiting for backend API... ($i/10)"
+              sleep 3
             fi
-            echo "Waiting for backend API..."
-            sleep 3
           done
+
+          echo "Backend API failed to start:"
+          docker logs cms-backend-test
+          exit 1
+
+      - name: Run mill container
+        run: |
+          docker run -d --name cms-mill-test \
+            --network host \
+            -e DATABASE_URL=$DATABASE_URL \
+            -e QUARANTINE_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
+            -e STAGING_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
+            cms-backend-mill:test cms-mill --help
+
+      - name: Run shuttle container
+        run: |
+          docker run -d --name cms-shuttle-test \
+            --network host \
+            -e DATABASE_URL=$DATABASE_URL \
+            cms-backend-shuttle:test cms-shuttle --help
 
       - name: Run tests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
           JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
-          ALEMBIC_UPGRADE_HEAD_ON_START: false
           AUTH_MODES: local
         run: inv coverage --args "-vvv"
 

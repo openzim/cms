@@ -3,9 +3,12 @@
 Handles periodic tasks, data processing, and async job execution.
 """
 
+import argparse
+import logging
 from time import sleep
 
 from cms_backend import logger
+from cms_backend.__about__ import __version__
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.mill.context import Context as MillContext
@@ -25,6 +28,21 @@ tasks: list[TaskConfig] = [
 
 def main():
     """Main entry point for mill component."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--version",
+        help="Show version and exit.",
+        action="version",
+        version="%(prog)s: " + __version__,
+    )
+    parser.add_argument(
+        "--verbose", "-v", help="Show verbose output.", action="store_true"
+    )
+
+    args = parser.parse_args()
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
     logger.info("Mill component starting...")
     logger.info(f"Found {len(tasks)} tasks to process")
 
@@ -46,7 +64,3 @@ def main():
                     )
         logger.debug(f"Loop sleeping for {MillContext.pause_in_the_loop}s...")
         sleep(MillContext.pause_in_the_loop)
-
-
-if __name__ == "__main__":
-    main()
