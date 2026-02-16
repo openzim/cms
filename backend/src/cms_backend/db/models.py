@@ -6,6 +6,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
     DateTime,
     ForeignKey,
     Index,
@@ -114,9 +115,9 @@ class Book(Base):
     __tablename__ = "book"
     id: Mapped[UUID] = mapped_column(primary_key=True)
     created_at: Mapped[datetime]
-    article_count: Mapped[int]
-    media_count: Mapped[int]
-    size: Mapped[int]
+    article_count: Mapped[int] = mapped_column(BigInteger)
+    media_count: Mapped[int] = mapped_column(BigInteger)
+    size: Mapped[int] = mapped_column(BigInteger)
     zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
     name: Mapped[str | None]

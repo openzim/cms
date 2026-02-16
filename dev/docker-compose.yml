@@ -43,6 +43,7 @@ services:
       OAUTH_SESSION_LOGIN_REQUIRE_2FA: true
       CREATE_NEW_OAUTH_ACCOUNT: true
       AUTH_MODES: local
+      ALEMBIC_UPGRADE_HEAD_ON_START: true
       JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
       INIT_USERNAME: admin
       INIT_PASSWORD: admin_pass

@@ -192,9 +192,11 @@ def find_collections_for_zim(
     results: list[Collection] = []
 
     for collection in collections:
-        for collection_title in collection.titles:
-            if collection_title.path == zim_dir:
-                results.append(collection)
+        if any(
+            1 if collection_title.path == zim_dir else 0
+            for collection_title in collection.titles
+        ):
+            results.append(collection)
 
     return results
 
@@ -420,7 +422,7 @@ def process_zim_file(
 
 def scan_warehouse(
     ctx: Context,
-    session: OrmSession,
+    db_session: sessionmaker[OrmSession],
     *,
     local_warehouse_id: UUID,
     local_warehouse_path: Path,
@@ -437,7 +439,7 @@ def scan_warehouse(
     logger.info(f"Found {len(zim_files)} ZIM file(s) in {local_warehouse_path}")
 
     for zim_file in zim_files:
-        with session.begin_nested():
+        with db_session.begin() as session:
             try:
                 process_zim_file(
                     ctx,
@@ -466,24 +468,23 @@ def main():
         )
     )
 
-    with db_session.begin() as session:
-        for (
-            local_warehouse_id,
-            local_warehouse_path,
-        ) in ctx.local_warehouse_paths.items():
-            try:
-                scan_warehouse(
-                    ctx,
-                    session,
-                    local_warehouse_id=local_warehouse_id,
-                    local_warehouse_path=local_warehouse_path,
-                )
-            except Exception:
-                logger.exception(
-                    "encountered exception scanning local warehouse "
-                    f"{local_warehouse_id}:{local_warehouse_path}"
-                )
-                logger.info("Continuing with next warehouse...")
+    for (
+        local_warehouse_id,
+        local_warehouse_path,
+    ) in ctx.local_warehouse_paths.items():
+        try:
+            scan_warehouse(
+                ctx,
+                db_session,
+                local_warehouse_id=local_warehouse_id,
+                local_warehouse_path=local_warehouse_path,
+            )
+        except Exception:
+            logger.exception(
+                "encountered exception scanning local warehouse "
+                f"{local_warehouse_id}:{local_warehouse_path}"
+            )
+            logger.info("Continuing with next warehouse...")
 
 
 if __name__ == "__main__":
