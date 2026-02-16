@@ -287,3 +287,59 @@ def test_get_title_by_id_not_found(client: TestClient):
     response = client.get(f"/v1/titles/{non_existent_id}")
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "does not exist" in response.json()["message"].lower()
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_update_title_required_permissions(
+    client: TestClient,
+    create_user: Callable[..., User],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test updating a title with different roles"""
+    title = create_title(name="wikipedia_en_test")
+    update_data = {
+        "maturity": "robust",
+    }
+
+    user = create_user(permission=permission)
+    access_token = generate_access_token(user_id=str(user.id), issue_time=getnow())
+    response = client.patch(
+        f"/v1/titles/{title.id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+def test_update_title_maturity(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    access_token: str,
+):
+    """Test updating a title's maturity"""
+    title = create_title(name="wikipedia_en_test")
+    assert title.maturity == "dev"
+
+    update_data = {
+        "maturity": "robust",
+    }
+
+    response = client.patch(
+        f"/v1/titles/{title.id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    assert data["id"] == str(title.id)
+    assert data["name"] == "wikipedia_en_test"
+    assert data["maturity"] == "robust"

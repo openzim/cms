@@ -2,7 +2,7 @@ import constants from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
-import type { Title, TitleCreate, TitleLight } from '@/types/title'
+import type { Title, TitleCreate, TitleLight, TitleUpdate } from '@/types/title'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { inject, ref } from 'vue'
@@ -107,6 +107,19 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const updateTitle = async (titleId: string, titleData: TitleUpdate) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      errors.value = []
+      const response = await service.patch<TitleUpdate, TitleLight>(`/${titleId}`, titleData)
+      return response
+    } catch (_error) {
+      console.error('Failed to update title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
   return {
     // State
     title,
@@ -119,5 +132,6 @@ export const useTitleStore = defineStore('title', () => {
     fetchTitles,
     savePaginatorLimit,
     createTitle,
+    updateTitle,
   }
 })
