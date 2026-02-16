@@ -43,7 +43,7 @@ jobs:
               - 'healthcheck/**'
 
   backend:
-    name: Backend build
+    name: Backend build and publish
     runs-on: ubuntu-24.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.backend == 'true' || inputs.force == true || contains(inputs.force_components, 'backend') }}
@@ -110,7 +110,7 @@ jobs:
           args: rollout restart deployments api-deployment -n cms
 
   frontend:
-    name: Frontend build
+    name: Frontend build and publish
     runs-on: ubuntu-24.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.frontend == 'true' || inputs.force == true || contains(inputs.force_components, 'frontend') }}
@@ -137,7 +137,7 @@ jobs:
           args: rollout restart deployments ui-deployment -n cms
 
   healthcheck:
-    name: Healthcheck build
+    name: Healthcheck build and publish
     runs-on: ubuntu-24.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.healthcheck == 'true' || inputs.force == true || contains(inputs.force_components, 'healthcheck') }}
