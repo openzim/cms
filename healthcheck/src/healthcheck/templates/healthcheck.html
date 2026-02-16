@@ -138,6 +138,15 @@
             </td>
           </tr>
           <tr>
+            <th>Catalog Generation</th>
+            <td>Generation of catalogs for all collections</td>
+            <td
+              class="text-right {{ catalog_generation.success|status_class }}"
+            >
+              {{ catalog_generation.success|status_text }}
+            </td>
+          </tr>
+          <tr>
             <th>File Needs Move</th>
             <td>
               No files need operation, except those scheduled for deletion
