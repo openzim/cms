@@ -27,7 +27,7 @@ import pathlib
 import sys
 from pathlib import Path
 from typing import Any, NamedTuple
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from libzim.reader import Archive  # pyright: ignore[reportMissingModuleSource]
 from sqlalchemy import create_engine, select
@@ -40,7 +40,7 @@ from cms_backend.db import cms_dumps, cms_loads
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
 from cms_backend.db.title import get_title_by_name_or_none
 from cms_backend.utils.datetime import getnow
-from cms_backend.utils.zim import get_missing_metadata_keys
+from cms_backend.utils.zim import get_missing_keys, get_missing_metadata_keys
 
 
 def get_zim_info(fpath: pathlib.Path) -> dict[str, Any]:
@@ -60,7 +60,7 @@ def get_zim_info(fpath: pathlib.Path) -> dict[str, Any]:
     for size in zim.get_illustration_sizes():
         payload["metadata"].update(
             {
-                f"Illustration_{size}x{size}": base64.standard_b64encode(
+                f"Illustration_{size}x{size}@1": base64.standard_b64encode(
                     zim.get_illustration_item(size).content
                 ).decode("ASCII")
             }
@@ -284,7 +284,7 @@ def determine_location_kind(
     return "prod"
 
 
-def create_book_from_zim(
+def _create_book_from_zim(
     ctx: Context,
     session: OrmSession,
     *,
@@ -296,15 +296,15 @@ def create_book_from_zim(
     """Create a book from a ZIM file."""
     zim_metadata = zim_info["metadata"]
     book = Book(
-        id=uuid4(),
+        id=UUID(zim_info["id"]),
         created_at=getnow(),
         article_count=zim_info["article_count"],
         media_count=zim_info["media_count"],
         size=zim_info["size"],
         zim_metadata=zim_metadata,
         zimcheck_result={},
-        name=zim_metadata.get("Name"),
-        date=zim_metadata.get("Date"),
+        name=zim_metadata["Name"],
+        date=zim_metadata["Date"],
         flavour=zim_metadata.get("Flavour"),
         zimfarm_notification=None,
     )
@@ -383,6 +383,15 @@ def process_zim_file(
         logger.exception(f"encountered exception while reading {zim_file} metadata")
         return
 
+    missing_keys = get_missing_keys(
+        zim_info, "metadata", "id", "article_count", "media_count", "size"
+    )
+    if missing_keys:
+        logger.warning(
+            f"{zim_file} is missing mandatory keys: {','.join(missing_keys)}"
+        )
+        return
+
     missing_metadata_keys = get_missing_metadata_keys(zim_info["metadata"])
     if missing_metadata_keys:
         logger.warning(
@@ -410,7 +419,7 @@ def process_zim_file(
         session, zim_info["metadata"]["Name"], collections[0], zim_path_in_warehouse
     )
 
-    create_book_from_zim(
+    _create_book_from_zim(
         ctx,
         session,
         warehouse_id=warehouse_id,

@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable
 from datetime import timedelta
 from http import HTTPStatus
@@ -144,12 +145,22 @@ def test_get_collection_catalog_xml_single_book(
     """Test collection XML with a single book"""
     # Setup
     warehouse = create_warehouse()
-    collection = create_collection(warehouse=warehouse)
+    collection = create_collection(
+        warehouse=warehouse,
+        download_base_url="https://download.kiwix.org",
+        view_base_url="https://browse.library.kiwix.org",
+    )
     title = create_title(name="test_title")
 
     path = "wikipedia"
+    filename = "test_en_all.zim"
     _add_title_to_collection(dbsession, collection, title, path)
 
+    favicon = (
+        "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+        "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+        "BJRU5ErkJggg=="
+    )
     book = create_book(
         zim_metadata={
             "Name": "test_title",
@@ -160,6 +171,7 @@ def test_get_collection_catalog_xml_single_book(
             "Publisher": "Test Publisher",
             "Date": "2025-01-01",
             "Tags": "_category:test;_pictures:yes",
+            "Illustration_48x48@1": favicon,
         },
     )
     book.title = title
@@ -167,7 +179,11 @@ def test_get_collection_catalog_xml_single_book(
     book.has_error = False
     book.needs_file_operation = False
     create_book_location(
-        book=book, warehouse_id=warehouse.id, path=path, status="current"
+        book=book,
+        warehouse_id=warehouse.id,
+        path=path,
+        status="current",
+        filename=filename,
     )
     dbsession.flush()
 
@@ -192,10 +208,19 @@ def test_get_collection_catalog_xml_single_book(
     assert book_elem.get("publisher") == "Test Publisher"
     assert book_elem.get("name") == "test_title"
     assert book_elem.get("date") == "2025-01-01"
-    assert book_elem.get("size") == str(book.size)
+    assert book_elem.get("size") == str(math.ceil(book.size / 1024))
     assert book_elem.get("mediaCount") == str(book.media_count)
     assert book_elem.get("articleCount") == str(book.article_count)
-    assert book_elem.get("tags") == "_category:test;_pictures:yes"
+    assert (
+        book_elem.get("tags")
+        == "_category:test;_pictures:yes;_ftindex:no;_videos:yes;_details:yes"
+    )
+    assert book_elem.get("faviconMimeType") == "image/png"
+    assert book_elem.get("favicon") == favicon
+    assert (
+        book_elem.get("url")
+        == f"https://download.kiwix.org/zim/{path}/{filename}.meta4"
+    )
 
 
 def test_get_collection_catalog_xml_multiple_books_different_formats(

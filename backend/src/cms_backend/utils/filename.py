@@ -1,6 +1,7 @@
 """Utilities for computing and managing book target filenames."""
 
 import re
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
@@ -175,3 +176,12 @@ def get_period_and_suffix_from_filename(filename: str) -> tuple[str, str]:
         raise ValueError("Unable to retrieve period from filename")
     groupdict = match.groupdict()
     return (groupdict["period"], groupdict["suffix"])
+
+
+def construct_download_url(base_url: str, subpath: Path, filename: str) -> str:
+    """Construct the download URL of a ZIM file based on it's subpath and filename."""
+    if subpath == Path(""):  # root folder
+        download_url = f"{base_url}/zim/{filename}"
+    else:
+        download_url = f"{base_url}/zim/{subpath}/{filename}"
+    return download_url

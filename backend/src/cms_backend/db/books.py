@@ -1,4 +1,3 @@
-from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
@@ -13,6 +12,7 @@ from cms_backend.db.exceptions import (
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
 from cms_backend.schemas.models import ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
+from cms_backend.utils.filename import construct_download_url
 
 
 def get_book_or_none(session: OrmSession, book_id: UUID) -> Book | None:
@@ -149,16 +149,14 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
 
     for row in session.execute(stmt).all():
         if row.download_base_url:
-            if row.subpath == Path(""):  # root folder
-                download_url = f"{row.download_base_url}/zim/{row.filename}"
-            else:
-                download_url = (
-                    f"{row.download_base_url}/zim/{row.subpath}/{row.filename}"
-                )
             result.urls[row.book_id].append(
                 ZimUrlSchema(
                     kind="download",
-                    url=AnyUrl(download_url),
+                    url=AnyUrl(
+                        construct_download_url(
+                            row.download_base_url, row.subpath, row.filename
+                        )
+                    ),
                     collection=row.collection_name,
                 )
             )
