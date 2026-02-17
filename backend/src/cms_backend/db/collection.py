@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import NamedTuple, cast
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -49,9 +51,18 @@ def get_collection_by_name(session: OrmSession, collection_name: str) -> Collect
     return collection
 
 
+class CollectionBook(NamedTuple):
+    """Tuple containing book alongside collection/collection-title details."""
+
+    book: Book
+    download_base_url: str | None
+    path: Path
+    filename: str
+
+
 def get_latest_books_for_collection(
     session: OrmSession, collection_id: UUID
-) -> list[Book]:
+) -> list[CollectionBook]:
     """
     Get the latest published book for each name+flavour combination in a collection.
 
@@ -63,12 +74,17 @@ def get_latest_books_for_collection(
         collection_id: ID of the collection
 
     Returns:
-        List of Book objects, one per name+flavour combination
+        List of CollectionBook objects, one per name+flavour combination
     """
     # Get all books in the library's warehouse paths that are published
     # and currently located there
     stmt = (
-        select(Book)
+        select(
+            Book,
+            Collection.download_base_url,
+            CollectionTitle.path.label("subpath"),
+            BookLocation.filename,
+        )
         .join(BookLocation)
         .join(Title, Book.title_id == Title.id)
         .join(CollectionTitle)
@@ -86,17 +102,22 @@ def get_latest_books_for_collection(
         )
         .order_by(Book.name, Book.flavour, Book.created_at.desc())
     )
-
-    books = session.scalars(stmt).all()
-
     # Filter to keep only the latest book per name+flavour combination
     seen: set[tuple[str | None, str | None]] = set()
-    latest_books: list[Book] = []
-    for book in books:
+    latest_books: list[CollectionBook] = []
+    for row in session.execute(stmt).all():
+        book = cast(Book, row.Book)
         key = (book.name, book.flavour)
         if key not in seen:
             seen.add(key)
-            latest_books.append(book)
+            latest_books.append(
+                CollectionBook(
+                    book=book,
+                    path=row.subpath,
+                    download_base_url=row.download_base_url,
+                    filename=row.filename,
+                )
+            )
 
     return latest_books
 
