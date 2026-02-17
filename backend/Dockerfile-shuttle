@@ -21,4 +21,4 @@ RUN pip install --no-cache-dir /app \
 
 WORKDIR /app
 
-CMD ["python", "-m", "cms_backend.shuttle.main"]
+CMD ["cms-shuttle"]

@@ -23,4 +23,4 @@ COPY maint-scripts /app/maint-scripts
 
 WORKDIR /app
 
-CMD ["python", "-m", "cms_backend.mill.main"]
+CMD ["cms-mill"]

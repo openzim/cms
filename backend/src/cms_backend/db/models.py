@@ -138,9 +138,7 @@ class Book(Base):
     deletion_date: Mapped[datetime | None] = mapped_column(default=None, init=False)
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
-    title_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("title.id", use_alter=True), init=False
-    )
+    title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
     title: Mapped[Optional["Title"]] = relationship(init=False, foreign_keys=[title_id])
 
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
