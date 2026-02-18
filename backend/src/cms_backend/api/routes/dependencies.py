@@ -58,7 +58,7 @@ def get_current_user_or_none_with_session(
         if claims is None:
             return None
         user = get_user_by_id_or_none(session, user_id=claims.sub)
-        # If this is a kiwix token (wilkl  have a name), we create a new user account
+        # If this claim has a "name" property, we create a new user account
         if user is None and Context.create_new_oauth_account:
             if not claims.name:
                 raise UnauthorizedError("Token is missing 'profile' scope")

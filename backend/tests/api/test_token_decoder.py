@@ -6,7 +6,7 @@ from uuid import UUID
 import jwt
 import pytest
 
-from cms_backend.api.token import OAuthSessionTokenDecoder
+from cms_backend.api.token import OAuthTokenDecoder
 from cms_backend.utils.datetime import getnow
 
 
@@ -38,6 +38,31 @@ def create_test_session_jwt_token(
     )  # pyright: ignore[reportUnknownMemberType]
 
 
+def create_test_client_jwt_token(
+    issuer: str = "https://login.kiwix.org",
+    client_id: str = "test-client-id",
+    subject: str | None = None,
+    exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
+) -> str:
+    """Create a test JWT token for OAuth2 client authentication."""
+    if subject is None:
+        subject = str(UUID(int=0))
+
+    now = getnow()
+    payload = {
+        "iss": issuer,
+        "sub": subject,
+        "iat": int(now.timestamp()),
+        "exp": int((now + exp_delta).timestamp()),
+        "client_id": client_id,
+    }
+
+    # Create a test token (unsigned for testing purposes)
+    return jwt.encode(
+        payload, "test-secret", algorithm="HS256"
+    )  # pyright: ignore[reportUnknownMemberType]
+
+
 def test_verify_session_access_token_expired_token(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -55,7 +80,7 @@ def test_verify_session_access_token_expired_token(
     mock_signing_key = MagicMock()
     mock_signing_key.key = "test-key"
 
-    decoder = OAuthSessionTokenDecoder()
+    decoder = OAuthTokenDecoder()
 
     with (
         patch.object(
@@ -102,7 +127,7 @@ def test_verify_session_access_token_with_2fa_enabled_and_valid_aal(
         "aal": "aal2",  # Authenticator Assurance Level 2 (2FA)
     }
 
-    decoder = OAuthSessionTokenDecoder()
+    decoder = OAuthTokenDecoder()
 
     with (
         patch.object(
@@ -151,7 +176,7 @@ def test_verify_session_access_token_with_2fa_enabled_only_aal1(
         "aal": "aal1",  # Only first factor (aal1)
     }
 
-    decoder = OAuthSessionTokenDecoder()
+    decoder = OAuthTokenDecoder()
 
     with (
         patch.object(
@@ -199,7 +224,7 @@ def test_verify_session_access_token_with_2fa_disabled_only_aal1(
         "aal": "aal1",  # Only first factor (aal1), but 2FA is disabled
     }
 
-    decoder = OAuthSessionTokenDecoder()
+    decoder = OAuthTokenDecoder()
 
     with (
         patch.object(
@@ -217,3 +242,87 @@ def test_verify_session_access_token_with_2fa_disabled_only_aal1(
         assert result.iss == decoded_payload["iss"]
         assert str(result.sub) == decoded_payload["sub"]
         assert result.name == decoded_payload["name"]
+
+
+def test_verify_client_access_token_valid(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test successful verification of valid OAuth2 client token."""
+    monkeypatch.setattr(
+        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
+    )
+    monkeypatch.setattr(
+        "cms_backend.api.context.Context.oauth_client_id",
+        "test-client-id",
+    )
+
+    test_token = create_test_client_jwt_token()
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = "test-key"
+
+    decoded_payload = {
+        "iss": "https://login.kiwix.org",
+        "sub": str(UUID(int=0)),
+        "client_id": str(UUID(int=0)),
+        "iat": int(getnow().timestamp()),
+        "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
+    }
+
+    decoder = OAuthTokenDecoder()
+
+    with (
+        patch.object(
+            decoder._jwks_client,
+            "get_signing_key_from_jwt",
+        ) as mock_get_key,
+        patch("cms_backend.api.token.jwt.decode") as mock_decode,
+    ):
+        mock_get_key.return_value = mock_signing_key
+        mock_decode.return_value = decoded_payload
+
+        result = decoder.decode(test_token)
+
+        assert result.iss == decoded_payload["iss"]
+        assert str(result.sub) == decoded_payload["sub"]
+
+
+def test_verify_client_access_token_invalid_client_id(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test verification fails when client_id doesn't match."""
+    monkeypatch.setattr(
+        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
+    )
+    monkeypatch.setattr(
+        "cms_backend.api.context.Context.oauth_client_id",
+        "expected-client-id",
+    )
+
+    test_token = create_test_client_jwt_token(client_id="wrong-client-id")
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = "test-key"
+
+    decoded_payload = {
+        "iss": "https://login.kiwix.org",
+        "sub": str(UUID(int=0)),
+        "client_id": "wrong-client-id",
+        "iat": int(getnow().timestamp()),
+        "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
+    }
+
+    decoder = OAuthTokenDecoder()
+
+    with (
+        patch.object(
+            decoder._jwks_client,
+            "get_signing_key_from_jwt",
+        ) as mock_get_key,
+        patch("cms_backend.api.token.jwt.decode") as mock_decode,
+    ):
+        mock_get_key.return_value = mock_signing_key
+        mock_decode.return_value = decoded_payload
+
+        with pytest.raises(ValueError, match="Oauth client ID does not match"):
+            decoder.decode(test_token)
