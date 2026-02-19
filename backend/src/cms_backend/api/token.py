@@ -71,8 +71,8 @@ class LocalTokenDecoder(TokenDecoder):
         return "local" in Context.auth_modes
 
 
-class OAuthSessionTokenDecoder(TokenDecoder):
-    """Decoder for OAuth Session JWT tokens."""
+class OAuthTokenDecoder(TokenDecoder):
+    """Decoder for OAuth JWT tokens."""
 
     def __init__(self):
         """Initialize OAuth token decoder."""
@@ -94,12 +94,20 @@ class OAuthSessionTokenDecoder(TokenDecoder):
             issuer=Context.oauth_issuer,
             audience=Context.oauth_session_audience_id,
             options={
-                "require": ["exp", "iat", "iss", "sub", "name", "aud", "aal"],
+                "require": ["exp", "iat", "iss", "sub", "aud"],
             },
         )
 
         if (
-            Context.oauth_session_login_require_2fa
+            client_id := decoded_token.get("client_id")
+        ) and client_id != decoded_token.get("sub"):
+            raise ValueError("Oauth client ID does not match.")
+
+        # Check for 2FA requirement only if client_id is not present in the token
+        # as those come from oauth2 clients and not real users
+        if (
+            not decoded_token.get("client_id")
+            and Context.oauth_session_login_require_2fa
             and decoded_token.get("aal") != "aal2"
         ):
             raise ValueError(
@@ -111,11 +119,11 @@ class OAuthSessionTokenDecoder(TokenDecoder):
 
     @property
     def name(self) -> str:
-        return "oauth-session"
+        return "oauth"
 
     @property
     def can_decode(self) -> bool:
-        return "oauth-session" in Context.auth_modes
+        return "oauth" in Context.auth_modes
 
 
 class TokenDecoderChain:
@@ -156,7 +164,10 @@ class TokenDecoderChain:
 
 
 token_decoder = TokenDecoderChain(
-    decoders=[OAuthSessionTokenDecoder(), LocalTokenDecoder()]
+    decoders=[
+        OAuthTokenDecoder(),
+        LocalTokenDecoder(),
+    ]
 )
 
 

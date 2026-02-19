@@ -24,13 +24,18 @@ class Context:
     oauth_session_login_require_2fa = parse_bool(
         os.getenv("OAUTH_SESSION_LOGIN_REQUIRE_2FA", default="true")
     )
+    oauth_client_id = os.getenv(
+        "OAUTH_CLIENT_ID", default="310c5189-ce06-463c-9c55-46e822b5d642"
+    )
     create_new_oauth_account = parse_bool(
         os.getenv("CREATE_NEW_OAUTH_ACCOUNT", default="true")
     )
-    # List of authentication modes. Allowed values are "local", "oauth-session"
+    # List of authentication modes. Allowed values are
+    # - local
+    # - oauth
     auth_modes: list[str] = os.getenv(
         "AUTH_MODES",
-        default="oauth-session",
+        default="oauth",
     ).split(",")
 
     # Local Authentication JWT settings
