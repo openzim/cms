@@ -82,10 +82,9 @@ def _build_library_xml(entries: list[CollectionBook]) -> str:
         book_elem.set("name", zim_meta.get("Name", ""))
         book_elem.set("date", zim_meta.get("Date", ""))
 
-        # Optional tags - combine with underscores if present
+        # always set tags to at least have special tags
         tags = zim_meta.get("Tags", "")
-        if tags:
-            book_elem.set("tags", ";".join(convert_tags(tags)))
+        book_elem.set("tags", ";".join(convert_tags(tags)))
 
         favicon = zim_meta.get("Illustration_48x48@1", "")
         if favicon:
