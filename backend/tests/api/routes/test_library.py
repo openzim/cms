@@ -172,6 +172,7 @@ def test_get_collection_catalog_xml_single_book(
             "Date": "2025-01-01",
             "Tags": "_category:test;_pictures:yes",
             "Illustration_48x48@1": favicon,
+            "Flavour": "test",
         },
     )
     book.title = title
@@ -221,6 +222,7 @@ def test_get_collection_catalog_xml_single_book(
         book_elem.get("url")
         == f"https://download.kiwix.org/zim/{path}/{filename}.meta4"
     )
+    assert book_elem.get("flavour") == "test"
 
 
 def test_get_collection_catalog_xml_multiple_books_different_formats(
