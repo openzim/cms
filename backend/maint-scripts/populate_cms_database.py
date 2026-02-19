@@ -212,6 +212,7 @@ def get_or_create_title(
     if not title:
         # Create new title
         title = Title(name=name)
+        title.maturity = "robust"
         title.events.append(f"{getnow()}: maintenance script: title created")
         session.add(title)
 
