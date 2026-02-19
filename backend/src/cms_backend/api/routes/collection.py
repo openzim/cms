@@ -96,6 +96,9 @@ def _build_library_xml(entries: list[CollectionBook]) -> str:
             download_url = construct_download_url(download_base_url, path, filename)
             book_elem.set("url", f"{download_url}.meta4")
 
+        if flavour := zim_meta.get("Flavour"):
+            book_elem.set("flavour", flavour)
+
     ET.indent(library_elem, space="  ", level=0)
 
     return ET.tostring(library_elem, encoding="unicode")
