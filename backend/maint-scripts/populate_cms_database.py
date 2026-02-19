@@ -384,9 +384,13 @@ def process_zim_file(
         logger.exception(f"encountered exception while reading {zim_file} metadata")
         return
 
-    missing_keys = get_missing_keys(
-        zim_info, "metadata", "id", "article_count", "media_count", "size"
-    )
+    missing_keys = get_missing_keys(zim_info, "metadata", "id", "article_count", "size")
+    # Check if media_count is in the zim_info. The get_missing_keys fn considers
+    # falsy values as absent but a media_count of 0 is acceptable.
+    if zim_info.get("media_count") is None:
+        logger.warning(f"{zim_file} is missing media_count information.")
+        return
+
     if missing_keys:
         logger.warning(
             f"{zim_file} is missing mandatory keys: {','.join(missing_keys)}"
