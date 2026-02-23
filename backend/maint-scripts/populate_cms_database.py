@@ -306,7 +306,7 @@ def _create_book_from_zim(
         zimcheck_result={},
         name=zim_metadata["Name"],
         date=zim_metadata["Date"],
-        flavour=zim_metadata.get("Flavour"),
+        flavour=zim_metadata.get("Flavour") or None,
         zimfarm_notification=None,
     )
     book.events.append(
