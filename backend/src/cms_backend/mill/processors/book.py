@@ -5,6 +5,7 @@ from cms_backend.db.models import Book, Title
 from cms_backend.db.title import get_title_by_name_or_none
 from cms_backend.mill.processors.title import add_book_to_title
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import get_missing_metadata_keys
 
 
 def process_book(session: ORMSession, book: Book):
@@ -25,22 +26,12 @@ def process_book(session: ORMSession, book: Book):
 
 def check_book_zim_spec(book: Book) -> bool:
     try:
-        missing_metadata_keys = [
-            key
-            for key in sorted(
-                [
-                    "Name",
-                    "Title",
-                    "Creator",
-                    "Publisher",
-                    "Date",
-                    "Description",
-                    "Language",
-                ]
-            )
-            if key not in book.zim_metadata or not book.zim_metadata.get(key)
-        ]
+        if not book.article_count:
+            book.events.append(f"{getnow()}: book has no article(s)")
+            book.has_error = True
+            return False
 
+        missing_metadata_keys = get_missing_metadata_keys(book.zim_metadata)
         if missing_metadata_keys:
             book.events.append(
                 f"{getnow()}: book is missing mandatory metadata: "
