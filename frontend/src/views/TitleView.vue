@@ -15,110 +15,116 @@
         </v-btn>
       </div>
 
-      <v-table>
-        <tbody>
-          <tr>
-            <th class="text-left" style="width: 200px">Id</th>
-            <td>
-              <code>{{ title.id }}</code>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Name</th>
-            <td>
-              {{ title.name }}
-            </td>
-          </tr>
+      <div>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Id</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <code>{{ title.id }}</code>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
 
-          <tr>
-            <th class="text-left" style="width: 200px">Collections</th>
-            <td>
-              <div v-if="title.collections && title.collections.length > 0">
-                <div
-                  v-for="tc in title.collections"
-                  :key="`collection-${tc.collection_id}`"
-                  class="mb-2"
-                >
-                  {{ tc.collection_name }}: {{ tc.path }}
-                </div>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Name</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            {{ title.name }}
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Collections</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <div v-if="title.collections && title.collections.length > 0">
+              <div
+                v-for="tc in title.collections"
+                :key="`collection-${tc.collection_id}`"
+                class="mb-2"
+              >
+                {{ tc.collection_name }}: {{ tc.path }}
               </div>
-              <span v-else class="text-grey">This title is not published in any collection</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Maturity</th>
-            <td>
-              {{ title.maturity }}
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">
-              Events
-              <v-btn
-                v-if="title.events.length > 0"
-                size="small"
-                variant="outlined"
-                class="ml-2"
-                @click="copyToClipboard(title.events.join('\n'))"
-              >
-                <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
-                Copy
-              </v-btn>
-            </th>
-            <td class="py-2">
-              <pre v-for="event in title.events" :key="event">{{ event }}</pre>
-              <span v-if="title.events.length == 0" class="text-grey">No events</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">Books</th>
-            <td class="py-2">
-              <v-data-table
-                v-if="title.books.length > 0"
-                :headers="bookHeaders"
-                :items="sortedBooks"
-                :items-per-page="-1"
-                density="compact"
-                class="table-borderless"
-                hide-default-footer
-              >
-                <template #[`item.id`]="{ item }">
-                  <router-link :to="{ name: 'book-detail', params: { id: item.id } }">
-                    <code>{{ item.id }}</code>
-                  </router-link>
-                </template>
+            </div>
+            <span v-else class="text-grey">This title is not published in any collection</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
 
-                <template #[`item.created_at`]="{ item }">
-                  <v-tooltip location="bottom">
-                    <template #activator="{ props }">
-                      <span v-bind="props">
-                        {{ fromNow(item.created_at) }}
-                      </span>
-                    </template>
-                    <span>{{ formatDt(item.created_at) }}</span>
-                  </v-tooltip>
-                </template>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Maturity</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            {{ title.maturity }}
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
 
-                <template #[`item.name`]="{ item }">
-                  <span v-if="item.name">{{ item.name }}</span>
-                  <span v-else class="text-grey">-</span>
-                </template>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Events</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <EventsList :events="title.events" />
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
 
-                <template #[`item.date`]="{ item }">
-                  <span v-if="item.date">{{ item.date }}</span>
-                  <span v-else class="text-grey">-</span>
-                </template>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Books</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <v-data-table
+              v-if="title.books.length > 0"
+              :headers="bookHeaders"
+              :items="sortedBooks"
+              :items-per-page="-1"
+              :mobile="smAndDown"
+              density="compact"
+              hide-default-footer
+            >
+              <template #[`item.created_at`]="{ item }">
+                <TimestampLink :id="item.id" :route="'book-detail'" :timestamp="item.created_at" />
+              </template>
 
-                <template #[`item.flavour`]="{ item }">
-                  <span v-if="item.flavour">{{ item.flavour }}</span>
-                  <span v-else class="text-grey">-</span>
-                </template>
-              </v-data-table>
-              <span v-else class="text-grey">No books</span>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+              <template #[`item.status`]="{ item }">
+                <BookStatus :book="item" :icon-only="true" />
+              </template>
+
+              <template #[`item.name`]="{ item }">
+                <span v-if="item.name">{{ item.name }}</span>
+                <span v-else class="text-grey">-</span>
+              </template>
+
+              <template #[`item.date`]="{ item }">
+                <span v-if="item.date">{{ item.date }}</span>
+                <span v-else class="text-grey">-</span>
+              </template>
+
+              <template #[`item.flavour`]="{ item }">
+                <span v-if="item.flavour">{{ item.flavour }}</span>
+                <span v-else class="text-grey">-</span>
+              </template>
+
+              <template #[`item.urls`]="{ item }">
+                <ZimUrlButtons
+                  :urls="zimUrls[item.id]"
+                  :loading="loadingUrls"
+                  :compact="true"
+                  empty-text=""
+                />
+              </template>
+            </v-data-table>
+            <span v-else class="text-grey">No books</span>
+          </v-col>
+        </v-row>
+      </div>
     </div>
 
     <EditTitleDialog v-model="editDialogOpen" :title="title" @updated="handleTitleUpdated" />
@@ -126,17 +132,26 @@
 </template>
 
 <script setup lang="ts">
+import BookStatus from '@/components/BookStatus.vue'
 import EditTitleDialog from '@/components/EditTitleDialog.vue'
+import EventsList from '@/components/EventsList.vue'
+import TimestampLink from '@/components/TimestampLink.vue'
+import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
+import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
 import type { Title } from '@/types/title'
-import { formatDt, fromNow } from '@/utils/format'
+import type { ZimUrl } from '@/types/book'
 import { computed, onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
+
+const { smAndDown } = useDisplay()
 
 const loadingStore = useLoadingStore()
 const titleStore = useTitleStore()
+const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 
@@ -144,6 +159,8 @@ const error = ref<string | null>(null)
 const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
 const editDialogOpen = ref(false)
+const loadingUrls = ref(false)
+const zimUrls = ref<Record<string, ZimUrl[]>>({})
 
 interface Props {
   id: string
@@ -152,12 +169,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {})
 
 const bookHeaders = [
-  { title: 'Created', value: 'created_at', sortable: true },
-  { title: 'Name', value: 'name', sortable: true },
-  { title: 'Flavour', value: 'flavour', sortable: true },
-  { title: 'Date', value: 'date', sortable: true },
-  { title: 'Status', value: 'status', sortable: true },
-  { title: 'ID', value: 'id', sortable: false },
+  { title: 'Created', value: 'created_at', sortable: false },
+  { title: 'Name', value: 'name', sortable: false },
+  { title: 'Flavour', value: 'flavour', sortable: false },
+  { title: 'Status', value: 'status', sortable: false },
+  { title: 'Date', value: 'date', sortable: false },
+  { title: 'URLs', value: 'urls', sortable: false },
 ]
 
 const canEditTitle = computed(() => authStore.hasPermission('title', 'update'))
@@ -187,20 +204,33 @@ const loadData = async (forceReload: boolean = false) => {
   if (loadingStore.isLoading) {
     loadingStore.stopLoading()
   }
+
+  if (title.value?.books && title.value.books.length > 0) {
+    loadZimUrls()
+  }
+}
+
+const loadZimUrls = async () => {
+  if (!title.value?.books || title.value.books.length === 0) return
+
+  loadingUrls.value = true
+  const bookIds = title.value.books.map((book) => book.id)
+
+  const response = await bookStore.fetchZimUrls(bookIds)
+  if (response?.urls) {
+    zimUrls.value = response.urls
+  } else {
+    for (const err of bookStore.errors) {
+      notificationStore.showError(err)
+    }
+  }
+
+  loadingUrls.value = false
 }
 
 onMounted(async () => {
   await loadData()
 })
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText('```\n' + text + '\n```\n')
-    notificationStore.showSuccess(`Copied to Clipboard!`)
-  } catch {
-    notificationStore.showError(`Unable to copy to clipboard 😞. Please copy it manually.`)
-  }
-}
 
 const openEditDialog = () => {
   editDialogOpen.value = true

@@ -9,81 +9,136 @@
     </div>
 
     <div v-if="dataLoaded && book">
-      <v-table>
-        <tbody>
-          <tr>
-            <th class="text-left" style="width: 200px">Id</th>
-            <td>
-              <code>{{ book.id }}</code>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Title Id</th>
-            <td>
-              <code v-if="book.title_id">{{ book.title_id }}</code>
-              <span v-else class="text-grey">None</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Status</th>
-            <td>
-              <BookStatus :book="book" />
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Created</th>
-            <td>
-              <v-tooltip location="bottom">
-                <template #activator="{ props }">
-                  <span v-bind="props">
-                    {{ fromNow(book.created_at) }}
-                  </span>
-                </template>
-                <span>{{ formatDt(book.created_at) }}</span>
-              </v-tooltip>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Name</th>
-            <td>
-              <span v-if="book.name">{{ book.name }}</span>
-              <span v-else class="text-grey">-</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Flavour</th>
-            <td>
-              <span v-if="book.flavour">{{ book.flavour }}</span>
-              <span v-else class="text-grey">-</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Date</th>
-            <td>
-              <span v-if="book.date">{{ book.date }}</span>
-              <span v-else class="text-grey">-</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Article Count</th>
-            <td>
-              {{ book.article_count.toLocaleString() }}
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Media Count</th>
-            <td>
-              {{ book.media_count.toLocaleString() }}
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left" style="width: 200px">Size</th>
-            <td>
-              {{ formatBytes(book.size) }}
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">
+      <div>
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Id</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <code>{{ book.id }}</code>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Title Id</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <router-link
+              v-if="book.title_id"
+              :to="{ name: 'title-detail', params: { id: book.title_id } }"
+            >
+              {{ book.title_id }}
+            </router-link>
+            <span v-else class="text-grey">None</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Status</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <BookStatus :book="book" />
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Created</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <v-tooltip location="bottom">
+              <template #activator="{ props }">
+                <span v-bind="props">
+                  {{ fromNow(book.created_at) }}
+                </span>
+              </template>
+              <span>{{ formatDt(book.created_at) }}</span>
+            </v-tooltip>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Name</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <span v-if="book.name">{{ book.name }}</span>
+            <span v-else class="text-grey">-</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Flavour</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <span v-if="book.flavour">{{ book.flavour }}</span>
+            <span v-else class="text-grey">-</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Date</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <span v-if="book.date">{{ book.date }}</span>
+            <span v-else class="text-grey">-</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">URLs</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" />
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Article Count</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            {{ book.article_count.toLocaleString() }}
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Media Count</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            {{ book.media_count.toLocaleString() }}
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Size</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            {{ formatBytes(book.size) }}
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">
               ZIM Metadata
               <v-btn
                 size="small"
@@ -94,13 +149,19 @@
                 <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
                 Copy
               </v-btn>
-            </th>
-            <td class="py-2">
+            </div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <div class="overflow-y-auto overflow-x-auto" style="max-height: 400px">
               <pre>{{ JSON.stringify(book.zim_metadata, null, 2) }}</pre>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">
+            </div>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">
               Zimcheck Result
               <v-btn
                 size="small"
@@ -111,100 +172,88 @@
                 <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
                 Copy
               </v-btn>
-            </th>
-            <td class="py-2">
+            </div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <div class="overflow-y-auto overflow-x-auto" style="max-height: 400px">
               <pre>{{ JSON.stringify(book.zimcheck_result, null, 2) }}</pre>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">Current Locations</th>
-            <td class="py-2">
-              <div v-if="book.current_locations.length > 0">
-                <v-table size="small">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Warehouse</th>
-                      <th class="text-left">Folder</th>
-                      <th class="text-left">Filename</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="location in book.current_locations"
-                      :key="`current-${location.warehouse_name}-${location.path}`"
-                    >
-                      <td>{{ location.warehouse_name }}</td>
-                      <td>{{ location.path }}</td>
-                      <td>
-                        <code>{{ location.filename }}</code>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
-              </div>
-              <div v-else class="text-grey">No current locations</div>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">Target Locations</th>
-            <td class="py-2">
-              <div v-if="book.target_locations.length > 0">
-                <v-table size="small">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Warehouse</th>
-                      <th class="text-left">Folder</th>
-                      <th class="text-left">Filename</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="location in book.target_locations"
-                      :key="`target-${location.warehouse_name}-${location.path}`"
-                    >
-                      <td>{{ location.warehouse_name }}</td>
-                      <td>{{ location.path }}</td>
-                      <td>
-                        <code>{{ location.filename }}</code>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
-              </div>
-              <div v-else class="text-grey">No target locations</div>
-            </td>
-          </tr>
-          <tr>
-            <th class="text-left pa-4 align-top">
-              Events
-              <v-btn
-                size="small"
-                variant="outlined"
-                class="ml-2"
-                @click="copyToClipboard(book.events.join('\n'))"
-              >
-                <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
-                Copy
-              </v-btn>
-            </th>
-            <td class="py-2">
-              <pre v-for="event in book.events" :key="event">{{ event }}</pre>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+            </div>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Current Locations</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <v-data-table
+              v-if="book.current_locations.length > 0"
+              :headers="locationHeaders"
+              :items="book.current_locations"
+              :items-per-page="-1"
+              :mobile="smAndDown"
+              density="compact"
+              hide-default-footer
+            >
+              <template #[`item.filename`]="{ item }">
+                <code>{{ item.filename }}</code>
+              </template>
+            </v-data-table>
+            <span v-else class="text-grey">No current locations</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Target Locations</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <v-data-table
+              v-if="book.target_locations.length > 0"
+              :headers="locationHeaders"
+              :items="book.target_locations"
+              :items-per-page="-1"
+              :mobile="smAndDown"
+              density="compact"
+              hide-default-footer
+            >
+              <template #[`item.filename`]="{ item }">
+                <code>{{ item.filename }}</code>
+              </template>
+            </v-data-table>
+            <span v-else class="text-grey">No target locations</span>
+          </v-col>
+        </v-row>
+        <v-divider class="my-2"></v-divider>
+
+        <v-row no-gutters class="py-2">
+          <v-col cols="12" md="3">
+            <div class="text-subtitle-2">Events</div>
+          </v-col>
+          <v-col cols="12" md="9">
+            <EventsList :events="book.events" />
+          </v-col>
+        </v-row>
+      </div>
     </div>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
+import EventsList from '@/components/EventsList.vue'
+import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
-import type { Book } from '@/types/book'
+import type { Book, ZimUrl } from '@/types/book'
 import { formatDt, fromNow } from '@/utils/format'
 import { onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
+
+const { smAndDown } = useDisplay()
 
 const loadingStore = useLoadingStore()
 const bookStore = useBookStore()
@@ -213,12 +262,20 @@ const notificationStore = useNotificationStore()
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
 const dataLoaded = ref(false)
+const loadingUrls = ref(false)
+const zimUrls = ref<ZimUrl[]>([])
 
 interface Props {
   id: string
 }
 
 const props = withDefaults(defineProps<Props>(), {})
+
+const locationHeaders = [
+  { title: 'Warehouse', value: 'warehouse_name', sortable: false },
+  { title: 'Folder', value: 'path', sortable: false },
+  { title: 'Filename', value: 'filename', sortable: false },
+]
 
 const loadData = async () => {
   loadingStore.startLoading('Fetching book...')
@@ -238,6 +295,27 @@ const loadData = async () => {
   if (loadingStore.isLoading) {
     loadingStore.stopLoading()
   }
+
+  if (book.value) {
+    loadZimUrls()
+  }
+}
+
+const loadZimUrls = async () => {
+  if (!book.value) return
+
+  loadingUrls.value = true
+
+  const response = await bookStore.fetchZimUrls([book.value.id])
+  if (response?.urls && response.urls[book.value.id]) {
+    zimUrls.value = response.urls[book.value.id]
+  } else {
+    for (const err of bookStore.errors) {
+      notificationStore.showError(err)
+    }
+  }
+
+  loadingUrls.value = false
 }
 
 onMounted(async () => {

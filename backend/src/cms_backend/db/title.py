@@ -17,10 +17,46 @@ from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExi
 from cms_backend.db.models import CollectionTitle, Title
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
+    BookLightSchema,
     ListResult,
+    TitleCollectionSchema,
+    TitleFullSchema,
     TitleLightSchema,
 )
 from cms_backend.utils.datetime import getnow
+
+
+def create_title_full_schema(title: Title) -> TitleFullSchema:
+    """Create a schema of a tilte."""
+    return TitleFullSchema(
+        id=title.id,
+        name=title.name,
+        maturity=title.maturity,
+        events=title.events,
+        books=[
+            BookLightSchema(
+                id=book.id,
+                title_id=book.title_id,
+                needs_processing=book.needs_processing,
+                has_error=book.has_error,
+                needs_file_operation=book.needs_file_operation,
+                location_kind=book.location_kind,
+                created_at=book.created_at,
+                name=book.name,
+                date=book.date,
+                flavour=book.flavour,
+            )
+            for book in title.books
+        ],
+        collections=[
+            TitleCollectionSchema(
+                collection_id=tc.collection_id,
+                collection_name=tc.collection.name,
+                path=str(tc.path),
+            )
+            for tc in title.collections
+        ],
+    )
 
 
 def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
@@ -36,6 +72,13 @@ def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None
     """Get a title by name if possible else None"""
 
     return session.scalars(select(Title).where(Title.name == name)).one_or_none()
+
+
+def get_title_by_name(session: OrmSession, *, name: str) -> Title:
+    """Get a title or raise RecordDoesNotExistError if it doesn't exist."""
+    if (title := get_title_by_name_or_none(session, name=name)) is None:
+        raise RecordDoesNotExistError(f"Title with name '{name}' does not exist")
+    return title
 
 
 def get_titles(

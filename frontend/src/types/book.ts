@@ -44,3 +44,13 @@ export interface BookLight {
   date?: string
   flavour?: string
 }
+
+export interface ZimUrl {
+  kind: 'view' | 'download'
+  url: string
+  collection: string
+}
+
+export interface ZimUrls {
+  urls: Record<string, ZimUrl[]>
+}
