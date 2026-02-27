@@ -23,27 +23,6 @@ export const useTitleStore = defineStore('title', () => {
   })
   const authStore = useAuthStore()
 
-  const fetchTitle = async (titleName: string, forceReload: boolean = false) => {
-    const service = await authStore.getApiService('titles')
-    // Check if we already have the title and don't need to force reload
-    if (!forceReload && title.value && title.value.name === titleName) {
-      return title.value
-    }
-
-    try {
-      errors.value = []
-      // Clear current title until we receive the right one
-      title.value = null
-
-      const response = await service.get<null, Title>(`/${titleName}`)
-      title.value = response
-    } catch (_error) {
-      console.error('Failed to load title', _error)
-      errors.value = translateErrors(_error as ErrorResponse)
-    }
-    return title.value
-  }
-
   const fetchTitleById = async (titleId: string, forceReload: boolean = false) => {
     const service = await authStore.getApiService('titles')
     // Check if we already have the title and don't need to force reload
@@ -127,7 +106,6 @@ export const useTitleStore = defineStore('title', () => {
     paginator,
     errors,
     // Actions
-    fetchTitle,
     fetchTitleById,
     fetchTitles,
     savePaginatorLimit,

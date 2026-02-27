@@ -62,6 +62,14 @@ def get_books(
     )
 
 
+@router.get("/zims")
+def get_zim_urls(
+    zim_ids: Annotated[list[UUID], Query()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> ZimUrlsSchema:
+    return db_get_zim_urls(session, zim_ids)
+
+
 @router.get("/{book_id}")
 def get_book(
     book_id: Annotated[UUID, Path()],
@@ -114,11 +122,3 @@ def get_book(
         current_locations=current_locations,
         target_locations=target_locations,
     )
-
-
-@router.get("/zims")
-def get_zim_urls(
-    zim_ids: Annotated[list[UUID], Query()],
-    session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ZimUrlsSchema:
-    return db_get_zim_urls(session, zim_ids)

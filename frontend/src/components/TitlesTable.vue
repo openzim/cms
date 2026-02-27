@@ -53,7 +53,7 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <router-link :to="{ name: 'title-detail', params: { id: item.id } }">
+          <router-link :to="{ name: 'title-detail', params: { id: item.name } }">
             <span class="d-flex align-center">
               {{ item.name }}
             </span>

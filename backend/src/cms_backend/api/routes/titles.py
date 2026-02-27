@@ -10,17 +10,18 @@ from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, Skip
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db.title import create_title as db_create_title
+from cms_backend.db.title import create_title_full_schema
 from cms_backend.db.title import get_title_by_id as db_get_title_by_id
+from cms_backend.db.title import get_title_by_name as db_get_title_by_name
 from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
-    BookLightSchema,
-    TitleCollectionSchema,
     TitleFullSchema,
     TitleLightSchema,
 )
+from cms_backend.utils.datetime import is_valid_uuid
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 
@@ -80,43 +81,17 @@ def get_titles(
     )
 
 
-@router.get("/{title_id}")
+@router.get("/{title_identifier}")
 def get_title(
-    title_id: UUID,
+    title_identifier: str,
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleFullSchema:
     """Get a title by ID with full details including books"""
-    title = db_get_title_by_id(session, title_id=title_id)
-
-    return TitleFullSchema(
-        id=title.id,
-        name=title.name,
-        maturity=title.maturity,
-        events=title.events,
-        books=[
-            BookLightSchema(
-                id=book.id,
-                title_id=book.title_id,
-                needs_processing=book.needs_processing,
-                has_error=book.has_error,
-                needs_file_operation=book.needs_file_operation,
-                location_kind=book.location_kind,
-                created_at=book.created_at,
-                name=book.name,
-                date=book.date,
-                flavour=book.flavour,
-            )
-            for book in title.books
-        ],
-        collections=[
-            TitleCollectionSchema(
-                collection_id=tc.collection_id,
-                collection_name=tc.collection.name,
-                path=str(tc.path),
-            )
-            for tc in title.collections
-        ],
-    )
+    if is_valid_uuid(title_identifier):
+        title = db_get_title_by_id(session, title_id=UUID(title_identifier))
+    else:
+        title = db_get_title_by_name(session, name=title_identifier)
+    return create_title_full_schema(title)
 
 
 @router.post(

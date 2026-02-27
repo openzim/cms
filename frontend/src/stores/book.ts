@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
-import type { Book, BookLight } from '@/types/book'
+import type { Book, BookLight, ZimUrls } from '@/types/book'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
@@ -80,6 +80,20 @@ export const useBookStore = defineStore('book', () => {
     localStorage.setItem('books-table-limit', limit.toString())
   }
 
+  const fetchZimUrls = async (zim_ids: string[]) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.get<null, ZimUrls>('/zims', {
+        params: { zim_ids },
+      })
+      return response
+    } catch (_error) {
+      console.error('Failed to fetch zim URLs', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -91,5 +105,6 @@ export const useBookStore = defineStore('book', () => {
     fetchBook,
     fetchBooks,
     savePaginatorLimit,
+    fetchZimUrls,
   }
 })

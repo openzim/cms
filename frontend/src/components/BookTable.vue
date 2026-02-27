@@ -49,9 +49,7 @@
 
         <template #[`item.id`]="{ item }">
           <router-link :to="{ name: 'book-detail', params: { id: item.id } }">
-            <span class="d-flex align-center">
-              {{ item.id }}
-            </span>
+            {{ item.id }}
           </router-link>
         </template>
 
