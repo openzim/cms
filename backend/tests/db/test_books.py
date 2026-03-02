@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
@@ -15,6 +16,7 @@ from cms_backend.db.models import (
     Title,
     Warehouse,
 )
+from cms_backend.utils.datetime import getnow
 
 
 def test_get_book_or_none_not_found(
@@ -357,3 +359,70 @@ def test_get_zim_urls_book_with_subpath(
     assert view_url is not None
     assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
     assert view_url.collection == collection.name
+
+
+def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavour(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(
+        warehouse=warehouse,
+        download_base_url="https://download.kiwix.org",
+        view_base_url="https://browse.library.kiwix.org",
+    )
+    create_collection_title(title=title, collection=collection, path=Path(""))
+    now = getnow()
+
+    book1 = create_book(
+        zim_metadata={"Name": title.name},
+        created_at=now - datetime.timedelta(days=7),
+        flavour="test",
+    )
+    book1.title = title
+    title.books.append(book1)
+
+    create_book_location(
+        book=book1,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    book2 = create_book(
+        zim_metadata={"Name": title.name},
+        created_at=now - datetime.timedelta(days=14),
+        flavour="test",
+    )
+    book2.title = title
+    title.books.append(book2)
+
+    create_book_location(
+        book=book2,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all-2.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book1.id, book2.id])
+
+    assert book1.id in result.urls
+    assert book2.id in result.urls
+    assert len(result.urls[book1.id]) == 2
+    assert len(result.urls[book2.id]) == 1
+
+    book1_view_url = next((u for u in result.urls[book1.id] if u.kind == "view"), None)
+    assert book1_view_url is not None
+
+    book2_view_url = next((u for u in result.urls[book2.id] if u.kind == "view"), None)
+    assert book2_view_url is None
