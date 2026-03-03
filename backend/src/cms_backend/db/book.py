@@ -25,7 +25,7 @@ def create_book(
     media_count: int,
     size: int,
     zim_metadata: dict[str, Any],
-    zimcheck_result: dict[str, Any],
+    zimcheck_result_url: str,
     zimfarm_notification: ZimfarmNotification,
 ) -> Book:
     """Create a new book"""
@@ -42,7 +42,7 @@ def create_book(
         media_count=media_count,
         size=size,
         zim_metadata=zim_metadata,
-        zimcheck_result=zimcheck_result,
+        zimcheck_result_url=zimcheck_result_url,
         name=name,
         date=date,
         flavour=flavour,

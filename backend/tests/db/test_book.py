@@ -17,7 +17,7 @@ def test_create_book(
         media_count=faker.random_int(),
         size=faker.random_int(),
         zim_metadata={"key": "value"},
-        zimcheck_result={"check_key": "check_value"},
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
         zimfarm_notification=zimfarm_notification,
     )
     dbsession.flush()

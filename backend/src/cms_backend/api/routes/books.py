@@ -116,7 +116,7 @@ def get_book(
         article_count=db_book.article_count,
         media_count=db_book.media_count,
         size=db_book.size,
-        zimcheck_result=db_book.zimcheck_result,
+        zimcheck_result_url=db_book.zimcheck_result_url,
         zim_metadata=db_book.zim_metadata,
         events=db_book.events,
         current_locations=current_locations,

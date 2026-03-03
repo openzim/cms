@@ -216,8 +216,8 @@ def test_get_book_by_id(
     assert response_doc["media_count"] == book.media_count
     assert "size" in response_doc
     assert response_doc["size"] == book.size
-    assert "zimcheck_result" in response_doc
-    assert response_doc["zimcheck_result"] == book.zimcheck_result
+    assert "zimcheck_result_url" in response_doc
+    assert response_doc["zimcheck_result_url"] == book.zimcheck_result_url
     assert "zim_metadata" in response_doc
     assert response_doc["zim_metadata"] == book.zim_metadata
     assert "events" in response_doc

@@ -118,11 +118,11 @@ class Book(Base):
     article_count: Mapped[int] = mapped_column(BigInteger)
     media_count: Mapped[int] = mapped_column(BigInteger)
     size: Mapped[int] = mapped_column(BigInteger)
-    zimcheck_result: Mapped[dict[str, Any]]
     zim_metadata: Mapped[dict[str, Any]]
     name: Mapped[str | None]
     date: Mapped[str | None]
     flavour: Mapped[str | None]
+    zimcheck_result_url: Mapped[str | None]
     needs_processing: Mapped[bool] = mapped_column(
         init=False, default=False, server_default="false"
     )
