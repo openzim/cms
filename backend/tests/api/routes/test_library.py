@@ -491,3 +491,89 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     # Should be the newer book
     assert books[0].get("title") == "Wikipedia New"
     assert books[0].get("id") == str(newer_book.id)
+
+
+def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that grouping is done by title_id, not by title name.
+
+    This demonstrates that renaming a title doesn't affect the catalog output
+    because books are grouped by title_id and flavour, not by the title name.
+    """
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+
+    title = create_title(name="wiki_original")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    older_book = create_book(
+        created_at=getnow() - timedelta(days=30),
+        zim_metadata={
+            "Name": "wiki_original",
+            "Title": "Wikipedia Old Version",
+            "Description": "Old version with original name",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2024-12-01",
+            "Flavour": "maxi",
+        },
+    )
+    older_book.title = title
+    older_book.needs_processing = False
+    older_book.has_error = False
+    older_book.needs_file_operation = False
+    dbsession.flush()
+
+    create_book_location(
+        book=older_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+
+    # Rename the title
+    title.name = "wiki_renamed"
+    dbsession.flush()
+
+    newer_book = create_book(
+        created_at=getnow(),
+        zim_metadata={
+            "Name": "wiki_renamed",
+            "Title": "Wikipedia New Version",
+            "Description": "New version with renamed title",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-15",
+            "Flavour": "maxi",
+        },
+    )
+    newer_book.title = title
+    newer_book.needs_processing = False
+    newer_book.has_error = False
+    newer_book.needs_file_operation = False
+    dbsession.flush()
+
+    create_book_location(
+        book=newer_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+    dbsession.flush()
+
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+
+    assert len(books) == 1
+
+    assert books[0].get("title") == "Wikipedia New Version"
+    assert books[0].get("id") == str(newer_book.id)
+    assert books[0].get("name") == "wiki_renamed"
