@@ -25,7 +25,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
                 "media_count",
                 "size",
                 "metadata",
-                "zimcheck",
+                "zimcheck_url",
                 "folder_name",
                 "filename",
             ]
@@ -61,6 +61,15 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
+        zimcheck_url = notification.content.get("zimcheck_url")
+        if not isinstance(zimcheck_url, str) or not zimcheck_url:
+            notification.events.append(
+                f"{getnow()}: zimcheck_url must be a non-empty string, got "
+                f"{type(zimcheck_url).__name__}: {zimcheck_url}"
+            )
+            notification.status = "bad_notification"
+            return
+
         book = create_book(
             session=session,
             book_id=notification.id,
@@ -68,7 +77,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             media_count=notification.content["media_count"],
             size=notification.content["size"],
             zim_metadata=notification.content["metadata"],
-            zimcheck_result=notification.content["zimcheck"],
+            zimcheck_result_url=zimcheck_url,
             zimfarm_notification=notification,
         )
 

@@ -99,7 +99,7 @@ class BookFullSchema(BookLightSchema):
     article_count: int
     media_count: int
     size: int
-    zimcheck_result: dict[str, Any]
+    zimcheck_result_url: str | None
     zim_metadata: dict[str, Any]
     events: list[str]
     current_locations: list[BookLocationSchema]

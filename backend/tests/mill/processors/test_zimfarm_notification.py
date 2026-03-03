@@ -35,7 +35,7 @@ VALID_NOTIFICATION_CONTENT = {
         "Description": "Test description",
         "Language": "eng",
     },
-    "zimcheck": {"status": "passed"},
+    "zimcheck_url": "https://www.example.com/zimcheck.json",
     "folder_name": "test_folder",
     "filename": "test.zim",
 }
@@ -53,7 +53,7 @@ class TestBadNotifications:
         content = {
             "size": 1000000,
             "metadata": {"Name": "test"},
-            "zimcheck": {},
+            "zimcheck_url": "https://www.example.com/zimcheck.json",
             "folder_name": "test",
             "filename": "test.zim",
         }
