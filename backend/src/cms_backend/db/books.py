@@ -117,6 +117,8 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     stmt = (
         select(
             Book.id.label("book_id"),
+            Title.id.label("title_id"),
+            Book.flavour.label("book_flavour"),
             Collection.name.label("collection_name"),
             Collection.download_base_url,
             Collection.view_base_url,
@@ -143,10 +145,14 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
                 Book.needs_file_operation.is_(False),
             )
         )
+        .order_by(Title.id, Book.flavour, Book.created_at.desc())
     )
 
     result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
 
+    # Filter to keep only one view link for the latest book per title+flavour
+    # combination
+    seen: set[tuple[str | None, str | None]] = set()
     for row in session.execute(stmt).all():
         if row.download_base_url:
             result.urls[row.book_id].append(
@@ -162,15 +168,20 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
             )
 
         if row.view_base_url:
-            filename_without_suffix = (
-                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
-            )
-            result.urls[row.book_id].append(
-                ZimUrlSchema(
-                    kind="view",
-                    url=AnyUrl(f"{row.view_base_url}/viewer#{filename_without_suffix}"),
-                    collection=row.collection_name,
+            key = (row.title_id, row.book_flavour)
+            if key not in seen:
+                seen.add(key)
+                filename_without_suffix = (
+                    row.filename[:-4] if row.filename.endswith(".zim") else row.filename
                 )
-            )
+                result.urls[row.book_id].append(
+                    ZimUrlSchema(
+                        kind="view",
+                        url=AnyUrl(
+                            f"{row.view_base_url}/viewer#{filename_without_suffix}"
+                        ),
+                        collection=row.collection_name,
+                    )
+                )
 
     return result
