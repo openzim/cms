@@ -146,8 +146,10 @@ import type { Title } from '@/types/title'
 import type { ZimUrl } from '@/types/book'
 import { computed, onMounted, ref } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useRouter } from 'vue-router'
 
 const { smAndDown } = useDisplay()
+const router = useRouter()
 
 const loadingStore = useLoadingStore()
 const titleStore = useTitleStore()
@@ -236,8 +238,13 @@ const openEditDialog = () => {
   editDialogOpen.value = true
 }
 
-const handleTitleUpdated = async () => {
+const handleTitleUpdated = async (updatedTitle: { id: string; name: string }) => {
   notificationStore.showSuccess('Title updated successfully!')
+
+  // If the name changed, navigate to the new URL
+  if (updatedTitle.name !== props.id) {
+    await router.push({ name: 'title-detail', params: { id: updatedTitle.name } })
+  }
   await loadData(true)
 }
 </script>

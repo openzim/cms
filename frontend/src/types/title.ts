@@ -37,6 +37,7 @@ export interface TitleCreate {
 }
 
 export interface TitleUpdate {
+  name?: string
   maturity: string
   collection_titles: BaseTitleCollection[]
 }

@@ -16,7 +16,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  updated: []
+  updated: [updatedTitle: { id: string; name: string }]
 }>()
 
 const isOpen = computed({
@@ -24,7 +24,7 @@ const isOpen = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
-function handleUpdated() {
-  emit('updated')
+function handleUpdated(updatedTitle: { id: string; name: string }) {
+  emit('updated', updatedTitle)
 }
 </script>

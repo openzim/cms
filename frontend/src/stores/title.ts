@@ -86,7 +86,7 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const updateTitle = async (titleId: string, titleData: TitleUpdate) => {
+  const updateTitle = async (titleId: string, titleData: Partial<TitleUpdate>) => {
     const service = await authStore.getApiService('titles')
     try {
       errors.value = []

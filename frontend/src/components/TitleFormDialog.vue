@@ -10,12 +10,10 @@
           <v-text-field
             v-model="formData.name"
             label="Title Name"
-            :rules="isEditMode ? [] : [rules.required]"
+            :rules="[rules.required]"
             variant="outlined"
             density="comfortable"
             class="mb-2"
-            :disabled="isEditMode"
-            :readonly="isEditMode"
           />
 
           <v-select
@@ -132,7 +130,7 @@
 <script setup lang="ts">
 import { useCollectionsStore } from '@/stores/collections'
 import { useTitleStore } from '@/stores/title'
-import type { BaseTitleCollection, Title, TitleCreate } from '@/types/title'
+import type { BaseTitleCollection, Title, TitleCreate, TitleUpdate } from '@/types/title'
 import { computed, onMounted, ref, watch } from 'vue'
 
 interface Props {
@@ -147,7 +145,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   created: []
-  updated: []
+  updated: [updatedTitle: { id: string; name: string }]
 }>()
 
 const titleStore = useTitleStore()
@@ -240,8 +238,9 @@ const hasCollectionChanges = computed(() => {
 const hasChanges = computed(() => {
   if (!isEditMode.value) return true
 
+  const nameChanged = formData.value.name !== props.title?.name
   const maturityChanged = formData.value.maturity !== props.title?.maturity
-  return maturityChanged || hasCollectionChanges.value
+  return nameChanged || maturityChanged || hasCollectionChanges.value
 })
 
 const rules = {
@@ -332,11 +331,22 @@ async function handleSubmit() {
 
   try {
     if (isEditMode.value && props.title) {
-      await titleStore.updateTitle(props.title.id, {
-        maturity: formData.value.maturity,
-        collection_titles: formData.value.collection_titles,
-      })
-      emit('updated')
+      const updatePayload: Partial<TitleUpdate> = {}
+
+      if (formData.value.name !== props.title.name) {
+        updatePayload.name = formData.value.name
+      }
+
+      if (formData.value.maturity !== props.title.maturity) {
+        updatePayload.maturity = formData.value.maturity
+      }
+
+      if (hasCollectionChanges.value) {
+        updatePayload.collection_titles = formData.value.collection_titles
+      }
+
+      const response = await titleStore.updateTitle(props.title.id, updatePayload)
+      emit('updated', { id: response.id, name: response.name })
     } else {
       await titleStore.createTitle(formData.value)
       emit('created')

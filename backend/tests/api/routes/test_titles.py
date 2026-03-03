@@ -319,17 +319,18 @@ def test_update_title_required_permissions(
     assert response.status_code == expected_status_code
 
 
-def test_update_title_maturity(
+def test_update_title(
     client: TestClient,
     create_title: Callable[..., Title],
     access_token: str,
 ):
-    """Test updating a title's maturity"""
+    """Test updating a title's data"""
     title = create_title(name="wikipedia_en_test")
     assert title.maturity == "dev"
 
     update_data = {
         "maturity": "robust",
+        "name": "wikipedia_en",
     }
 
     response = client.patch(
@@ -341,5 +342,5 @@ def test_update_title_maturity(
     data = response.json()
 
     assert data["id"] == str(title.id)
-    assert data["name"] == "wikipedia_en_test"
+    assert data["name"] == "wikipedia_en"
     assert data["maturity"] == "robust"

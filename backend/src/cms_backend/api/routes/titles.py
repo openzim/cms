@@ -56,6 +56,7 @@ class TitleCreateSchema(BaseTitleCreateUpdateSchema):
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
+    name: NotEmptyString | None = None
     maturity: Literal["dev", "robust"] | None = None
 
 
@@ -128,6 +129,7 @@ def update_title(
     title = db_update_title(
         session,
         title_id=title_id,
+        name=title_data.name,
         maturity=title_data.maturity,
         collection_titles=title_data.collection_titles,
     )
