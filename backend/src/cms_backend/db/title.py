@@ -176,8 +176,9 @@ def update_title(
     session: OrmSession,
     *,
     title_id: UUID,
-    maturity: str | None,
-    collection_titles: list[BaseTitleCollectionSchema] | None,
+    maturity: str | None = None,
+    name: str | None = None,
+    collection_titles: list[BaseTitleCollectionSchema] | None = None,
 ) -> Title:
     """Update a title's maturity and/or collection_titles.
 
@@ -195,6 +196,12 @@ def update_title(
         title.events.append(
             f"{getnow()}: maturity updated from {old_maturity} to {maturity}"
         )
+
+    # Update name if provided
+    if name and name != title.name:
+        old_name = title.name
+        title.name = name
+        title.events.append(f"{getnow()}: name updated from {old_name} to {name}")
 
     # Determine if collection titles changed
     collection_titles_changed = False

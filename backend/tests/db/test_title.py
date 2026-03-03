@@ -89,6 +89,22 @@ def test_get_titles_skip(
     assert len(results.records) == expected_count
 
 
+def test_update_title_name(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+):
+    """Test updating a title's name"""
+    create_collection(name="wikipedia")
+
+    title = create_title(name="wikipedia_en_test")
+
+    update_title(dbsession, title_id=title.id, name="wikipedia_en")
+
+    dbsession.refresh(title)
+    assert title.name == "wikipedia_en"
+
+
 def test_update_title_collection_titles(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
