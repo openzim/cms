@@ -43,6 +43,11 @@ from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import get_missing_keys, get_missing_metadata_keys
 
 
+def normalize_zim_name(name: str) -> str:
+    """Normalize ZIM name to handle phets_ -> phet_ transition."""
+    return name.replace("phets_", "phet_", 1) if name.startswith("phets_") else name
+
+
 def get_zim_info(fpath: pathlib.Path) -> dict[str, Any]:
     zim = Archive(fpath)
     payload: dict[str, Any] = {
@@ -304,7 +309,7 @@ def _create_book_from_zim(
         size=zim_info["size"],
         zim_metadata=zim_metadata,
         zimcheck_result={},
-        name=zim_metadata["Name"],
+        name=normalize_zim_name(zim_metadata["Name"]),
         date=zim_metadata["Date"],
         flavour=zim_metadata.get("Flavour") or None,
         zimfarm_notification=None,
@@ -421,7 +426,10 @@ def process_zim_file(
         return
 
     title = get_or_create_title(
-        session, zim_info["metadata"]["Name"], collections[0], zim_path_in_warehouse
+        session,
+        normalize_zim_name(zim_info["metadata"]["Name"]),
+        collections[0],
+        zim_path_in_warehouse,
     )
 
     _create_book_from_zim(
