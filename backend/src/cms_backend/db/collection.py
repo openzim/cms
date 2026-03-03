@@ -81,6 +81,7 @@ def get_latest_books_for_collection(
     stmt = (
         select(
             Book,
+            Title.id.label("title_id"),
             Collection.download_base_url,
             CollectionTitle.path.label("subpath"),
             BookLocation.filename,
@@ -100,14 +101,14 @@ def get_latest_books_for_collection(
                 Collection.id == collection_id,
             )
         )
-        .order_by(Book.name, Book.flavour, Book.created_at.desc())
+        .order_by(Title.id, Book.flavour, Book.created_at.desc())
     )
     # Filter to keep only the latest book per name+flavour combination
     seen: set[tuple[str | None, str | None]] = set()
     latest_books: list[CollectionBook] = []
     for row in session.execute(stmt).all():
         book = cast(Book, row.Book)
-        key = (book.name, book.flavour)
+        key = (row.title_id, book.flavour)
         if key not in seen:
             seen.add(key)
             latest_books.append(
