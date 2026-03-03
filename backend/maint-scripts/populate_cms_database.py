@@ -469,6 +469,9 @@ def scan_warehouse(
     logger.info(f"Found {len(zim_files)} ZIM file(s) in {local_warehouse_path}")
 
     for zim_file in zim_files:
+        # ignore files specially crafted for DL speed tests, not needed in CMS
+        if zim_file.name.startswith("speedtest_"):
+            continue
         with db_session.begin() as session:
             try:
                 process_zim_file(
