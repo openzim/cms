@@ -13,6 +13,7 @@ from cms_backend.db.book import (
     create_book_target_locations,
 )
 from cms_backend.db.collection import get_collection_by_name
+from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import CollectionTitle, Title
 from cms_backend.schemas.orms import (
@@ -59,10 +60,15 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
     )
 
 
+def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | None:
+    """Get a title by ID"""
+    return session.scalars(select(Title).where(Title.id == title_id)).one_or_none()
+
+
 def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
     """Get a title by ID"""
 
-    title = session.scalars(select(Title).where(Title.id == title_id)).one_or_none()
+    title = get_title_by_id_or_none(session, title_id=title_id)
     if not title:
         raise RecordDoesNotExistError(f"Title with id {title_id} does not exist")
     return title
@@ -169,6 +175,10 @@ def create_title(
         logger.exception("Unknown exception encountered while creating title")
         raise
 
+    create_title_modified_event(
+        session, action="created", title_name=title.name, title_id=title.id
+    )
+
     return title
 
 
@@ -197,11 +207,13 @@ def update_title(
             f"{getnow()}: maturity updated from {old_maturity} to {maturity}"
         )
 
+    name_changed: bool = False
     # Update name if provided
     if name and name != title.name:
         old_name = title.name
         title.name = name
         title.events.append(f"{getnow()}: name updated from {old_name} to {name}")
+        name_changed = True
 
     # Determine if collection titles changed
     collection_titles_changed = False
@@ -280,4 +292,8 @@ def update_title(
                 f"{getnow()}: locations updated due to title collection change"
             )
 
+    if name_changed:
+        create_title_modified_event(
+            session, action="updated", title_name=title.name, title_id=title.id
+        )
     return get_title_by_id(session, title_id=title.id)

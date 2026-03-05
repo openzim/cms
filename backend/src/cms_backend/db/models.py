@@ -308,3 +308,13 @@ class Refreshtoken(Base):
     user: Mapped["User"] = relationship(back_populates="refresh_tokens", init=False)
 
     __table__args = (Index("user_id", "token", unique=True),)
+
+
+class Event(Base):
+    __tablename__ = "event"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    created_at: Mapped[datetime]
+    topic: Mapped[str]
+    payload: Mapped[dict[str, Any]]

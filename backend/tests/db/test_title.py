@@ -1,9 +1,10 @@
 from collections.abc import Callable
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, Collection, Title
+from cms_backend.db.models import Book, BookLocation, Collection, Event, Title
 from cms_backend.db.title import get_title_by_name_or_none, get_titles, update_title
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
@@ -103,6 +104,14 @@ def test_update_title_name(
 
     dbsession.refresh(title)
     assert title.name == "wikipedia_en"
+
+    events = dbsession.scalars(
+        select(Event).where(Event.topic == "title_modified")
+    ).all()
+    assert len(events) == 1
+    assert events[0].payload["action"] == "updated"
+    assert events[0].payload["name"] == "wikipedia_en"
+    assert events[0].payload["id"] == str(title.id)
 
 
 def test_update_title_collection_titles(
