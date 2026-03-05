@@ -79,7 +79,7 @@ jobs:
             --network host \
             -e DATABASE_URL=$DATABASE_URL \
             -e JWT_SECRET=DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw \
-            -e REDIS_DATABASE_URL=REDIS_DATABASE_URL \
+            -e REDIS_DATABASE_URL=$REDIS_DATABASE_URL \
             -p 8000:80 \
             cms-backend-api:test
           # wait for container to be ready
@@ -105,7 +105,7 @@ jobs:
             -e DATABASE_URL=$DATABASE_URL \
             -e QUARANTINE_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
             -e STAGING_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
-            -e REDIS_DATABASE_URL=REDIS_DATABASE_URL \
+            -e REDIS_DATABASE_URL=$REDIS_DATABASE_URL \
             cms-backend-mill:test cms-mill --help
 
       - name: Run shuttle container
@@ -113,7 +113,7 @@ jobs:
           docker run -d --name cms-shuttle-test \
             --network host \
             -e DATABASE_URL=$DATABASE_URL \
-            -e REDIS_DATABASE_URL=REDIS_DATABASE_URL \
+            -e REDIS_DATABASE_URL=$REDIS_DATABASE_URL \
             cms-backend-shuttle:test cms-shuttle --help
 
       - name: Run tests
