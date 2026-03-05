@@ -43,8 +43,16 @@ from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import get_missing_keys, get_missing_metadata_keys
 
 
-def normalize_zim_name(name: str) -> str:
-    """Normalize ZIM name to handle phets_ -> phet_ transition."""
+def normalize_zim_name(zim_id: str, name: str) -> str:
+    """Normalize ZIM name to handle special edge cases."""
+    # special bad ZIM name
+    if zim_id == "950c7e27-2676-7e24-a2d0-ea362ce893ee":
+        return "phet_in_all"
+    elif zim_id == "2db32bd7-6ac5-a49d-d57a-11fc77766fd1":
+        return "phet_iw_all"
+    elif zim_id == "ebe68753-71b9-6225-2a14-fbea8618dc1e":
+        return "phet_sp_all"
+    # generic transition from phets_ to phet_ in ZIM name
     return name.replace("phets_", "phet_", 1) if name.startswith("phets_") else name
 
 
@@ -308,7 +316,7 @@ def _create_book_from_zim(
         media_count=zim_info["media_count"],
         size=zim_info["size"],
         zim_metadata=zim_metadata,
-        name=normalize_zim_name(zim_metadata["Name"]),
+        name=normalize_zim_name(zim_info["id"], zim_metadata["Name"]),
         zimcheck_result_url=None,
         date=zim_metadata["Date"],
         flavour=zim_metadata.get("Flavour") or None,
@@ -427,7 +435,7 @@ def process_zim_file(
 
     title = get_or_create_title(
         session,
-        normalize_zim_name(zim_info["metadata"]["Name"]),
+        normalize_zim_name(zim_info["id"], zim_info["metadata"]["Name"]),
         collections[0],
         zim_path_in_warehouse,
     )
@@ -461,6 +469,9 @@ def scan_warehouse(
     logger.info(f"Found {len(zim_files)} ZIM file(s) in {local_warehouse_path}")
 
     for zim_file in zim_files:
+        # ignore files specially crafted for DL speed tests, not needed in CMS
+        if zim_file.name.startswith("speedtest_"):
+            continue
         with db_session.begin() as session:
             try:
                 process_zim_file(
