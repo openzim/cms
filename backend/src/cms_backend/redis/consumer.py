@@ -63,7 +63,7 @@ class RedisConsumer:
         try:
             # Check for pending messages (from this consumer)
             if self._check_backlog:
-                stream_id = "0"  # '0-0' means my pending messages
+                stream_id = "0"  # '0' means my pending messages
             else:
                 stream_id = ">"  # '>' means new messages
 
