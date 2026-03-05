@@ -31,6 +31,20 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redisdb:
+        image: redis:8.6.1-trixie
+        ports:
+          - 6379:6379
+        env:
+          - REDIS_PASSWORD=cmspass
+          - REDISCLI_AUTH=${REDIS_PASSWORD}
+          - REDIS_ARGS=--requirepass ${REDIS_PASSWORD}
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DATABASE_URL: postgresql+psycopg://cms:cmspass@localhost:5432/cmstest
       ALEMBIC_UPGRADE_HEAD_ON_START: false
