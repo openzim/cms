@@ -30,8 +30,12 @@ class Context:
 
     debug: bool = parse_bool(os.getenv("DEBUG", "False"))
 
-    # URL to connect to the database
+    # URL to connect to the PostgreSQL database
     database_url: str = get_mandatory_env("DATABASE_URL")
+    # URL to connect to connect to Redis database. Should be mandatory but not needed
+    # by shuttle
+    redis_database_url = os.getenv("REDIS_DATABASE_URL", default="")
+    mill_events_key = os.getenv("MILL_EVENTS_KEY", default="mill:events")
 
     # should we run alembic migrations on startup
     alembic_upgrade_head_on_start: bool = parse_bool(

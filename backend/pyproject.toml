@@ -25,6 +25,7 @@ dependencies = [
     "regex == 2025.10.23",
     "humanfriendly == 10.0",
     "Werkzeug == 3.1.5",
+    "redis[hiredis] == 7.2.1",
 ]
 dynamic = ["version"]
 
@@ -76,6 +77,7 @@ Donate = "https://www.kiwix.org/en/support-us/"
 [project.scripts]
 cms-api = "cms_backend.api.main:app"
 cms-mill = "cms_backend.mill.main:main"
+cms-mill-stream-processor = "cms_backend.mill.stream_processor:main"
 cms-shuttle = "cms_backend.shuttle.main:main"
 create-initial-user = "cms_backend.utils.database:create_initial_user"
 check-db-schema = "cms_backend.utils.database:check_if_schema_is_up_to_date"

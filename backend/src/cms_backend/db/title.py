@@ -15,6 +15,7 @@ from cms_backend.db.book import (
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import CollectionTitle, Title
+from cms_backend.redis.publisher import RedisPublisher
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
     BookLightSchema,
@@ -130,6 +131,7 @@ def get_titles(
 
 def create_title(
     session: OrmSession,
+    publisher: RedisPublisher | None = None,
     *,
     name: str,
     maturity: str | None,
@@ -169,11 +171,15 @@ def create_title(
         logger.exception("Unknown exception encountered while creating title")
         raise
 
+    if publisher:
+        publisher.publish_title_modified(str(title.id), title.name, action="created")
+
     return title
 
 
 def update_title(
     session: OrmSession,
+    publisher: RedisPublisher | None = None,
     *,
     title_id: UUID,
     maturity: str | None = None,
@@ -198,10 +204,12 @@ def update_title(
         )
 
     # Update name if provided
+    title_changed = False
     if name and name != title.name:
         old_name = title.name
         title.name = name
         title.events.append(f"{getnow()}: name updated from {old_name} to {name}")
+        title_changed = True
 
     # Determine if collection titles changed
     collection_titles_changed = False
@@ -280,4 +288,6 @@ def update_title(
                 f"{getnow()}: locations updated due to title collection change"
             )
 
+    if title_changed and publisher:
+        publisher.publish_title_modified(str(title.id), title.name, action="updated")
     return get_title_by_id(session, title_id=title.id)

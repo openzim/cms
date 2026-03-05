@@ -3,6 +3,7 @@ from collections.abc import Callable, Generator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -360,3 +361,12 @@ def access_token(user: User) -> str:
         issue_time=getnow(),
         user_id=str(user.id),
     )
+
+
+@pytest.fixture
+def mock_redis_publisher() -> MagicMock:
+    """Mock RedisPublisher for testing without Redis connection."""
+    mock = MagicMock()
+    mock.publish_title_modified = MagicMock(return_value="mock-message-id")
+    mock.close = MagicMock()
+    return mock
