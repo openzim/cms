@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import model_validator
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import require_permission
+from cms_backend.api.routes.dependencies import get_redis_publisher, require_permission
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -15,6 +15,7 @@ from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_title_by_name as db_get_title_by_name
 from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.db.title import update_title as db_update_title
+from cms_backend.redis.publisher import RedisPublisher
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
@@ -101,10 +102,12 @@ def get_title(
 def create_title(
     title_data: TitleCreateSchema,
     session: OrmSession = Depends(gen_dbsession),
+    publisher: RedisPublisher = Depends(get_redis_publisher),
 ) -> TitleLightSchema:
     """Create a new title"""
     title = db_create_title(
         session,
+        publisher=publisher,
         name=title_data.name,
         maturity=title_data.maturity,
         collection_titles=title_data.collection_titles,
@@ -124,10 +127,12 @@ def update_title(
     title_id: UUID,
     title_data: TitleUpdateSchema,
     session: OrmSession = Depends(gen_dbsession),
+    publisher: RedisPublisher = Depends(get_redis_publisher),
 ) -> TitleLightSchema:
     """Update a title's maturity and/or collection_titles"""
     title = db_update_title(
         session,
+        publisher=publisher,
         title_id=title_id,
         name=title_data.name,
         maturity=title_data.maturity,

@@ -139,7 +139,9 @@ class Book(Base):
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
-    title: Mapped[Optional["Title"]] = relationship(init=False, foreign_keys=[title_id])
+    title: Mapped[Optional["Title"]] = relationship(
+        init=False, foreign_keys=[title_id], back_populates="books"
+    )
 
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
         back_populates="book"

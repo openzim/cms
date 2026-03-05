@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import exceptions as jwt_exceptions
 from sqlalchemy.orm import Session as OrmSession
@@ -15,6 +15,7 @@ from cms_backend.db.user import (
     create_user,
     get_user_by_id_or_none,
 )
+from cms_backend.redis.publisher import RedisPublisher
 from cms_backend.roles import RoleEnum
 
 security = HTTPBearer(description="Access Token", auto_error=False)
@@ -121,3 +122,8 @@ def require_permission(*, namespace: str, name: str):
         return current_user
 
     return _check_permission
+
+
+def get_redis_publisher(request: Request) -> RedisPublisher:
+    """Retrieve the redis event publisher"""
+    return request.app.state.redis_publisher

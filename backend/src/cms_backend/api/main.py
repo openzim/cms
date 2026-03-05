@@ -25,6 +25,7 @@ from cms_backend.db.exceptions import (
     RecordDisabledError,
     RecordDoesNotExistError,
 )
+from cms_backend.redis.publisher import RedisPublisher
 from cms_backend.utils.database import (
     check_if_schema_is_up_to_date,
     create_initial_user,
@@ -33,12 +34,14 @@ from cms_backend.utils.database import (
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
     check_if_schema_is_up_to_date()
     create_initial_user()
+    app.state.redis_publisher = RedisPublisher()
     yield
+    app.state.redis_publisher.close()
 
 
 def create_app(*, debug: bool = True):

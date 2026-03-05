@@ -17,6 +17,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  redisdb:
+    image: redis:8.6.1-trixie
+    container_name: cms_redisdb
+    environment:
+      - REDIS_PASSWORD=cmspass
+      - REDISCLI_AUTH=${REDIS_PASSWORD}
+      - REDIS_ARGS=--requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data_cms:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - 9736:6379
+
   api:
     build:
       context: ../backend
@@ -36,6 +55,7 @@ services:
       DEBUG: 1
       WEB_CONCURRENCY: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
+      REDIS_DATABASE_URL: redis://default:cmspass@redisdb:6379/0
       ALLOWED_ORIGINS: http://localhost:37600,http://localhost:37603
       OAUTH_JWKS_URI: https://login-staging.kiwix.org/.well-known/jwks.json
       OAUTH_ISSUER: https://login-staging.kiwix.org
@@ -63,6 +83,8 @@ services:
     depends_on:
       postgresdb:
         condition: service_healthy
+      redisdb:
+        condition: service_healthy
   mill:
     build:
       context: ../backend
@@ -75,6 +97,7 @@ services:
     environment:
       DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
+      REDIS_DATABASE_URL: redis://default:cmspass@redisdb:6379/0
       QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       QUARANTINE_BASE_PATH: quarantine
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
@@ -82,6 +105,29 @@ services:
     depends_on:
       postgresdb:
         condition: service_healthy
+
+  mill-streams-processor:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile-mill
+    container_name: cms_mill_streams_processor
+    volumes:
+      - ../backend/maint-scripts:/app/maint-scripts
+      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ./scripts:/scripts
+    environment:
+      DEBUG: 1
+      DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
+      REDIS_DATABASE_URL: redis://default:cmspass@redisdb:6379/0
+      QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
+      QUARANTINE_BASE_PATH: quarantine
+      STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
+      STAGING_BASE_PATH: staging
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    command: cms-mill-stream-processor
+
   shuttle:
     build:
       context: ../backend
@@ -173,3 +219,4 @@ services:
 
 volumes:
   pg_data_cms:
+  redis_data_cms:

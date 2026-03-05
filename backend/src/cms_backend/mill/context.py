@@ -45,3 +45,6 @@ class Context:
     old_book_deletion_delay: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("OLD_BOOK_DELETION_DELAY", default="1d"))
     )
+    stream_processor_consumer = os.getenv(
+        "STREAM_PROCESSOR_CONSUMER", default="mill-stream-processor"
+    )
