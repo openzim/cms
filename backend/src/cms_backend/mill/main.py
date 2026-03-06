@@ -12,6 +12,7 @@ from cms_backend.__about__ import __version__
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.mill.context import Context as MillContext
+from cms_backend.mill.process_title_modifications import process_title_modifications
 from cms_backend.mill.process_zimfarm_notifications import process_zimfarm_notifications
 from cms_backend.utils.database import upgrade_db_schema
 from cms_backend.utils.datetime import getnow
@@ -22,6 +23,10 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=process_zimfarm_notifications,
         interval=MillContext.process_zimfarm_notifications_interval,
+    ),
+    TaskConfig(
+        func=process_title_modifications,
+        interval=MillContext.process_title_modifications_interval,
     ),
 ]
 

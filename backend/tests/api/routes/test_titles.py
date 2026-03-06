@@ -4,10 +4,11 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
-from cms_backend.db.models import Book, Collection, Title, User
+from cms_backend.db.models import Book, Collection, Event, Title, User
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
 
@@ -105,6 +106,14 @@ def test_create_title_required_fields_only(
     assert title is not None
     assert title.name == "wikipedia_en_test"
 
+    events = dbsession.scalars(
+        select(Event).where(Event.topic == "title_modified")
+    ).all()
+    assert len(events) == 1
+    assert events[0].payload["action"] == "created"
+    assert events[0].payload["name"] == "wikipedia_en_test"
+    assert events[0].payload["id"] == str(title.id)
+
 
 def test_create_title_all_fields(
     client: TestClient,
@@ -145,6 +154,14 @@ def test_create_title_all_fields(
     assert title.name == "wikipedia_en_test"
     assert str(title.collections[0].path) == "wikis"
     assert title.collections[0].collection_id == collection.id
+
+    events = dbsession.scalars(
+        select(Event).where(Event.topic == "title_modified")
+    ).all()
+    assert len(events) == 1
+    assert events[0].payload["action"] == "created"
+    assert events[0].payload["name"] == "wikipedia_en_test"
+    assert events[0].payload["id"] == str(title.id)
 
 
 def test_create_title_with_duplicate_collection_name(
@@ -321,6 +338,7 @@ def test_update_title_required_permissions(
 
 def test_update_title(
     client: TestClient,
+    dbsession: OrmSession,
     create_title: Callable[..., Title],
     access_token: str,
 ):
@@ -344,3 +362,11 @@ def test_update_title(
     assert data["id"] == str(title.id)
     assert data["name"] == "wikipedia_en"
     assert data["maturity"] == "robust"
+
+    events = dbsession.scalars(
+        select(Event).where(Event.topic == "title_modified")
+    ).all()
+    assert len(events) == 1
+    assert events[0].payload["action"] == "updated"
+    assert events[0].payload["name"] == "wikipedia_en"
+    assert events[0].payload["id"] == str(title.id)

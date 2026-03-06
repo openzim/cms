@@ -30,6 +30,12 @@ class Context:
         )
     )
 
+    process_title_modifications_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("PROCESS_TILTE_MODIFICATIONS_INTERVAL", default="1m")
+        )
+    )
+
     quarantine_warehouse_id: UUID = field(
         default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
     )
