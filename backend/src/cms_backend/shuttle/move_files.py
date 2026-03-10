@@ -10,7 +10,6 @@ from cms_backend.utils.datetime import getnow
 
 
 def move_files(session: OrmSession):
-    logger.info("Moving ZIM files")
     nb_zim_files_moved = 0
     while True:
         with session.begin_nested():
@@ -19,7 +18,7 @@ def move_files(session: OrmSession):
                 break
 
             try:
-                logger.debug(f"Processing ZIM file of book {book.id}")
+                logger.info(f"Moving ZIM file(s) of book {book.id}")
                 move_book_files(session, book)
                 nb_zim_files_moved += 1
             except Exception as exc:
@@ -29,7 +28,8 @@ def move_files(session: OrmSession):
                 logger.exception(f"Failed to move file for {book.id}")
                 book.has_error = True
 
-    logger.info(f"Done moving {nb_zim_files_moved} ZIM files")
+    if nb_zim_files_moved:
+        logger.info(f"Done moving {nb_zim_files_moved} ZIM files")
 
 
 def move_book_files(session: OrmSession, book: Book):

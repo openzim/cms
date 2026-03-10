@@ -6,7 +6,15 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.books import get_book, get_book_or_none, get_books, get_zim_urls
+from cms_backend.context import Context
+from cms_backend.db.book import (
+    delete_book,
+    get_book,
+    get_book_or_none,
+    move_book,
+    recover_book,
+)
+from cms_backend.db.books import get_books, get_zim_urls
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
     Book,
@@ -361,6 +369,157 @@ def test_get_zim_urls_book_with_subpath(
     assert view_url.collection == collection.name
 
 
+@pytest.mark.parametrize(
+    "location_kind,force_delete",
+    [
+        pytest.param("staging", False, id="staging"),
+        pytest.param("prod", True, id="prod"),
+    ],
+)
+def test_delete_book(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    location_kind: str,
+    force_delete: bool,
+):
+    """Test deleting a book"""
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = location_kind
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    now = getnow()
+    monkeypatch.setattr("cms_backend.db.book.getnow", lambda: now)
+    delete_book(dbsession, book_id=book.id, force_delete=force_delete)
+
+    book = get_book(dbsession, book_id=book.id)
+
+    assert book.location_kind == "to_delete"
+    assert book.needs_file_operation is True
+    assert book.deletion_date is not None
+    if force_delete:
+        assert book.deletion_date == now
+    else:
+        assert book.deletion_date > now
+
+
+def test_move_book_staging_to_prod(
+    dbsession: OrmSession,
+    warehouse: Warehouse,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test moving a book from staging to prod"""
+    title = create_title(name="test_en_all")
+    collection = create_collection(warehouse=warehouse)
+    create_collection_title(title=title, collection=collection, path=Path("zim"))
+
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    create_book_location(
+        book=book,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    now = getnow()
+    monkeypatch.setattr("cms_backend.db.book.getnow", lambda: now)
+    move_book(dbsession, book_id=book.id, destination="prod")
+
+    book = get_book(dbsession, book_id=book.id)
+
+    assert book.location_kind == "prod"
+    assert book.needs_file_operation is True
+
+    # Check that target locations were created
+    target_locations = [loc for loc in book.locations if loc.status == "target"]
+    assert len(target_locations) == 1
+    assert target_locations[0].warehouse_id == warehouse.id
+    assert target_locations[0].path == Path("zim")
+    assert target_locations[0].filename == "test_en_all_2024-01.zim"
+
+
+def test_move_book_same_destination_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that moving a book to its current location raises an error"""
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = "staging"
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(
+        ValueError, match="Book destination must be different from current location"
+    ):
+        move_book(dbsession, book_id=book.id, destination="staging")
+
+
+def test_move_book_no_current_location_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Test that moving a book without a current location raises an error"""
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = "staging"
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="has no current location"):
+        move_book(dbsession, book_id=book.id, destination="prod")
+
+
+def test_move_book_no_title_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that moving a book without an associated title raises an error"""
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = "staging"
+    book.title = None
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="has no associated title"):
+        move_book(dbsession, book_id=book.id, destination="prod")
+
+
 def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavour(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
@@ -426,3 +585,104 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 
     book2_view_url = next((u for u in result.urls[book2.id] if u.kind == "view"), None)
     assert book2_view_url is None
+
+
+@pytest.mark.parametrize(
+    "location_kind,warehouse_id,path",
+    [
+        pytest.param(
+            "quarantine",
+            Context.quarantine_warehouse_id,
+            Context.quarantine_base_path,
+            id="quarantine",
+        ),
+        pytest.param(
+            "staging",
+            Context.staging_warehouse_id,
+            Context.staging_base_path,
+            id="staging",
+        ),
+        pytest.param(
+            "prod",
+            uuid4(),
+            Path("zim"),
+            id="prod",
+        ),
+    ],
+)
+def test_recover_book(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    *,
+    location_kind: str,
+    warehouse_id: str,
+    path: Path,
+):
+    """Test recovering a book marked for deletion"""
+    warehouse = create_warehouse(warehouse_id=warehouse_id)
+    book = create_book(name="test_en_all", date="2024-01")
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=path,
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    now = getnow()
+    book.location_kind = "to_delete"
+    book.needs_file_operation = True
+    book.deletion_date = now + datetime.timedelta(days=1)
+    dbsession.flush()
+
+    book = recover_book(dbsession, book_id=book.id)
+
+    assert book.location_kind == location_kind
+    assert book.needs_file_operation is False
+    assert book.deletion_date is None
+    assert f"Book restored from to_delete to {location_kind}" in book.events[-1]
+
+
+def test_recover_book_with_past_deletion_date(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Test that recovering a book with past deletion_date raises error"""
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = "to_delete"
+    book.deletion_date = getnow()
+    dbsession.flush()
+
+    with pytest.raises(RecordDoesNotExistError):
+        recover_book(dbsession, book_id=book.id)
+
+
+def test_recover_book_not_marked_for_deletion(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Test that recovering a book not marked for deletion raises an error"""
+    book = create_book(name="test_en_all", date="2024-01")
+    book.location_kind = "staging"
+    dbsession.flush()
+
+    with pytest.raises(RecordDoesNotExistError):
+        recover_book(dbsession, book_id=book.id)
+
+
+def test_recover_book_no_current_location(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Test that recovering a book without current location raises an error"""
+    book = create_book(name="test_en_all", date="2024-01")
+
+    book.location_kind = "to_delete"
+    book.needs_file_operation = True
+    book.deletion_date = getnow() + datetime.timedelta(days=1)
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="has no current location"):
+        recover_book(dbsession, book_id=book.id)

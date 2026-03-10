@@ -94,6 +94,52 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const deleteBook = async (bookId: string, force_delete: boolean = false) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.delete<{ force_delete: boolean }, Book>(`/${bookId}`, {
+        params: { force_delete },
+      })
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to delete book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
+  const recoverBook = async (bookId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.post<null, Book>(`/${bookId}/recover`)
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to recover book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
+  const moveBook = async (bookId: string, destination: 'staging' | 'prod') => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.post<{ destination: string }, Book>(`/${bookId}/move`, {
+        destination,
+      })
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to move book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -106,5 +152,8 @@ export const useBookStore = defineStore('book', () => {
     fetchBooks,
     savePaginatorLimit,
     fetchZimUrls,
+    deleteBook,
+    recoverBook,
+    moveBook,
   }
 })

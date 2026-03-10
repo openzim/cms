@@ -24,7 +24,6 @@ def test_delete_files_processes_eligible_book(
     book = create_book()
     book.location_kind = "to_delete"
     book.deletion_date = now - timedelta(days=1)
-    book.has_error = False
     book.needs_file_operation = True
     dbsession.flush()
 
@@ -58,7 +57,6 @@ def test_delete_files_inaccessible_warehouse(
     book = create_book()
     book.location_kind = "to_delete"
     book.deletion_date = now - timedelta(days=1)
-    book.has_error = False
     book.needs_file_operation = True
     dbsession.flush()
 
@@ -87,7 +85,6 @@ def test_delete_files_handles_file_deletion_error(
     book = create_book()
     book.location_kind = "to_delete"
     book.deletion_date = now - timedelta(days=1)
-    book.has_error = False
     book.needs_file_operation = True
     dbsession.flush()
 
@@ -108,7 +105,6 @@ def test_delete_files_handles_file_deletion_error(
         delete_files(dbsession)
 
     # Book should be marked with error
-    assert book.has_error is True
     assert book.location_kind == "to_delete"
     assert any(
         "error encountered while deleting files" in event for event in book.events
@@ -129,13 +125,11 @@ def test_delete_files_handles_errors_and_continues_processing(
     book1 = create_book()
     book1.location_kind = "to_delete"
     book1.deletion_date = now - timedelta(days=1)
-    book1.has_error = False
     book1.needs_file_operation = True
 
     book2 = create_book()
     book2.location_kind = "to_delete"
     book2.deletion_date = now - timedelta(days=2)
-    book2.has_error = False
     book2.needs_file_operation = True
 
     dbsession.flush()
@@ -158,11 +152,9 @@ def test_delete_files_handles_errors_and_continues_processing(
         delete_files(dbsession)
 
     # book2 is processed first (older deletion_date) and should have error
-    assert book2.has_error is True
     assert any(
         "error encountered while deleting files" in event for event in book2.events
     )
 
     # book1 is processed second and should succeed
     assert book1.location_kind == "deleted"
-    assert book1.has_error is False

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import generate_password_hash
 
 from cms_backend.api.token import generate_access_token
+from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.models import (
     Base,
@@ -193,7 +194,7 @@ def create_warehouse(
 def warehouse(
     create_warehouse: Callable[..., Warehouse],
 ) -> Warehouse:
-    return create_warehouse()
+    return create_warehouse(warehouse_id=Context.staging_warehouse_id)
 
 
 @pytest.fixture

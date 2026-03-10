@@ -1,7 +1,12 @@
 import dataclasses
 import os
+from dataclasses import field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, TypeVar
+from uuid import UUID
+
+from humanfriendly import parse_timespan
 
 T = TypeVar("T")
 
@@ -36,4 +41,19 @@ class Context:
     # should we run alembic migrations on startup
     alembic_upgrade_head_on_start: bool = parse_bool(
         get_mandatory_env("ALEMBIC_UPGRADE_HEAD_ON_START")
+    )
+
+    # delay before books are deleted
+    book_deletion_delay: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("BOOK_DELETION_DELAY", default="1d"))
+    )
+    staging_warehouse_id: UUID = field(
+        default=UUID(get_mandatory_env("STAGING_WAREHOUSE_ID"))
+    )
+    staging_base_path: Path = field(default=Path(os.getenv("STAGING_BASE_PATH", "")))
+    quarantine_warehouse_id: UUID = field(
+        default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
+    )
+    quarantine_base_path: Path = field(
+        default=Path(os.getenv("QUARANTINE_BASE_PATH", ""))
     )

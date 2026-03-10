@@ -43,6 +43,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 needs_file_operation=book.needs_file_operation,
                 location_kind=book.location_kind,
                 created_at=book.created_at,
+                deletion_date=book.deletion_date,
                 name=book.name,
                 date=book.date,
                 flavour=book.flavour,

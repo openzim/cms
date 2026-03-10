@@ -89,6 +89,7 @@ class BookLightSchema(BaseModel):
     needs_processing: bool
     has_error: bool
     needs_file_operation: bool
+    deletion_date: datetime | None
     created_at: datetime
     name: str | None
     date: str | None

@@ -3,32 +3,12 @@ from uuid import UUID
 from pydantic import AnyUrl
 from sqlalchemy import String, and_, select
 from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import selectinload
 
 from cms_backend.db import count_from_stmt
-from cms_backend.db.exceptions import (
-    RecordDoesNotExistError,
-)
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
 from cms_backend.schemas.models import ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
 from cms_backend.utils.filename import construct_download_url
-
-
-def get_book_or_none(session: OrmSession, book_id: UUID) -> Book | None:
-    """Get a book by ID if possible else None"""
-    return session.scalars(
-        select(Book)
-        .where(Book.id == book_id)
-        .options(selectinload(Book.title), selectinload(Book.zimfarm_notification))
-    ).one_or_none()
-
-
-def get_book(session: OrmSession, book_id: UUID) -> Book:
-    """Get a book by ID if possible else raise an exception"""
-    if (book := get_book_or_none(session, book_id=book_id)) is None:
-        raise RecordDoesNotExistError(f"Book with ID {book_id} does not exist")
-    return book
 
 
 def get_books(
@@ -53,6 +33,7 @@ def get_books(
         Book.needs_file_operation,
         Book.location_kind,
         Book.created_at,
+        Book.deletion_date,
         Book.name,
         Book.date,
         Book.flavour,
@@ -90,6 +71,7 @@ def get_books(
                 needs_file_operation=needs_file_operation,
                 location_kind=location_kind,
                 created_at=created_at,
+                deletion_date=deletion_date,
                 name=name,
                 date=date,
                 flavour=flavour,
@@ -102,6 +84,7 @@ def get_books(
                 needs_file_operation,
                 location_kind,
                 created_at,
+                deletion_date,
                 name,
                 date,
                 flavour,

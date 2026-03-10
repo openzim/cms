@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db.book import create_book, create_book_location
 from cms_backend.db.models import ZimfarmNotification
-from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.processors.book import process_book
 from cms_backend.utils.datetime import getnow
 
@@ -85,8 +85,8 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
         create_book_location(
             session=session,
             book=book,
-            warehouse_id=MillContext.quarantine_warehouse_id,
-            path=MillContext.quarantine_base_path / folder_name,
+            warehouse_id=Context.quarantine_warehouse_id,
+            path=Context.quarantine_base_path / folder_name,
             filename=filename,
             status="current",
         )

@@ -4,9 +4,9 @@ from collections import defaultdict
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db.book import FileLocation, create_book_target_locations
 from cms_backend.db.models import Book, Title
-from cms_backend.mill.context import Context as MillContext
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import (
     PERIOD_LENGTH,
@@ -60,7 +60,7 @@ def apply_retention_rules(session: OrmSession, title: Title):
         for period in sorted_periods[2:]:
             books_to_delete.extend(books_by_period[period])
 
-    deletion_date = now + MillContext.old_book_deletion_delay
+    deletion_date = now + Context.book_deletion_delay
 
     for book in books_to_delete:
         logger.info(
@@ -117,8 +117,8 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         target_locations = (
             [
                 FileLocation(
-                    MillContext.staging_warehouse_id,
-                    MillContext.staging_base_path,
+                    Context.staging_warehouse_id,
+                    Context.staging_base_path,
                     target_filename,
                 )
             ]

@@ -25,7 +25,7 @@ def delete_files(session: OrmSession):
                 break
 
             try:
-                logger.debug(f"Deleting files for book {book.id}")
+                logger.info(f"Deleting files for book {book.id}")
                 delete_book_files(session, book)
                 nb_zim_files_deleted += 1
             except Exception as exc:
@@ -33,9 +33,11 @@ def delete_files(session: OrmSession):
                     f"{getnow()}: error encountered while deleting files\n{exc}"
                 )
                 logger.exception(f"Failed to delete files for book {book.id}")
+                book.needs_file_operation = False
                 book.has_error = True
 
-    logger.info(f"Done deleting {nb_zim_files_deleted} ZIM files")
+    if nb_zim_files_deleted:
+        logger.info(f"Done deleting {nb_zim_files_deleted} ZIM files")
 
 
 def get_next_book_to_delete(session: OrmSession, now: datetime.datetime) -> Book | None:
@@ -45,7 +47,6 @@ def get_next_book_to_delete(session: OrmSession, now: datetime.datetime) -> Book
         .where(
             Book.location_kind == "to_delete",
             Book.deletion_date <= now,
-            Book.has_error.is_(False),
             Book.needs_file_operation.is_(True),
         )
         .order_by(Book.deletion_date)

@@ -9,6 +9,35 @@
     </div>
 
     <div v-if="dataLoaded && book">
+      <div class="d-flex justify-end mb-4" v-if="canMoveBook || canDeleteBook || canRecoverBook">
+        <v-btn
+          v-if="canMoveBook"
+          color="primary"
+          prepend-icon="mdi-truck"
+          @click="openMoveDialog"
+          class="mr-2"
+        >
+          Move Book
+        </v-btn>
+        <v-btn
+          v-if="canRecoverBook"
+          color="success"
+          prepend-icon="mdi-restore"
+          @click="openRecoverDialog"
+          class="mr-2"
+        >
+          Recover Book
+        </v-btn>
+        <v-btn
+          v-if="canDeleteBook"
+          color="error"
+          prepend-icon="mdi-delete"
+          @click="openDeleteDialog"
+        >
+          Delete Book
+        </v-btn>
+      </div>
+
       <div>
         <v-row no-gutters class="py-2">
           <v-col cols="12" md="3">
@@ -238,19 +267,27 @@
         </v-row>
       </div>
     </div>
+
+    <MoveBookDialog v-model="moveDialogOpen" :book="book" @moved="handleBookMoved" />
+    <RecoverBookDialog v-model="recoverDialogOpen" :book="book" @recovered="handleBookRecovered" />
+    <DeleteBookDialog v-model="deleteDialogOpen" :book="book" @deleted="handleBookDeleted" />
   </v-container>
 </template>
 
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
+import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import EventsList from '@/components/EventsList.vue'
+import MoveBookDialog from '@/components/MoveBookDialog.vue'
+import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
 import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
 import type { Book, ZimUrl } from '@/types/book'
 import { formatDt, fromNow } from '@/utils/format'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 
 const { smAndDown } = useDisplay()
@@ -258,12 +295,16 @@ const { smAndDown } = useDisplay()
 const loadingStore = useLoadingStore()
 const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
+const authStore = useAuthStore()
 
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
 const dataLoaded = ref(false)
 const loadingUrls = ref(false)
 const zimUrls = ref<ZimUrl[]>([])
+const moveDialogOpen = ref(false)
+const recoverDialogOpen = ref(false)
+const deleteDialogOpen = ref(false)
 
 interface Props {
   id: string
@@ -276,6 +317,45 @@ const locationHeaders = [
   { title: 'Folder', value: 'path', sortable: false },
   { title: 'Filename', value: 'filename', sortable: false },
 ]
+
+const canMoveBook = computed(() => {
+  if (!book.value) return false
+
+  return (
+    authStore.hasPermission('book', 'update') &&
+    ['staging', 'prod'].includes(book.value.location_kind) &&
+    book.value.current_locations.length > 0 &&
+    !book.value.has_error &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing
+  )
+})
+
+const canDeleteBook = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('book', 'delete') &&
+    ['staging', 'prod', 'quarantine'].includes(book.value.location_kind) &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing
+  )
+})
+
+const canRecoverBook = computed(() => {
+  if (!book.value) return false
+
+  const hasFutureDeletionDate = book.value.deletion_date
+    ? new Date(book.value.deletion_date) > new Date()
+    : false
+
+  return (
+    authStore.hasPermission('book', 'update') &&
+    book.value.location_kind === 'to_delete' &&
+    book.value.needs_file_operation &&
+    !book.value.needs_processing &&
+    hasFutureDeletionDate
+  )
+})
 
 const loadData = async () => {
   loadingStore.startLoading('Fetching book...')
@@ -339,5 +419,32 @@ const formatBytes = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+}
+
+const openMoveDialog = () => {
+  moveDialogOpen.value = true
+}
+
+const handleBookMoved = async () => {
+  notificationStore.showSuccess('Book moved successfully!')
+  await loadData()
+}
+
+const openRecoverDialog = () => {
+  recoverDialogOpen.value = true
+}
+
+const handleBookRecovered = async () => {
+  notificationStore.showSuccess('Book recovered successfully!')
+  await loadData()
+}
+
+const openDeleteDialog = () => {
+  deleteDialogOpen.value = true
+}
+
+const handleBookDeleted = async () => {
+  notificationStore.showSuccess('Book deleted successfully!')
+  await loadData()
 }
 </script>
