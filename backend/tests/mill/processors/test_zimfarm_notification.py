@@ -11,6 +11,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.models import (
     Book,
     Collection,
@@ -19,7 +20,6 @@ from cms_backend.db.models import (
     Warehouse,
     ZimfarmNotification,
 )
-from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.processors.zimfarm_notification import process_notification
 
 VALID_NOTIFICATION_CONTENT = {
@@ -127,6 +127,7 @@ class TestValidNotificationNoMatchingTitle:
     def test_creates_book_in_quarantine(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
     ):
         """Valid notification, no matching title → book created in quarantine."""
@@ -160,6 +161,7 @@ class TestValidNotificationNoMatchingTitle:
     def test_creates_book_with_empty_folder_name(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
     ):
         """
@@ -190,7 +192,7 @@ class TestValidNotificationNoMatchingTitle:
         location = book.locations[0]
         assert location.filename == VALID_NOTIFICATION_CONTENT["filename"]
         assert location.status == "current"
-        assert location.path == MillContext.quarantine_base_path
+        assert location.path == Context.quarantine_base_path
 
         # Verify book is not in error state
         assert book.has_error is False
@@ -205,6 +207,7 @@ class TestValidNotificationMissingZimMetadata:
     def test_missing_metadata_sets_error_flag(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
     ):
         """Valid notification but missing ZIM metadata → book marked with error."""
@@ -242,6 +245,7 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
     def test_moves_book_to_staging(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
     ):
@@ -264,15 +268,15 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
 
         current_locations = [loc for loc in book.locations if loc.status == "current"]
         assert len(current_locations) == 1
-        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
-        assert current_locations[0].path == MillContext.quarantine_base_path / str(
+        assert current_locations[0].warehouse_id == Context.quarantine_warehouse_id
+        assert current_locations[0].path == Context.quarantine_base_path / str(
             VALID_NOTIFICATION_CONTENT["folder_name"]
         )
 
         target_locations = [loc for loc in book.locations if loc.status == "target"]
         assert len(target_locations) == 1
-        assert target_locations[0].warehouse_id == MillContext.staging_warehouse_id
-        assert target_locations[0].path == MillContext.staging_base_path
+        assert target_locations[0].warehouse_id == Context.staging_warehouse_id
+        assert target_locations[0].path == Context.staging_base_path
 
         assert book.location_kind == "staging"
         assert book.has_error is False
@@ -282,6 +286,7 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
     def test_moves_book_to_staging_with_empty_folder_name(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
     ):
@@ -310,13 +315,13 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
 
         current_locations = [loc for loc in book.locations if loc.status == "current"]
         assert len(current_locations) == 1
-        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
-        assert current_locations[0].path == MillContext.quarantine_base_path
+        assert current_locations[0].warehouse_id == Context.quarantine_warehouse_id
+        assert current_locations[0].path == Context.quarantine_base_path
 
         target_locations = [loc for loc in book.locations if loc.status == "target"]
         assert len(target_locations) == 1
-        assert target_locations[0].warehouse_id == MillContext.staging_warehouse_id
-        assert target_locations[0].path == MillContext.staging_base_path
+        assert target_locations[0].warehouse_id == Context.staging_warehouse_id
+        assert target_locations[0].path == Context.staging_base_path
 
         assert book.location_kind == "staging"
         assert book.has_error is False
@@ -333,6 +338,7 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
     def test_moves_book_to_collection_warehouses(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
@@ -367,8 +373,8 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
 
         current_locations = [loc for loc in book.locations if loc.status == "current"]
         assert len(current_locations) == 1
-        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
-        assert current_locations[0].path == MillContext.quarantine_base_path / str(
+        assert current_locations[0].warehouse_id == Context.quarantine_warehouse_id
+        assert current_locations[0].path == Context.quarantine_base_path / str(
             VALID_NOTIFICATION_CONTENT["folder_name"]
         )
 
@@ -385,6 +391,7 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
     def test_moves_book_to_collection_warehouses_with_empty_folder_name(
         self,
         dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
@@ -425,8 +432,8 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
 
         current_locations = [loc for loc in book.locations if loc.status == "current"]
         assert len(current_locations) == 1
-        assert current_locations[0].warehouse_id == MillContext.quarantine_warehouse_id
-        assert current_locations[0].path == MillContext.quarantine_base_path
+        assert current_locations[0].warehouse_id == Context.quarantine_warehouse_id
+        assert current_locations[0].path == Context.quarantine_base_path
 
         target_locations = [loc for loc in book.locations if loc.status == "target"]
         assert len(target_locations) == 1

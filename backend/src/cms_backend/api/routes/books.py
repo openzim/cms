@@ -1,13 +1,18 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.routes.dependencies import require_permission
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
-from cms_backend.db.books import get_book as db_get_book
+from cms_backend.db.book import create_book_full_schema
+from cms_backend.db.book import delete_book as db_delete_book
+from cms_backend.db.book import get_book as db_get_book
+from cms_backend.db.book import move_book as db_move_book
+from cms_backend.db.book import recover_book as db_recover_book
 from cms_backend.db.books import get_books as db_get_books
 from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.schemas import BaseModel
@@ -15,10 +20,13 @@ from cms_backend.schemas.models import ZimUrlsSchema
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookLightSchema,
-    BookLocationSchema,
 )
 
 router = APIRouter(prefix="/books", tags=["books"])
+
+
+class BookMoveSchema(BaseModel):
+    destination: Literal["prod", "staging"]
 
 
 class BooksGetSchema(BaseModel):
@@ -76,49 +84,44 @@ def get_book(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
     """Get a book by ID"""
+    return create_book_full_schema(db_get_book(session=session, book_id=book_id))
 
-    db_book = db_get_book(session=session, book_id=book_id)
 
-    # Separate current and target locations
-    current_locations = [
-        BookLocationSchema(
-            warehouse_name=location.warehouse.name,
-            path=str(location.path),
-            filename=location.filename,
-            status=location.status,
-        )
-        for location in db_book.locations
-        if location.status == "current"
-    ]
+@router.delete(
+    "/{book_id}",
+    dependencies=[Depends(require_permission(namespace="book", name="delete"))],
+)
+def delete_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    *,
+    force_delete: Annotated[bool, Query()] = False,
+) -> BookFullSchema:
+    return create_book_full_schema(
+        db_delete_book(session, book_id=book_id, force_delete=force_delete)
+    )
 
-    target_locations = [
-        BookLocationSchema(
-            warehouse_name=location.warehouse.name,
-            path=str(location.path),
-            filename=location.filename,
-            status=location.status,
-        )
-        for location in db_book.locations
-        if location.status == "target"
-    ]
 
-    return BookFullSchema(
-        id=db_book.id,
-        title_id=db_book.title_id,
-        needs_processing=db_book.needs_processing,
-        has_error=db_book.has_error,
-        needs_file_operation=db_book.needs_file_operation,
-        location_kind=db_book.location_kind,
-        created_at=db_book.created_at,
-        name=db_book.name,
-        date=db_book.date,
-        flavour=db_book.flavour,
-        article_count=db_book.article_count,
-        media_count=db_book.media_count,
-        size=db_book.size,
-        zimcheck_result_url=db_book.zimcheck_result_url,
-        zim_metadata=db_book.zim_metadata,
-        events=db_book.events,
-        current_locations=current_locations,
-        target_locations=target_locations,
+@router.post(
+    "/{book_id}/recover",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def recover_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> BookFullSchema:
+    return create_book_full_schema(db_recover_book(session, book_id=book_id))
+
+
+@router.post(
+    "/{book_id}/move",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def move_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    request: BookMoveSchema,
+) -> BookFullSchema:
+    return create_book_full_schema(
+        db_move_book(session, book_id=book_id, destination=request.destination)
     )

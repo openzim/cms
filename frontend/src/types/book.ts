@@ -1,3 +1,5 @@
+export type LocationKind = 'quarantine' | 'staging' | 'prod' | 'to_delete' | 'deleted'
+
 export interface Producer {
   display_name: string
   display_url: string
@@ -11,17 +13,21 @@ export interface BookLocation {
   status: string
 }
 
-export interface Book {
+export interface BookLight {
   id: string
   title_id?: string
   needs_processing: boolean
   has_error: boolean
   needs_file_operation: boolean
-  location_kind: 'quarantine' | 'staging' | 'prod'
+  location_kind: LocationKind
   created_at: string
+  deletion_date?: string
   name?: string
   date?: string
   flavour?: string
+}
+
+export interface Book extends BookLight {
   article_count: number
   media_count: number
   size: number
@@ -30,19 +36,6 @@ export interface Book {
   events: string[]
   current_locations: BookLocation[]
   target_locations: BookLocation[]
-}
-
-export interface BookLight {
-  id: string
-  title_id?: string
-  needs_processing: boolean
-  has_error: boolean
-  needs_file_operation: boolean
-  location_kind: 'quarantine' | 'staging' | 'prod'
-  created_at: string
-  name?: string
-  date?: string
-  flavour?: string
 }
 
 export interface ZimUrl {

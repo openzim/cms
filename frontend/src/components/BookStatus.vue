@@ -14,6 +14,13 @@
           color="grey"
           icon="mdi-clock-outline"
         ></v-icon>
+        <v-icon v-else-if="isDeleted" size="small" color="grey-darken-2" icon="mdi-delete"></v-icon>
+        <v-icon
+          v-else-if="isToBeDeleted"
+          size="small"
+          color="warning"
+          icon="mdi-delete-clock"
+        ></v-icon>
         <v-icon
           v-else-if="isMovingFiles"
           size="small"
@@ -43,6 +50,17 @@
     <span v-else-if="isProcessing">
       <v-icon size="small" color="grey" icon="mdi-clock-outline"></v-icon>
       <span class="text-caption ml-1">Processing</span>
+    </span>
+    <span v-else-if="isDeleted">
+      <v-icon size="small" color="grey-darken-2" icon="mdi-delete"></v-icon>
+      <span class="text-caption ml-1">Deleted</span>
+    </span>
+    <span v-else-if="isToBeDeleted">
+      <v-icon size="small" color="warning" icon="mdi-delete-clock"></v-icon>
+      <span class="text-caption ml-1">To Be Deleted</span>
+      <v-chip size="x-small" class="ml-1" :color="locationColor">
+        {{ locationLabel }}
+      </v-chip>
     </span>
     <span v-else-if="isMovingFiles">
       <v-icon size="small" color="info" icon="mdi-truck-delivery-outline"></v-icon>
@@ -83,12 +101,22 @@ const props = withDefaults(
 )
 
 const isErrored = computed(() => props.book.has_error)
+const isDeleted = computed(() => props.book.location_kind === 'deleted')
+const isToBeDeleted = computed(() => props.book.location_kind === 'to_delete')
 const isProcessing = computed(() => props.book.needs_processing && !props.book.has_error)
-const isMovingFiles = computed(() => props.book.needs_file_operation && !props.book.has_error)
+const isMovingFiles = computed(
+  () =>
+    props.book.needs_file_operation &&
+    !props.book.has_error &&
+    props.book.location_kind !== 'to_delete' &&
+    props.book.location_kind !== 'deleted',
+)
 const hasTitle = computed(() => props.book.title_id)
 
 const statusLabel = computed(() => {
   if (isErrored.value) return 'Errored'
+  if (isDeleted.value) return 'Deleted'
+  if (isToBeDeleted.value) return 'To Be Deleted'
   if (isProcessing.value) return 'Processing'
   if (isMovingFiles.value) return 'Moving Files'
   if (!hasTitle.value) return 'Pending Title'
@@ -103,6 +131,10 @@ const locationLabel = computed(() => {
       return 'Staging'
     case 'prod':
       return 'Production'
+    case 'to_delete':
+      return 'To Be Deleted'
+    case 'deleted':
+      return 'Deleted'
     default:
       return 'Unknown'
   }
@@ -116,6 +148,10 @@ const locationColor = computed(() => {
       return 'info'
     case 'prod':
       return 'success'
+    case 'to_delete':
+      return 'warning'
+    case 'deleted':
+      return 'grey-darken-2'
     default:
       return 'grey'
   }

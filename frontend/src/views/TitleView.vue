@@ -231,7 +231,7 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
-  await loadData()
+  await loadData(true)
 })
 
 const openEditDialog = () => {
