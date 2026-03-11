@@ -126,3 +126,13 @@ class UserSchema(BaseModel):
     username: str
     role: str
     scope: dict[str, dict[str, bool]]
+
+
+class EventLightSchema(BaseModel):
+    """
+    Schema for reading an event model.
+    """
+
+    id: UUID
+    created_at: datetime
+    topic: str

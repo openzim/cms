@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from cms_backend.api.routes.auth import router as auth_router
 from cms_backend.api.routes.books import router as books_router
 from cms_backend.api.routes.collection import router as collection_router
+from cms_backend.api.routes.events import router as events_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
 from cms_backend.api.routes.titles import router as titles_router
@@ -66,6 +67,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=titles_router)
     main_router.include_router(router=books_router)
     main_router.include_router(router=collection_router)
+    main_router.include_router(router=events_router)
     main_router.include_router(router=auth_router)
     main_router.include_router(router=user_router)
 
