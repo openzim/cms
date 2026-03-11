@@ -5,7 +5,12 @@
       Copy All
     </v-btn>
 
-    <v-list lines="one" density="compact" class="overflow-y-auto" style="max-height: 400px">
+    <v-list
+      lines="one"
+      density="compact"
+      class="overflow-y-auto events-list-container"
+      style="max-height: 400px"
+    >
       <v-list-item
         v-for="(event, index) in parsedEvents"
         :key="index"
@@ -22,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 
 interface Props {
@@ -57,6 +62,23 @@ const parsedEvents = computed((): ParsedEvent[] => {
     }
   })
 })
+
+const scrollEventsToBottom = () => {
+  const eventsList = document.querySelectorAll('.events-list-container')
+  eventsList.forEach((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+}
+
+watch(
+  () => props.events,
+  () => {
+    nextTick(() => {
+      scrollEventsToBottom()
+    })
+  },
+  { deep: true, immediate: true },
+)
 
 const copyToClipboard = async (text: string) => {
   try {
