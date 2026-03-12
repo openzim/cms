@@ -27,6 +27,20 @@
             @click:clear="handleClearFilters"
           />
         </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-select
+            v-model="localFilters.flag"
+            label="Flag"
+            :items="flagOptions"
+            placeholder="Select flag"
+            variant="outlined"
+            density="compact"
+            hide-details
+            :clearable="hasActiveFilters"
+            @update:model-value="emitFilters"
+            @click:clear="handleClearFilters"
+          />
+        </v-col>
         <v-col
           v-if="hasActiveFilters"
           cols="12"
@@ -50,6 +64,7 @@ interface Props {
   filters: {
     id: string
     location_kind: string
+    flag: string
   }
   locationKindOptions?: string[]
 }
@@ -64,6 +79,7 @@ const emit = defineEmits<{
     filters: {
       id: string
       location_kind: string
+      flag: string
     },
   ]
   clearFilters: []
@@ -73,6 +89,7 @@ const emit = defineEmits<{
 const localFilters = ref({
   id: props.filters.id,
   location_kind: props.filters.location_kind,
+  flag: props.filters.flag,
 })
 
 // Watch for prop changes and update local state
@@ -82,6 +99,7 @@ watch(
     localFilters.value = {
       id: newFilters.id,
       location_kind: newFilters.location_kind,
+      flag: newFilters.flag,
     }
   },
 )
@@ -93,8 +111,19 @@ const formattedLocationKindOptions = computed(() => {
   }))
 })
 
+const flagOptions = [
+  { title: 'Needs File Operation', value: 'needs_file_operation' },
+  { title: 'Needs Processing', value: 'needs_processing' },
+  { title: 'Has Error', value: 'has_error' },
+  { title: 'Pending Title', value: 'no_title' },
+]
+
 const hasActiveFilters = computed(() => {
-  return props.filters.id.length > 0 || props.filters.location_kind.length > 0
+  return (
+    props.filters.id.length > 0 ||
+    props.filters.location_kind.length > 0 ||
+    props.filters.flag?.length > 0
+  )
 })
 
 // Emit filters when they change
@@ -102,6 +131,7 @@ function emitFilters() {
   emit('filtersChanged', {
     id: localFilters.value.id,
     location_kind: localFilters.value.location_kind,
+    flag: localFilters.value.flag,
   })
 }
 

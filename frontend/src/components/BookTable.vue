@@ -1,6 +1,24 @@
 <template>
   <div>
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
+      <v-card-title
+        v-if="showSelection || $slots.actions"
+        class="d-flex flex-column-reverse flex-sm-row align-sm-center justify-sm-end ga-2"
+      >
+        <slot name="actions" />
+        <v-btn
+          v-if="showSelection"
+          size="small"
+          variant="elevated"
+          color="warning"
+          :disabled="selectedBooks.length === 0"
+          @click="clearSelections"
+        >
+          <v-icon size="small" class="mr-1">mdi-checkbox-multiple-blank-outline</v-icon>
+          clear selections
+        </v-btn>
+      </v-card-title>
+
       <v-data-table-server
         :headers="headers"
         :items="books"
@@ -13,6 +31,9 @@
         :density="smAndDown ? 'compact' : 'comfortable'"
         class="elevation-1"
         item-value="name"
+        :show-select="showSelection"
+        :model-value="selectedBooks"
+        @update:model-value="handleSelectionChange"
         @update:options="onUpdateOptions"
         :hide-default-footer="props.paginator.count === 0"
         :hide-default-header="props.paginator.count === 0"
@@ -33,17 +54,17 @@
         </template>
 
         <template #[`item.location_kind`]="{ item }">
-          <v-chip
-            :color="item.location_kind === 'quarantine' ? 'warning' : 'info'"
-            size="small"
-            variant="flat"
-          >
+          <v-chip :color="locationKindColors[item.location_kind]" size="small" variant="flat">
             {{ item.location_kind }}
           </v-chip>
         </template>
 
         <template #[`item.status`]="{ item }">
           <BookStatus :book="item" />
+        </template>
+
+        <template #[`item.deletion_date`]="{ item }">
+          {{ item.deletion_date ? formatDt(item.deletion_date) : '-' }}
         </template>
 
         <template #no-data>
@@ -60,7 +81,9 @@
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
 import type { Paginator } from '@/types/base'
-import type { BookLight } from '@/types/book'
+import { formatDt } from '@/utils/format'
+import type { BookLight, LocationKind } from '@/types/book'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
@@ -80,12 +103,17 @@ interface Props {
   filters?: {
     id: string
     location_kind: string
+    flag: string
   }
+  selectedBooks?: string[]
+  showSelection?: boolean
   showFilters?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  filters: () => ({ id: '', location_kind: '' }),
+  filters: () => ({ id: '', location_kind: '', flag: '' }),
+  selectedBooks: () => [],
+  showSelection: true,
   showFilters: true,
 })
 
@@ -93,9 +121,20 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]
+  selectionChanged: [selectedBooks: string[]]
 }>()
 
 const limits = [10, 20, 50, 100]
+
+const locationKindColors: Record<LocationKind, string> = {
+  quarantine: 'warning',
+  staging: 'secondary',
+  prod: 'success',
+  to_delete: 'info',
+  deleted: 'red-lighten-1',
+}
+
+const selectedBooks = computed(() => props.selectedBooks)
 
 function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
   const query = { ...route.query }
@@ -111,5 +150,13 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
   if (options.itemsPerPage != props.paginator.limit) {
     emit('limitChanged', options.itemsPerPage)
   }
+}
+
+function handleSelectionChange(selection: string[]) {
+  emit('selectionChanged', selection)
+}
+
+function clearSelections() {
+  emit('selectionChanged', [])
 }
 </script>

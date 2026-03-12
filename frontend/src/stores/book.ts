@@ -44,19 +44,30 @@ export const useBookStore = defineStore('book', () => {
   const fetchBooks = async (
     limit: number,
     skip: number,
-    has_title: boolean | undefined = undefined,
+    needs_attention: boolean | undefined = undefined,
     id: string | undefined = undefined,
     location_kinds: string[] | undefined = undefined,
+    flag: string | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
+
+    const needs_file_operation = flag === 'needs_file_operation' ? true : undefined
+    const needs_processing = flag === 'needs_processing' ? true : undefined
+    const has_error = flag === 'has_error' ? true : undefined
+    const has_title = flag == 'no_title' ? false : undefined
+
     // filter out undefined values from params
     const cleanedParams = Object.fromEntries(
       Object.entries({
         limit,
         skip,
-        has_title,
+        needs_attention,
         id,
         location_kinds,
+        needs_file_operation,
+        needs_processing,
+        has_error,
+        has_title,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),
