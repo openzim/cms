@@ -62,7 +62,6 @@ import BookStatus from '@/components/BookStatus.vue'
 import type { Paginator } from '@/types/base'
 import { formatDt } from '@/utils/format'
 import type { BookLight, LocationKind } from '@/types/book'
-import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
