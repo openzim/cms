@@ -38,6 +38,7 @@ class BooksGetSchema(BaseModel):
     has_error: bool | None = None
     needs_file_operation: bool | None = None
     location_kinds: list[NotEmptyString] | None = None
+    needs_attention: bool | None = None
 
 
 @router.get("")
@@ -57,6 +58,7 @@ def get_books(
         has_error=params.has_error,
         needs_file_operation=params.needs_file_operation,
         location_kinds=params.location_kinds,
+        needs_attention=params.needs_attention,
     )
 
     return ListResponse[BookLightSchema](

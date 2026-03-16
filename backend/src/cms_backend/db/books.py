@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, select
+from sqlalchemy import String, and_, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import count_from_stmt
@@ -22,6 +22,7 @@ def get_books(
     has_error: bool | None = None,
     needs_file_operation: bool | None = None,
     location_kinds: list[str] | None = None,
+    needs_attention: bool | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -60,6 +61,25 @@ def get_books(
     if location_kinds is not None:
         stmt = stmt.where(Book.location_kind.in_(location_kinds))
 
+    if needs_attention is True:
+        stmt = stmt.where(
+            or_(
+                Book.title_id.is_(None),
+                Book.needs_processing.is_(True),
+                Book.needs_file_operation.is_(True),
+                Book.has_error.is_(True),
+            )
+        )
+    elif needs_attention is False:
+        stmt = stmt.where(
+            and_(
+                Book.title_id.is_not(None),
+                Book.needs_processing.is_(False),
+                Book.needs_file_operation.is_(False),
+                Book.has_error.is_(False),
+            )
+        )
+
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
@@ -88,7 +108,16 @@ def get_books(
                 name,
                 date,
                 flavour,
-            ) in session.execute(stmt.offset(skip).limit(limit)).all()
+            ) in session.execute(
+                stmt.offset(skip)
+                .limit(limit)
+                .order_by(
+                    Book.has_error,
+                    Book.location_kind,
+                    Book.needs_file_operation,
+                    Book.created_at.desc(),
+                )
+            ).all()
         ],
     )
 

@@ -171,6 +171,68 @@ def test_get_books_combined_filters(
     assert response_doc["meta"]["count"] == 2
 
 
+@pytest.mark.parametrize(
+    "needs_attention,expected_count",
+    [
+        pytest.param(None, 5, id="no-filter"),
+        pytest.param(True, 4, id="needs-attention"),
+        pytest.param(False, 1, id="does-not-need-attention"),
+    ],
+)
+def test_get_books_filter_by_needs_attention(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    needs_attention: bool | None,
+    expected_count: int,
+):
+    """Test get books endpoint filtering by needs_attention"""
+
+    title = create_title()
+
+    book_with_title = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_with_title)
+
+    book_without_title = create_book(zim_metadata={"Name": "different_name"})
+
+    book_needs_processing = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_needs_processing)
+    book_needs_processing.needs_processing = True
+
+    book_has_error = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_has_error)
+    book_has_error.has_error = True
+
+    book_needs_file_operation = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_needs_file_operation)
+    book_needs_file_operation.needs_file_operation = True
+
+    url = (
+        "/v1/books"
+        if needs_attention is None
+        else f"/v1/books?needs_attention={str(needs_attention).lower()}"
+    )
+    response = client.get(url)
+
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == expected_count
+    assert len(response_doc["items"]) == expected_count
+
+    if needs_attention is True:
+        returned_ids = {item["id"] for item in response_doc["items"]}
+        assert returned_ids == {
+            str(book_without_title.id),
+            str(book_needs_processing.id),
+            str(book_has_error.id),
+            str(book_needs_file_operation.id),
+        }
+
+    if needs_attention is False:
+        returned_ids = {item["id"] for item in response_doc["items"]}
+        assert returned_ids == {str(book_with_title.id)}
+
+
 def test_get_books_filter_by_id(
     client: TestClient,
     create_book: Callable[..., Book],

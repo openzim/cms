@@ -265,6 +265,67 @@ def test_get_books_book_id_combined_with_other_filters(
     assert results.records[0].id == book3.id
 
 
+@pytest.mark.parametrize(
+    "needs_attention,expected_count",
+    [
+        pytest.param(None, 5, id="no-filter"),
+        pytest.param(True, 4, id="needs-attention"),
+        pytest.param(False, 1, id="does-not-need-attention"),
+    ],
+)
+def test_get_books_filter_by_needs_attention(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    needs_attention: bool | None,
+    expected_count: int,
+):
+    """Test that get_books works correctly with needs_attention filter"""
+
+    title = create_title()
+
+    book_with_title = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_with_title)
+
+    book_without_title = create_book()
+
+    book_needs_processing = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_needs_processing)
+    book_needs_processing.needs_processing = True
+
+    book_has_error = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_has_error)
+    book_has_error.has_error = True
+
+    book_needs_file_operation = create_book(zim_metadata={"Name": title.name})
+    title.books.append(book_needs_file_operation)
+    book_needs_file_operation.needs_file_operation = True
+
+    dbsession.flush()
+
+    results = get_books(
+        dbsession,
+        skip=0,
+        limit=20,
+        needs_attention=needs_attention,
+    )
+
+    assert results.nb_records == expected_count
+    assert len(results.records) == expected_count
+
+    if needs_attention is True:
+        returned_ids = {record.id for record in results.records}
+        assert returned_ids == {
+            book_without_title.id,
+            book_needs_processing.id,
+            book_has_error.id,
+            book_needs_file_operation.id,
+        }
+    elif needs_attention is False:
+        returned_ids = {record.id for record in results.records}
+        assert returned_ids == {book_with_title.id}
+
+
 def test_get_zim_urls(
     dbsession: OrmSession,
     create_book: Callable[..., Book],

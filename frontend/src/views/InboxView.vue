@@ -1,4 +1,4 @@
-<!-- Inbox View showing a list of books, zimfarm notifications, and events -->
+<!-- Inbox View showing a list of books and zimfarm notifications -->
 
 <template>
   <TabsList :active-tab="currentTab" :tab-options="tabOptions" @tab-changed="handleTabChange" />
@@ -15,12 +15,6 @@
     @filters-changed="handleZimfarmFiltersChange"
     @clear-filters="clearFilters"
   />
-  <EventFilters
-    v-if="currentTab == 'events'"
-    :filters="eventFilters"
-    @filters-changed="handleEventFiltersChange"
-    @clear-filters="clearFilters"
-  />
   <BookTable
     v-show="currentTab == 'books'"
     :headers="headers"
@@ -30,9 +24,12 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="bookFilters"
+    :selected-books="selectedBooks"
+    :show-selection="true"
     :show-filters="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
+    @selection-changed="handleSelectionChanged"
   />
   <ZimfarmNotificationTable
     v-show="currentTab == 'zimfarm_notifications'"
@@ -43,19 +40,11 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="zimfarmFilters"
+    :selected-zimfarm-notifications="selectedZimfarmNotifications"
+    :show-selection="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
-  />
-  <EventTable
-    v-show="currentTab == 'events'"
-    :headers="headers"
-    :events="events"
-    :paginator="paginator"
-    :loading="loadingStore.isLoading"
-    :loading-text="loadingStore.loadingText"
-    :errors="errors"
-    @limit-changed="handleLimitChange"
-    @load-data="loadData"
+    @selection-changed="handleSelectionChanged"
   />
 </template>
 
@@ -65,15 +54,11 @@ import BookFilters from '@/components/BookFilters.vue'
 import BookTable from '@/components/BookTable.vue'
 import ZimfarmNotificationFilters from '@/components/ZimfarmNotificationFilters.vue'
 import ZimfarmNotificationTable from '@/components/ZimfarmNotificationTable.vue'
-import EventFilters from '@/components/EventFilters.vue'
-import EventTable from '@/components/EventTable.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useBookStore } from '@/stores/book'
 import { useZimfarmNotificationStore } from '@/stores/zimfarmNotification'
-import { useEventStore } from '@/stores/event'
 import type { BookLight } from '@/types/book'
 import type { ZimfarmNotificationLight } from '@/types/zimfarmNotification'
-import type { EventLight } from '@/types/event'
 import type { Paginator } from '@/types/base'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -83,14 +68,12 @@ const route = useRoute()
 
 const bookStore = useBookStore()
 const zimfarmNotificationStore = useZimfarmNotificationStore()
-const eventStore = useEventStore()
 const loadingStore = useLoadingStore()
 
 // Filter options
 const tabOptions = [
   { value: 'books', label: 'BOOKS' },
   { value: 'zimfarm_notifications', label: 'ZIMFARM NOTIFICATIONS' },
-  { value: 'events', label: 'EVENTS' },
 ]
 
 // Define headers for the table
@@ -101,18 +84,13 @@ const headers = computed(() => {
         { title: 'ID', value: 'id' },
         { title: 'Location', value: 'location_kind' },
         { title: 'Status', value: 'status' },
+        { title: 'Deletion Date', value: 'deletion_date' },
       ]
     case 'zimfarm_notifications':
       return [
         { title: 'ID', value: 'id' },
         { title: 'Received', value: 'received_at' },
         { title: 'Status', value: 'status' },
-      ]
-    case 'events':
-      return [
-        { title: 'ID', value: 'id' },
-        { title: 'Created', value: 'created_at' },
-        { title: 'Topic', value: 'topic' },
       ]
     default:
       return []
@@ -124,22 +102,12 @@ const currentTab = computed(() => {
   return (Array.isArray(tab) ? tab[0] : tab) || 'books'
 })
 
-const defaultLimit = computed(() => {
-  switch (currentTab.value) {
-    case 'books':
-      return bookStore.defaultLimit
-    case 'zimfarm_notifications':
-      return zimfarmNotificationStore.defaultLimit
-    case 'events':
-      return eventStore.defaultLimit
-    default:
-      return 20
-  }
-})
+const defaultLimit = computed(() =>
+  currentTab.value == 'book' ? bookStore.defaultLimit : zimfarmNotificationStore.defaultLimit,
+)
 
 const books = ref<BookLight[]>([])
 const zimfarmNotifications = ref<ZimfarmNotificationLight[]>([])
-const events = ref<EventLight[]>([])
 const paginator = ref<Paginator>({
   page: Number(route.query.page) || 1,
   page_size: defaultLimit.value,
@@ -154,6 +122,7 @@ const bookFilters = computed(() => {
   const derived = {
     location_kind: '',
     id: '',
+    flag: '',
   }
   if (query.id && typeof query.id === 'string') {
     derived.id = query.id
@@ -161,6 +130,10 @@ const bookFilters = computed(() => {
 
   if (query.location_kind && typeof query.location_kind === 'string') {
     derived.location_kind = query.location_kind
+  }
+
+  if (query.flag && typeof query.flag === 'string') {
+    derived.flag = query.flag
   }
 
   return derived
@@ -178,19 +151,9 @@ const zimfarmFilters = computed(() => {
   return derived
 })
 
-const eventFilters = computed(() => {
-  const query = router.currentRoute.value.query
-  const derived = {
-    topic: '',
-  }
-  if (query.topic && typeof query.topic === 'string') {
-    derived.topic = query.topic
-  }
-
-  return derived
-})
-
 const intervalId = ref<number | null>(null)
+const selectedBooks = ref<string[]>([])
+const selectedZimfarmNotifications = ref<string[]>([])
 
 const handleTabChange = (newTab: string) => {
   // Navigate to the new tab route
@@ -201,28 +164,23 @@ const handleTabChange = (newTab: string) => {
   })
 }
 
+// Clear selections when switching tabs
+watch(currentTab, () => {
+  selectedBooks.value = []
+  selectedZimfarmNotifications.value = []
+})
+
 async function loadData(limit: number, skip: number, tab?: string, hideLoading: boolean = false) {
   if (!tab) {
     tab = currentTab.value
   }
 
   if (!hideLoading) {
-    let loadingText = 'Fetching data...'
-    switch (tab) {
-      case 'books':
-        loadingText = 'Fetching books...'
-        break
-      case 'zimfarm_notifications':
-        loadingText = 'Fetching zimfarm notifications...'
-        break
-      case 'events':
-        loadingText = 'Fetching events...'
-        break
-    }
-    loadingStore.startLoading(loadingText)
+    loadingStore.startLoading(
+      tab === 'books' ? 'Fetching books...' : 'Fetching zimfarm notifications...',
+    )
     books.value = []
     zimfarmNotifications.value = []
-    events.value = []
   }
 
   switch (tab) {
@@ -230,9 +188,10 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
       await bookStore.fetchBooks(
         limit,
         skip,
-        false,
+        true,
         bookFilters.value.id || undefined,
         bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
+        bookFilters.value.flag || undefined,
       )
       books.value = bookStore.books
       errors.value = bookStore.errors
@@ -254,13 +213,6 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
       zimfarmNotificationStore.savePaginatorLimit(limit)
       paginator.value = { ...zimfarmNotificationStore.paginator }
       break
-    case 'events':
-      await eventStore.fetchEvents(limit, skip, eventFilters.value.topic || undefined)
-      events.value = eventStore.events
-      errors.value = eventStore.errors
-      eventStore.savePaginatorLimit(limit)
-      paginator.value = { ...eventStore.paginator }
-      break
     default:
       throw new Error(`Invalid tab: ${tab}`)
   }
@@ -278,9 +230,6 @@ async function handleLimitChange(newLimit: number) {
     case 'zimfarm_notifications':
       zimfarmNotificationStore.savePaginatorLimit(newLimit)
       break
-    case 'events':
-      eventStore.savePaginatorLimit(newLimit)
-      break
   }
 
   if (paginator.value.page != 1) {
@@ -296,7 +245,7 @@ async function handleLimitChange(newLimit: number) {
 }
 
 function updateUrlFilters(
-  sourceFilters: typeof bookFilters.value | typeof zimfarmFilters.value | typeof eventFilters.value,
+  sourceFilters: typeof bookFilters.value | typeof ZimfarmNotificationFilters.value,
 ) {
   // create query object from selected filters
   const query: Record<string, string | string[]> = {}
@@ -306,7 +255,7 @@ function updateUrlFilters(
     query.tab = currentTab.value
   }
 
-  if ('id' in sourceFilters && sourceFilters.id) {
+  if (sourceFilters.id) {
     query.id = sourceFilters.id
   }
 
@@ -314,8 +263,8 @@ function updateUrlFilters(
     query.location_kind = sourceFilters.location_kind
   }
 
-  if ('topic' in sourceFilters && sourceFilters.topic) {
-    query.topic = sourceFilters.topic
+  if ('flag' in sourceFilters && sourceFilters.flag) {
+    query.flag = sourceFilters.flag
   }
 
   router.push({
@@ -327,13 +276,10 @@ function updateUrlFilters(
 async function clearFilters() {
   switch (currentTab.value) {
     case 'books':
-      updateUrlFilters({ id: '', location_kind: '' })
+      updateUrlFilters({ id: '', location_kind: '', flag: '' })
       break
     case 'zimfarm_notifications':
       updateUrlFilters({ id: '' })
-      break
-    case 'events':
-      updateUrlFilters({ topic: '' })
       break
   }
 }
@@ -346,8 +292,15 @@ async function handleZimfarmFiltersChange(newFilters: typeof zimfarmFilters.valu
   updateUrlFilters(newFilters)
 }
 
-async function handleEventFiltersChange(newFilters: typeof eventFilters.value) {
-  updateUrlFilters(newFilters)
+function handleSelectionChanged(newSelection: string[]) {
+  switch (currentTab.value) {
+    case 'books':
+      selectedBooks.value = newSelection
+      break
+    case 'zimfarm_notifications':
+      selectedZimfarmNotifications.value = newSelection
+      break
+  }
 }
 
 watch(
