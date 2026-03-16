@@ -3,7 +3,7 @@
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
       <v-data-table-server
         :headers="headers"
-        :items="books"
+        :items="events"
         :loading="loading"
         :page="props.paginator.page"
         :items-per-page="props.paginator.limit"
@@ -21,35 +21,36 @@
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
             <div class="mt-4 text-body-1">
-              {{ loadingText || 'Fetching books...' }}
+              {{ loadingText || 'Fetching events...' }}
             </div>
           </div>
         </template>
 
         <template #[`item.id`]="{ item }">
-          <router-link :to="{ name: 'book-detail', params: { id: item.id } }">
+          <span>
             {{ item.id }}
-          </router-link>
+          </span>
         </template>
 
-        <template #[`item.location_kind`]="{ item }">
-          <v-chip
-            :color="item.location_kind === 'quarantine' ? 'warning' : 'info'"
-            size="small"
-            variant="flat"
-          >
-            {{ item.location_kind }}
-          </v-chip>
+        <template #[`item.created_at`]="{ item }">
+          <v-tooltip location="bottom">
+            <template #activator="{ props }">
+              <span v-bind="props">
+                {{ fromNow(item.created_at) }}
+              </span>
+            </template>
+            <span>{{ formatDt(item.created_at) }}</span>
+          </v-tooltip>
         </template>
 
-        <template #[`item.status`]="{ item }">
-          <BookStatus :book="item" />
+        <template #[`item.topic`]="{ item }">
+          <span>{{ item.topic }}</span>
         </template>
 
         <template #no-data>
           <div class="text-center pa-4">
-            <v-icon size="x-large" class="mb-2">mdi-book-open-page-variant</v-icon>
-            <div class="text-h6 text-grey-darken-1 mb-2">No books found</div>
+            <v-icon size="x-large" class="mb-2">mdi-format-list-bulleted</v-icon>
+            <div class="text-h6 text-grey-darken-1 mb-2">No events found</div>
           </div>
         </template>
       </v-data-table-server>
@@ -58,9 +59,9 @@
 </template>
 
 <script setup lang="ts">
-import BookStatus from '@/components/BookStatus.vue'
 import type { Paginator } from '@/types/base'
-import type { BookLight } from '@/types/book'
+import type { EventLight } from '@/types/event'
+import { formatDt, fromNow } from '@/utils/format'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
@@ -72,24 +73,15 @@ const { smAndDown } = useDisplay()
 // Props
 interface Props {
   headers: { title: string; value: string }[]
-  books: BookLight[]
+  events: EventLight[]
   paginator: Paginator
   loading: boolean
   errors: string[]
   loadingText: string
-  filters?: {
-    id: string
-    location_kind: string
-  }
-  showFilters?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  filters: () => ({ id: '', location_kind: '' }),
-  showFilters: true,
-})
+const props = defineProps<Props>()
 
-// Define emits
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]

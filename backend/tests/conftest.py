@@ -19,6 +19,7 @@ from cms_backend.db.models import (
     BookLocation,
     Collection,
     CollectionTitle,
+    Event,
     Title,
     User,
     Warehouse,
@@ -361,3 +362,26 @@ def access_token(user: User) -> str:
         issue_time=getnow(),
         user_id=str(user.id),
     )
+
+
+@pytest.fixture
+def create_event(
+    dbsession: OrmSession,
+    faker: Faker,
+) -> Callable[..., Event]:
+    def _create_event(
+        *,
+        topic: str | None = None,
+        created_at: datetime | None = None,
+    ):
+        event = Event(
+            topic=topic or faker.slug(),
+            payload={},
+            created_at=created_at or faker.date_time(),
+        )
+        dbsession.add(event)
+        dbsession.flush()
+
+        return event
+
+    return _create_event
