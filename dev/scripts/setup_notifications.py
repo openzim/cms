@@ -52,7 +52,6 @@ NOTIFICATIONS_CONFIG = [
             "Flavour": "maxi",
             "Illustration_48x48@1": FAVICON_BLUE,
         },
-        "zimcheck": {"status": "pass"},
         "folder_name": "wikipedia",
         "filename": "wikipedia_en_all_maxi_2025-01.zim",
     },
@@ -71,7 +70,6 @@ NOTIFICATIONS_CONFIG = [
             "Flavour": "maxi",
             "Illustration_48x48@1": FAVICON_GREEN,
         },
-        "zimcheck": {"status": "pass"},
         "folder_name": "wiktionary",
         "filename": "wiktionary_fr_all_maxi_2025-01.zim",
     },
@@ -90,7 +88,6 @@ NOTIFICATIONS_CONFIG = [
             "Flavour": "maxi",
             "Illustration_48x48@1": FAVICON_RED,
         },
-        "zimcheck": {"status": "pass"},
         "folder_name": "",
         "filename": "wiktionary_en_all_maxi_2025-01.zim",
     },
@@ -120,6 +117,9 @@ def create_notifications():
 
             # Generate random notification ID
             notification_id = uuid4()
+
+            # Set fake zimcheck_url
+            content["zimcheck_url"] = f"https://foo.acme.com/{notification_id}.json"
 
             # Create notification record
             notification = ZimfarmNotification(
