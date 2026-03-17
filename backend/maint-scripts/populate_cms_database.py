@@ -374,6 +374,10 @@ def process_zim_file(
     # Calculate relative path within warehouse
     zim_path_in_warehouse = zim_file.relative_to(warehouse_path)
 
+    if zim_file.with_suffix(".delete").exists():
+        logger.info(f"Ignoring ZIM marked for deletion: {zim_path_in_warehouse}")
+        return
+
     logger.info(f"Processing: {zim_path_in_warehouse}")
 
     # Check if book already exists at this location
