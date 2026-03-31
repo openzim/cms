@@ -9,10 +9,13 @@ import pytest
 from cms_backend.api.token import OAuthTokenDecoder
 from cms_backend.utils.datetime import getnow
 
+TEST_ISSUER = "https://foo.acme.org"
+TEST_AUDIENCE_ID = "d87a31d2-874e-44c4-9dc2-63fad523bf1c"
+
 
 def create_test_session_jwt_token(
-    issuer: str = "https://login.kiwix.org",
-    audience_id: str = "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+    issuer: str = TEST_ISSUER,
+    audience_id: str = TEST_AUDIENCE_ID,
     subject: str | None = None,
     exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
     aal: str = "aal2",
@@ -39,7 +42,7 @@ def create_test_session_jwt_token(
 
 
 def create_test_client_jwt_token(
-    issuer: str = "https://login.kiwix.org",
+    issuer: str = TEST_ISSUER,
     client_id: str = "test-client-id",
     subject: str | None = None,
     exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
@@ -67,12 +70,10 @@ def test_verify_session_access_token_expired_token(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test that expired session tokens raise ValueError."""
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_audience_id",
-        "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        TEST_AUDIENCE_ID,
     )
 
     test_token = create_test_session_jwt_token()
@@ -100,12 +101,10 @@ def test_verify_session_access_token_with_2fa_enabled_and_valid_aal(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test successful verification when 2FA is enabled and user has aal2."""
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_audience_id",
-        "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        TEST_AUDIENCE_ID,
     )
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_login_require_2fa", True
@@ -118,9 +117,9 @@ def test_verify_session_access_token_with_2fa_enabled_and_valid_aal(
     mock_signing_key.key = "test-key"
 
     decoded_payload = {
-        "iss": "https://login.kiwix.org",
+        "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
-        "aud": "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        "aud": TEST_AUDIENCE_ID,
         "name": "Test User",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
@@ -150,12 +149,10 @@ def test_verify_session_access_token_with_2fa_enabled_only_aal1(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test verification fails when 2FA is enabled but only aal1 is present."""
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_audience_id",
-        "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        TEST_AUDIENCE_ID,
     )
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_login_require_2fa", True
@@ -167,9 +164,9 @@ def test_verify_session_access_token_with_2fa_enabled_only_aal1(
     mock_signing_key.key = "test-key"
 
     decoded_payload = {
-        "iss": "https://login.kiwix.org",
+        "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
-        "aud": "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        "aud": TEST_AUDIENCE_ID,
         "name": "Test User",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
@@ -198,12 +195,10 @@ def test_verify_session_access_token_with_2fa_disabled_only_aal1(
     """
     Test that verification succeeds when 2FA is disabled even with only aal1
     """
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_audience_id",
-        "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        TEST_AUDIENCE_ID,
     )
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_login_require_2fa", False
@@ -215,9 +210,9 @@ def test_verify_session_access_token_with_2fa_disabled_only_aal1(
     mock_signing_key.key = "test-key"
 
     decoded_payload = {
-        "iss": "https://login.kiwix.org",
+        "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
-        "aud": "d87a31d2-874e-44c4-9dc2-63fad523bf1b",
+        "aud": TEST_AUDIENCE_ID,
         "name": "Test User",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
@@ -248,9 +243,7 @@ def test_verify_client_access_token_valid(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test successful verification of valid OAuth2 client token."""
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_client_id",
         "test-client-id",
@@ -262,7 +255,7 @@ def test_verify_client_access_token_valid(
     mock_signing_key.key = "test-key"
 
     decoded_payload = {
-        "iss": "https://login.kiwix.org",
+        "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
         "client_id": str(UUID(int=0)),
         "iat": int(getnow().timestamp()),
@@ -291,9 +284,7 @@ def test_verify_client_access_token_invalid_client_id(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test verification fails when client_id doesn't match."""
-    monkeypatch.setattr(
-        "cms_backend.api.context.Context.oauth_issuer", "https://login.kiwix.org"
-    )
+    monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_client_id",
         "expected-client-id",
@@ -305,7 +296,7 @@ def test_verify_client_access_token_invalid_client_id(
     mock_signing_key.key = "test-key"
 
     decoded_payload = {
-        "iss": "https://login.kiwix.org",
+        "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
         "client_id": "wrong-client-id",
         "iat": int(getnow().timestamp()),
