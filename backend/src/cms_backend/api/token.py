@@ -113,7 +113,7 @@ class OAuthTokenDecoder(TokenDecoder):
             raise ValueError(
                 "2FA authentication is mandatory on CMS but it looks like you only "
                 "have one setup on Ory. Please, configure a second one on Ory at "
-                "https://login.kiwix.org/settings"
+                f"{Context.oauth_issuer}/settings"
             )
         return JWTClaims.model_validate(decoded_token)
 

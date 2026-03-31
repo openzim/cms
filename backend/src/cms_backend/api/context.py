@@ -14,9 +14,9 @@ class Context:
 
     oauth_jwks_uri = os.getenv(
         "OAUTH_JWKS_URI",
-        default="https://login.kiwix.org/.well-known/jwks.json",
+        default="https://ory.login.kiwix.org/.well-known/jwks.json",
     )
-    oauth_issuer = os.getenv("OAUTH_ISSUER", default="https://login.kiwix.org")
+    oauth_issuer = os.getenv("OAUTH_ISSUER", default="https://ory.login.kiwix.org")
 
     oauth_session_audience_id = os.getenv(
         "OAUTH_SESSION_AUDIENCE_ID", default="d87a31d2-874e-44c4-9dc2-63fad523bf1b"
