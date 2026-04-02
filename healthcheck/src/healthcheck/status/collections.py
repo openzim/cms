@@ -34,7 +34,7 @@ async def check_collection_catalog_generation(
     session: aiohttp.ClientSession, collection: CollectionLightSchema
 ) -> CollectionCatalogStatus:
     async with session.get(
-        f"{Context.cms_api_url}/{collection.id}/catalog.xml",
+        f"{Context.cms_api_url}/collections/{collection.id}/catalog.xml",
         timeout=aiohttp.ClientTimeout(total=Context.catalog_generation_timeout),
     ) as resp:
         return CollectionCatalogStatus(
@@ -83,7 +83,7 @@ async def check_catalog_generation() -> Result[CatalogStatus]:
             )
 
         return Result(
-            success=bool(failures),
-            status_code=HTTPStatus.OK if len(failures) > 0 else HTTPStatus.NOT_FOUND,
+            success=False if failures else True,
+            status_code=HTTPStatus.NOT_FOUND if failures else HTTPStatus.OK,
             data=CatalogStatus(collections=catalog_statuses),
         )

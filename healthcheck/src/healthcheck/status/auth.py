@@ -49,7 +49,7 @@ class ClientTokenProvider:
                 Context.cms_oauth_client_id, Context.cms_oauth_client_secret
             ),
             timeout=Context.requests_timeout,
-            check_name="zimfarm-api-authentication",
+            check_name="cms-api-authentication",
         )
         if response.json:
             self._access_token = cast(str, response.json["access_token"])
@@ -58,7 +58,7 @@ class ClientTokenProvider:
             )
 
     async def _generate_local_access_token(self) -> None:
-        check_name = "zimfarm-api-authentication"
+        check_name = "cms-api-authentication"
         if self._refresh_token:
             response = await query_api(
                 f"{Context.cms_api_url}/auth/refresh",
@@ -135,13 +135,13 @@ async def authenticate() -> Result[Token]:
             f"{Context.cms_api_url}/auth/me",
             method="GET",
             headers={"Authorization": f"Bearer {token.access_token}"},
-            check_name="zimfarm-api-authentication",
+            check_name="cms-api-authentication",
         )
 
         if response.success:
             logger.debug(
                 f"Authentication successful using {Context.auth_mode} mode",
-                extra={"checkname": "zimfarm-api-authentication"},
+                extra={"checkname": "cms-api-authentication"},
             )
 
             return Result(
