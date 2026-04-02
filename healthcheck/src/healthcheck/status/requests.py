@@ -4,6 +4,7 @@ from json import JSONDecodeError
 from typing import Any
 
 import aiohttp
+from aiohttp.helpers import BasicAuth
 
 from healthcheck.context import Context
 from healthcheck.status import status_logger as logger
@@ -28,6 +29,8 @@ async def query_api(
     payload: dict[str, Any] | None = None,
     params: dict[str, Any] | None = None,
     timeout: float = Context.requests_timeout,
+    auth: BasicAuth | None = None,
+    data: dict[str, Any] | None = None,
 ) -> Response:
     req_headers: dict[str, Any] = {}
     req_headers.update(headers if headers else {})
@@ -35,7 +38,8 @@ async def query_api(
     # Log request details
     logger.debug(
         f"Sending request: method={method.upper()}, url={url}, "
-        f"headers={req_headers}, params={params}, body={payload}",
+        f"headers={req_headers}, params={params}, body={payload}, "
+        f"data={data}",
         extra={"checkname": check_name},
     )
 
@@ -48,6 +52,8 @@ async def query_api(
             json=payload,
             params=params,
             timeout=aiohttp.ClientTimeout(total=timeout),
+            auth=auth,
+            data=data,
         ) as resp:
             try:
                 text = await resp.text()

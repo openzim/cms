@@ -78,7 +78,8 @@ async def check_catalog_generation() -> Result[CatalogStatus]:
         if failures:
             logger.error(
                 f"Failed to generate catalogs for the following collections: "
-                f"{','.join([failure.name for failure in failures])}"
+                f"{','.join([failure.name for failure in failures])}",
+                extra={"checkname": "cms-check-catalog-generation"},
             )
 
         return Result(

@@ -1,3 +1,4 @@
+import datetime
 import os
 from typing import Any
 
@@ -29,8 +30,18 @@ class Context:
 
     cms_api_url = get_mandatory_env("CMS_API_URL")
     cms_frontend_url = get_mandatory_env("CMS_FRONTEND_URL")
-    cms_username = get_mandatory_env("CMS_USERNAME")
-    cms_password = get_mandatory_env("CMS_PASSWORD")
+    auth_mode = os.getenv("AUTH_MODE", default="local")
+    cms_username = os.getenv("CMS_USERNAME", default="")
+    cms_password = os.getenv("CMS_PASSWORD")
+    cms_oauth_issuer = os.getenv(
+        "CMS_OAUTH_ISSUER", default="https://ory.login.kiwix.org"
+    )
+    cms_oauth_client_id = os.getenv("CMS_OAUTH_CLIENT_ID", default="")
+    cms_oauth_client_secret = os.getenv("CMS_OAUTH_CLIENT_SECRET", default="")
+    cms_oauth_audience_id = os.getenv("CMS_OAUTH_AUDIENCE_ID", default="")
+    cms_token_renewal_window = datetime.timedelta(
+        seconds=parse_timespan(os.getenv("CMS_TOKEN_RENEWAL_WINDOW", default="5m"))
+    )
     cms_database_url = get_mandatory_env("CMS_DATABASE_URL")
     catalog_generation_timeout = parse_timespan(
         os.getenv("CATALOG_GENERATION_TIMEOUT", default="10s")
