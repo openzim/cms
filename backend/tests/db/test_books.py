@@ -14,7 +14,7 @@ from cms_backend.db.book import (
     move_book,
     recover_book,
 )
-from cms_backend.db.books import get_books, get_zim_urls
+from cms_backend.db.books import get_book_languages, get_books, get_zim_urls
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
     Book,
@@ -370,6 +370,34 @@ def test_get_zim_urls(
     assert view_url is not None
     assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
     assert view_url.collection == collection.name
+
+
+def test_get_book_languages(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Return the sorted distinct language codes from production books only."""
+    prod_book = create_book(zim_metadata={"Language": "eng, fra"})
+    prod_book.location_kind = "prod"
+
+    other_prod_book = create_book(zim_metadata={"Language": " deu ,eng, ,spa "})
+    other_prod_book.location_kind = "prod"
+
+    create_book(zim_metadata={"Language": "hin"})
+    staging_book = create_book(zim_metadata={"Language": "ita"})
+    staging_book.location_kind = "staging"
+
+    blank_language_book = create_book(zim_metadata={"Language": " , "})
+    blank_language_book.location_kind = "prod"
+
+    missing_language_book = create_book(zim_metadata={"Name": "no-language"})
+    missing_language_book.location_kind = "prod"
+
+    dbsession.flush()
+
+    result = get_book_languages(dbsession)
+
+    assert result.languages == ["deu", "eng", "fra", "spa"]
 
 
 def test_get_zim_urls_book_with_subpath(

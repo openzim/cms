@@ -13,10 +13,11 @@ from cms_backend.db.book import delete_book as db_delete_book
 from cms_backend.db.book import get_book as db_get_book
 from cms_backend.db.book import move_book as db_move_book
 from cms_backend.db.book import recover_book as db_recover_book
+from cms_backend.db.books import get_book_languages as db_get_book_languages
 from cms_backend.db.books import get_books as db_get_books
 from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.models import ZimUrlsSchema
+from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookLightSchema,
@@ -78,6 +79,13 @@ def get_zim_urls(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ZimUrlsSchema:
     return db_get_zim_urls(session, zim_ids)
+
+
+@router.get("/languages")
+def get_book_languages(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> BookLanguagesSchema:
+    return db_get_book_languages(session)
 
 
 @router.get("/{book_id}")

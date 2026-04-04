@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
-from cms_backend.schemas.models import ZimUrlSchema, ZimUrlsSchema
+from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
 from cms_backend.utils.filename import construct_download_url
 
@@ -228,3 +228,20 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
                 )
 
     return result
+
+
+def get_book_languages(session: OrmSession) -> BookLanguagesSchema:
+    """Get the sorted list of language codes used by production books."""
+    stmt = select(Book.zim_metadata).where(Book.location_kind == "prod")
+
+    languages: set[str] = set()
+    for zim_metadata in session.scalars(stmt):
+        language_value = zim_metadata.get("Language")
+        if not isinstance(language_value, str):
+            continue
+
+        for language in language_value.split(","):
+            if normalized_language := language.strip():
+                languages.add(normalized_language)
+
+    return BookLanguagesSchema(languages=sorted(languages))
