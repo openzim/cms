@@ -5,9 +5,11 @@ from http import HTTPStatus
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.models import (
     Book,
     BookLocation,
@@ -117,6 +119,7 @@ def test_get_collection_catalog_xml_by_name(
     book.needs_processing = False
     book.has_error = False
     book.needs_file_operation = False
+    book.location_kind = "prod"
     create_book_location(
         book=book, warehouse_id=warehouse.id, path=path, status="current"
     )
@@ -179,6 +182,7 @@ def test_get_collection_catalog_xml_single_book(
     book.needs_processing = False
     book.has_error = False
     book.needs_file_operation = False
+    book.location_kind = "prod"
     create_book_location(
         book=book,
         warehouse_id=warehouse.id,
@@ -260,6 +264,7 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
     book_old.needs_processing = False
     book_old.has_error = False
     book_old.needs_file_operation = False
+    book_old.location_kind = "prod"
     dbsession.flush()
     create_book_location(
         book=book_old, warehouse_id=warehouse.id, path=path, status="current"
@@ -282,6 +287,7 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
     book_new.needs_processing = False
     book_new.has_error = False
     book_new.needs_file_operation = False
+    book_new.location_kind = "prod"
     dbsession.flush()
     create_book_location(
         book=book_new, warehouse_id=warehouse.id, path=path, status="current"
@@ -333,6 +339,7 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
     published_book.needs_processing = False
     published_book.has_error = False
     published_book.needs_file_operation = False
+    published_book.location_kind = "prod"
 
     # Create an unpublished book
     unpublished_book = create_book(
@@ -350,6 +357,7 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
     unpublished_book.needs_processing = True
     unpublished_book.has_error = False
     unpublished_book.needs_file_operation = False
+    unpublished_book.location_kind = "prod"
 
     create_book_location(
         book=published_book, warehouse_id=warehouse.id, path=path, status="current"
@@ -367,6 +375,81 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
     books = list(root.findall("book"))
     assert len(books) == 1
     assert books[0].get("title") == "Published Book"
+
+
+def test_get_collection_catalog_xml_skips_staging_books(
+    client: TestClient,
+    warehouse: Warehouse,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+):
+    """Test that book still in staging is not included"""
+    # Setup
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test")
+
+    path = "test"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    # Create a published book
+    published_book = create_book(
+        zim_metadata={
+            "Name": title.name,
+            "Title": "A Book",
+            "Description": "A description",
+            "Language": "eng",
+            "Creator": "Author",
+            "Publisher": "Publisher",
+            "Date": "2025-01-01",
+        },
+    )
+    published_book.title = title
+    published_book.needs_processing = False
+    published_book.has_error = False
+    published_book.needs_file_operation = False
+    published_book.location_kind = "prod"
+
+    # Create an unpublished book
+    staging_book = create_book(
+        zim_metadata={
+            "Name": title.name,
+            "Title": "A Book",
+            "Description": "A description",
+            "Language": "eng",
+            "Creator": "Author",
+            "Publisher": "Publisher",
+            "Date": "2025-02-01",
+        },
+    )
+    staging_book.title = title
+    staging_book.needs_processing = False
+    staging_book.has_error = False
+    staging_book.needs_file_operation = False
+    staging_book.location_kind = "prod"
+
+    create_book_location(
+        book=published_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+
+    create_book_location(
+        book=staging_book,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        status="current",
+    )
+    dbsession.flush()
+
+    # Test
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+    assert books[0].get("date") == "2025-01-01"
 
 
 def test_get_collection_catalog_xml_single_warehouse(
@@ -402,6 +485,7 @@ def test_get_collection_catalog_xml_single_warehouse(
     book_1.needs_processing = False
     book_1.has_error = False
     book_1.needs_file_operation = False
+    book_1.location_kind = "prod"
 
     create_book_location(
         book=book_1, warehouse_id=warehouse.id, path=path, status="current"
@@ -453,6 +537,7 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     older_book.needs_processing = False
     older_book.has_error = False
     older_book.needs_file_operation = False
+    older_book.location_kind = "prod"
 
     # Create newer book with same name+flavour
     newer_book = create_book(
@@ -471,6 +556,7 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     newer_book.needs_processing = False
     newer_book.has_error = False
     newer_book.needs_file_operation = False
+    newer_book.location_kind = "prod"
 
     create_book_location(
         book=older_book, warehouse_id=warehouse.id, path=path, status="current"
@@ -532,6 +618,7 @@ def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
     older_book.needs_processing = False
     older_book.has_error = False
     older_book.needs_file_operation = False
+    older_book.location_kind = "prod"
     dbsession.flush()
 
     create_book_location(
@@ -559,6 +646,7 @@ def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
     newer_book.needs_processing = False
     newer_book.has_error = False
     newer_book.needs_file_operation = False
+    newer_book.location_kind = "prod"
     dbsession.flush()
 
     create_book_location(
@@ -577,3 +665,92 @@ def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
     assert books[0].get("title") == "Wikipedia New Version"
     assert books[0].get("id") == str(newer_book.id)
     assert books[0].get("name") == "wiki_renamed"
+
+
+@pytest.mark.parametrize(
+    "location_kind",
+    [
+        pytest.param("deleted"),
+        pytest.param("to_delete"),
+        # staging and quarantine should not exists exactly like this in DB (they use
+        # a specific path at least)
+        pytest.param("staging"),
+        pytest.param("quarantine"),
+    ],
+)
+def test_get_collection_catalog_xml_latest_book_bad_location_kind(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    location_kind: str,
+):
+    """Test that only the latest book per name+flavour combination is returned"""
+    # Setup
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="wiki")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    # Create older book
+    older_book = create_book(
+        created_at=getnow() - timedelta(days=30),
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia Old",
+            "Description": "Older version",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2024-12-01",
+        },
+    )
+    older_book.title = title
+    older_book.needs_processing = False
+    older_book.has_error = False
+    older_book.needs_file_operation = False
+    older_book.location_kind = "prod"
+
+    # Create newer book with same name+flavour
+    newer_book = create_book(
+        created_at=getnow(),
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia New",
+            "Description": "Latest version",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-01",
+        },
+    )
+    newer_book.title = title
+    newer_book.needs_processing = False
+    newer_book.has_error = False
+    newer_book.needs_file_operation = False
+    newer_book.location_kind = location_kind
+
+    create_book_location(
+        book=older_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+    create_book_location(
+        book=newer_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+    dbsession.flush()
+
+    # Test
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+
+    # Should be the newer book
+    assert books[0].get("title") == "Wikipedia Old"
+    assert books[0].get("id") == str(older_book.id)

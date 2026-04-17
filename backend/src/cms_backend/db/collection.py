@@ -92,7 +92,7 @@ def get_latest_books_for_collection(
         .join(Collection)
         .where(
             and_(
-                Book.location_kind.in_(["prod", "staging", "quarantine"]),
+                Book.location_kind == "prod",
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Collection.warehouse_id,
                 BookLocation.path == CollectionTitle.path,
