@@ -361,6 +361,54 @@ def _create_book_from_zim(
     return book
 
 
+def get_kiwix_path_from_staging_name(name: str) -> Path:
+    if (
+        name.startswith("alexandria.dk")
+        or name.startswith("charm.li")
+        or name.startswith("cyberhymnal")
+        or name.startswith("ios")
+        or name.startswith("iranwire")
+        or name.startswith("permacomputing")
+        or name.startswith("scp-wiki")
+        or name.startswith("sh1")
+        or name.startswith("spirale")
+        or name.startswith("website")
+        or name.startswith("www.marxists.org")
+    ):
+        return Path("zimit")
+    elif (
+        name.startswith("balatrowiki")
+        or name.startswith("bindingofisaacrebirth")
+        or name.startswith("chabadtext")
+        or name.startswith("consumerrights")
+        or name.startswith("folgerpedia")
+        or name.startswith("guitar")
+        or name.startswith("marefa")
+        or name.startswith("openwrt")
+        or name.startswith("pg3d")
+        or name.startswith("postmarketos")
+        or name.startswith("scoutwiki")
+        or name.startswith("survivors")
+        or name.startswith("terrariawiki")
+        or name.startswith("wikidex")
+        or name.startswith("wiki_en_all")
+        or name.startswith("zh.minecraft.wiki")
+    ):
+        return Path("other")
+    elif name.startswith("gutenberg"):
+        return Path("gutenberg")
+    elif name.startswith("maps"):
+        return Path("maps")
+    elif name.startswith("wikipedia"):
+        return Path("wikipedia")
+    elif name.startswith("wikisource"):
+        return Path("wikisource")
+    elif name.startswith("www.marxists.org"):
+        return Path("wikisource")
+    else:
+        raise Exception(f"Unexpected staging ZIM name: {name}")
+
+
 def process_zim_file(
     ctx: Context,
     session: OrmSession,
@@ -422,7 +470,25 @@ def process_zim_file(
         )
         return
 
-    collections = find_collections_for_zim(session, warehouse_id, zim_path_in_warehouse)
+    normalized_name = normalize_zim_name(zim_info["id"], zim_info["metadata"]["Name"])
+
+    # Handle special "staging" edge-case, where we know all ZIMs are for Kiwix
+    # collection ATM
+    if (
+        determine_location_kind(
+            ctx, warehouse_id=warehouse_id, zim_path_in_warehouse=zim_path_in_warehouse
+        )
+        == "staging"
+    ):
+        collections = find_collections_for_zim(
+            session,
+            UUID("96fb60c0-2de6-46bd-8e67-41213298a5e8"),
+            get_kiwix_path_from_staging_name(normalized_name),
+        )
+    else:
+        collections = find_collections_for_zim(
+            session, warehouse_id, zim_path_in_warehouse
+        )
 
     if not collections:
         logger.error(
@@ -439,7 +505,7 @@ def process_zim_file(
 
     title = get_or_create_title(
         session,
-        normalize_zim_name(zim_info["id"], zim_info["metadata"]["Name"]),
+        normalized_name,
         collections[0],
         zim_path_in_warehouse,
     )
