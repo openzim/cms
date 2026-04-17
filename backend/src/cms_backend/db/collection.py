@@ -51,8 +51,8 @@ def get_collection_by_name(session: OrmSession, collection_name: str) -> Collect
     return collection
 
 
-class CollectionBook(NamedTuple):
-    """Tuple containing book alongside collection/collection-title details."""
+class LibraryBookData(NamedTuple):
+    """Tuple containing book alongside other data needed for library rendering."""
 
     book: Book
     download_base_url: str | None
@@ -62,7 +62,7 @@ class CollectionBook(NamedTuple):
 
 def get_latest_books_for_collection(
     session: OrmSession, collection_id: UUID
-) -> list[CollectionBook]:
+) -> list[LibraryBookData]:
     """
     Get the latest published book for each name+flavour combination in a collection.
 
@@ -74,7 +74,7 @@ def get_latest_books_for_collection(
         collection_id: ID of the collection
 
     Returns:
-        List of CollectionBook objects, one per name+flavour combination
+        List of LibraryBookData objects, one per name+flavour combination
     """
     # Get all books in the library's warehouse paths that are published
     # and currently located there
@@ -106,14 +106,14 @@ def get_latest_books_for_collection(
     )
     # Filter to keep only the latest book per name+flavour combination
     seen: set[tuple[str | None, str | None]] = set()
-    latest_books: list[CollectionBook] = []
+    latest_books: list[LibraryBookData] = []
     for row in session.execute(stmt).all():
         book = cast(Book, row.Book)
         key = (row.title_id, book.flavour)
         if key not in seen:
             seen.add(key)
             latest_books.append(
-                CollectionBook(
+                LibraryBookData(
                     book=book,
                     path=row.subpath,
                     download_base_url=row.download_base_url,

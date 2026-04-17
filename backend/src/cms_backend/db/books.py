@@ -1,9 +1,11 @@
+from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
 from sqlalchemy import String, and_, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
 from cms_backend.schemas.models import ZimUrlSchema, ZimUrlsSchema
@@ -129,6 +131,7 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     stmt = (
         select(
             Book.id.label("book_id"),
+            Book.location_kind.label("book_location_kind"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             Collection.name.label("collection_name"),
@@ -166,7 +169,23 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     # combination
     seen: set[tuple[str | None, str | None]] = set()
     for row in session.execute(stmt).all():
-        if row.download_base_url:
+        if row.book_location_kind == "staging":
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="download",
+                    url=AnyUrl(
+                        construct_download_url(
+                            # staging download url is supposed to contain the whole path
+                            # already for convenience in deployment
+                            Context.staging_download_base_url,
+                            Path(""),
+                            row.filename,
+                        )
+                    ),
+                    collection="staging",
+                )
+            )
+        elif row.book_location_kind == "prod" and row.download_base_url:
             result.urls[row.book_id].append(
                 ZimUrlSchema(
                     kind="download",
@@ -179,7 +198,21 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
                 )
             )
 
-        if row.view_base_url:
+        if row.book_location_kind == "staging":
+            filename_without_suffix = (
+                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+            )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="view",
+                    url=AnyUrl(
+                        f"{Context.staging_view_base_url}{filename_without_suffix}"
+                    ),
+                    collection="staging",
+                )
+            )
+
+        elif row.book_location_kind == "prod" and row.view_base_url:
             key = (row.title_id, row.book_flavour)
             if key not in seen:
                 seen.add(key)
@@ -189,9 +222,7 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
                 result.urls[row.book_id].append(
                     ZimUrlSchema(
                         kind="view",
-                        url=AnyUrl(
-                            f"{row.view_base_url}/viewer#{filename_without_suffix}"
-                        ),
+                        url=AnyUrl(f"{row.view_base_url}{filename_without_suffix}"),
                         collection=row.collection_name,
                     )
                 )

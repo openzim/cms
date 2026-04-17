@@ -338,15 +338,12 @@ def test_get_zim_urls(
     """Test get_zim_urls returns the download and view urls for zims"""
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path(""))
 
     book = create_book(zim_metadata={"Name": title.name})
     book.title = title
+    book.location_kind = "prod"
     title.books.append(book)
 
     create_book_location(
@@ -389,17 +386,14 @@ def test_get_zim_urls_book_with_subpath(
 
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
 
     subpath = Path("wikipedia")
     create_collection_title(title=title, collection=collection, path=subpath)
 
     book = create_book(zim_metadata={"Name": title.name})
     book.title = title
+    book.location_kind = "prod"
     title.books.append(book)
 
     create_book_location(
@@ -428,6 +422,55 @@ def test_get_zim_urls_book_with_subpath(
     assert view_url is not None
     assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
     assert view_url.collection == collection.name
+
+
+def test_get_zim_urls_book_in_staging(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    """Download and view URL are correct when book is in staging"""
+    from pathlib import Path
+
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(warehouse=warehouse)
+
+    subpath = Path("wikipedia")
+    create_collection_title(title=title, collection=collection, path=subpath)
+
+    book = create_book(zim_metadata={"Name": title.name})
+    book.title = title
+    book.location_kind = "staging"
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=subpath,
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book.id])
+    assert book.id in result.urls
+    assert len(result.urls[book.id]) == 2
+
+    download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
+    assert download_url is not None
+    assert str(download_url.url) == "https://download.staging.acme.org/test_en_all.zim"
+    assert download_url.collection == "staging"
+
+    view_url = next((u for u in result.urls[book.id] if u.kind == "view"), None)
+    assert view_url is not None
+    assert str(view_url.url) == "https://library.staging.acme.org/viewer#test_en_all"
+    assert view_url.collection == "staging"
 
 
 @pytest.mark.parametrize(
@@ -592,11 +635,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 ):
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path(""))
     now = getnow()
 
@@ -606,6 +645,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
         flavour="test",
     )
     book1.title = title
+    book1.location_kind = "prod"
     title.books.append(book1)
 
     create_book_location(
@@ -622,6 +662,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
         flavour="test",
     )
     book2.title = title
+    book2.location_kind = "prod"
     title.books.append(book2)
 
     create_book_location(

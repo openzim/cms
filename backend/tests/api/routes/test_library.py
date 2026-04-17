@@ -148,11 +148,7 @@ def test_get_collection_catalog_xml_single_book(
     """Test collection XML with a single book"""
     # Setup
     warehouse = create_warehouse()
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     title = create_title(name="test_title")
 
     path = "wikipedia"
@@ -224,9 +220,68 @@ def test_get_collection_catalog_xml_single_book(
     assert book_elem.get("favicon") == favicon
     assert (
         book_elem.get("url")
-        == f"https://download.kiwix.org/zim/{path}/{filename}.meta4"
+        == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
     )
     assert book_elem.get("flavour") == "test"
+
+
+def test_get_collection_catalog_xml_root_path(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test collection XML with a single book"""
+    # Setup
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test_title")
+
+    path = ""
+    filename = "test_en_all.zim"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    book = create_book(
+        zim_metadata={
+            "Name": "test_title",
+            "Title": "Test Title",
+            "Description": "A test book",
+            "Language": "eng",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+        },
+    )
+    book.title = title
+    book.needs_processing = False
+    book.has_error = False
+    book.needs_file_operation = False
+    book.location_kind = "prod"
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=path,
+        status="current",
+        filename=filename,
+    )
+    dbsession.flush()
+
+    # Test
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "application/xml"
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+
+    book_elem = books[0]
+    assert (
+        book_elem.get("url") == "https://download.kiwix.org/zim/test_en_all.zim.meta4"
+    )
 
 
 def test_get_collection_catalog_xml_multiple_books_different_formats(
@@ -754,3 +809,141 @@ def test_get_collection_catalog_xml_latest_book_bad_location_kind(
     # Should be the newer book
     assert books[0].get("title") == "Wikipedia Old"
     assert books[0].get("id") == str(older_book.id)
+
+
+def test_get_staging_catalog_xml_empty(
+    client: TestClient,
+):
+    """Test that staging can generate its library"""
+    # Test by name
+    response = client.get("/v1/staging/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "application/xml"
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 0
+
+
+def test_get_prod_and_staging_catalog_xml(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    warehouse: Warehouse,
+):
+    """Test all the books in staging are returned, even same title, and only them"""
+    # Setup
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="wiki")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    # Create older book
+    older_book = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2024-12-01",
+        },
+    )
+    older_book.title = title
+    older_book.needs_processing = False
+    older_book.has_error = False
+    older_book.needs_file_operation = False
+    older_book.location_kind = "prod"
+
+    # Create newer book with same name+flavour
+    newer_book1 = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-01",
+        },
+    )
+    newer_book1.title = title
+    newer_book1.needs_processing = False
+    newer_book1.has_error = False
+    newer_book1.needs_file_operation = False
+    newer_book1.location_kind = "staging"
+
+    # Create newer book with same name+flavour
+    newer_book2 = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-02",
+        },
+    )
+    newer_book2.title = title
+    newer_book2.needs_processing = False
+    newer_book2.has_error = False
+    newer_book2.needs_file_operation = False
+    newer_book2.location_kind = "staging"
+
+    create_book_location(
+        book=older_book,
+        warehouse_id=warehouse.id,
+        path=path,
+        status="current",
+        filename="wiki_2024-12.zim",
+    )
+    create_book_location(
+        book=newer_book1,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        status="current",
+        filename="wiki_2025-01.zim",
+    )
+    create_book_location(
+        book=newer_book2,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        status="current",
+        filename="wiki_2025-01a.zim",
+    )
+    dbsession.flush()
+
+    # Test prod
+    response = client.get(f"/v1/collections/{collection.name}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+
+    # Should contain older book
+    assert books[0].get("id") == str(older_book.id)
+    assert (
+        books[0].get("url")
+        == "https://download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
+    )
+
+    # Test staging
+    response = client.get("/v1/staging/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 2
+
+    # Should contain newer books sorted descending
+    assert books[0].get("id") == str(newer_book2.id)
+    assert books[0].get("url") == "https://download.staging.acme.org/wiki_2025-01a.zim"
+    assert books[1].get("id") == str(newer_book1.id)
+    assert books[1].get("url") == "https://download.staging.acme.org/wiki_2025-01.zim"
