@@ -338,11 +338,7 @@ def test_get_zim_urls(
     """Test get_zim_urls returns the download and view urls for zims"""
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path(""))
 
     book = create_book(zim_metadata={"Name": title.name})
@@ -389,11 +385,7 @@ def test_get_zim_urls_book_with_subpath(
 
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
 
     subpath = Path("wikipedia")
     create_collection_title(title=title, collection=collection, path=subpath)
@@ -592,11 +584,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 ):
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path(""))
     now = getnow()
 

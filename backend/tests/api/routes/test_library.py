@@ -148,11 +148,7 @@ def test_get_collection_catalog_xml_single_book(
     """Test collection XML with a single book"""
     # Setup
     warehouse = create_warehouse()
-    collection = create_collection(
-        warehouse=warehouse,
-        download_base_url="https://download.kiwix.org",
-        view_base_url="https://browse.library.kiwix.org",
-    )
+    collection = create_collection(warehouse=warehouse)
     title = create_title(name="test_title")
 
     path = "wikipedia"
@@ -224,9 +220,68 @@ def test_get_collection_catalog_xml_single_book(
     assert book_elem.get("favicon") == favicon
     assert (
         book_elem.get("url")
-        == f"https://download.kiwix.org/zim/{path}/{filename}.meta4"
+        == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
     )
     assert book_elem.get("flavour") == "test"
+
+
+def test_get_collection_catalog_xml_root_path(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test collection XML with a single book"""
+    # Setup
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test_title")
+
+    path = ""
+    filename = "test_en_all.zim"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    book = create_book(
+        zim_metadata={
+            "Name": "test_title",
+            "Title": "Test Title",
+            "Description": "A test book",
+            "Language": "eng",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+        },
+    )
+    book.title = title
+    book.needs_processing = False
+    book.has_error = False
+    book.needs_file_operation = False
+    book.location_kind = "prod"
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=path,
+        status="current",
+        filename=filename,
+    )
+    dbsession.flush()
+
+    # Test
+    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "application/xml"
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+
+    book_elem = books[0]
+    assert (
+        book_elem.get("url") == "https://download.kiwix.org/zim/test_en_all.zim.meta4"
+    )
 
 
 def test_get_collection_catalog_xml_multiple_books_different_formats(

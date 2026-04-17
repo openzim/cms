@@ -50,7 +50,7 @@ services:
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
-      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/
+      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/viewer#
       QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       QUARANTINE_BASE_PATH: quarantine
     command:
@@ -85,7 +85,7 @@ services:
       QUARANTINE_BASE_PATH: quarantine
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
-      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/
+      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/viewer#
       STAGING_BASE_PATH: staging
     depends_on:
       postgresdb:
@@ -107,7 +107,7 @@ services:
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
-      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/
+      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/viewer#
       QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       QUARANTINE_BASE_PATH: quarantine
     depends_on:
@@ -130,7 +130,7 @@ services:
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
-      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/
+      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/viewer#
       QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       QUARANTINE_BASE_PATH: quarantine
     depends_on:

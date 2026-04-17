@@ -189,9 +189,7 @@ def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
                 result.urls[row.book_id].append(
                     ZimUrlSchema(
                         kind="view",
-                        url=AnyUrl(
-                            f"{row.view_base_url}/viewer#{filename_without_suffix}"
-                        ),
+                        url=AnyUrl(f"{row.view_base_url}{filename_without_suffix}"),
                         collection=row.collection_name,
                     )
                 )

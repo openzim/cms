@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import cast
 
 from sqlalchemy import and_, select
@@ -45,7 +46,9 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
     return [
         LibraryBookData(
             book=cast(Book, row.Book),
-            path=Context.staging_base_path,
+            # staging download url is supposed to contain the whole path already
+            # for convenience in deployment
+            path=Path(""),
             download_base_url=Context.staging_download_base_url,
             filename=row.filename,
         )
