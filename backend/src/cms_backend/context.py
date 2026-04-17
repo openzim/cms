@@ -51,6 +51,12 @@ class Context:
         default=UUID(get_mandatory_env("STAGING_WAREHOUSE_ID"))
     )
     staging_base_path: Path = field(default=Path(os.getenv("STAGING_BASE_PATH", "")))
+    staging_download_base_url: str = field(
+        default=get_mandatory_env("STAGING_DOWNLOAD_BASE_URL")
+    )
+    staging_view_base_url: str = field(
+        default=get_mandatory_env("STAGING_VIEW_BASE_URL")
+    )
     quarantine_warehouse_id: UUID = field(
         default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
     )

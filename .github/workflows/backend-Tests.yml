@@ -36,6 +36,8 @@ jobs:
       ALEMBIC_UPGRADE_HEAD_ON_START: false
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
+      STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
+      STAGING_VIEW_BASE_URL: https://library.staging.acme.org/
       QUARANTINE_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       QUARANTINE_BASE_PATH: quarantine
 
@@ -83,6 +85,8 @@ jobs:
             -e DATABASE_URL=$DATABASE_URL \
             -e JWT_SECRET=DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw \
             -e STAGING_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
+            -e STAGING_DOWNLOAD_BASE_URL=https://download.staging.acme.org/ \
+            -e STAGING_VIEW_BASE_URL=https://library.staging.acme.org/ \
             -e QUARANTINE_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
             -p 8000:80 \
             cms-backend-api:test
@@ -109,6 +113,8 @@ jobs:
             -e DATABASE_URL=$DATABASE_URL \
             -e QUARANTINE_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
             -e STAGING_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
+            -e STAGING_DOWNLOAD_BASE_URL=https://download.staging.acme.org/ \
+            -e STAGING_VIEW_BASE_URL=https://library.staging.acme.org/ \
             cms-backend-mill:test cms-mill --help
 
       - name: Run shuttle container
@@ -118,6 +124,8 @@ jobs:
             -e DATABASE_URL=$DATABASE_URL \
             -e QUARANTINE_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
             -e STAGING_WAREHOUSE_ID=11111111-1111-1111-1111-111111111111 \
+            -e STAGING_DOWNLOAD_BASE_URL=https://download.staging.acme.org/ \
+            -e STAGING_VIEW_BASE_URL=https://library.staging.acme.org/ \
             cms-backend-shuttle:test cms-shuttle --help
 
       - name: Run tests

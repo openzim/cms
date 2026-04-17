@@ -754,3 +754,118 @@ def test_get_collection_catalog_xml_latest_book_bad_location_kind(
     # Should be the newer book
     assert books[0].get("title") == "Wikipedia Old"
     assert books[0].get("id") == str(older_book.id)
+
+
+def test_get_staging_catalog_xml_empty(
+    client: TestClient,
+):
+    """Test that staging can generate its library"""
+    # Test by name
+    response = client.get("/v1/staging/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "application/xml"
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 0
+
+
+def test_get_staging_catalog_xml_only_staging(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    warehouse: Warehouse,
+):
+    """Test all the books in staging are returned, even same title, and only them"""
+    # Setup
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="wiki")
+
+    path = "wikipedia"
+    _add_title_to_collection(dbsession, collection, title, path)
+
+    # Create older book
+    older_book = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2024-12-01",
+        },
+    )
+    older_book.title = title
+    older_book.needs_processing = False
+    older_book.has_error = False
+    older_book.needs_file_operation = False
+    older_book.location_kind = "prod"
+
+    # Create newer book with same name+flavour
+    newer_book1 = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-01",
+        },
+    )
+    newer_book1.title = title
+    newer_book1.needs_processing = False
+    newer_book1.has_error = False
+    newer_book1.needs_file_operation = False
+    newer_book1.location_kind = "staging"
+
+    # Create newer book with same name+flavour
+    newer_book2 = create_book(
+        zim_metadata={
+            "Name": "wiki",
+            "Title": "Wikipedia",
+            "Description": "Description",
+            "Language": "eng",
+            "Creator": "Kiwix",
+            "Publisher": "Kiwix",
+            "Date": "2025-01-02",
+        },
+    )
+    newer_book2.title = title
+    newer_book2.needs_processing = False
+    newer_book2.has_error = False
+    newer_book2.needs_file_operation = False
+    newer_book2.location_kind = "staging"
+
+    create_book_location(
+        book=older_book, warehouse_id=warehouse.id, path=path, status="current"
+    )
+    create_book_location(
+        book=newer_book1,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        status="current",
+    )
+    create_book_location(
+        book=newer_book2,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        status="current",
+    )
+    dbsession.flush()
+
+    # Test
+    response = client.get("/v1/staging/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 2
+
+    # Should contain newer books sorted descending
+    assert books[0].get("id") == str(newer_book2.id)
+    assert books[1].get("id") == str(newer_book1.id)
