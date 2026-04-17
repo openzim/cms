@@ -825,7 +825,7 @@ def test_get_staging_catalog_xml_empty(
     assert len(books) == 0
 
 
-def test_get_staging_catalog_xml_only_staging(
+def test_get_prod_and_staging_catalog_xml(
     client: TestClient,
     dbsession: OrmSession,
     create_collection: Callable[..., Collection],
@@ -897,23 +897,44 @@ def test_get_staging_catalog_xml_only_staging(
     newer_book2.location_kind = "staging"
 
     create_book_location(
-        book=older_book, warehouse_id=warehouse.id, path=path, status="current"
+        book=older_book,
+        warehouse_id=warehouse.id,
+        path=path,
+        status="current",
+        filename="wiki_2024-12.zim",
     )
     create_book_location(
         book=newer_book1,
         warehouse_id=Context.staging_warehouse_id,
         path=Context.staging_base_path,
         status="current",
+        filename="wiki_2025-01.zim",
     )
     create_book_location(
         book=newer_book2,
         warehouse_id=Context.staging_warehouse_id,
         path=Context.staging_base_path,
         status="current",
+        filename="wiki_2025-01a.zim",
     )
     dbsession.flush()
 
-    # Test
+    # Test prod
+    response = client.get(f"/v1/collections/{collection.name}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    books = list(root.findall("book"))
+    assert len(books) == 1
+
+    # Should contain older book
+    assert books[0].get("id") == str(older_book.id)
+    assert (
+        books[0].get("url")
+        == "https://download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
+    )
+
+    # Test staging
     response = client.get("/v1/staging/catalog.xml")
     assert response.status_code == HTTPStatus.OK
 
@@ -923,4 +944,6 @@ def test_get_staging_catalog_xml_only_staging(
 
     # Should contain newer books sorted descending
     assert books[0].get("id") == str(newer_book2.id)
+    assert books[0].get("url") == "https://download.staging.acme.org/wiki_2025-01a.zim"
     assert books[1].get("id") == str(newer_book1.id)
+    assert books[1].get("url") == "https://download.staging.acme.org/wiki_2025-01.zim"
