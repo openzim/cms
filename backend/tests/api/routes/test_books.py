@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, Title
 
@@ -256,6 +257,35 @@ def test_get_books_filter_by_id(
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
     assert response_doc["items"][0]["id"] == str(book1.id)
+
+
+def test_get_book_languages(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    """Test books languages endpoint returns sorted distinct production languages."""
+    prod_book = create_book(zim_metadata={"Language": "eng, fra"})
+    prod_book.location_kind = "prod"
+
+    other_prod_book = create_book(zim_metadata={"Language": " deu ,eng, ,spa "})
+    other_prod_book.location_kind = "prod"
+
+    create_book(zim_metadata={"Language": "hin"})
+    staging_book = create_book(zim_metadata={"Language": "ita"})
+    staging_book.location_kind = "staging"
+
+    blank_language_book = create_book(zim_metadata={"Language": " , "})
+    blank_language_book.location_kind = "prod"
+
+    missing_language_book = create_book(zim_metadata={"Name": "no-language"})
+    missing_language_book.location_kind = "prod"
+
+    dbsession.flush()
+
+    response = client.get("/v1/books/languages")
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {"languages": ["deu", "eng", "fra", "spa"]}
 
 
 def test_get_book_by_id(

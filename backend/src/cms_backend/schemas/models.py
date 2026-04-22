@@ -16,3 +16,7 @@ class ZimUrlSchema(BaseModel):
 
 class ZimUrlsSchema(BaseModel):
     urls: dict[UUID, list[ZimUrlSchema]]
+
+
+class BookLanguagesSchema(BaseModel):
+    languages: list[str]
