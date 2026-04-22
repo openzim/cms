@@ -1,14 +1,13 @@
 import math
 from xml.etree import ElementTree as ET
 
+from cms_backend.context import Context
 from cms_backend.db.collection import LibraryBookData
 from cms_backend.utils.filename import construct_download_url
 from cms_backend.utils.zim import convert_tags
 
 
-def build_library_xml(
-    entries: list[LibraryBookData], *, uses_mirrorbrain: bool = True
-) -> str:
+def build_library_xml(entries: list[LibraryBookData], *, staging: bool = False) -> str:
     """Build XML library catalog from books."""
     library_elem = ET.Element("library")
     library_elem.set("version", "20110515")
@@ -49,9 +48,10 @@ def build_library_xml(
 
         if download_base_url:
             download_url = construct_download_url(download_base_url, path, filename)
-            book_elem.set(
-                "url", f"{download_url}.meta4" if uses_mirrorbrain else download_url
-            )
+            book_elem.set("url", f"{download_url}.meta4")
+
+        if staging:
+            book_elem.set("path", f"{Context.staging_library_xml_base_path}{filename}")
 
         if flavour := zim_meta.get("Flavour"):
             book_elem.set("flavour", flavour)

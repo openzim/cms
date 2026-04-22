@@ -186,9 +186,19 @@ class Context:
     local_warehouse_paths: dict[UUID, Path] = parse_warehouse_paths()
 
     quarantine_warehouse_id: UUID = UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
-    quarantine_base_path: Path = Path(get_mandatory_env("QUARANTINE_BASE_PATH"))
+    quarantine_base_path: Path = Path(os.getenv("QUARANTINE_BASE_PATH") or "")
     staging_warehouse_id: UUID = UUID(get_mandatory_env("STAGING_WAREHOUSE_ID"))
     staging_base_path: Path = Path(get_mandatory_env("STAGING_BASE_PATH"))
+
+
+def get_collection(
+    session: OrmSession,
+    collection_id: UUID,
+) -> Collection:
+    """Get a collection by ID."""
+    return session.scalars(
+        select(Collection).where(Collection.id == collection_id)
+    ).one()
 
 
 def find_collections_for_zim(
@@ -218,7 +228,7 @@ def get_or_create_title(
     session: OrmSession,
     name: str,
     collection: Collection,
-    zim_path_in_warehouse: Path,
+    title_path: Path,
 ) -> Title:
     """Get existing title by name or create a new one."""
     title = get_title_by_name_or_none(session, name=name)
@@ -238,14 +248,14 @@ def get_or_create_title(
 
     if not existing_ct:
         # Create the collection-title association
-        collection_title = CollectionTitle(path=zim_path_in_warehouse.parent)
+        collection_title = CollectionTitle(path=title_path)
         collection_title.collection = collection
         collection_title.title = title
         session.add(collection_title)
         title.events.append(
             f"{getnow()}: maintenance script: associated with "
             f"collection '{collection.name}' at path "
-            f"{zim_path_in_warehouse.parent}"
+            f"{title_path}"
         )
         logger.info(f"Associated title '{name}' with collection '{collection.name}'")
 
@@ -374,6 +384,9 @@ def get_kiwix_path_from_staging_name(name: str) -> Path:
         or name.startswith("spirale")
         or name.startswith("website")
         or name.startswith("www.marxists.org")
+        or name.startswith("ascension")
+        or name.startswith("jrailpass")
+        or name.startswith("onemorelibrary")
     ):
         return Path("zimit")
     elif (
@@ -405,6 +418,8 @@ def get_kiwix_path_from_staging_name(name: str) -> Path:
         return Path("wikisource")
     elif name.startswith("www.marxists.org"):
         return Path("wikisource")
+    elif name.startswith("kris-occhipinti"):
+        return Path("videos")
     else:
         raise Exception(f"Unexpected staging ZIM name: {name}")
 
@@ -480,15 +495,16 @@ def process_zim_file(
         )
         == "staging"
     ):
-        collections = find_collections_for_zim(
-            session,
-            UUID("96fb60c0-2de6-46bd-8e67-41213298a5e8"),
-            get_kiwix_path_from_staging_name(normalized_name),
-        )
+        # Staging book are supposed to all be associated with Kiwix collection ATM
+        collections = [
+            get_collection(session, UUID("96fb60c0-2de6-46bd-8e67-41213298a5e8"))
+        ]
+        title_path = get_kiwix_path_from_staging_name(normalized_name)
     else:
         collections = find_collections_for_zim(
             session, warehouse_id, zim_path_in_warehouse
         )
+        title_path = zim_path_in_warehouse.parent
 
     if not collections:
         logger.error(
@@ -507,7 +523,7 @@ def process_zim_file(
         session,
         normalized_name,
         collections[0],
-        zim_path_in_warehouse,
+        title_path,
     )
 
     _create_book_from_zim(

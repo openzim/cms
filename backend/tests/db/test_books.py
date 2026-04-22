@@ -460,13 +460,14 @@ def test_get_zim_urls_book_in_staging(
     create_collection: Callable[..., Collection],
     create_collection_title: Callable[..., CollectionTitle],
     create_book_location: Callable[..., BookLocation],
+    warehouse: Warehouse,  # noqa: ARG001
 ):
     """Download and view URL are correct when book is in staging"""
     from pathlib import Path
 
-    warehouse = create_warehouse()
+    warehouse_prod = create_warehouse()
     title = create_title(name="test_en_all")
-    collection = create_collection(warehouse=warehouse)
+    collection = create_collection(warehouse=warehouse_prod)
 
     subpath = Path("wikipedia")
     create_collection_title(title=title, collection=collection, path=subpath)
@@ -478,8 +479,8 @@ def test_get_zim_urls_book_in_staging(
 
     create_book_location(
         book=book,
-        warehouse_id=warehouse.id,
-        path=subpath,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
         filename="test_en_all.zim",
         status="current",
     )

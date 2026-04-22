@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Maintenance script to create collection titles for Kiwix folders.
+"""Maintenance script to create collection titles for existing folders.
 
 This script:
 - Creates titles for a list of folders (named "foo_{folder_name}")
-- Associates them with the "Kiwix" collection
+- Associates them with their collection
 - Sets the path to the corresponding folder
 - Is idempotent (can be run multiple times without creating duplicates)
 
@@ -13,7 +13,6 @@ Environment variables required:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from sqlalchemy import create_engine, select
@@ -27,32 +26,36 @@ from cms_backend.db.models import Collection, CollectionTitle, Title
 from cms_backend.utils.datetime import getnow
 
 # List of folders to create titles for
-FOLDERS = [
-    "devdocs",
-    "freecodecamp",
-    "gutenberg",
-    "ifixit",
-    "libretexts",
-    "mooc",
-    "other",
-    "phet",
-    "psiram",
-    "stack_exchange",
-    "ted",
-    "videos",
-    "vikidia",
-    "wikibooks",
-    "wikinews",
-    "wikiquote",
-    "wikisource",
-    "wikiversity",
-    "wikivoyage",
-    "wiktionary",
-    "wikipedia",
-    "zimit",
-]
-
-COLLECTION_NAME = "Kiwix"
+FOLDERS = {
+    "Kiwix": [
+        "devdocs",
+        "freecodecamp",
+        "gutenberg",
+        "ifixit",
+        "libretexts",
+        "mooc",
+        "other",
+        "phet",
+        "psiram",
+        "stack_exchange",
+        "ted",
+        "videos",
+        "vikidia",
+        "wikibooks",
+        "wikinews",
+        "wikiquote",
+        "wikisource",
+        "wikiversity",
+        "wikivoyage",
+        "wiktionary",
+        "wikipedia",
+        "zimit",
+    ],
+    "Endless": ["endless"],
+    "Bard": ["bard"],
+    "BSF": ["bsf"],
+    "Branded Apps": ["custom_apps"],
+}
 
 
 class Context:
@@ -61,16 +64,16 @@ class Context:
     database_url: str = get_mandatory_env("DATABASE_URL")
 
 
-def get_or_create_kiwix_collection(session: OrmSession) -> Collection:
-    """Get existing Kiwix collection or create a new one."""
+def get_collection_by_name(session: OrmSession, collection_name: str) -> Collection:
+    """Get existing collection by name."""
     collection = session.scalars(
-        select(Collection).where(Collection.name == COLLECTION_NAME)
+        select(Collection).where(Collection.name == collection_name)
     ).first()
 
     if not collection:
-        raise Exception(f"Impossible to find collection '{COLLECTION_NAME}'")
+        raise Exception(f"Impossible to find collection '{collection_name}'")
     else:
-        logger.info(f"Using existing collection '{COLLECTION_NAME}' ({collection.id})")
+        logger.info(f"Using existing collection '{collection_name}' ({collection.id})")
 
     session.flush()
     return collection
@@ -143,24 +146,30 @@ def main():
         )
     )
 
-    with db_session.begin() as session:
-        try:
-            # Get or create the Kiwix collection
-            collection = get_or_create_kiwix_collection(session)
+    for collection_name, folders in FOLDERS.items():
+        with db_session.begin() as session:
+            try:
+                # Get or create the Kiwix collection
+                collection = get_collection_by_name(session, collection_name)
 
-            # Create titles for each folder
-            for folder_name in FOLDERS:
-                try:
-                    create_title_for_folder(session, folder_name, collection)
-                except Exception:
-                    logger.exception(f"Error creating title for folder '{folder_name}'")
+                # Create titles for each folder
+                for folder_name in folders:
+                    try:
+                        create_title_for_folder(session, folder_name, collection)
+                    except Exception:
+                        logger.exception(
+                            f"Error creating title for folder '{folder_name}'"
+                        )
 
-            session.commit()
-            logger.info("Successfully completed creating collection titles")
+                session.commit()
+                logger.info(
+                    f"Successfully created '{collection_name}' collection titles"
+                )
 
-        except Exception:
-            logger.exception("Error during collection title creation")
-            sys.exit(1)
+            except Exception:
+                logger.exception(
+                    f"Error during '{collection_name}' collection title creation"
+                )
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ async def get_library_catalog_xml(
     """Get staging catalog as XML library."""
 
     entries = get_staging_books_library_data(session)
-    xml_content = build_library_xml(entries, uses_mirrorbrain=False)
+    xml_content = build_library_xml(entries, staging=True)
 
     return Response(
         content=xml_content,
