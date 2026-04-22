@@ -229,13 +229,14 @@ def get_or_create_title(
     name: str,
     collection: Collection,
     title_path: Path,
+    title_maturity: str,
 ) -> Title:
     """Get existing title by name or create a new one."""
     title = get_title_by_name_or_none(session, name=name)
     if not title:
         # Create new title
         title = Title(name=name)
-        title.maturity = "robust"
+        title.maturity = title_maturity
         title.events.append(f"{getnow()}: maintenance script: title created")
         session.add(title)
 
@@ -500,11 +501,13 @@ def process_zim_file(
             get_collection(session, UUID("96fb60c0-2de6-46bd-8e67-41213298a5e8"))
         ]
         title_path = get_kiwix_path_from_staging_name(normalized_name)
+        title_maturity = "dev"
     else:
         collections = find_collections_for_zim(
             session, warehouse_id, zim_path_in_warehouse
         )
         title_path = zim_path_in_warehouse.parent
+        title_maturity = "robust"
 
     if not collections:
         logger.error(
@@ -524,6 +527,7 @@ def process_zim_file(
         normalized_name,
         collections[0],
         title_path,
+        title_maturity,
     )
 
     _create_book_from_zim(
