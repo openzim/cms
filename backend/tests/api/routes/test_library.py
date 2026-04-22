@@ -933,6 +933,7 @@ def test_get_prod_and_staging_catalog_xml(
         books[0].get("url")
         == "https://download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
     )
+    assert books[0].get("path") is None
 
     # Test staging
     response = client.get("/v1/staging/catalog.xml")
@@ -944,6 +945,14 @@ def test_get_prod_and_staging_catalog_xml(
 
     # Should contain newer books sorted descending
     assert books[0].get("id") == str(newer_book2.id)
-    assert books[0].get("url") == "https://download.staging.acme.org/wiki_2025-01a.zim"
+    assert (
+        books[0].get("url")
+        == "https://download.staging.acme.org/wiki_2025-01a.zim.meta4"
+    )
+    assert books[0].get("path") == "/data/dev/wiki_2025-01a.zim"
     assert books[1].get("id") == str(newer_book1.id)
-    assert books[1].get("url") == "https://download.staging.acme.org/wiki_2025-01.zim"
+    assert (
+        books[1].get("url")
+        == "https://download.staging.acme.org/wiki_2025-01.zim.meta4"
+    )
+    assert books[1].get("path") == "/data/dev/wiki_2025-01.zim"
