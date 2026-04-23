@@ -105,7 +105,8 @@ def move_book_files(session: OrmSession, book: Book):
         )
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(current_path, target_path)
+        shutil.copy(current_path, target_path)
+        current_path.unlink()
         logger.debug(f"Moved book {book.id} from {current_path} to {target_path}")
         book.events.append(
             f"{getnow()}: moved book from {current_location.full_str} to "
