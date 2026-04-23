@@ -129,14 +129,14 @@ def test_move_book_files_copy_operation(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
-        stack.enter_context(patch("shutil.move"))
+        mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
         mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
         move_book_files(dbsession, book)
 
-        # Should have copied once (target_loc2 > current_loc)
-        assert mock_copy.call_count == 1
+        assert mock_copy.call_count == 2
+        assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
     assert book.has_error is False
@@ -173,14 +173,16 @@ def test_move_book_files_move_operation(
         mock_context = stack.enter_context(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
-        mock_move = stack.enter_context(patch("shutil.move"))
+        mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
         mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
         move_book_files(dbsession, book)
 
         # Should have moved once
-        assert mock_move.call_count == 1
+        assert mock_copy.call_count == 1
+        assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
     assert book.has_error is False
@@ -220,7 +222,7 @@ def test_move_book_files_delete_operation(
         mock_context = stack.enter_context(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
-        stack.enter_context(patch("shutil.move"))
+        mock_copy = stack.enter_context(patch("shutil.copy"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
 
@@ -228,7 +230,8 @@ def test_move_book_files_delete_operation(
         move_book_files(dbsession, book)
 
         # Should have deleted one extra location
-        assert mock_unlink.call_count == 1
+        assert mock_copy.call_count == 1
+        assert mock_unlink.call_count == 2
 
     assert book.needs_processing is False
     assert book.has_error is False
@@ -263,7 +266,8 @@ def test_move_book_files_updates_book_locations(
         mock_context = stack.enter_context(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
-        stack.enter_context(patch("shutil.move"))
+        stack.enter_context(patch("shutil.copy"))
+        stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
         mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
