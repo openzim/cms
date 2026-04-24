@@ -100,6 +100,7 @@ def create_book(
         date: str | None = None,
         flavour: str | None = None,
         zimfarm_notification: ZimfarmNotification | None = None,
+        location_kind: str = "quarantine",
     ) -> Book:
         if zim_metadata is None:
             zim_metadata = {}
@@ -131,6 +132,7 @@ def create_book(
             flavour=flavour,
             zimfarm_notification=zimfarm_notification,
         )
+        book.location_kind = location_kind
         dbsession.add(book)
         dbsession.flush()
         return book
