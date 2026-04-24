@@ -66,6 +66,7 @@ def get_books(
     if needs_attention is True:
         stmt = stmt.where(
             or_(
+                Book.location_kind.in_(["quarantine", "staging"]),
                 Book.title_id.is_(None),
                 Book.needs_processing.is_(True),
                 Book.needs_file_operation.is_(True),
@@ -75,6 +76,7 @@ def get_books(
     elif needs_attention is False:
         stmt = stmt.where(
             and_(
+                Book.location_kind.not_in(["quarantine", "staging"]),
                 Book.title_id.is_not(None),
                 Book.needs_processing.is_(False),
                 Book.needs_file_operation.is_(False),

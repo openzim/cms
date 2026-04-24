@@ -284,7 +284,9 @@ def test_get_books_filter_by_needs_attention(
 
     title = create_title()
 
-    book_with_title = create_book(zim_metadata={"Name": title.name})
+    book_with_title = create_book(
+        zim_metadata={"Name": title.name}, location_kind="prod"
+    )
     title.books.append(book_with_title)
 
     book_without_title = create_book()
