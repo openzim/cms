@@ -6,6 +6,7 @@ from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 import pytest
+import xxhash
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
@@ -19,6 +20,19 @@ from cms_backend.db.models import (
     Warehouse,
 )
 from cms_backend.utils.datetime import getnow
+
+
+def test_head_collection_catalog_xml(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    collection = create_collection()
+    dbsession.flush()
+
+    response = client.head(f"/v1/collections/{collection.id}/catalog.xml")
+    assert response.status_code == HTTPStatus.OK
+    assert "ETag" in response.headers
 
 
 def test_get_collection_catalog_xml_not_found_by_id(
@@ -35,6 +49,7 @@ def test_get_collection_catalog_xml_not_found_by_id(
     assert root.tag == "library"
     assert root.get("version") == "20110515"
     assert len(list(root)) == 0
+    assert "ETag" in response.headers
 
 
 def test_get_collection_catalog_xml_not_found_by_name(
@@ -50,6 +65,7 @@ def test_get_collection_catalog_xml_not_found_by_name(
     assert root.tag == "library"
     assert root.get("version") == "20110515"
     assert len(list(root)) == 0
+    assert "ETag" in response.headers
 
 
 def test_get_collection_catalog_xml_empty(
@@ -134,6 +150,10 @@ def test_get_collection_catalog_xml_by_name(
     books = list(root.findall("book"))
     assert len(books) == 1
     assert books[0].get("title") == "Test Title"
+
+    assert "ETag" in response.headers
+    expected_etag = xxhash.xxh64(response.content).hexdigest()
+    assert response.headers["ETag"] == expected_etag
 
 
 def test_get_collection_catalog_xml_single_book(

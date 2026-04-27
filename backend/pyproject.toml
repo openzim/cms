@@ -25,6 +25,7 @@ dependencies = [
     "regex == 2025.10.23",
     "humanfriendly == 10.0",
     "Werkzeug == 3.1.5",
+    "xxhash == 3.7.0",
 ]
 dynamic = ["version"]
 

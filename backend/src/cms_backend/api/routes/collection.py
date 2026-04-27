@@ -2,6 +2,7 @@ from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
+import xxhash
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session as OrmSession
@@ -48,12 +49,9 @@ async def get_collections(
     )
 
 
-@router.get("/{collection_id_or_name}/catalog.xml")
-async def get_library_catalog_xml(
-    collection_id_or_name: Annotated[str, Path()],
-    session: Annotated[OrmSession, Depends(gen_dbsession)],
-):
-    """Get collection catalog as XML library by collection ID (UUID) or name."""
+def _get_catalog_xml_content(
+    collection_id_or_name: str, session: OrmSession
+) -> tuple[str, int]:
     # Try to parse as UUID first, otherwise treat as name
     collection = None
     try:
@@ -67,18 +65,45 @@ async def get_library_catalog_xml(
         collection = get_collection_by_name_or_none(session, collection_id_or_name)
 
     if collection is None:
-        return Response(
-            content='<?xml version="1.0" encoding="UTF-8"?>'
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
             '<library version="20110515"></library>',
-            status_code=HTTPStatus.NOT_FOUND,
-            media_type="application/xml",
+            HTTPStatus.NOT_FOUND,
         )
 
     entries = get_latest_books_for_collection(session, collection.id)
     xml_content = build_library_xml(entries)
 
+    return xml_content, HTTPStatus.OK
+
+
+@router.get("/{collection_id_or_name}/catalog.xml")
+async def get_library_catalog_xml(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+):
+    """Get collection catalog as XML library by collection ID (UUID) or name."""
+    xml_content, status_code = _get_catalog_xml_content(collection_id_or_name, session)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+
     return Response(
         content=xml_content,
-        status_code=HTTPStatus.OK,
+        status_code=status_code,
+        media_type="application/xml",
+        headers={"ETag": f"{etag}"},
+    )
+
+
+@router.head("/{collection_id_or_name}/catalog.xml")
+async def head_library_catalog_xml(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+):
+    """Get collection catalog as XML library by collection ID (UUID) or name."""
+    xml_content, status_code = _get_catalog_xml_content(collection_id_or_name, session)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+    return Response(
+        status_code=status_code,
+        headers={"ETag": f"{etag}"},
         media_type="application/xml",
     )
