@@ -25,6 +25,17 @@
           <v-list-item-title>Copy token</v-list-item-title>
         </v-list-item>
 
+        <v-list-item
+          v-if="tokenType === 'oauth'"
+          prepend-icon="mdi-account-details"
+          append-icon="mdi-open-in-new"
+          target="_blank"
+          rel="noopener noreferrer"
+          :href="externalProfileUrl"
+        >
+          <v-list-item-title>Profile</v-list-item-title>
+        </v-list-item>
+
         <v-divider></v-divider>
 
         <v-list-item @click="$emit('sign-out')" prepend-icon="mdi-logout">
@@ -48,7 +59,11 @@
 </template>
 
 <script setup lang="ts">
+import { inject, computed } from 'vue'
+import type { AuthProviderType } from '@/types/auth'
 import { useNotificationStore } from '@/stores/notification'
+import type { Config } from '@/config'
+import constants from '@/constants'
 
 defineOptions({
   name: 'UserButton',
@@ -58,11 +73,19 @@ const props = defineProps<{
   username: string | null
   isLoggedIn: boolean
   accessToken: string | null
+  tokenType: AuthProviderType | null
 }>()
 
 defineEmits<{
   'sign-out': []
 }>()
+
+const config = inject<Config>(constants.config)
+if (!config) {
+  throw new Error('Config is not defined')
+}
+
+const externalProfileUrl = computed(() => `${config.OAUTH_BASE_URL}/settings`)
 
 const notificationStore = useNotificationStore()
 

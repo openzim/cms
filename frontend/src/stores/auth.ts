@@ -80,6 +80,10 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.scope[resource]?.[action] || false
   }
 
+  const tokenType = computed(() => {
+    return token.value?.token_type || null
+  })
+
   /**
    * Check if an error is a permanent refresh token failure
    */
@@ -322,6 +326,7 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshFailed,
     refreshPromise,
     permissions,
+    tokenType,
 
     // Computed
     isLoggedIn,
