@@ -40,7 +40,13 @@ def get_books(
         Book.name,
         Book.date,
         Book.flavour,
-    ).order_by(Book.id)
+    ).order_by(
+        Book.has_error.desc(),
+        Book.location_kind,
+        Book.needs_file_operation.desc(),
+        Book.created_at.desc(),
+        Book.id,
+    )
 
     if book_id is not None:
         stmt = stmt.where(Book.id.cast(String).ilike(f"%{book_id}%"))
