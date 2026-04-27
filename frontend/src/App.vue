@@ -57,6 +57,7 @@ const handleSignOut = () => {
         :is-logged-in="authStore.isLoggedIn"
         :access-token="authStore.accessToken"
         :is-loading="loadingStore.isLoading"
+        :token-type="authStore.tokenType"
         :loading-text="loadingStore.loadingText"
         @sign-out="handleSignOut"
       />

@@ -48,6 +48,7 @@
         :username="username"
         :is-logged-in="isLoggedIn"
         :access-token="accessToken"
+        :token-type="tokenType"
         @sign-out="$emit('sign-out')"
       />
     </div>
@@ -79,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import type { AuthProviderType } from '@/types/auth'
 import UserButton from '@/components/UserButton.vue'
 import Loading from '@/components/Loading.vue'
 import { ref, computed } from 'vue'
@@ -100,6 +102,7 @@ const props = defineProps<{
   accessToken: string | null
   isLoading: boolean
   loadingText: string
+  tokenType: AuthProviderType | null
 }>()
 
 defineEmits<{
