@@ -1,6 +1,7 @@
 from http import HTTPStatus
 from typing import Annotated
 
+import xxhash
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session as OrmSession
@@ -20,9 +21,25 @@ async def get_library_catalog_xml(
 
     entries = get_staging_books_library_data(session)
     xml_content = build_library_xml(entries, staging=True)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
 
     return Response(
         content=xml_content,
+        headers={"ETag": f"{etag}"},
         status_code=HTTPStatus.OK,
+        media_type="application/xml",
+    )
+
+
+@router.head("/catalog.xml")
+async def head_library_catalog_xml(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+):
+    entries = get_staging_books_library_data(session)
+    xml_content = build_library_xml(entries, staging=True)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+    return Response(
+        status_code=HTTPStatus.OK,
+        headers={"ETag": f"{etag}"},
         media_type="application/xml",
     )
