@@ -12,6 +12,7 @@ from sqlalchemy import (
     Index,
     String,
     false,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
@@ -25,6 +26,8 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.sql.schema import MetaData
 from sqlalchemy.types import TypeDecorator
+
+from cms_backend.utils.datetime import getnow
 
 
 class PathType(TypeDecorator[Path]):
@@ -143,6 +146,10 @@ class Book(Base):
 
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
         back_populates="book"
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, onupdate=getnow, server_default=func.now()
     )
 
     locations: Mapped[list["BookLocation"]] = relationship(

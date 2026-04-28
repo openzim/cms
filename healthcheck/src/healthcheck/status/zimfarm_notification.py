@@ -2,6 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from healthcheck import getnow
 from healthcheck.context import Context
 from healthcheck.status import Result
 from healthcheck.status import status_logger as logger
@@ -20,10 +21,15 @@ async def check_zimfarm_notifications_processed() -> (
 ):
     """Check that no zimfarm notifications stuck in pending state."""
     check_name = "cms-pending-zimfarm-notifications"
+    received_before = getnow() - Context.zimfarm_notification_pending_delay
     response = await query_api(
         f"{Context.cms_api_url}/zimfarm-notifications",
         method="GET",
-        params={"limit": 1, "status": "pending"},
+        params={
+            "limit": 1,
+            "status": "pending",
+            "received_before": received_before.isoformat(timespec="seconds"),
+        },
         check_name=check_name,
     )
     if not response.success:
