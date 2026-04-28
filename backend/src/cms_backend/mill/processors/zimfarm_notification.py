@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
 from cms_backend.context import Context
-from cms_backend.db.book import create_book, create_book_location
+from cms_backend.db.book import create_book
+from cms_backend.db.book_location import create_book_location
 from cms_backend.db.models import ZimfarmNotification
 from cms_backend.mill.processors.book import process_book
 from cms_backend.utils.datetime import getnow
