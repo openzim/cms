@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
@@ -20,3 +22,10 @@ class ZimUrlsSchema(BaseModel):
 
 class BookLanguagesSchema(BaseModel):
     languages: list[str]
+
+
+@dataclass(eq=True, frozen=True)
+class FileLocation:
+    warehouse_id: UUID
+    path: Path
+    filename: str

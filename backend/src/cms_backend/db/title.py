@@ -1,23 +1,28 @@
 import datetime
+from collections import defaultdict
 from pathlib import Path
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
-from sqlalchemy import select
+from sqlalchemy import Date, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
-from cms_backend.db.book import (
-    FileLocation,
-    create_book_target_locations,
-)
+from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
-from cms_backend.db.models import CollectionTitle, Title
+from cms_backend.db.models import (
+    Book,
+    CollectionTitle,
+    Title,
+)
+from cms_backend.schemas.models import FileLocation
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
     BookLightSchema,
@@ -27,6 +32,10 @@ from cms_backend.schemas.orms import (
     TitleLightSchema,
 )
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.filename import (
+    PERIOD_LENGTH,
+    get_period_and_suffix_from_filename,
+)
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
@@ -322,3 +331,89 @@ def update_title(
             session, action="updated", title_name=title.name, title_id=title.id
         )
     return get_title_by_id(session, title_id=title.id)
+
+
+def sort_books_by_filename_period(books: list[Book]) -> list[Book]:
+    """Sort a list of books by period.
+
+    Assumes:
+    - the book's location exists since it contains the filename of the book
+    """
+
+    def sort_fn(book: Book) -> tuple[str, int, str]:
+        period, suffix = get_period_and_suffix_from_filename(book.locations[0].filename)
+        return (period, len(suffix), suffix)
+
+    return sorted(
+        books,
+        key=sort_fn,
+        reverse=True,
+    )
+
+
+def apply_retention_rules(session: OrmSession, title: Title):
+    """Apply retention rules to `prod` books belonging to same title and flavour group.
+
+    The retention rules are described in https://wiki.openzim.org/wiki/ZIM_Updates
+    - Keep last version of two ZIM files from the two last distinct months (e.g
+        if we have `2024-04`, `2024-04a`, `2024-06`, `2024-06a`, `2024-06b`,
+        then we keep `2024-04a` and `2024-06b`)
+    - AND keep every version which is 30 days old or less.
+    """
+
+    now = getnow()
+
+    books_by_flavour: dict[str, list[Book]] = defaultdict(list)
+    for book in session.scalars(
+        select(Book).where(
+            Book.title_id == title.id,
+            Book.has_error.is_(False),
+            Book.date.is_not(None),
+            sql_cast(Book.date, Date) <= (now - datetime.timedelta(days=30)).date(),
+            Book.location_kind == "prod",
+            Book.needs_file_operation.is_(False),
+        )
+    ).all():
+        books_by_flavour[book.flavour or ""].append(book)
+
+    books_to_delete: list[Book] = []
+
+    for _, books in books_by_flavour.items():
+        # Group books by period (without the suffix)
+        books_by_period: dict[str, list[Book]] = defaultdict(list)
+        for book in books:
+            if not book.date:
+                continue
+            books_by_period[book.date[:PERIOD_LENGTH]].append(book)
+
+        # Keep last version from each of the 2 most recent periods
+        sorted_periods = sorted(books_by_period.keys(), reverse=True)
+        for period in sorted_periods[:2]:
+            sorted_books_by_period = sort_books_by_filename_period(
+                books_by_period[period]
+            )
+            # Mark all but the most recent one for deletion
+            books_to_delete.extend(sorted_books_by_period[1:])
+
+        # Mark the remainder of the books to be deleted.
+        for period in sorted_periods[2:]:
+            books_to_delete.extend(books_by_period[period])
+
+    deletion_date = now + Context.book_deletion_delay
+
+    for book in books_to_delete:
+        logger.info(
+            f"Marking book {book.id} for deletion, deletion_date={deletion_date}"
+        )
+        book.location_kind = "to_delete"
+        book.deletion_date = deletion_date
+        book.needs_file_operation = True
+        book.events.append(
+            f"{now}: marked for deletion due to retention policy, "
+            f"will be deleted after {deletion_date}"
+        )
+        title.events.append(f"{now}: book {book.id} marked for deletion.")
+        session.add(book)
+        session.add(title)
+
+    session.flush()
