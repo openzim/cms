@@ -1,6 +1,8 @@
 import datetime
 from collections import defaultdict
 
+from sqlalchemy import Date, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
@@ -28,14 +30,17 @@ def apply_retention_rules(session: OrmSession, title: Title):
     now = getnow()
 
     books_by_flavour: dict[str, list[Book]] = defaultdict(list)
-    for book in title.books:
-        if (
-            book.location_kind == "prod"
-            and not book.has_error
-            and book.created_at <= (now - datetime.timedelta(days=30))
-            and book.needs_file_operation is False
-        ):
-            books_by_flavour[book.flavour or ""].append(book)
+    for book in session.scalars(
+        select(Book).where(
+            Book.title_id == title.id,
+            Book.has_error.is_(False),
+            Book.date.is_not(None),
+            sql_cast(Book.date, Date) <= (now - datetime.timedelta(days=30)).date(),
+            Book.location_kind == "prod",
+            Book.needs_file_operation.is_(False),
+        )
+    ).all():
+        books_by_flavour[book.flavour or ""].append(book)
 
     books_to_delete: list[Book] = []
 

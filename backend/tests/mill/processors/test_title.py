@@ -1,7 +1,7 @@
 """Tests for title processor functions."""
 
+import datetime
 from collections.abc import Callable
-from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -90,23 +90,23 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
     now = getnow()
 
     # Create books from 4 different months, with multiple versions per month
-    # Month 1 (oldest): 2024-01
+    # Month 1 (oldest): 2024-01-01
     book1 = create_book(
         name="test_wiki",
-        date="2024-01",
+        date="2024-01-01",
         flavour="nopic",
-        created_at=now - timedelta(days=25),
+        created_at=now,
     )
     book1.location_kind = "prod"
     book1.title = title
     create_book_location(book=book1, filename="test_wiki_2024-01.zim")
 
-    # Month 2: 2024-02 with two versions
+    # Month 2: 2024-02-01 with two versions
     book2a = create_book(
         name="test_wiki",
-        date="2024-02",
+        date="2024-02-01",
         flavour="nopic",
-        created_at=now - timedelta(days=40),
+        created_at=now,
     )
     book2a.location_kind = "prod"
     book2a.title = title
@@ -114,20 +114,20 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     book2b = create_book(
         name="test_wiki",
-        date="2024-02",
+        date="2024-02-01",
         flavour="nopic",
-        created_at=now - timedelta(days=39),
+        created_at=now,
     )
     book2b.location_kind = "prod"
     book2b.title = title
     create_book_location(book=book2b, filename="test_wiki_2024-02a.zim")
 
-    # Month 3: 2024-03 with three versions
+    # Month 3: 2024-03-01 with three versions
     book3a = create_book(
         name="test_wiki",
-        date="2024-03",
+        date="2024-03-01",
         flavour="nopic",
-        created_at=now - timedelta(days=35),
+        created_at=now,
     )
     book3a.location_kind = "prod"
     book3a.title = title
@@ -135,9 +135,9 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     book3b = create_book(
         name="test_wiki",
-        date="2024-03",
+        date="2024-03-01",
         flavour="nopic",
-        created_at=now - timedelta(days=34),
+        created_at=now,
     )
     book3b.location_kind = "prod"
     book3b.title = title
@@ -145,20 +145,20 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     book3c = create_book(
         name="test_wiki",
-        date="2024-03",
+        date="2024-03-01",
         flavour="nopic",
-        created_at=now - timedelta(days=33),
+        created_at=now,
     )
     book3c.location_kind = "prod"
     book3c.title = title
     create_book_location(book=book3c, filename="test_wiki_2024-03b.zim")
 
-    # Month 4 (newest): 2024-04 with two versions
+    # Month 4 (newest): 2024-04-01 with two versions
     book4a = create_book(
         name="test_wiki",
-        date="2024-04",
+        date="2024-04-01",
         flavour="nopic",
-        created_at=now - timedelta(days=35),
+        created_at=now,
     )
     book4a.location_kind = "prod"
     book4a.title = title
@@ -166,9 +166,9 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     book4b = create_book(
         name="test_wiki",
-        date="2024-04",
+        date="2024-04-01",
         flavour="nopic",
-        created_at=now - timedelta(days=34),
+        created_at=now,
     )
     book4b.location_kind = "prod"
     book4b.title = title
@@ -176,25 +176,28 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     dbsession.flush()
 
-    with patch("cms_backend.mill.processors.title.getnow", return_value=now):
+    with patch(
+        "cms_backend.mill.processors.title.getnow",
+        return_value=datetime.datetime(2024, 4, 1),
+    ):
         apply_retention_rules(dbsession, title)
 
     dbsession.flush()
 
-    # Keep book1 since it's created_at is still less than 30 days
-    assert book1.location_kind == "prod"
-    # Should keep only the latest from the two most recent months:
-    # - 2024-04a
-    # - 2024-03b
+    # Keep 2024-04 books since their Date are still less than 30 days
+    assert book4a.location_kind == "prod"
     assert book4b.location_kind == "prod"
+    # Should keep only the latest from the two most recent months:
+    # - 2024-03c
+    # - 2024-02b
     assert book3c.location_kind == "prod"
+    assert book2b.location_kind == "prod"
 
     # All others should be marked for deletion
     assert book2a.location_kind == "to_delete"
-    assert book2b.location_kind == "to_delete"
     assert book3a.location_kind == "to_delete"
     assert book3b.location_kind == "to_delete"
-    assert book4a.location_kind == "to_delete"
+    assert book1.location_kind == "to_delete"
 
 
 def test_apply_retention_rules_handles_different_flavours_separately(
@@ -210,9 +213,9 @@ def test_apply_retention_rules_handles_different_flavours_separately(
     # Create books with "nopic" flavour: two in january and one in february
     book_nopic_jan = create_book(
         name="test_wiki",
-        date="2024-01",
+        date="2024-01-01",
         flavour="nopic",
-        created_at=now - timedelta(days=40),
+        created_at=now,
     )
     book_nopic_jan.location_kind = "prod"
     book_nopic_jan.title = title
@@ -220,9 +223,9 @@ def test_apply_retention_rules_handles_different_flavours_separately(
 
     book_nopic_jan_b = create_book(
         name="test_wiki",
-        date="2024-01",
+        date="2024-01-01",
         flavour="nopic",
-        created_at=now - timedelta(days=35),
+        created_at=now,
     )
     book_nopic_jan_b.location_kind = "prod"
     book_nopic_jan_b.title = title
@@ -230,9 +233,9 @@ def test_apply_retention_rules_handles_different_flavours_separately(
 
     book_nopic_feb = create_book(
         name="test_wiki",
-        date="2024-02",
+        date="2024-02-01",
         flavour="nopic",
-        created_at=now - timedelta(days=40),
+        created_at=now,
     )
     book_nopic_feb.location_kind = "prod"
     book_nopic_feb.title = title
@@ -241,9 +244,9 @@ def test_apply_retention_rules_handles_different_flavours_separately(
     # Create books with "maxi" flavour
     book_maxi_jan = create_book(
         name="test_wiki",
-        date="2024-01",
+        date="2024-01-01",
         flavour="maxi",
-        created_at=now - timedelta(days=38),
+        created_at=now,
     )
     book_maxi_jan.location_kind = "prod"
     book_maxi_jan.title = title
@@ -251,9 +254,9 @@ def test_apply_retention_rules_handles_different_flavours_separately(
 
     book_maxi_feb = create_book(
         name="test_wiki",
-        date="2024-02",
+        date="2024-02-01",
         flavour="maxi",
-        created_at=now - timedelta(days=38),
+        created_at=now,
     )
     book_maxi_feb.location_kind = "prod"
     book_maxi_feb.title = title
@@ -261,7 +264,10 @@ def test_apply_retention_rules_handles_different_flavours_separately(
 
     dbsession.flush()
 
-    with patch("cms_backend.mill.processors.title.getnow", return_value=now):
+    with patch(
+        "cms_backend.mill.processors.title.getnow",
+        return_value=datetime.datetime(2024, 2, 1),
+    ):
         apply_retention_rules(dbsession, title)
 
     dbsession.flush()
