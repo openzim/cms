@@ -215,6 +215,13 @@ def update_title(
         title.name = name
         title.events.append(f"{getnow()}: name updated from {old_name} to {name}")
         name_changed = True
+        session.add(title)
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            raise RecordAlreadyExistsError(
+                f"Title with name '{name}' already exists"
+            ) from exc
 
     # Determine if collection titles changed
     collection_titles_changed = False

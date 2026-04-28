@@ -80,7 +80,7 @@ def create_app(*, debug: bool = True):
     return app
 
 
-app = create_app()
+app = create_app(debug=Context.debug)
 
 
 @app.exception_handler(RequestValidationError)

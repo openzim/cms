@@ -371,3 +371,24 @@ def test_update_title(
     assert events[0].payload["action"] == "updated"
     assert events[0].payload["name"] == "wikipedia_en"
     assert events[0].payload["id"] == str(title.id)
+
+
+def test_update_title_with_existing_title_name(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    access_token: str,
+):
+    """Test updating a title's data"""
+    create_title(name="wikipedia_fr_test")
+    title = create_title(name="wikipedia_en_test")
+    update_data = {
+        "maturity": "robust",
+        "name": "wikipedia_fr_test",
+    }
+
+    response = client.patch(
+        f"/v1/titles/{title.id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.CONFLICT
