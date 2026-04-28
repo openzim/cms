@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -5,6 +6,7 @@ from psycopg.errors import UniqueViolation
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
@@ -48,7 +50,18 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 date=book.date,
                 flavour=book.flavour,
             )
-            for book in title.books
+            for book in sorted(
+                title.books,
+                key=lambda book: (
+                    (
+                        datetime.date.fromisoformat(book.date)
+                        if book.date
+                        else datetime.datetime.fromtimestamp(0).date()
+                    ),
+                    book.created_at,
+                ),
+                reverse=True,
+            )
         ],
         collections=[
             TitleCollectionSchema(
@@ -63,7 +76,9 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
 
 def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | None:
     """Get a title by ID"""
-    return session.scalars(select(Title).where(Title.id == title_id)).one_or_none()
+    return session.scalars(
+        select(Title).options(selectinload(Title.books)).where(Title.id == title_id)
+    ).one_or_none()
 
 
 def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
@@ -78,7 +93,9 @@ def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
 def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None:
     """Get a title by name if possible else None"""
 
-    return session.scalars(select(Title).where(Title.name == name)).one_or_none()
+    return session.scalars(
+        select(Title).options(selectinload(Title.books)).where(Title.name == name)
+    ).one_or_none()
 
 
 def get_title_by_name(session: OrmSession, *, name: str) -> Title:
