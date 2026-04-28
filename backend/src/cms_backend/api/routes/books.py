@@ -1,3 +1,4 @@
+import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -40,6 +41,8 @@ class BooksGetSchema(BaseModel):
     needs_file_operation: bool | None = None
     location_kinds: list[NotEmptyString] | None = None
     needs_attention: bool | None = None
+    updated_before: datetime.datetime | None = None
+    updated_after: datetime.datetime | None = None
 
 
 @router.get("")
@@ -60,6 +63,8 @@ def get_books(
         needs_file_operation=params.needs_file_operation,
         location_kinds=params.location_kinds,
         needs_attention=params.needs_attention,
+        updated_before=params.updated_before,
+        updated_after=params.updated_after,
     )
 
     return ListResponse[BookLightSchema](

@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -25,6 +26,8 @@ def get_books(
     needs_file_operation: bool | None = None,
     location_kinds: list[str] | None = None,
     needs_attention: bool | None = None,
+    updated_before: datetime.datetime | None = None,
+    updated_after: datetime.datetime | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -68,6 +71,12 @@ def get_books(
 
     if location_kinds is not None:
         stmt = stmt.where(Book.location_kind.in_(location_kinds))
+
+    if updated_before is not None:
+        stmt = stmt.where(Book.updated_at < updated_before)
+
+    if updated_after is not None:
+        stmt = stmt.where(Book.updated_at > updated_after)
 
     if needs_attention is True:
         stmt = stmt.where(

@@ -819,3 +819,56 @@ def test_recover_book_no_current_location(
 
     with pytest.raises(ValueError, match="has no current location"):
         recover_book(dbsession, book_id=book.id)
+
+
+@pytest.mark.parametrize(
+    "updated_after_hours,updated_before_hours,expected_count",
+    [
+        pytest.param(None, None, 5, id="no-time-filters"),  # All 5 books match
+        pytest.param(
+            6, None, 2, id="received-after-6h"
+        ),  # Last 2 (4h, 2h ago) - exclusive
+        pytest.param(
+            None, 3, 4, id="received-before-3h"
+        ),  # First 4 (10h, 8h, 6h, 4h ago) - exclusive
+        pytest.param(8, 3, 2, id="received-between-8h-and-3h"),  # Middle 2 (6h, 4h ago)
+    ],
+)
+def test_get_books_time_filters(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    updated_after_hours: int | None,
+    updated_before_hours: int | None,
+    expected_count: int,
+):
+    """Test that get_books works correctly with time filters."""
+    now = getnow()
+    # Create 5 books with different times
+    create_book(updated_at=now - datetime.timedelta(hours=10))
+    create_book(updated_at=now - datetime.timedelta(hours=8))
+    create_book(updated_at=now - datetime.timedelta(hours=6))
+    create_book(updated_at=now - datetime.timedelta(hours=4))
+    create_book(updated_at=now - datetime.timedelta(hours=2))
+
+    dbsession.flush()
+
+    updated_after = (
+        now - datetime.timedelta(hours=updated_after_hours)
+        if updated_after_hours
+        else None
+    )
+    updated_before = (
+        now - datetime.timedelta(hours=updated_before_hours)
+        if updated_before_hours
+        else None
+    )
+
+    results = get_books(
+        dbsession,
+        skip=0,
+        limit=20,
+        updated_after=updated_after,
+        updated_before=updated_before,
+    )
+    assert results.nb_records == expected_count
+    assert len(results.records) == expected_count

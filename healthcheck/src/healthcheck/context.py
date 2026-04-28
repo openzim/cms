@@ -46,3 +46,14 @@ class Context:
     catalog_generation_timeout = parse_timespan(
         os.getenv("CATALOG_GENERATION_TIMEOUT", default="10s")
     )
+    zimfarm_notification_pending_delay = datetime.timedelta(
+        seconds=parse_timespan(
+            os.getenv("ZIMFARM_NOTIFICATION_PENDING_DELAY", default="15m")
+        )
+    )
+    books_pending_move_delay = datetime.timedelta(
+        seconds=parse_timespan(os.getenv("BOOKS_PENDING_MOVE_DELAY", default="15m"))
+    )
+    books_pending_delete_delay = datetime.timedelta(
+        seconds=parse_timespan(os.getenv("BOOKS_PENDING_DELETE_DELAY", default="15m"))
+    )

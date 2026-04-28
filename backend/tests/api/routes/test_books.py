@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from http import HTTPStatus
 
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, Title
+from cms_backend.utils.datetime import getnow
 
 
 def test_get_books_empty(client: TestClient):
@@ -351,3 +353,41 @@ def test_get_book_by_id_invalid_uuid(
     """Test get book by ID endpoint with invalid UUID format"""
     response = client.get(f"/v1/books/{invalid_id}")
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_get_books_filter_by_date_range(
+    client: TestClient,
+    create_book: Callable[..., Book],
+):
+    """Test get books endpoint filtering by updated_after/before"""
+
+    now = getnow()
+    yesterday = now - datetime.timedelta(days=1)
+    two_days_ago = now - datetime.timedelta(days=2)
+    three_days_ago = now - datetime.timedelta(days=3)
+
+    # Create books at different times
+    create_book(updated_at=three_days_ago)
+    create_book(updated_at=two_days_ago)
+    create_book(updated_at=yesterday)
+    create_book(updated_at=now)
+
+    # Filter for books received after two days ago
+    response = client.get(f"/v1/books?updated_after={two_days_ago.isoformat()}")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 2  # yesterday and today
+
+    # Filter for books received before yesterday
+    response = client.get(f"/v1/books?updated_before={yesterday.isoformat()}")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 2  # three days ago and two days ago
+
+    # Filter for books in a specific range
+    response = client.get(
+        f"/v1/books?updated_after={three_days_ago.isoformat()}&updated_before={yesterday.isoformat()}"
+    )
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 1  # only two days ago
