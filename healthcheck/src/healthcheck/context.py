@@ -54,6 +54,8 @@ class Context:
     books_pending_move_delay = datetime.timedelta(
         seconds=parse_timespan(os.getenv("BOOKS_PENDING_MOVE_DELAY", default="15m"))
     )
+    # Should be set to be more than CMS deletion delay as it's only an issue if
+    # CMS hasn't deleted the file after the delay.
     books_pending_delete_delay = datetime.timedelta(
-        seconds=parse_timespan(os.getenv("BOOKS_PENDING_DELETE_DELAY", default="15m"))
+        seconds=parse_timespan(os.getenv("BOOKS_PENDING_DELETE_DELAY", default="25h"))
     )
