@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
-from cms_backend.db.models import Book, Collection, Event, Title, User
+from cms_backend.db.models import Account, Book, Collection, Event, Title
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
 
@@ -60,7 +60,7 @@ def test_get_titles(
 )
 def test_create_title_required_permissions(
     client: TestClient,
-    create_user: Callable[..., User],
+    create_account: Callable[..., Account],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
@@ -69,8 +69,10 @@ def test_create_title_required_permissions(
         "name": "wikipedia_en_test",
     }
 
-    user = create_user(permission=permission)
-    access_token = generate_access_token(user_id=str(user.id), issue_time=getnow())
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
     response = client.post(
         "/v1/titles",
         json=title_data,
@@ -316,7 +318,7 @@ def test_get_title_by_id_not_found(client: TestClient):
 )
 def test_update_title_required_permissions(
     client: TestClient,
-    create_user: Callable[..., User],
+    create_account: Callable[..., Account],
     create_title: Callable[..., Title],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
@@ -327,8 +329,10 @@ def test_update_title_required_permissions(
         "maturity": "robust",
     }
 
-    user = create_user(permission=permission)
-    access_token = generate_access_token(user_id=str(user.id), issue_time=getnow())
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
     response = client.patch(
         f"/v1/titles/{title.id}",
         json=update_data,

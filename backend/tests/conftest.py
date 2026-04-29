@@ -14,6 +14,7 @@ from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.models import (
+    Account,
     Base,
     Book,
     BookLocation,
@@ -21,7 +22,6 @@ from cms_backend.db.models import (
     CollectionTitle,
     Event,
     Title,
-    User,
     Warehouse,
     ZimfarmNotification,
 )
@@ -329,17 +329,17 @@ def create_collection_title(
 
 
 @pytest.fixture
-def create_user(
+def create_account(
     dbsession: OrmSession,
     faker: Faker,
-) -> Callable[..., User]:
-    def _create_user(
+) -> Callable[..., Account]:
+    def _create_account(
         *,
         username: str | None = None,
         permission: RoleEnum = RoleEnum.EDITOR,
         password: str | None = None,
     ):
-        user = User(
+        account = Account(
             username=username or faker.first_name(),
             role=permission,
             idp_sub=uuid4(),
@@ -347,25 +347,25 @@ def create_user(
                 None if password is None else generate_password_hash(password)
             ),
         )
-        dbsession.add(user)
+        dbsession.add(account)
 
         dbsession.flush()
 
-        return user
+        return account
 
-    return _create_user
-
-
-@pytest.fixture
-def user(create_user: Callable[..., User]):
-    return create_user()
+    return _create_account
 
 
 @pytest.fixture
-def access_token(user: User) -> str:
+def account(create_account: Callable[..., Account]):
+    return create_account()
+
+
+@pytest.fixture
+def access_token(account: Account) -> str:
     return generate_access_token(
         issue_time=getnow(),
-        user_id=str(user.id),
+        account_id=str(account.id),
     )
 
 
