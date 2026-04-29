@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, or_, select
+from sqlalchemy import String, and_, func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
@@ -145,6 +145,23 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
     """
     Get view and download URLs for a list of ZIM IDs (Book IDs).
     """
+    # Get the latest books for each title/flavor combination
+    # as the book IDs passed might not include the latest
+    # and we need only the latest book per title/flavor combo
+    # to have the view URL.
+    latest_dates_subq = (
+        select(Book.title_id, Book.flavour, func.max(Book.date).label("max_date"))
+        .where(
+            Book.needs_processing.is_(False),
+            Book.has_error.is_(False),
+            Book.needs_file_operation.is_(False),
+            Book.location_kind == "prod",
+            Book.title_id.in_(select(Book.title_id).where(Book.id.in_(zim_ids))),
+        )
+        .group_by(Book.title_id, Book.flavour)
+        .subquery()
+    )
+
     stmt = (
         select(
             Book.id.label("book_id"),
@@ -156,10 +173,18 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
             Collection.view_base_url,
             CollectionTitle.path.label("subpath"),
             BookLocation.filename,
+            (Book.date == latest_dates_subq.c.max_date).label("is_latest"),
         )
         .join(Title, Book.title_id == Title.id)
         .join(CollectionTitle, CollectionTitle.title_id == Title.id)
         .join(Collection, Collection.id == CollectionTitle.collection_id)
+        .join(
+            latest_dates_subq,
+            and_(
+                Book.title_id == latest_dates_subq.c.title_id,
+                Book.flavour == latest_dates_subq.c.flavour,
+            ),
+        )
         .join(
             BookLocation,
             and_(
@@ -178,7 +203,7 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
                 Book.location_kind == "prod",
             )
         )
-        .order_by(Title.id, Book.flavour, Book.created_at.desc())
+        .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
 
     result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
@@ -200,7 +225,7 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
                 )
             )
 
-        if row.view_base_url:
+        if row.view_base_url and row.is_latest:
             key = (row.title_id, row.book_flavour)
             if key not in seen:
                 seen.add(key)
@@ -222,6 +247,23 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
     """
     Get view and download URLs for a list of ZIM IDs (Book IDs).
     """
+    # Get the latest books for each title/flavor combination
+    # as the book IDs passed might not include the latest
+    # and we need only the latest book per title/flavor combo
+    # to have the view URL.
+    latest_dates_subq = (
+        select(Book.title_id, Book.flavour, func.max(Book.date).label("max_date"))
+        .where(
+            Book.needs_processing.is_(False),
+            Book.has_error.is_(False),
+            Book.needs_file_operation.is_(False),
+            Book.location_kind == "staging",
+            Book.title_id.in_(select(Book.title_id).where(Book.id.in_(zim_ids))),
+        )
+        .group_by(Book.title_id, Book.flavour)
+        .subquery()
+    )
+
     stmt = (
         select(
             Book.id.label("book_id"),
@@ -229,8 +271,16 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             BookLocation.filename,
+            (Book.date == latest_dates_subq.c.max_date).label("is_latest"),
         )
         .join(Title, Book.title_id == Title.id)
+        .join(
+            latest_dates_subq,
+            and_(
+                Book.title_id == latest_dates_subq.c.title_id,
+                Book.flavour == latest_dates_subq.c.flavour,
+            ),
+        )
         .join(
             BookLocation,
             and_(
@@ -249,10 +299,11 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 Book.location_kind == "staging",
             )
         )
-        .order_by(Title.id, Book.flavour, Book.created_at.desc())
+        .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
 
     result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
+    seen: set[tuple[str | None, str | None]] = set()
 
     for row in session.execute(stmt).all():
         result.urls[row.book_id].append(
@@ -271,16 +322,22 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
             )
         )
 
-        filename_without_suffix = (
-            row.filename[:-4] if row.filename.endswith(".zim") else row.filename
-        )
-        result.urls[row.book_id].append(
-            ZimUrlSchema(
-                kind="view",
-                url=AnyUrl(f"{Context.staging_view_base_url}{filename_without_suffix}"),
-                collection="staging",
-            )
-        )
+        if row.is_latest:
+            key = (row.title_id, row.book_flavour)
+            if key not in seen:
+                seen.add(key)
+                filename_without_suffix = (
+                    row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+                )
+                result.urls[row.book_id].append(
+                    ZimUrlSchema(
+                        kind="view",
+                        url=AnyUrl(
+                            f"{Context.staging_view_base_url}{filename_without_suffix}"
+                        ),
+                        collection="staging",
+                    )
+                )
 
     return result
 
