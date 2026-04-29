@@ -343,7 +343,11 @@ def test_get_zim_urls(
     collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path(""))
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(
+        zim_metadata={"Name": title.name},
+        flavour="all",
+        date="2023-01-01",
+    )
     book.title = title
     book.location_kind = "prod"
     title.books.append(book)
@@ -421,7 +425,11 @@ def test_get_zim_urls_book_with_subpath(
     subpath = Path("wikipedia")
     create_collection_title(title=title, collection=collection, path=subpath)
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(
+        zim_metadata={"Name": title.name},
+        flavour="all",
+        date="2023-01-01",
+    )
     book.title = title
     book.location_kind = "prod"
     title.books.append(book)
@@ -465,7 +473,6 @@ def test_get_zim_urls_book_in_staging(
     warehouse: Warehouse,  # noqa: ARG001
 ):
     """Download and view URL are correct when book is in staging"""
-    from pathlib import Path
 
     warehouse_prod = create_warehouse()
     title = create_title(name="test_en_all")
@@ -474,7 +481,11 @@ def test_get_zim_urls_book_in_staging(
     subpath = Path("wikipedia")
     create_collection_title(title=title, collection=collection, path=subpath)
 
-    book = create_book(zim_metadata={"Name": title.name})
+    book = create_book(
+        zim_metadata={"Name": title.name},
+        flavour="all",
+        date="2023-01-01",
+    )
     book.title = title
     book.location_kind = "staging"
     title.books.append(book)
@@ -502,6 +513,69 @@ def test_get_zim_urls_book_in_staging(
     assert view_url is not None
     assert str(view_url.url) == "https://library.staging.acme.org/viewer#test_en_all"
     assert view_url.collection == "staging"
+
+
+def test_get_zim_urls_multiple_staging_books(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_book_location: Callable[..., BookLocation],
+):
+    """Verify that all staging books get view and download URLs,
+    even for the same title/flavour."""
+    title = create_title(name="test_en_all")
+    warehouse = create_warehouse(warehouse_id=Context.staging_warehouse_id)
+
+    book_old = create_book(
+        zim_metadata={"Name": title.name},
+        flavour="all",
+        date="2023-01-01",
+    )
+    book_old.title = title
+    book_old.location_kind = "staging"
+
+    create_book_location(
+        book=book_old,
+        warehouse_id=warehouse.id,
+        path=Context.staging_base_path,
+        filename="test_en_all_old.zim",
+        status="current",
+    )
+
+    book_new = create_book(
+        zim_metadata={"Name": title.name},
+        flavour="all",
+        date="2023-02-01",
+    )
+    book_new.title = title
+    book_new.location_kind = "staging"
+
+    create_book_location(
+        book=book_new,
+        warehouse_id=warehouse.id,
+        path=Context.staging_base_path,
+        filename="test_en_all_new.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book_old.id, book_new.id])
+
+    assert len(result.urls) == 2
+
+    # Old book should have both view and download URLs
+    urls_old = result.urls[book_old.id]
+    assert len(urls_old) == 2
+    assert any(u.kind == "download" for u in urls_old)
+    assert any(u.kind == "view" for u in urls_old)
+
+    # New book should have both view and download URLs
+    urls_new = result.urls[book_new.id]
+    assert len(urls_new) == 2
+    assert any(u.kind == "download" for u in urls_new)
+    assert any(u.kind == "view" for u in urls_new)
 
 
 @pytest.mark.parametrize(
@@ -674,6 +748,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
         zim_metadata={"Name": title.name},
         created_at=now - datetime.timedelta(days=7),
         flavour="test",
+        date="2023-01-02",
     )
     book1.title = title
     book1.location_kind = "prod"
@@ -691,6 +766,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
         zim_metadata={"Name": title.name},
         created_at=now - datetime.timedelta(days=14),
         flavour="test",
+        date="2023-01-01",
     )
     book2.title = title
     book2.location_kind = "prod"
@@ -718,6 +794,129 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 
     book2_view_url = next((u for u in result.urls[book2.id] if u.kind == "view"), None)
     assert book2_view_url is None
+
+
+def test_get_zim_urls_tie_breaker_same_date(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(warehouse=warehouse)
+    create_collection_title(title=title, collection=collection, path=Path(""))
+    now = getnow()
+
+    def add_book(flavour: str, date: str, days_old: int, filename: str) -> Book:
+        book = create_book(
+            zim_metadata={"Name": title.name},
+            created_at=now - datetime.timedelta(days=days_old),
+            flavour=flavour,
+            date=date,
+        )
+        book.title = title
+        book.location_kind = "prod"
+        title.books.append(book)
+        create_book_location(
+            book=book,
+            warehouse_id=warehouse.id,
+            path=Path(""),
+            filename=filename,
+            status="current",
+        )
+        return book
+
+    # Both books have same date but different created_at
+    newer_created = add_book("maxi", "2023-01-01", 7, "test_test_newer.zim")
+    older_created = add_book("maxi", "2023-01-01", 14, "test_test_older.zim")
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[newer_created.id, older_created.id])
+
+    assert newer_created.id in result.urls
+    assert older_created.id in result.urls
+
+    # newer_created should get both download and view
+    assert len(result.urls[newer_created.id]) == 2
+    newer_view_url = next(
+        (u for u in result.urls[newer_created.id] if u.kind == "view"), None
+    )
+    assert newer_view_url is not None
+
+    # older_created should only get download
+    assert len(result.urls[older_created.id]) == 1
+    older_view_url = next(
+        (u for u in result.urls[older_created.id] if u.kind == "view"), None
+    )
+    assert older_view_url is None
+
+
+def test_get_zim_urls_no_view_link_if_latest_excluded(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+):
+    warehouse = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(warehouse=warehouse)
+    create_collection_title(title=title, collection=collection, path=Path(""))
+    now = getnow()
+
+    def add_book(flavour: str, date: str, days_old: int, filename: str) -> Book:
+        book = create_book(
+            zim_metadata={"Name": title.name},
+            created_at=now - datetime.timedelta(days=days_old),
+            flavour=flavour,
+            date=date,
+        )
+        book.title = title
+        book.location_kind = "prod"
+        title.books.append(book)
+        create_book_location(
+            book=book,
+            warehouse_id=warehouse.id,
+            path=Path(""),
+            filename=filename,
+            status="current",
+        )
+        return book
+
+    # The truly latest books (not queried)
+    latest_test = add_book("test", "2023-01-02", 7, "test_test_latest.zim")
+    latest_all = add_book("all", "2023-01-02", 7, "test_all_latest.zim")
+
+    # The older books (queried)
+    older_test = add_book("test", "2023-01-01", 14, "test_test_older.zim")
+    older_all = add_book("all", "2023-01-01", 14, "test_all_older.zim")
+
+    dbsession.flush()
+
+    # We only ask for the older ones
+    result = get_zim_urls(dbsession, zim_ids=[older_test.id, older_all.id])
+
+    assert older_test.id in result.urls
+    assert older_all.id in result.urls
+    assert latest_test.id not in result.urls
+    assert latest_all.id not in result.urls
+
+    assert len(result.urls[older_test.id]) == 1
+    assert len(result.urls[older_all.id]) == 1
+
+    assert (
+        next((u for u in result.urls[older_test.id] if u.kind == "view"), None) is None
+    )
+    assert (
+        next((u for u in result.urls[older_all.id] if u.kind == "view"), None) is None
+    )
 
 
 @pytest.mark.parametrize(

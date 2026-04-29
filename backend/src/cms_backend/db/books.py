@@ -171,22 +171,32 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
         )
         .where(
             and_(
-                Book.id.in_(zim_ids),
+                # Get all books for the related titles so we can determine the latest
+                Book.title_id.in_(select(Book.title_id).where(Book.id.in_(zim_ids))),
                 Book.needs_processing.is_(False),
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
                 Book.location_kind == "prod",
             )
         )
-        .order_by(Title.id, Book.flavour, Book.created_at.desc())
+        .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
 
     result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
-
-    # Filter to keep only one view link for the latest book per title+flavour
-    # combination
     seen: set[tuple[str | None, str | None]] = set()
+
     for row in session.execute(stmt).all():
+        is_latest = False
+        key = (row.title_id, row.book_flavour)
+
+        if key not in seen:
+            seen.add(key)
+            is_latest = True
+
+        # Only provide URLs if the book is one of the specifically requested zim_ids
+        if row.book_id not in result.urls:
+            continue
+
         if row.download_base_url:
             result.urls[row.book_id].append(
                 ZimUrlSchema(
@@ -200,20 +210,17 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
                 )
             )
 
-        if row.view_base_url:
-            key = (row.title_id, row.book_flavour)
-            if key not in seen:
-                seen.add(key)
-                filename_without_suffix = (
-                    row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+        if row.view_base_url and is_latest:
+            filename_without_suffix = (
+                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+            )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="view",
+                    url=AnyUrl(f"{row.view_base_url}{filename_without_suffix}"),
+                    collection=row.collection_name,
                 )
-                result.urls[row.book_id].append(
-                    ZimUrlSchema(
-                        kind="view",
-                        url=AnyUrl(f"{row.view_base_url}{filename_without_suffix}"),
-                        collection=row.collection_name,
-                    )
-                )
+            )
 
     return result
 
@@ -249,7 +256,7 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 Book.location_kind == "staging",
             )
         )
-        .order_by(Title.id, Book.flavour, Book.created_at.desc())
+        .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
 
     result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
@@ -260,8 +267,6 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 kind="download",
                 url=AnyUrl(
                     construct_download_url(
-                        # staging download url is supposed to contain the whole path
-                        # already for convenience in deployment
                         Context.staging_download_base_url,
                         Path(""),
                         row.filename,
