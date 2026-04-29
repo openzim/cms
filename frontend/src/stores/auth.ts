@@ -10,12 +10,12 @@ import { getOAuthConfig } from '@/services/auth/base'
 import { OAuthSessionProvider } from '@/services/auth/OAuthSessionProvider'
 import { LocalAuthProvider } from '@/services/auth/LocalAuthProvider'
 import type { AuthProvider } from '@/services/auth/base'
-import type { User } from '@/types/user'
+import type { Account } from '@/types/account'
 
 export const useAuthStore = defineStore('auth', () => {
   const errors = ref<string[]>([])
   const token = ref<StoredToken | null>(null)
-  const user = ref<User | null>(null)
+  const account = ref<Account | null>(null)
 
   const config = inject<Config>(constants.config)
 
@@ -46,11 +46,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Computed properties
   const isLoggedIn = computed(() => {
-    return token.value !== null && user.value !== null
+    return token.value !== null && account.value !== null
   })
 
   const username = computed(() => {
-    return user.value?.username || null
+    return account.value?.username || null
   })
 
   const accessToken = computed(() => {
@@ -58,7 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const permissions = computed(() => {
-    return user.value?.scope || {}
+    return account.value?.scope || {}
   })
 
   const refreshToken = computed(() => {
@@ -77,7 +77,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const hasPermission = (resource: string, action: string) => {
     if (!token.value) return false
-    return user.value?.scope[resource]?.[action] || false
+    return account.value?.scope[resource]?.[action] || false
   }
 
   const tokenType = computed(() => {
@@ -125,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('Invalid authentication token')
       }
       token.value = newToken
-      await fetchUserInfo(newToken.access_token)
+      await fetchAccountInfo(newToken.access_token)
 
       errors.value = []
       provider.saveToken(newToken)
@@ -135,7 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
       return true
     } catch (err: unknown) {
       token.value = null
-      user.value = null
+      account.value = null
       errors.value = translateErrors(err as ErrorResponse)
       return false
     }
@@ -156,7 +156,7 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  const fetchUserInfo = async (accessToken: string) => {
+  const fetchAccountInfo = async (accessToken: string) => {
     try {
       const apiService = httpRequest({
         baseURL: `${config.CMS_API}/auth`,
@@ -164,12 +164,12 @@ export const useAuthStore = defineStore('auth', () => {
           Authorization: `Bearer ${accessToken}`,
         },
       })
-      const response = (await apiService.get('/me')) as User
-      user.value = response
+      const response = (await apiService.get('/me')) as Account
+      account.value = response
       errors.value = []
     } catch (error) {
-      console.error('Failed to fetch user info:', error)
-      user.value = null
+      console.error('Failed to fetch account info:', error)
+      account.value = null
       errors.value = translateErrors(error as ErrorResponse)
     }
   }
@@ -220,8 +220,8 @@ export const useAuthStore = defineStore('auth', () => {
       await logout()
       return null
     }
-    if (!user.value) {
-      await fetchUserInfo(storedToken.access_token)
+    if (!account.value) {
+      await fetchAccountInfo(storedToken.access_token)
     }
     token.value = storedToken
     return storedToken
@@ -253,7 +253,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (!newToken) {
         throw new Error('Unable to refresh token')
       }
-      await fetchUserInfo(newToken.access_token)
+      await fetchAccountInfo(newToken.access_token)
       isRefreshFailed.value = false
       return newToken
     } catch (error) {
@@ -266,7 +266,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       token.value = null
-      user.value = null
+      account.value = null
       errors.value = translateErrors(error as ErrorResponse)
       return null
     } finally {
@@ -287,7 +287,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     token.value = null
-    user.value = null
+    account.value = null
 
     // Reset refresh failure state on logout
     isRefreshFailed.value = false
@@ -300,8 +300,8 @@ export const useAuthStore = defineStore('auth', () => {
       const newToken = await provider.onCallback(callbackUrl)
       token.value = newToken
 
-      // Fetch user info from backend using the Kiwix token
-      await fetchUserInfo(newToken.access_token)
+      // Fetch account info from backend using the Kiwix token
+      await fetchAccountInfo(newToken.access_token)
 
       errors.value = []
       provider.saveToken(newToken)
@@ -312,7 +312,7 @@ export const useAuthStore = defineStore('auth', () => {
       return true
     } catch (err: unknown) {
       token.value = null
-      user.value = null
+      account.value = null
       errors.value = translateErrors(err as ErrorResponse)
       return false
     }
@@ -322,7 +322,7 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     errors,
     token,
-    user,
+    account,
     isRefreshFailed,
     refreshPromise,
     permissions,
@@ -338,7 +338,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Methods
     loadToken,
-    fetchUserInfo,
+    fetchAccountInfo,
     renewToken,
     authenticate,
     logout,

@@ -39,9 +39,8 @@ class TokenDecoder(abc.ABC):
         """
         pass
 
-    @property
     @abc.abstractmethod
-    def can_decode(self) -> bool:
+    def can_decode(self, token: str) -> bool:
         """
         Check if this decoder can potentially decode the given token.
         """
@@ -66,9 +65,28 @@ class LocalTokenDecoder(TokenDecoder):
     def name(self) -> str:
         return "local"
 
-    @property
-    def can_decode(self) -> bool:
+    def can_decode(self, token: str) -> bool:
         return "local" in Context.auth_modes
+
+        if "local" not in Context.auth_modes:
+            return False
+        try:
+            payload = jwt.decode(
+                token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": False,
+                    "verify_aud": False,
+                    "verify_iss": False,
+                },
+            )
+        except Exception:
+            return False
+
+        if payload.get("iss") != Context.jwt_token_issuer:
+            return False
+
+        return True
 
 
 class OAuthTokenDecoder(TokenDecoder):
@@ -104,7 +122,7 @@ class OAuthTokenDecoder(TokenDecoder):
             raise ValueError("Oauth client ID does not match.")
 
         # Check for 2FA requirement only if client_id is not present in the token
-        # as those come from oauth2 clients and not real users
+        # as those come from oauth2 clients and not real accounts
         if (
             not decoded_token.get("client_id")
             and Context.oauth_session_login_require_2fa
@@ -121,9 +139,28 @@ class OAuthTokenDecoder(TokenDecoder):
     def name(self) -> str:
         return "oauth"
 
-    @property
-    def can_decode(self) -> bool:
-        return "oauth" in Context.auth_modes
+    def can_decode(self, token: str) -> bool:
+        if "oauth-session" not in Context.auth_modes:
+            return False
+        try:
+            payload = jwt.decode(
+                token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": False,
+                    "verify_aud": False,
+                    "verify_iss": False,
+                },
+            )
+        except Exception:
+            return False
+
+        if (
+            payload.get("iss") != Context.oauth_issuer
+            or Context.oauth_session_audience_id not in payload.get("aud", [])
+        ):
+            return False
+        return True
 
 
 class TokenDecoderChain:
@@ -140,27 +177,38 @@ class TokenDecoderChain:
         Try to decode token using each decoder in order.
         """
         exc_cls: Exception | None = None
-        decoders = [decoder for decoder in self.decoders if decoder.can_decode]
+        decoders = [decoder for decoder in self.decoders if decoder.can_decode(token)]
         if not decoders:
             raise ValueError("No decoders registered for decoding token.")
 
+        if not decoders:
+            raise ValueError("No decoders can decode token.")
+
+        if len(decoders) > 1:
+            logger.warning(
+                "Multiple token decoders detected. Set configuration values to match "
+                "only one token decoder to avoid overwriting exception messages."
+            )
+
         for decoder in decoders:
-            if decoder.can_decode:
-                try:
-                    return decoder.decode(token)
-                except (
-                    jwt_exceptions.PyJWTError,
-                    PydanticValidationError,
-                    Exception,
-                ) as exc:
-                    logger.debug(f"{decoder.name}: unable to decode token: {exc!s}")
-                    # keep track of the most recent exception class
-                    exc_cls = exc
+            try:
+                logger.debug(f"{decoder.name}-decoder: attempting to decode token.")
+                claims = decoder.decode(token)
+            except (
+                jwt_exceptions.PyJWTError,
+                PydanticValidationError,
+                Exception,
+            ) as exc:
+                logger.debug(f"{decoder.name}-decoder: unable to decode token: {exc!s}")
+                exc_cls = exc
+            else:
+                logger.debug(f"{decoder.name}-decoder: decoded token successfully.")
+                return claims
 
         if exc_cls:
             raise exc_cls
 
-        raise ValueError("Inavlid token")
+        raise ValueError("Invalid token")
 
 
 token_decoder = TokenDecoderChain(
@@ -173,10 +221,10 @@ token_decoder = TokenDecoderChain(
 
 def generate_access_token(
     *,
-    user_id: str,
+    account_id: str,
     issue_time: datetime.datetime,
 ) -> str:
-    """Generate a JWT access token for the given user ID with configured expiry."""
+    """Generate a JWT access token for the given account ID with configured expiry."""
 
     expire_time = issue_time + datetime.timedelta(
         seconds=Context.jwt_token_expiry_duration
@@ -185,6 +233,6 @@ def generate_access_token(
         "iss": Context.jwt_token_issuer,  # issuer
         "exp": expire_time.timestamp(),  # expiration time
         "iat": issue_time.timestamp(),  # issued at
-        "subject": user_id,
+        "subject": account_id,
     }
     return jwt.encode(payload, key=Context.jwt_secret, algorithm="HS256")

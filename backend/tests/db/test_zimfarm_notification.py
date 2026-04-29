@@ -39,7 +39,7 @@ def test_get_zimfarm_notification_not_found(
     dbsession: OrmSession,
     zimfarm_notification: ZimfarmNotification,  # noqa: ARG001 - needed for conftest
 ):
-    """Raises an exception if the user does not exist"""
+    """Raises an exception if the notification does not exist"""
     with pytest.raises(RecordDoesNotExistError):
         get_zimfarm_notification(dbsession, notification_id=uuid4())
 

@@ -5,9 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.context import Context
+from cms_backend.db.account import get_account_by_id
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Refreshtoken
-from cms_backend.db.user import get_user_by_id
 from cms_backend.utils.datetime import getnow
 
 
@@ -26,14 +26,14 @@ def get_refresh_token(session: OrmSession, token: UUID) -> Refreshtoken:
     return db_refresh_token
 
 
-def create_refresh_token(session: OrmSession, user_id: UUID) -> Refreshtoken:
-    """Create a refresh token for a user"""
+def create_refresh_token(session: OrmSession, account_id: UUID) -> Refreshtoken:
+    """Create a refresh token for an account"""
     refresh_token = Refreshtoken(
         token=uuid4(),
         expire_time=getnow()
         + datetime.timedelta(seconds=Context.refresh_token_expiry_duration),
     )
-    refresh_token.user = get_user_by_id(session, user_id=user_id)
+    refresh_token.account = get_account_by_id(session, account_id=account_id)
     session.add(refresh_token)
     session.flush()
     return refresh_token
