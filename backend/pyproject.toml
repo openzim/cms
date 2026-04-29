@@ -78,7 +78,7 @@ Donate = "https://www.kiwix.org/en/support-us/"
 cms-api = "cms_backend.api.main:app"
 cms-mill = "cms_backend.mill.main:main"
 cms-shuttle = "cms_backend.shuttle.main:main"
-create-initial-user = "cms_backend.utils.database:create_initial_user"
+create-initial-account = "cms_backend.utils.database:create_initial_account"
 check-db-schema = "cms_backend.utils.database:check_if_schema_is_up_to_date"
 
 [tool.hatch.version]
@@ -235,9 +235,6 @@ minversion = "8.3.5"
 testpaths = ["tests"]
 pythonpath = [".", "src"]
 addopts = "--strict-markers"
-markers = [
-    "num_users(num=10, *, permission=...): create num users in the database with permission (default: ADMIN)",
-]
 
 
 [tool.coverage.paths]

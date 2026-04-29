@@ -118,9 +118,9 @@ class WarehousePathSchema(BaseModel):
     warehouse_name: str
 
 
-class UserSchema(BaseModel):
+class AccountSchema(BaseModel):
     """
-    Schema for reading a user model
+    Schema for reading an account model
     """
 
     username: str

@@ -10,6 +10,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from cms_backend.api.routes.account import router as account_router
 from cms_backend.api.routes.auth import router as auth_router
 from cms_backend.api.routes.books import router as books_router
 from cms_backend.api.routes.collection import router as collection_router
@@ -18,7 +19,6 @@ from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
 from cms_backend.api.routes.staging import router as staging_router
 from cms_backend.api.routes.titles import router as titles_router
-from cms_backend.api.routes.user import router as user_router
 from cms_backend.api.routes.zimfarm_notifications import (
     router as zimfarm_notification_router,
 )
@@ -30,7 +30,7 @@ from cms_backend.db.exceptions import (
 )
 from cms_backend.utils.database import (
     check_if_schema_is_up_to_date,
-    create_initial_user,
+    create_initial_account,
     upgrade_db_schema,
 )
 
@@ -40,7 +40,7 @@ async def lifespan(_: FastAPI):
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
     check_if_schema_is_up_to_date()
-    create_initial_user()
+    create_initial_account()
     yield
 
 
@@ -72,7 +72,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=collection_router)
     main_router.include_router(router=events_router)
     main_router.include_router(router=auth_router)
-    main_router.include_router(router=user_router)
+    main_router.include_router(router=account_router)
     main_router.include_router(router=staging_router)
 
     app.include_router(router=main_router)

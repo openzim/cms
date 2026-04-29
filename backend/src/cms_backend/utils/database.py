@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import Session
-from cms_backend.db.user import create_user, get_user_by_username_or_none
+from cms_backend.db.account import create_account, get_account_by_username_or_none
 
 
 def check_if_schema_is_up_to_date():
@@ -35,19 +35,19 @@ def upgrade_db_schema():
     subprocess.check_output(args=["alembic", "upgrade", "head"], cwd=Context.base_dir)
 
 
-def create_initial_user():
+def create_initial_account():
     with Session.begin() as session:
         username = os.getenv("INIT_USERNAME", default="admin")
         password = os.getenv("INIT_PASSWORD", default="admin_pass")
 
-        user = get_user_by_username_or_none(session, username=username)
-        if user is None:
-            logger.info(f"creating initial user `{username}`")
-            create_user(
+        account = get_account_by_username_or_none(session, username=username)
+        if account is None:
+            logger.info(f"creating initial account `{username}`")
+            create_account(
                 session=session,
                 username=username,
                 password_hash=generate_password_hash(password),
                 role="editor",
             )
         else:
-            logger.info(f"user {username} already exists")
+            logger.info(f"account {username} already exists")

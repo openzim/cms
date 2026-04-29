@@ -59,11 +59,13 @@ docker exec cms_shuttle python /scripts/setup_warehouses.py
 ```
 
 This script will:
+
 - Create warehouse directories in `dev/warehouses/`
 - Create corresponding database records (Warehouse)
 - Print the LOCAL_WAREHOUSE_PATHS configuration (already configured in docker-compose.yml)
 
 Current warehouse configuration:
+
 - **hidden**: 2 paths (`quarantine`, `staging`)
 - **prod**: 1 path (`other`, `wikipedia`)
 - **client1**: 1 path (`all`)
@@ -83,6 +85,7 @@ Currently two collections are configured: **prod** (associated with **prod** war
 To modify collections configuration, edit the `COLLECTIONS_CONFIG` list in [scripts/setup_collections.py](scripts/setup_collections.py) and re-run the script.
 
 Once created, collection catalogs are accessible at:
+
 - `http://localhost:37601/v1/collections/prod/catalog.xml` or `http://localhost:37601/v1/collections/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
 - `http://localhost:37601/v1/collections/client1/catalog.xml` or `http://localhost:37601/v1/collections/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
 
@@ -105,6 +108,7 @@ docker exec cms_shuttle python /scripts/setup_notifications.py
 ```
 
 This script will:
+
 - Create ZimfarmNotification records with status "pending"
 - Create "fake" ZIMs in quarantine folder and subfolders
 
@@ -145,13 +149,13 @@ docker exec -it cms_backend-tests python -m pytest
 You can select one specific set of tests by path.
 
 ```sh
-docker exec -it cms_backend-tests python -m pytest tests/routes/test_user.py
+docker exec -it cms_backend-tests python -m pytest tests/routes/test_account.py
 ```
 
 Or just one specific test function.
 
 ```sh
-docker exec -it cms_backend-tests python -m pytest tests/routes/test_user.py -k test_list_users_no_auth
+docker exec -it cms_backend-tests python -m pytest tests/routes/test_account.py -k test_list_accounts_no_auth
 ```
 
 This is normally not needed, but you might end-up in a situation where test DB gets corrupted. You can recreate test DB.

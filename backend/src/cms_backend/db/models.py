@@ -287,19 +287,19 @@ class BookLocation(Base):
         return f"{self.warehouse.name}:{self.path_in_warehouse}"
 
 
-class User(Base):
-    __tablename__ = "user"
+class Account(Base):
+    __tablename__ = "account"
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    idp_sub: Mapped[UUID | None]
     username: Mapped[str] = mapped_column(unique=True, index=True)
     role: Mapped[str]
     password_hash: Mapped[str | None]
     deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
+    idp_sub: Mapped[UUID | None] = mapped_column(index=True, unique=True, default=None)
 
     refresh_tokens: Mapped[list["Refreshtoken"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan", init=False
+        back_populates="account", cascade="all, delete-orphan", init=False
     )
 
 
@@ -310,11 +310,15 @@ class Refreshtoken(Base):
     )
     token: Mapped[UUID] = mapped_column(server_default=text("uuid_generate_v4()"))
     expire_time: Mapped[datetime]
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("user.id"), init=False)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
 
-    user: Mapped["User"] = relationship(back_populates="refresh_tokens", init=False)
+    account: Mapped["Account"] = relationship(
+        back_populates="refresh_tokens", init=False
+    )
 
-    __table__args = (Index("user_id", "token", unique=True),)
+    __table_args__ = (
+        Index("ix_refresh_token_account_id_token", "account_id", "token", unique=True),
+    )
 
 
 class Event(Base):

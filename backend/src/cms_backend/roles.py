@@ -30,7 +30,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "book": ResourcePermissions.get_all(),
         "title": ResourcePermissions.get_all(),
         "zimfarm_notification": ResourcePermissions.get_all(),
-        "user": ResourcePermissions.get_all(),
+        "account": ResourcePermissions.get_all(),
     },
     RoleEnum.ZIMFARM: {
         "zimfarm_notification": ResourcePermissions.get(read=True, create=True),
@@ -39,16 +39,18 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
 
 
 def merge_scopes(
-    user_scope: dict[str, dict[str, bool]], all_scopes: dict[str, dict[str, bool]]
+    account_scope: dict[str, dict[str, bool]], all_scopes: dict[str, dict[str, bool]]
 ) -> dict[str, dict[str, bool]]:
-    """Combine user scope and all scopes populating missing user scopes with False."""
+    """
+    Combine account scope and all scopes populating missing account scopes with False.
+    """
     merged: dict[str, dict[str, bool]] = {}
 
     for category, permissions in all_scopes.items():
         merged[category] = {}
-        user_permissions = user_scope.get(category, {})
+        account_permissions = account_scope.get(category, {})
 
         for perm, _ in permissions.items():
-            merged[category][perm] = user_permissions.get(perm, False)
+            merged[category][perm] = account_permissions.get(perm, False)
 
     return merged
