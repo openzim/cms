@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import AnyUrl
 
+from cms_backend.api.routes.fields import NotEmptyString
+from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 
 
@@ -29,3 +31,14 @@ class FileLocation:
     warehouse_id: UUID
     path: Path
     filename: str
+
+
+class AccountUpdateSchema(BaseModel):
+    """
+    Schema for updating an account
+    """
+
+    role: RoleEnum | None = None
+    username: NotEmptyString | None = None
+    idp_sub: NotEmptyString | None = None
+    display_name: NotEmptyString | None = None
