@@ -80,47 +80,15 @@
             <div class="text-subtitle-2">Books</div>
           </v-col>
           <v-col cols="12" md="9">
-            <v-data-table
+            <BookTable
               v-if="title.books.length > 0"
               :headers="bookHeaders"
-              :items="sortedBooks"
-              :items-per-page="-1"
-              :mobile="smAndDown"
-              density="compact"
-              hide-default-footer
-            >
-              <template #[`item.created_at`]="{ item }">
-                <TimestampLink :id="item.id" :route="'book-detail'" :timestamp="item.created_at" />
-              </template>
-
-              <template #[`item.status`]="{ item }">
-                <BookStatus :book="item" :icon-only="true" />
-              </template>
-
-              <template #[`item.name`]="{ item }">
-                <span v-if="item.name">{{ item.name }}</span>
-                <span v-else class="text-grey">-</span>
-              </template>
-
-              <template #[`item.date`]="{ item }">
-                <span v-if="item.date">{{ item.date }}</span>
-                <span v-else class="text-grey">-</span>
-              </template>
-
-              <template #[`item.flavour`]="{ item }">
-                <span v-if="item.flavour">{{ item.flavour }}</span>
-                <span v-else class="text-grey">-</span>
-              </template>
-
-              <template #[`item.urls`]="{ item }">
-                <ZimUrlButtons
-                  :urls="zimUrls[item.id]"
-                  :loading="loadingUrls"
-                  :compact="true"
-                  empty-text=""
-                />
-              </template>
-            </v-data-table>
+              :books="sortedBooks"
+              :is-server-side="false"
+              :show-urls="true"
+              :zim-urls="zimUrls"
+              :loading-urls="loadingUrls"
+            />
             <span v-else class="text-grey">No books</span>
           </v-col>
         </v-row>
@@ -132,11 +100,9 @@
 </template>
 
 <script setup lang="ts">
-import BookStatus from '@/components/BookStatus.vue'
+import BookTable from '@/components/BookTable.vue'
 import EditTitleDialog from '@/components/EditTitleDialog.vue'
 import EventsList from '@/components/EventsList.vue'
-import TimestampLink from '@/components/TimestampLink.vue'
-import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
@@ -145,10 +111,8 @@ import { useAuthStore } from '@/stores/auth'
 import type { Title } from '@/types/title'
 import type { ZimUrl } from '@/types/book'
 import { computed, onMounted, ref } from 'vue'
-import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 
-const { smAndDown } = useDisplay()
 const router = useRouter()
 
 const loadingStore = useLoadingStore()
@@ -171,11 +135,11 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {})
 
 const bookHeaders = [
-  { title: 'Created', value: 'created_at', sortable: false },
   { title: 'Name', value: 'name', sortable: false },
   { title: 'Flavour', value: 'flavour', sortable: false },
   { title: 'Status', value: 'status', sortable: false },
   { title: 'Date', value: 'date', sortable: false },
+  { title: 'Deletion Date', value: 'deletion_date', sortable: false },
   { title: 'URLs', value: 'urls', sortable: false },
 ]
 
