@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
@@ -9,12 +10,15 @@ from cms_backend.db.account import (
     get_account_by_id_or_none,
     get_account_by_username,
     get_account_by_username_or_none,
+    get_accounts,
+    update_account,
 )
 from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
 from cms_backend.db.models import Account
-from cms_backend.roles import merge_scopes
+from cms_backend.roles import RoleEnum, merge_scopes
+from cms_backend.schemas.models import AccountUpdateSchema
 
 
 @pytest.mark.parametrize(
@@ -92,3 +96,53 @@ def test_delete_account(dbsession: OrmSession, account: Account):
     delete_account(dbsession, account_id=account.id)
     dbsession.refresh(account)
     assert account.deleted
+
+
+@pytest.mark.parametrize("show_zimfarmers", [True, False])
+def test_get_accounts_filter_workers(
+    dbsession: OrmSession,
+    create_account: Callable[..., Account],
+    *,
+    show_zimfarmers: bool,
+):
+    """Test that get_accounts filters zimfarm accounts."""
+    create_account(permission=RoleEnum.ZIMFARM)
+
+    results = get_accounts(dbsession, skip=0, limit=1, show_zimfarmers=show_zimfarmers)
+    if show_zimfarmers:
+        assert results.nb_records == 1
+        assert len(results.records) == 1
+    else:
+        assert results.nb_records == 0
+        assert len(results.records) == 0
+
+
+def test_update_account_partial(dbsession: OrmSession, account: Account):
+    """Test that update_account can update partial fields"""
+    update_account(
+        dbsession,
+        account_id=account.id,
+        request=AccountUpdateSchema(role=RoleEnum.EDITOR, display_name="newdisplay"),
+    )
+    dbsession.refresh(account)
+    assert account.role == RoleEnum.EDITOR
+    assert account.display_name == "newdisplay"
+
+
+def test_update_account_no_display_name(dbsession: OrmSession, account: Account):
+    with pytest.raises(ValueError, match="Account must have a display name."):
+        update_account(
+            dbsession,
+            account_id=account.id,
+            request=AccountUpdateSchema(display_name=None),
+        )
+
+
+def test_update_account_with_password_set_blank_username(
+    dbsession: OrmSession, create_account: Callable[..., Account]
+):
+    account = create_account(password="testpassword")
+    with pytest.raises(ValueError, match="Account with password must have a username"):
+        update_account(
+            dbsession, account_id=account.id, request=AccountUpdateSchema(username=None)
+        )

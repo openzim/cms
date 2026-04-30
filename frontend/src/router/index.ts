@@ -3,6 +3,8 @@ import NotFoundView from '@/views/NotFound.vue'
 import SupportUsView from '@/views/SupportUs.vue'
 import SignInView from '@/views/SignInView.vue'
 import OAuthCallbackView from '@/views/OAuthCallbackView.vue'
+import UsersView from '@/views/UsersView.vue'
+import UserView from '@/views/UserView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
@@ -71,6 +73,30 @@ const routes = [
     meta: {
       title: (to: RouteLocationNormalized) => `CMS | Zimfarm Notification • ${to.params.id}`,
     },
+  },
+  {
+    path: '/users/:userId',
+    name: 'user-detail',
+    component: UserView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `Zimfarm | User • ${to.params.userId}`,
+    },
+  },
+  {
+    path: '/users/:userId/:selectedTab',
+    name: 'user-detail-tab',
+    component: UserView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `Zimfarm | User • ${to.params.userId}`,
+    },
+  },
+  {
+    path: '/users',
+    name: 'users-list',
+    component: UsersView,
+    meta: { title: 'Zimfarm | Users' },
   },
   {
     path: '/:pathMatch(.*)*',
