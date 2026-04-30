@@ -1,0 +1,452 @@
+<!-- User management view:
+  - Detail
+  - change role
+  - change password -->
+
+<template>
+  <v-container>
+    <ErrorMessage
+      v-if="!canReadAccounts"
+      message="You don't have permission to view user accounts."
+    />
+
+    <!-- Loading state when data hasn't been loaded yet -->
+    <div v-if="canReadAccounts && !dataLoaded && loadingStore.isLoading" class="text-center pa-8">
+      <v-progress-circular indeterminate size="64" />
+      <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
+    </div>
+
+    <!-- Content only shown when data is loaded -->
+    <div v-if="canReadAccounts && dataLoaded">
+      <v-row>
+        <v-col cols="12">
+          <h2 class="text-h4 mb-4">
+            <code>{{ user?.display_name }}</code>
+            <span v-if="user">
+              (<code>{{ user.role }}</code
+              >)</span
+            >
+          </h2>
+
+          <div v-if="!error && user">
+            <!-- Tabs -->
+            <v-tabs v-model="selectedTab" color="primary" class="mb-4">
+              <v-tab value="details" :to="{ name: 'user-detail', params: { userId: userId } }">
+                View
+              </v-tab>
+              <v-tab
+                v-if="canUpdateAccounts"
+                value="edit"
+                :to="{
+                  name: 'user-detail-tab',
+                  params: { userId: userId, selectedTab: 'edit' },
+                }"
+              >
+                Edit
+              </v-tab>
+              <v-tab
+                v-if="canDeleteAccount"
+                value="delete"
+                :to="{
+                  name: 'user-detail-tab',
+                  params: { userId: userId, selectedTab: 'delete' },
+                }"
+                color="error"
+              >
+                Delete
+              </v-tab>
+            </v-tabs>
+
+            <!-- Tab Content -->
+            <v-window v-model="selectedTab">
+              <!-- Details Tab -->
+              <v-window-item value="details">
+                <v-card flat>
+                  <v-card-text>
+                    <v-row class="mb-4">
+                      <!-- Basic Info Card -->
+                      <v-col cols="12">
+                        <v-card variant="outlined" class="h-100">
+                          <v-card-title class="text-subtitle-1">
+                            <v-icon class="mr-2">mdi-card-account-details</v-icon>
+                            Basic Information
+                          </v-card-title>
+                          <v-list density="compact">
+                            <v-list-item>
+                              <v-list-item-title>
+                                <div class="d-flex align-center mt-1">
+                                  <span class="mr-2">Display Name:</span>
+                                  <span class="font-weight-medium">{{ user.display_name }}</span>
+                                </div>
+                                <div class="d-flex align-center mt-1">
+                                  <span class="mr-2">Role:</span>
+                                  <code>{{ user.role }}</code>
+                                </div>
+                              </v-list-item-title>
+                            </v-list-item>
+                          </v-list>
+                        </v-card>
+                      </v-col>
+
+                      <!-- Authentication Card -->
+                      <v-col cols="12" v-if="user.username || user.idp_sub">
+                        <v-card variant="outlined" class="h-100">
+                          <v-card-title class="text-subtitle-1">
+                            <v-icon class="mr-2">mdi-shield-key-outline</v-icon>
+                            Authentication
+                          </v-card-title>
+                          <v-list density="compact">
+                            <v-list-item v-if="user.username">
+                              <v-list-item-subtitle>Local Authentication</v-list-item-subtitle>
+                              <v-list-item-title>
+                                <div class="d-flex align-center mt-1">
+                                  <span class="mr-2">Username:</span>
+                                  <code v-if="user.username">{{ user.username }}</code>
+                                  <span v-else class="text-medium-emphasis text-body-2"
+                                    >Not set</span
+                                  >
+                                </div>
+                                <div class="d-flex align-center mt-1">
+                                  <span class="mr-2">Password:</span>
+                                  <span class="text-body-2">{{
+                                    user.has_password ? '**********' : 'Not set'
+                                  }}</span>
+                                </div>
+                              </v-list-item-title>
+                            </v-list-item>
+
+                            <v-divider
+                              class="my-2"
+                              v-if="user.idp_sub && user.username"
+                            ></v-divider>
+
+                            <v-list-item v-if="user.idp_sub">
+                              <v-list-item-subtitle
+                                >External Identity Provider</v-list-item-subtitle
+                              >
+                              <v-list-item-title class="mt-1">
+                                <span class="mr-2">IDP Sub:</span>
+                                <code>{{ user.idp_sub }}</code>
+                              </v-list-item-title>
+                            </v-list-item>
+                          </v-list>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+
+                    <!-- Permissions List -->
+                    <v-card class="mb-4" variant="outlined">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2">mdi-shield-account</v-icon>
+                        Permissions
+                      </v-card-title>
+                      <v-card-text>
+                        <div
+                          v-if="Object.keys(scope).length === 0"
+                          class="text-body-2 text-medium-emphasis"
+                        >
+                          No permissions assigned
+                        </div>
+                        <v-list v-else density="compact" class="pa-0">
+                          <v-list-item
+                            v-for="(namespacePermissions, namespace) in scope"
+                            :key="namespace"
+                          >
+                            <template #prepend>
+                              <v-icon color="primary" size="small">
+                                {{ getNamespaceIcon(namespace) }}
+                              </v-icon>
+                            </template>
+
+                            <v-list-item-title class="text-body-1 font-weight-medium">
+                              {{ formatNamespaceName(namespace) }}
+                            </v-list-item-title>
+
+                            <v-list-item-subtitle>
+                              <div class="d-flex flex-wrap ga-1 mt-2">
+                                <v-chip
+                                  v-for="permissionName in getAllPermissionsForNamespace(namespace)"
+                                  :key="permissionName"
+                                  :color="
+                                    namespacePermissions[permissionName] ? 'primary' : 'dark-grey'
+                                  "
+                                  :variant="
+                                    namespacePermissions[permissionName] ? 'flat' : 'outlined'
+                                  "
+                                  size="x-small"
+                                  class="text-caption text-uppercase"
+                                >
+                                  {{ formatPermissionName(permissionName) }}
+                                </v-chip>
+                              </div>
+                            </v-list-item-subtitle>
+                          </v-list-item>
+                        </v-list>
+                      </v-card-text>
+                    </v-card>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+
+              <!-- Edit Tab -->
+              <v-window-item value="edit">
+                <UpdateUser
+                  :user="user"
+                  v-if="user"
+                  @update-user="updateUser"
+                  @change-password="changePassword"
+                />
+              </v-window-item>
+
+              <!-- Delete Tab -->
+              <v-window-item value="delete">
+                <DeleteItem
+                  :name="user.id"
+                  description="user account"
+                  property="user ID"
+                  @delete-item="deleteUser"
+                />
+              </v-window-item>
+            </v-window>
+          </div>
+
+          <!-- Error Message -->
+          <ErrorMessage :message="error" v-if="error" />
+        </v-col>
+      </v-row>
+    </div>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import DeleteItem from '@/components/DeleteItem.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
+import UpdateUser from '@/components/UpdateUser.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useLoadingStore } from '@/stores/loading'
+import { useNotificationStore } from '@/stores/notification'
+import { useUserStore } from '@/stores/user'
+import type { User } from '@/types/user'
+
+// Props
+interface Props {
+  userId: string
+  selectedTab?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  selectedTab: 'details',
+})
+
+// Route and stores
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const loadingStore = useLoadingStore()
+const notificationStore = useNotificationStore()
+const userStore = useUserStore()
+
+// Reactive data
+const error = ref<string | null>(null)
+const user = ref<User | null>(null)
+const selectedTab = ref(props.selectedTab)
+const dataLoaded = ref(false)
+
+// Computed properties
+const scope = computed(() => user.value?.scope || {})
+
+const canReadAccounts = computed(() => authStore.hasPermission('account', 'read'))
+const canUpdateAccounts = computed(() => authStore.hasPermission('account', 'update'))
+const canDeleteAccount = computed(() => authStore.hasPermission('account', 'delete'))
+
+const getNamespaceIcon = (namespace: string): string => {
+  const iconMap: Record<string, string> = {
+    book: 'mdi-book-open-variant',
+    title: 'mdi-format-title',
+    zimfarm_notification: 'mdi-bell',
+    account: 'mdi-account-group',
+  }
+  return iconMap[namespace] || 'mdi-folder'
+}
+
+const formatNamespaceName = (namespace: string): string => {
+  const nameMap: Record<string, string> = {
+    book: 'Books',
+    title: 'Titles',
+    zimfarm_notification: 'Zimfarm Notification',
+    account: 'Accounts',
+  }
+  return nameMap[namespace] || namespace.charAt(0).toUpperCase() + namespace.slice(1)
+}
+
+const formatPermissionName = (permission: string): string => {
+  const nameMap: Record<string, string> = {
+    read: 'Read',
+    create: 'Create',
+    update: 'Update',
+    delete: 'Delete',
+  }
+  return nameMap[permission] || permission.charAt(0).toUpperCase() + permission.slice(1)
+}
+
+const getAllPermissionsForNamespace = (namespace: string): string[] => {
+  if (scope.value[namespace]) {
+    return Object.keys(scope.value[namespace])
+  }
+  return []
+}
+
+// Methods
+const changePassword = async (password: string | null) => {
+  loadingStore.startLoading('Changing password...')
+
+  const success = await userStore.changePassword(props.userId, {
+    new: password,
+  })
+  if (success) {
+    if (password === null) {
+      notificationStore.showSuccess(
+        `Password for ${user.value?.display_name} has been cleared.`,
+        10000,
+      )
+    } else {
+      notificationStore.showSuccess(
+        `Password for ${user.value?.display_name} has been changed to ${password}.`,
+        10000,
+      )
+    }
+    await refreshData()
+  } else {
+    for (const error of userStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+  loadingStore.stopLoading()
+}
+
+const updateUser = async (payload: {
+  username?: string | null
+  display_name?: string
+  role?: string
+  scope?: Record<string, Record<string, boolean>>
+  idp_sub?: string | null
+}) => {
+  // Check if payload has any keys (not just truthy values, since null is valid)
+  if (Object.keys(payload).length === 0) return
+
+  loadingStore.startLoading('updating user…')
+  const success = await userStore.updateUser(props.userId, payload)
+  if (success) {
+    notificationStore.showSuccess(`User account ${user.value?.display_name} has been updated.`)
+    await refreshData()
+  } else {
+    for (const error of userStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+  loadingStore.stopLoading()
+}
+
+const deleteUser = async () => {
+  loadingStore.startLoading('Deleting user...')
+  const success = await userStore.deleteUser(props.userId)
+  if (success) {
+    notificationStore.showSuccess(`User account ${user.value?.display_name} has been deleted.`)
+    router.push({ name: 'users-list' })
+  } else {
+    for (const error of userStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+  loadingStore.stopLoading()
+}
+
+const loadUser = async () => {
+  if (!canReadAccounts.value) {
+    notificationStore.showError('You do not have permission to read user accounts.')
+    router.push({ name: 'home' })
+    return
+  }
+
+  loadingStore.startLoading('Fetching user...')
+
+  try {
+    const userData = await userStore.fetchUser(props.userId)
+    if (userData) {
+      error.value = null
+      user.value = userData
+      dataLoaded.value = true
+    } else {
+      error.value = 'Failed to load user data'
+      for (const err of userStore.errors) {
+        notificationStore.showError(err)
+      }
+    }
+  } catch (err) {
+    console.error('Error loading user:', err)
+    error.value = 'Failed to load user data'
+  } finally {
+    loadingStore.stopLoading()
+  }
+}
+
+const refreshData = async () => {
+  if (!canReadAccounts.value) {
+    return
+  }
+
+  if (!user.value) {
+    dataLoaded.value = false
+  }
+
+  await loadUser()
+}
+
+watch(
+  () => props.selectedTab,
+  async (newTab) => {
+    selectedTab.value = newTab
+    // Refresh data when switching tabs (except when on delete tab)
+    if (user.value && newTab !== 'delete') {
+      await refreshData()
+    }
+  },
+)
+
+// Watch for route params to update selected tab
+watch(
+  () => route.params.selectedTab,
+  (newTab) => {
+    if (newTab && typeof newTab === 'string') {
+      selectedTab.value = newTab
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.userId,
+  async () => {
+    if (!canReadAccounts.value) {
+      return
+    }
+    // Reset data and reload the new user
+    user.value = null
+    selectedTab.value = 'details'
+    await refreshData()
+  },
+)
+
+// Lifecycle
+onMounted(async () => {
+  if (!canReadAccounts.value) {
+    return
+  }
+  loadingStore.startLoading('Fetching user...')
+  await loadUser()
+  loadingStore.stopLoading()
+})
+</script>

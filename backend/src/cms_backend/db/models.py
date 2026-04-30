@@ -292,7 +292,12 @@ class Account(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    username: Mapped[str] = mapped_column(unique=True, index=True)
+    # Due to account registration coming from both Kiwix SSO and local registration,
+    # there is a possibility of having usernames from the SSO conflicting with
+    # a local account, thus, username field isn't distinct. While username will mostly
+    # be set for locally registered accounts, display_name will set for all accounts
+    username: Mapped[str | None] = mapped_column(unique=True, index=True)
+    display_name: Mapped[str]
     role: Mapped[str]
     password_hash: Mapped[str | None]
     deleted: Mapped[bool] = mapped_column(default=False, server_default=false())

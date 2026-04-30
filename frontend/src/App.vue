@@ -3,7 +3,7 @@ import type { NavigationItem } from '@/components/NavBar.vue'
 import NavBar from '@/components/NavBar.vue'
 import NotificationSystem from '@/components/NotificationSystem.vue'
 import { useLoadingStore } from '@/stores/loading'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -22,7 +22,10 @@ onMounted(async () => {
   ready.value = true
 })
 
-const navigationItems: NavigationItem[] = [
+const canReadUsers = computed(() => {
+  return authStore.hasPermission('account', 'read')
+})
+const navigationItems = computed<NavigationItem[]>(() => [
   {
     name: 'inbox',
     label: 'Inbox',
@@ -39,7 +42,15 @@ const navigationItems: NavigationItem[] = [
     disabled: false,
     show: true,
   },
-]
+  {
+    name: 'users-list',
+    label: 'Users',
+    route: 'users',
+    icon: 'mdi-account-group',
+    disabled: false,
+    show: canReadUsers.value,
+  },
+])
 
 const handleSignOut = () => {
   authStore.logout()

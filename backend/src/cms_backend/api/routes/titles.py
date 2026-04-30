@@ -21,7 +21,7 @@ from cms_backend.schemas.orms import (
     TitleFullSchema,
     TitleLightSchema,
 )
-from cms_backend.utils.datetime import is_valid_uuid
+from cms_backend.utils import is_valid_uuid
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 

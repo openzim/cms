@@ -45,6 +45,7 @@ def create_initial_account():
             logger.info(f"creating initial account `{username}`")
             create_account(
                 session=session,
+                display_name=username,
                 username=username,
                 password_hash=generate_password_hash(password),
                 role="editor",
