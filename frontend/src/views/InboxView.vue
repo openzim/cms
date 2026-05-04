@@ -98,9 +98,10 @@ const headers = computed(() => {
   switch (currentTab.value) {
     case 'books':
       return [
-        { title: 'ID', value: 'id' },
-        { title: 'Location', value: 'location_kind' },
+        { title: 'Name', value: 'name' },
+        { title: 'Flavour', value: 'flavour' },
         { title: 'Status', value: 'status' },
+        { title: 'Date', value: 'date' },
         { title: 'Deletion Date', value: 'deletion_date' },
       ]
     case 'zimfarm_notifications':

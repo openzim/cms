@@ -70,7 +70,7 @@
             <div class="text-subtitle-2">Status</div>
           </v-col>
           <v-col cols="12" md="9">
-            <BookStatus :book="book" />
+            <BookStatus :book="book" force-row />
           </v-col>
         </v-row>
         <v-divider class="my-2"></v-divider>
