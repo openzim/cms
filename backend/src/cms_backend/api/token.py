@@ -140,7 +140,7 @@ class OAuthTokenDecoder(TokenDecoder):
         return "oauth"
 
     def can_decode(self, token: str) -> bool:
-        if "oauth-session" not in Context.auth_modes:
+        if "oauth" not in Context.auth_modes:
             return False
         try:
             payload = jwt.decode(
@@ -155,9 +155,10 @@ class OAuthTokenDecoder(TokenDecoder):
         except Exception:
             return False
 
-        if (
-            payload.get("iss") != Context.oauth_issuer
-            or Context.oauth_session_audience_id not in payload.get("aud", [])
+        if payload.get(
+            "iss"
+        ) != Context.oauth_issuer or Context.oauth_session_audience_id not in payload.get(
+            "aud", []
         ):
             return False
         return True
