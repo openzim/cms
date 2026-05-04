@@ -1,7 +1,24 @@
-<!-- View showing all titles -->
-
 <template>
-  <TitlesFilter v-if="ready" :filters="filters" @filters-changed="handleFiltersChange" />
+  <TitlesFilter
+    v-if="ready"
+    :filters="filters"
+    :collections="collectionNames"
+    @filters-changed="handleFiltersChange"
+    @clear-filters="clearFilters"
+  >
+    <template #actions>
+      <v-btn
+        v-if="canCreateTitle"
+        color="primary"
+        variant="elevated"
+        block
+        @click="showCreateDialog = true"
+      >
+        <v-icon class="mr-2">mdi-plus</v-icon>
+        Create Title
+      </v-btn>
+    </template>
+  </TitlesFilter>
   <TitlesTable
     v-if="ready"
     :headers="headers"
@@ -13,25 +30,10 @@
     :filters="filters"
     :selected-schedules="selectedTitles"
     :show-selection="true"
-    :show-filters="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
-    @clear-filters="clearFilters"
     @selection-changed="handleSelectionChanged"
-  >
-    <template #actions>
-      <v-btn
-        v-if="canCreateTitle"
-        color="primary"
-        variant="elevated"
-        size="small"
-        @click="showCreateDialog = true"
-      >
-        <v-icon size="small" class="mr-1">mdi-plus</v-icon>
-        Create Title
-      </v-btn>
-    </template>
-  </TitlesTable>
+  />
   <div v-else class="d-flex align-center justify-center" style="height: 60vh">
     <v-progress-circular indeterminate size="70" width="7" color="primary" />
   </div>
@@ -47,9 +49,11 @@ import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
+import { useCollectionsStore } from '@/stores/collections'
 import type { TitleLight } from '@/types/title'
+import type { Paginator } from '@/types/base'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 // Props
 
@@ -61,7 +65,6 @@ const headers = [
 
 // Reactive state
 const titles = ref<TitleLight[]>([])
-const paginator = computed(() => titleStore.paginator)
 
 const ready = ref<boolean>(false)
 
@@ -69,6 +72,7 @@ const errors = ref<string[]>([])
 
 const filters = ref({
   name: '',
+  collection_name: '',
 })
 const intervalId = ref<number | null>(null)
 const selectedTitles = ref<string[]>([])
@@ -76,10 +80,22 @@ const showCreateDialog = ref(false)
 
 // Stores
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const titleStore = useTitleStore()
+const collectionsStore = useCollectionsStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
+
+const collectionNames = computed(() => collectionsStore.collections.map((c) => c.name))
+
+const paginator = ref<Paginator>({
+  page: Number(route.query.page) || 1,
+  page_size: titleStore.defaultLimit,
+  skip: 0,
+  limit: titleStore.defaultLimit,
+  count: 0,
+})
 
 // Permissions
 const canCreateTitle = computed(() => authStore.hasPermission('title', 'create'))
@@ -89,9 +105,15 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
   if (!hideLoading) {
     loadingStore.startLoading('Fetching titles...')
   }
-  await titleStore.fetchTitles(limit, skip, filters.value.name || undefined)
+  await titleStore.fetchTitles(
+    limit,
+    skip,
+    filters.value.name || undefined,
+    filters.value.collection_name || undefined,
+  )
 
   titles.value = titleStore.titles
+  paginator.value = titleStore.paginator
   titleStore.savePaginatorLimit(limit)
   errors.value = titleStore.errors
   for (const error of errors.value) {
@@ -105,19 +127,28 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
 async function handleFiltersChange(newFilters: typeof filters.value) {
   filters.value = newFilters
   updateUrl()
-  await loadData(paginator.value.limit, 0)
 }
 
 async function handleLimitChange(newLimit: number) {
   titleStore.savePaginatorLimit(newLimit)
+  if (paginator.value.page !== 1) {
+    paginator.value = {
+      ...paginator.value,
+      limit: newLimit,
+      page: 1,
+      skip: 0,
+    }
+  } else {
+    await loadData(newLimit, 0)
+  }
 }
 
 async function clearFilters() {
   filters.value = {
     name: '',
+    collection_name: '',
   }
   updateUrl()
-  await loadData(paginator.value.limit, 0)
 }
 
 function handleSelectionChanged(newSelection: string[]) {
@@ -136,6 +167,9 @@ function updateUrl() {
   if (filters.value.name) {
     query.name = filters.value.name
   }
+  if (filters.value.collection_name) {
+    query.collection_name = filters.value.collection_name
+  }
 
   router.push({
     name: 'titles',
@@ -149,13 +183,16 @@ function loadFiltersFromUrl() {
   if (query.name && typeof query.name === 'string') {
     filters.value.name = query.name
   }
+  if (query.collection_name && typeof query.collection_name === 'string') {
+    filters.value.collection_name = query.collection_name
+  }
 }
 
 // Lifecycle
 onMounted(async () => {
+  await collectionsStore.fetchCollections(100)
   // Load filters from URL
   loadFiltersFromUrl()
-
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, true)
   }, 60000)
@@ -175,6 +212,23 @@ watch(
   () => router.currentRoute.value.query,
   () => {
     loadFiltersFromUrl()
+  },
+  { deep: true, immediate: true },
+)
+
+watch(
+  () => router.currentRoute.value.query,
+  async () => {
+    const query = router.currentRoute.value.query
+    let page = 1
+    if (query.page && typeof query.page === 'string') {
+      const parsedPage = parseInt(query.page, 10)
+      if (!isNaN(parsedPage) && parsedPage > 1) {
+        page = parsedPage
+      }
+    }
+    const newSkip = (page - 1) * paginator.value.limit
+    await loadData(paginator.value.limit, newSkip)
   },
   { deep: true, immediate: true },
 )

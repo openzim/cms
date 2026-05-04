@@ -25,6 +25,7 @@ onMounted(async () => {
 const canReadUsers = computed(() => {
   return authStore.hasPermission('account', 'read')
 })
+
 const navigationItems = computed<NavigationItem[]>(() => [
   {
     name: 'inbox',
@@ -39,6 +40,14 @@ const navigationItems = computed<NavigationItem[]>(() => [
     label: 'Titles',
     route: 'titles',
     icon: 'mdi-bookshelf',
+    disabled: false,
+    show: true,
+  },
+  {
+    name: 'collections',
+    label: 'Collections',
+    route: 'collections',
+    icon: 'mdi-folder-multiple',
     disabled: false,
     show: true,
   },

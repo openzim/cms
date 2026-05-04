@@ -30,7 +30,6 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="bookFilters"
-    :show-filters="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
   />

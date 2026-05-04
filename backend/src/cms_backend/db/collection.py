@@ -2,11 +2,14 @@ from pathlib import Path
 from typing import NamedTuple, cast
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from psycopg.errors import UniqueViolation
+from sqlalchemy import and_, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend import logger
 from cms_backend.db import count_from_stmt
-from cms_backend.db.exceptions import RecordDoesNotExistError
+from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import (
     Book,
     BookLocation,
@@ -14,7 +17,14 @@ from cms_backend.db.models import (
     CollectionTitle,
     Title,
 )
-from cms_backend.schemas.orms import CollectionLightSchema, ListResult
+from cms_backend.db.warehouse import get_warehouse
+from cms_backend.schemas.models import CollectionUpdateSchema
+from cms_backend.schemas.orms import (
+    CollectionFullSchema,
+    CollectionLightSchema,
+    ListResult,
+)
+from cms_backend.utils import is_valid_uuid
 
 
 def get_collection_or_none(session: OrmSession, library_id: UUID) -> Collection | None:
@@ -125,7 +135,7 @@ def get_latest_books_for_collection(
 
 
 def get_collections(
-    session: OrmSession, *, skip: int, limit: int
+    session: OrmSession, *, name: str | None = None, skip: int, limit: int
 ) -> ListResult[CollectionLightSchema]:
     """Get the list of collections."""
     stmt = (
@@ -139,8 +149,19 @@ def get_collections(
                 [],
             ).label("paths"),
         )
+        .where(
+            # If a client provides an argument i.e it is not None,
+            # we compare the corresponding model field against the argument,
+            # otherwise, we compare the argument to its default which translates
+            # to a SQL true i.e we don't filter based on this argument (a no-op).
+            (
+                Collection.name.ilike(f"%{name if name is not None else ''}%")
+                | (name is None)
+            ),
+        )
         .outerjoin(CollectionTitle)
         .group_by(Collection.id)
+        .order_by(Collection.name.desc())
     )
 
     return ListResult[CollectionLightSchema](
@@ -156,3 +177,70 @@ def get_collections(
             ).all()
         ],
     )
+
+
+def create_collection_full_schema(collection: Collection) -> CollectionFullSchema:
+    return CollectionFullSchema(
+        id=collection.id,
+        warehouse=collection.warehouse.name,
+        name=collection.name,
+        download_base_url=collection.download_base_url,
+        view_base_url=collection.view_base_url,
+    )
+
+
+def create_collection(
+    session: OrmSession,
+    *,
+    name: str,
+    warehouse_name: str,
+    download_base_url: str | None = None,
+    view_base_url: str | None,
+) -> Collection:
+    warehouse = get_warehouse(session, warehouse_name)
+    collection = Collection(
+        name=name,
+        download_base_url=download_base_url,
+        view_base_url=view_base_url,
+        warehouse_id=warehouse.id,
+    )
+    session.add(collection)
+    try:
+        session.flush()
+    except IntegrityError as exc:
+        if isinstance(exc.orig, UniqueViolation):
+            raise RecordAlreadyExistsError(
+                f"Collection with name {name} already exists"
+            ) from exc
+        logger.exception("Unknown exception encountered while creating collection")
+        raise
+    return collection
+
+
+def update_collection(
+    session: OrmSession, *, collection_id: str, request: CollectionUpdateSchema
+) -> Collection:
+    """Update a collection"""
+    if is_valid_uuid(collection_id):
+        collection = get_collection(session, UUID(collection_id))
+    else:
+        collection = get_collection_by_name(session, collection_id)
+
+    values = request.model_dump(exclude_unset=True)
+    if not values:
+        return collection
+
+    try:
+        session.execute(
+            update(Collection).values(**values).where(Collection.id == collection.id)
+        )
+    except IntegrityError as exc:
+        if isinstance(exc.orig, UniqueViolation):
+            raise RecordAlreadyExistsError(
+                f"Collection with name {request.name} already exists"
+            ) from exc
+        logger.exception("Unknown exception encountered while creating collection")
+        raise
+
+    session.refresh(collection)
+    return collection

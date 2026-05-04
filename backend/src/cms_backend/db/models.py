@@ -253,7 +253,7 @@ class Warehouse(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    name: Mapped[str]
+    name: Mapped[str] = mapped_column(unique=True, index=True)
 
     collections: Mapped[list["Collection"]] = relationship(
         back_populates="warehouse",

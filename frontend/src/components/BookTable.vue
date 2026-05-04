@@ -107,7 +107,6 @@ interface Props {
     location_kind: string
     flag: string
   }
-  showFilters?: boolean
   isServerSide?: boolean
   showUrls?: boolean
   zimUrls?: Record<string, ZimUrl[]>
@@ -120,7 +119,6 @@ const props = withDefaults(defineProps<Props>(), {
   errors: () => [],
   loadingText: 'Fetching books...',
   filters: () => ({ id: '', location_kind: '', flag: '' }),
-  showFilters: true,
   isServerSide: true,
   showUrls: false,
   loadingUrls: false,

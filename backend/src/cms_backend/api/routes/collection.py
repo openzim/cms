@@ -5,21 +5,31 @@ from uuid import UUID
 import xxhash
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import Response
+from pydantic import AnyUrl, Field
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.fields import LimitFieldMax200, SkipField
+from cms_backend.api.routes.dependencies import require_permission
+from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.api.routes.utils import build_library_xml
 from cms_backend.db import gen_dbsession
+from cms_backend.db.collection import create_collection as db_create_collection
 from cms_backend.db.collection import (
-    get_collection,
+    create_collection_full_schema,
     get_collection_by_name_or_none,
     get_latest_books_for_collection,
 )
+from cms_backend.db.collection import get_collection as db_get_collection
+from cms_backend.db.collection import (
+    get_collection_by_name as db_get_collection_by_name,
+)
 from cms_backend.db.collection import get_collections as db_get_collections
+from cms_backend.db.collection import update_collection as db_update_collection
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.orms import CollectionLightSchema
+from cms_backend.schemas.models import CollectionUpdateSchema
+from cms_backend.schemas.orms import CollectionFullSchema, CollectionLightSchema
+from cms_backend.utils import is_valid_uuid
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
@@ -27,16 +37,19 @@ router = APIRouter(prefix="/collections", tags=["collections"])
 class CollectionsGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
+    name: NotEmptyString | None = None
 
 
 @router.get("")
-async def get_collections(
+def get_collections(
     params: Annotated[CollectionsGetSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ListResponse[CollectionLightSchema]:
     """Get a list of collections"""
 
-    results = db_get_collections(session, skip=params.skip, limit=params.limit)
+    results = db_get_collections(
+        session, skip=params.skip, limit=params.limit, name=params.name
+    )
 
     return ListResponse[CollectionLightSchema](
         meta=calculate_pagination_metadata(
@@ -49,6 +62,71 @@ async def get_collections(
     )
 
 
+class CollectionCreateSchema(BaseModel):
+    name: NotEmptyString = Field(min_length=3)
+    warehouse_name: NotEmptyString = Field(min_length=3)
+    download_base_url: AnyUrl | None = None
+    view_base_url: AnyUrl | None = None
+
+
+@router.post(
+    "",
+    dependencies=[Depends(require_permission(namespace="collection", name="create"))],
+)
+def create_collection(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    request: CollectionCreateSchema,
+):
+    """Create a collection"""
+    return create_collection_full_schema(
+        db_create_collection(
+            session,
+            name=request.name,
+            warehouse_name=request.warehouse_name,
+            download_base_url=(
+                str(request.download_base_url)
+                if request.download_base_url is not None
+                else None
+            ),
+            view_base_url=(
+                str(request.view_base_url)
+                if request.view_base_url is not None
+                else None
+            ),
+        )
+    )
+
+
+@router.get("/{collection_id_or_name}")
+def get_collection(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+):
+    """Get collection by collection ID (UUID) or name."""
+    if is_valid_uuid(collection_id_or_name):
+        collection = db_get_collection(session, UUID(collection_id_or_name))
+    else:
+        collection = db_get_collection_by_name(session, collection_id_or_name)
+    return create_collection_full_schema(collection)
+
+
+@router.patch(
+    "/{collection_id_or_name}",
+    dependencies=[Depends(require_permission(namespace="collection", name="update"))],
+)
+def update_collection(
+    collection_id_or_name: Annotated[str, Path()],
+    collection_data: CollectionUpdateSchema,
+    session: OrmSession = Depends(gen_dbsession),
+) -> CollectionFullSchema:
+    """Update a collectio's data"""
+    return create_collection_full_schema(
+        db_update_collection(
+            session, collection_id=collection_id_or_name, request=collection_data
+        )
+    )
+
+
 def _get_catalog_xml_content(
     collection_id_or_name: str, session: OrmSession
 ) -> tuple[str, int]:
@@ -57,7 +135,7 @@ def _get_catalog_xml_content(
     try:
         collection_id = UUID(collection_id_or_name)
         try:
-            collection = get_collection(session, collection_id)
+            collection = db_get_collection(session, collection_id)
         except RecordDoesNotExistError:
             pass
     except ValueError:
@@ -78,7 +156,7 @@ def _get_catalog_xml_content(
 
 
 @router.get("/{collection_id_or_name}/catalog.xml")
-async def get_library_catalog_xml(
+def get_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ):
@@ -95,7 +173,7 @@ async def get_library_catalog_xml(
 
 
 @router.head("/{collection_id_or_name}/catalog.xml")
-async def head_library_catalog_xml(
+def head_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ):

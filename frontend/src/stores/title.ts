@@ -1,24 +1,21 @@
-import constants from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import type { Title, TitleCreate, TitleLight, TitleUpdate } from '@/types/title'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
-import { inject, ref } from 'vue'
-import type { VueCookies } from 'vue-cookies'
+import { ref } from 'vue'
 
 export const useTitleStore = defineStore('title', () => {
-  const $cookies = inject<VueCookies>('$cookies')
   const title = ref<Title | null>(null)
   const errors = ref<string[]>([])
   const titles = ref<TitleLight[]>([])
-  const limit = Number($cookies?.get('titles-table-limit') || 20)
+  const defaultLimit = ref<number>(Number(localStorage.getItem('recipes-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
-    page_size: limit,
+    page_size: defaultLimit.value,
     skip: 0,
-    limit: limit,
+    limit: defaultLimit.value,
     count: 0,
   })
   const authStore = useAuthStore()
@@ -44,7 +41,12 @@ export const useTitleStore = defineStore('title', () => {
     return title.value
   }
 
-  const fetchTitles = async (limit: number, skip: number, name: string | undefined) => {
+  const fetchTitles = async (
+    limit: number,
+    skip: number,
+    name: string | undefined,
+    collection_name: string | undefined,
+  ) => {
     const service = await authStore.getApiService('titles')
     // filter out undefined values from params
     const cleanedParams = Object.fromEntries(
@@ -52,6 +54,7 @@ export const useTitleStore = defineStore('title', () => {
         limit,
         skip,
         name,
+        collection_name,
       }).filter(([, value]) => !!value),
     )
     try {
@@ -70,7 +73,7 @@ export const useTitleStore = defineStore('title', () => {
   }
 
   const savePaginatorLimit = (limit: number) => {
-    $cookies?.set('titles-table-limit', limit, constants.COOKIE_LIFETIME_EXPIRY)
+    localStorage.setItem('limit-table-limit', limit.toString())
   }
 
   const createTitle = async (titleData: TitleCreate) => {
@@ -103,6 +106,7 @@ export const useTitleStore = defineStore('title', () => {
     // State
     title,
     titles,
+    defaultLimit,
     paginator,
     errors,
     // Actions

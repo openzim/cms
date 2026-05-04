@@ -8,15 +8,10 @@
     <v-list
       lines="one"
       density="compact"
-      class="overflow-y-auto events-list-container"
+      class="overflow-y-auto events-list-container striped-list"
       style="max-height: 400px"
     >
-      <v-list-item
-        v-for="(event, index) in parsedEvents"
-        :key="index"
-        :class="index % 2 === 0 ? 'bg-grey-lighten-4' : ''"
-        class="px-3 py-1"
-      >
+      <v-list-item v-for="(event, index) in parsedEvents" :key="index" class="px-3 py-1">
         <v-list-item-title class="text-body-2 text-wrap">
           {{ event.timestamp }}: {{ event.message }}
         </v-list-item-title>
@@ -89,3 +84,9 @@ const copyToClipboard = async (text: string) => {
   }
 }
 </script>
+
+<style scoped>
+.striped-list :deep(.v-list-item:nth-child(even)) {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+}
+</style>

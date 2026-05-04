@@ -44,11 +44,21 @@ class TitleFullSchema(TitleLightSchema):
 
 
 class CollectionLightSchema(BaseModel):
-    """Collection for reading a collection with all the paths in it."""
+    """Schema for reading a collection with all the paths in it."""
 
     id: UUID
     name: str
     paths: list[Path]
+
+
+class CollectionFullSchema(BaseModel):
+    """Schema for reading a collection with all the fileds inlcuding warehouse."""
+
+    id: UUID
+    name: str
+    warehouse: str
+    download_base_url: str | None = None
+    view_base_url: str | None = None
 
 
 class ZimfarmNotificationLightSchema(BaseModel):
