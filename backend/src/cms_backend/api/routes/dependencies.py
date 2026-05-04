@@ -64,7 +64,7 @@ def get_current_account_or_none_with_session(
                 raise UnauthorizedError("Token is missing 'profile' scope")
             create_account(
                 session,
-                username=claims.name,
+                display_name=claims.name,
                 role=RoleEnum.VIEWER,
                 idp_sub=claims.sub,
             )

@@ -339,16 +339,17 @@ def create_account(
         permission: RoleEnum = RoleEnum.EDITOR,
         password: str | None = None,
     ):
+        username = username or faker.first_name()
         account = Account(
-            username=username or faker.first_name(),
             role=permission,
+            username=username,
+            display_name=username,
             idp_sub=uuid4(),
             password_hash=(
                 None if password is None else generate_password_hash(password)
             ),
         )
         dbsession.add(account)
-
         dbsession.flush()
 
         return account

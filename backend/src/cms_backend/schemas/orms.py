@@ -123,9 +123,13 @@ class AccountSchema(BaseModel):
     Schema for reading an account model
     """
 
-    username: str
+    id: UUID
+    username: str | None
+    display_name: str
     role: str
     scope: dict[str, dict[str, bool]]
+    idp_sub: UUID | None
+    has_password: bool
 
 
 class EventLightSchema(BaseModel):
