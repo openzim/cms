@@ -3,7 +3,7 @@
   - Receives authorization code from Kiwix auth
   - Validates state parameter for CSRF protection
   - Exchanges code for token using PKCE verifier
-  - Fetches user info from Kiwix auth
+  - Fetches account info from Kiwix auth
   - Redirects to appropriate page after successful authentication -->
 
 <template>

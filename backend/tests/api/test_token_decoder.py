@@ -32,7 +32,7 @@ def create_test_session_jwt_token(
         "exp": int((now + exp_delta).timestamp()),
         "aud": audience_id,
         "aal": aal,
-        "name": "Test User",
+        "name": "Test Account",
     }
 
     # Create a test token (unsigned for testing purposes)
@@ -100,7 +100,7 @@ def test_verify_session_access_token_expired_token(
 def test_verify_session_access_token_with_2fa_enabled_and_valid_aal(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """Test successful verification when 2FA is enabled and user has aal2."""
+    """Test successful verification when 2FA is enabled and account has aal2."""
     monkeypatch.setattr("cms_backend.api.context.Context.oauth_issuer", TEST_ISSUER)
     monkeypatch.setattr(
         "cms_backend.api.context.Context.oauth_session_audience_id",
@@ -120,7 +120,7 @@ def test_verify_session_access_token_with_2fa_enabled_and_valid_aal(
         "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
         "aud": TEST_AUDIENCE_ID,
-        "name": "Test User",
+        "name": "Test Account",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
         "aal": "aal2",  # Authenticator Assurance Level 2 (2FA)
@@ -167,7 +167,7 @@ def test_verify_session_access_token_with_2fa_enabled_only_aal1(
         "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
         "aud": TEST_AUDIENCE_ID,
-        "name": "Test User",
+        "name": "Test Account",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
         "aal": "aal1",  # Only first factor (aal1)
@@ -213,7 +213,7 @@ def test_verify_session_access_token_with_2fa_disabled_only_aal1(
         "iss": TEST_ISSUER,
         "sub": str(UUID(int=0)),
         "aud": TEST_AUDIENCE_ID,
-        "name": "Test User",
+        "name": "Test Account",
         "iat": int(getnow().timestamp()),
         "exp": int((getnow() + datetime.timedelta(hours=1)).timestamp()),
         "aal": "aal1",  # Only first factor (aal1), but 2FA is disabled

@@ -5,15 +5,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from cms_backend.api.token import generate_access_token
-from cms_backend.db.models import User
+from cms_backend.db.models import Account
 from cms_backend.utils.datetime import getnow
 
 
-def test_create_user(client: TestClient, user: User):
-    url = "/v1/users/"
+def test_create_account(client: TestClient, account: Account):
+    url = "/v1/accounts/"
     access_token = generate_access_token(
         issue_time=getnow(),
-        user_id=str(user.id),
+        account_id=str(account.id),
     )
     response = client.post(
         url,
@@ -27,17 +27,17 @@ def test_create_user(client: TestClient, user: User):
     assert response.status_code == HTTPStatus.OK
 
 
-def test_create_user_duplicate(client: TestClient, user: User):
-    url = "/v1/users/"
+def test_create_account_duplicate(client: TestClient, account: Account):
+    url = "/v1/accounts/"
     access_token = generate_access_token(
         issue_time=getnow(),
-        user_id=str(user.id),
+        account_id=str(account.id),
     )
     response = client.post(
         url,
         headers={"Authorization": f"Bearer {access_token}"},
         json={
-            "username": user.username,
+            "username": account.username,
             "password": "test",
             "role": "viewer",
         },
@@ -53,22 +53,22 @@ def test_create_user_duplicate(client: TestClient, user: User):
         ("testpassword", "test2", HTTPStatus.NO_CONTENT),
     ],
 )
-def test_update_user_password_invalid(
+def test_update_account_password_invalid(
     client: TestClient,
-    create_user: Callable[..., User],
+    create_account: Callable[..., Account],
     current: str,
     new: str,
     expected: HTTPStatus,
 ):
-    """Test updating a user's password with an invalid current password"""
-    user = create_user(password="testpassword")
+    """Test updating an account's password with an invalid current password"""
+    account = create_account(password="testpassword")
 
     access_token = generate_access_token(
         issue_time=getnow(),
-        user_id=str(user.id),
+        account_id=str(account.id),
     )
     response = client.patch(
-        f"/v1/users/{user.username}/password",
+        f"/v1/accounts/{account.username}/password",
         headers={"Authorization": f"Bearer {access_token}"},
         json={"current": current, "new": new},
     )

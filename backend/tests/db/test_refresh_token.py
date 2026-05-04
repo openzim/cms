@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Refreshtoken, User
+from cms_backend.db.models import Account, Refreshtoken
 from cms_backend.db.refresh_token import (
     create_refresh_token,
     delete_refresh_token,
@@ -17,13 +17,13 @@ from cms_backend.utils.datetime import getnow
 
 
 @pytest.fixture
-def refresh_token(dbsession: OrmSession, user: User) -> Refreshtoken:
-    """Create a refresh token for a user"""
+def refresh_token(dbsession: OrmSession, account: Account) -> Refreshtoken:
+    """Create a refresh token for an account"""
     token = Refreshtoken(
         token=uuid4(),
         expire_time=getnow() + datetime.timedelta(seconds=1_000),
     )
-    token.user = user
+    token.account = account
     dbsession.add(token)
     dbsession.flush()
     return token
@@ -35,12 +35,12 @@ def test_get_refresh_token_or_none(dbsession: OrmSession):
     assert refresh_token is None
 
 
-def test_create_refresh_token(dbsession: OrmSession, user: User):
+def test_create_refresh_token(dbsession: OrmSession, account: Account):
     """Test that create_refresh_token creates a refresh token"""
-    refresh_token = create_refresh_token(dbsession, user.id)
+    refresh_token = create_refresh_token(dbsession, account.id)
     assert refresh_token is not None
     assert refresh_token.token is not None
-    assert refresh_token.user_id == user.id
+    assert refresh_token.account_id == account.id
     assert refresh_token.expire_time is not None
 
 
