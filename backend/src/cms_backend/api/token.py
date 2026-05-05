@@ -155,10 +155,9 @@ class OAuthTokenDecoder(TokenDecoder):
         except Exception:
             return False
 
-        if payload.get(
-            "iss"
-        ) != Context.oauth_issuer or Context.oauth_session_audience_id not in payload.get(
-            "aud", []
+        if (
+            payload.get("iss") != Context.oauth_issuer
+            or Context.oauth_session_audience_id not in payload.get("aud", [])
         ):
             return False
         return True
