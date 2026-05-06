@@ -184,16 +184,14 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     dbsession.flush()
 
-    # Keep 2024-04 books since their Date are still less than 30 days
+    # We only keep books from the last two latest months including this one
+    # Keep all 2024-04 books since their Date are still less than 30 days
     assert book4a.location_kind == "prod"
     assert book4b.location_kind == "prod"
-    # Should keep only the latest from the two most recent months:
-    # - 2024-03c
-    # - 2024-02b
+    # Keep 2024-03c books since they are the latest of the second month
     assert book3c.location_kind == "prod"
-    assert book2b.location_kind == "prod"
-
     # All others should be marked for deletion
+    assert book2b.location_kind == "to_delete"
     assert book2a.location_kind == "to_delete"
     assert book3a.location_kind == "to_delete"
     assert book3b.location_kind == "to_delete"
@@ -279,3 +277,90 @@ def test_apply_retention_rules_handles_different_flavours_separately(
     assert book_nopic_feb.location_kind == "prod"
     assert book_maxi_feb.location_kind == "prod"
     assert book_maxi_jan.location_kind == "prod"
+
+
+def test_apply_retention_rules_all_older_than_30_days(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+):
+    """
+    Retention rules should keep only the most recent book of the two most
+    recent months when all are > 30 days old.
+    """
+    title = create_title(name="test_wiki_en_all")
+    now = getnow()
+
+    # Month 1: 2024-01-01
+    book_jan = create_book(
+        name="test_wiki",
+        date="2024-01-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_jan.location_kind = "prod"
+    book_jan.title = title
+    create_book_location(book=book_jan, filename="test_wiki_2024-01.zim")
+
+    # Month 2: 2024-02-01 and 2024-02-15
+    book_feb1 = create_book(
+        name="test_wiki",
+        date="2024-02-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_feb1.location_kind = "prod"
+    book_feb1.title = title
+    create_book_location(book=book_feb1, filename="test_wiki_2024-02.zim")
+
+    book_feb2 = create_book(
+        name="test_wiki",
+        date="2024-02-15",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_feb2.location_kind = "prod"
+    book_feb2.title = title
+    create_book_location(book=book_feb2, filename="test_wiki_2024-02a.zim")
+
+    # Month 3: 2024-03-01 and 2024-03-15
+    book_mar1 = create_book(
+        name="test_wiki",
+        date="2024-03-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_mar1.location_kind = "prod"
+    book_mar1.title = title
+    create_book_location(book=book_mar1, filename="test_wiki_2024-03.zim")
+
+    book_mar2 = create_book(
+        name="test_wiki",
+        date="2024-03-15",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_mar2.location_kind = "prod"
+    book_mar2.title = title
+    create_book_location(book=book_mar2, filename="test_wiki_2024-03a.zim")
+
+    dbsession.flush()
+
+    # Set 'now' to 2024-06-01 so all books are older than 30 days
+    with patch(
+        "cms_backend.db.title.getnow",
+        return_value=datetime.datetime(2024, 6, 1),
+    ):
+        apply_retention_rules(dbsession, title)
+
+    dbsession.flush()
+
+    # The most recent book of the two most recent months should be kept
+    assert book_mar2.location_kind == "prod"
+    assert book_feb2.location_kind == "prod"
+
+    # All others should be deleted
+    assert book_mar1.location_kind == "to_delete"
+    assert book_feb1.location_kind == "to_delete"
+    assert book_jan.location_kind == "to_delete"

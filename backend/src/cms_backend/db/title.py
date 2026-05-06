@@ -1,11 +1,11 @@
 import datetime
 from collections import defaultdict
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
-from sqlalchemy import Date, select
-from sqlalchemy import cast as sql_cast
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -362,6 +362,7 @@ def apply_retention_rules(session: OrmSession, title: Title):
     """
 
     now = getnow()
+    thirty_days_ago = (now - datetime.timedelta(days=30)).date()
 
     books_by_flavour: dict[str, list[Book]] = defaultdict(list)
     for book in session.scalars(
@@ -369,7 +370,6 @@ def apply_retention_rules(session: OrmSession, title: Title):
             Book.title_id == title.id,
             Book.has_error.is_(False),
             Book.date.is_not(None),
-            sql_cast(Book.date, Date) <= (now - datetime.timedelta(days=30)).date(),
             Book.location_kind == "prod",
             Book.needs_file_operation.is_(False),
         )
@@ -382,22 +382,22 @@ def apply_retention_rules(session: OrmSession, title: Title):
         # Group books by period (without the suffix)
         books_by_period: dict[str, list[Book]] = defaultdict(list)
         for book in books:
-            if not book.date:
-                continue
-            books_by_period[book.date[:PERIOD_LENGTH]].append(book)
+            books_by_period[cast(str, book.date)[:PERIOD_LENGTH]].append(book)
 
-        # Keep last version from each of the 2 most recent periods
         sorted_periods = sorted(books_by_period.keys(), reverse=True)
+        # Keep latest version from each of the 2 most recent periods
+        books_to_keep: set[UUID] = set()
+
         for period in sorted_periods[:2]:
             sorted_books_by_period = sort_books_by_filename_period(
                 books_by_period[period]
             )
-            # Mark all but the most recent one for deletion
-            books_to_delete.extend(sorted_books_by_period[1:])
+            books_to_keep.add(sorted_books_by_period[0].id)
 
-        # Mark the remainder of the books to be deleted.
-        for period in sorted_periods[2:]:
-            books_to_delete.extend(books_by_period[period])
+        for book in books:
+            book_date = datetime.date.fromisoformat(cast(str, book.date))
+            if book_date <= thirty_days_ago and book.id not in books_to_keep:
+                books_to_delete.append(book)
 
     deletion_date = now + Context.book_deletion_delay
 
