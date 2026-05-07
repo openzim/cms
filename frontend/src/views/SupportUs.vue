@@ -28,8 +28,9 @@
                 class="text-primary text-decoration-none"
               >
                 Zimfarm</a
-              >go through the CMS for quality checks before publication to our libraries and
-              download servers. All day, every day, so you can enjoy offline content.
+              >
+              go through the CMS for quality checks before publication to our libraries and download
+              servers. All day, every day, so you can enjoy offline content.
             </p>
 
             <v-card variant="outlined" class="mb-4">
