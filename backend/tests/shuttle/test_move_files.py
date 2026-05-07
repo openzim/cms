@@ -141,9 +141,9 @@ def test_move_book_files_copy_operation(
     assert book.needs_processing is False
     assert book.has_error is False
     assert book.needs_file_operation is False
+    assert sum(1 for loc in book.locations if loc.status == "current") == 2
     assert any("copied book from" in event for event in book.events)
-    # One target should now be current
-    assert sum(1 for loc in book.locations if loc.status == "current") >= 1
+    assert any("deleted book" in event for event in book.events)
 
 
 def test_move_book_files_move_operation(
@@ -180,14 +180,15 @@ def test_move_book_files_move_operation(
         mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
         move_book_files(dbsession, book)
 
-        # Should have moved once
+        # Should have copied once and unlinked once
         assert mock_copy.call_count == 1
         assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
     assert book.has_error is False
     assert book.needs_file_operation is False
-    assert any("moved book from" in event for event in book.events)
+    assert any("copied book from" in event for event in book.events)
+    assert any("deleted book" in event for event in book.events)
     # Current location should be removed
     assert len([loc for loc in book.locations if loc.status == "current"]) == 1
 
@@ -229,14 +230,70 @@ def test_move_book_files_delete_operation(
         mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
         move_book_files(dbsession, book)
 
-        # Should have deleted one extra location
+        # Should have copied once and deleted two extra locations
         assert mock_copy.call_count == 1
         assert mock_unlink.call_count == 2
 
     assert book.needs_processing is False
     assert book.has_error is False
     assert book.needs_file_operation is False
-    assert any("deleted old location" in event for event in book.events)
+    assert any("copied book from" in event for event in book.events)
+    assert any("deleted book" in event for event in book.events)
+    assert len([loc for loc in book.locations if loc.status == "current"]) == 1
+
+
+def test_move_book_files_identical_source_and_target_paths(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """
+    Test that move_book_files does not copy or delete if a target path matches a
+    current path
+    """
+    warehouse = create_warehouse()
+    book = create_book()
+    book.needs_file_operation = True
+    dbsession.flush()
+
+    # One current location
+    create_book_location(
+        book=book, warehouse_id=warehouse.id, path="same_path", status="current"
+    )
+
+    # One target location with exactly the same path
+    create_book_location(
+        book=book, warehouse_id=warehouse.id, path="same_path", status="target"
+    )
+    # And another target location with a different path
+    create_book_location(
+        book=book, warehouse_id=warehouse.id, path="new_path", status="target"
+    )
+    dbsession.flush()
+
+    with ExitStack() as stack:
+        mock_context = stack.enter_context(
+            patch("cms_backend.shuttle.move_files.ShuttleContext")
+        )
+        mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
+        stack.enter_context(patch("pathlib.Path.mkdir"))
+
+        mock_context.local_warehouse_paths = {warehouse.id: Path("/warehouse")}
+        move_book_files(dbsession, book)
+
+        # Should only copy once (to "new_path") because "same_path" is identical
+        assert mock_copy.call_count == 1
+        # Should NOT unlink "same_path" because it's in the target paths
+        assert mock_unlink.call_count == 0
+
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
+    assert sum(1 for loc in book.locations if loc.status == "current") == 2
+    assert any("left book at" in event for event in book.events)
+    assert any("copied book from" in event for event in book.events)
 
 
 def test_move_book_files_updates_book_locations(
