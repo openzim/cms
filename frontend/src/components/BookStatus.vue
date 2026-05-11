@@ -30,6 +30,10 @@
         <v-icon size="small" color="warning" icon="mdi-alert-circle-outline"></v-icon>
         <span class="text-caption ml-1">Pending Title</span>
       </template>
+      <template v-else-if="isStaging">
+        <v-icon size="small" color="warning" icon="mdi-eye-outline"></v-icon>
+        <span class="text-caption ml-1">Staging</span>
+      </template>
       <template v-else>
         <v-icon size="small" color="success" icon="mdi-check-circle"></v-icon>
         <span class="text-caption ml-1">Published</span>
@@ -64,6 +68,7 @@ const props = withDefaults(
 const isErrored = computed(() => props.book.has_error)
 const isDeleted = computed(() => props.book.location_kind === 'deleted')
 const isToBeDeleted = computed(() => props.book.location_kind === 'to_delete')
+const isStaging = computed(() => props.book.location_kind === 'staging')
 const isProcessing = computed(() => props.book.needs_processing && !props.book.has_error)
 const isMovingFiles = computed(
   () =>
