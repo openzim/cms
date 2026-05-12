@@ -70,71 +70,73 @@ def move_book_files(session: OrmSession, book: Book):
         book.needs_file_operation = False
         return
 
-    # start with copies
-    while len(target_locations) > len(current_locations):
-        current_location = current_locations[0]
-        target_location = target_locations[0]
+    # Grab one valid source file to copy from since it's the same
+    # file spread across multiple locations with the same book
+    # data
+    source_location = current_locations[0]
 
-        current_path = current_location.full_local_path(
-            ShuttleContext.local_warehouse_paths
-        )
+    current_locations_map = {
+        (loc.warehouse_id, loc.path): loc for loc in current_locations
+    }
+
+    for target_location in target_locations:
         target_path = target_location.full_local_path(
             ShuttleContext.local_warehouse_paths
         )
+        matching_current = current_locations_map.get(
+            (target_location.warehouse_id, target_location.path)
+        )
+        if matching_current:
+            # This file is already here. Remove redundant target and remove the current
+            # location from the cleanup list
+            session.delete(target_location)
+            book.locations.remove(target_location)
+            current_locations.remove(matching_current)
+            logger.debug(f"Left book {book.id} at identical path {target_path}")
+            book.events.append(
+                f"{getnow()}: left book at identical location "
+                f"{target_location.full_str}"
+            )
+            continue
 
+        source_path = source_location.full_local_path(
+            ShuttleContext.local_warehouse_paths
+        )
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(current_path, target_path)
-        logger.debug(f"Copied book {book.id} from {current_path} to {target_path}")
+        shutil.copy(source_path, target_path)
+        logger.debug(f"Copied book {book.id} from {source_path} to {target_path}")
         book.events.append(
-            f"{getnow()}: copied book from {current_location.full_str} to "
+            f"{getnow()}: copied book from {source_location.full_str} to "
             f"{target_location.full_str}"
         )
-        target_locations.remove(target_location)
         target_location.status = "current"
 
-    # continue with moves
-    while len(current_locations) > 0 and len(target_locations) > 0:
-        current_location = current_locations[0]
-        target_location = target_locations[0]
+        # After making one copy, delete one of the current locations
+        # that is not the original to avoid filling disk up with copies
+        if len(current_locations) > 1:
+            loc_to_delete = current_locations.pop()
+            del_path = loc_to_delete.full_local_path(
+                ShuttleContext.local_warehouse_paths
+            )
+            del_path.unlink(missing_ok=True)
+            logger.debug(f"Deleted book {book.id} from {del_path}")
+            book.events.append(
+                f"{getnow()}: deleted book from {loc_to_delete.full_str}"
+            )
+            book.locations.remove(loc_to_delete)
+            session.delete(loc_to_delete)
 
-        current_path = current_location.full_local_path(
+    # Cleanup the original source location and any extra location (if we
+    # started with more currents than targets)
+    for current_location in current_locations:
+        del_path = current_location.full_local_path(
             ShuttleContext.local_warehouse_paths
         )
-        target_path = target_location.full_local_path(
-            ShuttleContext.local_warehouse_paths
-        )
-
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(current_path, target_path)
-        current_path.unlink()
-        logger.debug(f"Moved book {book.id} from {current_path} to {target_path}")
-        book.events.append(
-            f"{getnow()}: moved book from {current_location.full_str} to "
-            f"{target_location.full_str}"
-        )
-        current_locations.remove(current_location)
-        target_locations.remove(target_location)
-        book.locations.remove(current_location)
-        session.delete(current_location)
-        session.flush()
-        target_location.status = "current"
-
-    # cleanup phase: delete extra current locations
-    while len(current_locations) > 0:
-        current_location = current_locations[0]
-        current_path = current_location.full_local_path(
-            ShuttleContext.local_warehouse_paths
-        )
-
-        current_path.unlink(missing_ok=True)
-        logger.debug(
-            f"Deleted extra current location for book {book.id} at {current_path}"
-        )
-        book.events.append(
-            f"{getnow()}: deleted old location {current_location.full_str}"
-        )
-        current_locations.remove(current_location)
+        del_path.unlink(missing_ok=True)
+        logger.debug(f"Deleted book {book.id} from {del_path}")
+        book.events.append(f"{getnow()}: deleted book from {current_location.full_str}")
         book.locations.remove(current_location)
         session.delete(current_location)
 
     book.needs_file_operation = False
+    session.flush()
