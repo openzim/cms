@@ -11,7 +11,6 @@ import * as directives from 'vuetify/directives'
 
 import { createPinia } from 'pinia'
 import VueMatomo from 'vue-matomo'
-import VueCookies from 'vue-cookies'
 
 // config
 import getConfig, { configPlugin } from '@/config'
@@ -37,7 +36,6 @@ Promise.all([getConfig()]).then(([config]) => {
   app.use(vuetify)
   app.use(pinia)
   app.use(router)
-  app.use(VueCookies)
 
   // activate matomo stats
   if (config.MATOMO_ENABLED) {

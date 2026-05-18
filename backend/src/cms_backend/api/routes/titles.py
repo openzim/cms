@@ -30,6 +30,7 @@ class TitlesGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
     name: NotEmptyString | None = None
+    collection_name: NotEmptyString | None = None
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):
@@ -70,6 +71,7 @@ def get_titles(
         skip=params.skip,
         limit=params.limit,
         name=params.name,
+        collection_name=params.collection_name,
     )
     return ListResponse[TitleLightSchema](
         meta=calculate_pagination_metadata(

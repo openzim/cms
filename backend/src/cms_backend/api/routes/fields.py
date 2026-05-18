@@ -1,6 +1,5 @@
 from typing import Annotated, Any
 
-import regex
 from pydantic import (
     AfterValidator,
     Field,
@@ -8,16 +7,6 @@ from pydantic import (
     ValidatorFunctionWrapHandler,
     WrapValidator,
 )
-
-
-class GraphemeStr(str):
-    def __len__(self) -> int:
-        # Count the number of grapheme clusters
-        return len(regex.findall(r"\X", self))
-
-
-def to_grapheme_str(value: str):
-    return GraphemeStr(value)
 
 
 def no_null_char(value: str) -> str:
@@ -46,9 +35,7 @@ def not_empty(value: str) -> str:
     return value.strip()
 
 
-NoNullCharString = Annotated[
-    str, AfterValidator(no_null_char), AfterValidator(to_grapheme_str)
-]
+NoNullCharString = Annotated[str, AfterValidator(no_null_char)]
 
 NotEmptyString = Annotated[NoNullCharString, AfterValidator(not_empty)]
 

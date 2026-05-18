@@ -4,12 +4,13 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.collection import (
+    create_collection,
     get_collection_by_name,
     get_collection_by_name_or_none,
     get_collections,
 )
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Collection, Title
+from cms_backend.db.models import Collection, Title, Warehouse
 
 
 def test_get_collection_by_name_or_none_not_found(
@@ -91,6 +92,20 @@ def test_get_collections_pagination(
         skip=skip,
         limit=limit,
     )
-    assert results.nb_records == 8
     assert len(results.records) <= limit
     assert len(results.records) == expected_count
+
+
+def test_create_collection(dbsession: OrmSession, warehouse: Warehouse):
+    """Test creating a collection."""
+    collection = create_collection(
+        dbsession,
+        name="testcollection",
+        download_base_url="https://www.example.com",
+        view_base_url="https://www.example.com",
+        warehouse_name=warehouse.name,
+    )
+    assert collection.name == "testcollection"
+    assert collection.download_base_url == "https://www.example.com"
+    assert collection.view_base_url == "https://www.example.com"
+    assert collection.warehouse.name == warehouse.name

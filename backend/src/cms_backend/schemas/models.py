@@ -42,3 +42,9 @@ class AccountUpdateSchema(BaseModel):
     username: NotEmptyString | None = None
     idp_sub: NotEmptyString | None = None
     display_name: NotEmptyString | None = None
+
+
+class CollectionUpdateSchema(BaseModel):
+    name: NotEmptyString | None = None
+    download_base_url: AnyUrl | None = None
+    view_base_url: AnyUrl | None = None

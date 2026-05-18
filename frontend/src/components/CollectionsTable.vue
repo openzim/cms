@@ -1,21 +1,9 @@
 <template>
   <div>
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
-      <v-card-title class="d-flex align-center justify-end">
-        <v-btn
-          size="small"
-          variant="outlined"
-          color="secondary"
-          class="text-none"
-          @click="$emit('toggleUsersList')"
-        >
-          {{ toggleText }}
-        </v-btn>
-      </v-card-title>
-
       <v-data-table-server
         :headers="headers"
-        :items="users"
+        :items="collections"
         :loading="loading"
         :page="paginator.page"
         :items-per-page="paginator.limit"
@@ -34,26 +22,31 @@
         <template #loading>
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
-            <div class="mt-4 text-body-1">{{ loadingText || 'Fetching users...' }}</div>
+            <div class="mt-4 text-body-1">{{ loadingText || 'Fetching collections...' }}</div>
           </div>
         </template>
 
-        <template #[`item.display_name`]="{ item }">
-          <span class="text-primary font-weight-medium">
-            {{ item.display_name }}
-          </span>
+        <template #[`item.name`]="{ item }">
+          <span class="font-weight-medium">{{ item.name }}</span>
         </template>
 
-        <template #[`item.role`]="{ item }">
-          <v-chip :color="getRoleColor(item.role)" size="small" variant="tonal">
-            {{ item.role }}
+        <template #[`item.paths`]="{ item }">
+          <v-chip
+            v-for="path in item.paths"
+            :key="path"
+            size="small"
+            class="mr-1 mt-1 mb-1"
+            variant="tonal"
+            color="primary"
+          >
+            {{ path }}
           </v-chip>
         </template>
 
         <template #no-data>
           <div class="text-center pa-4">
-            <v-icon size="large" class="mb-2">mdi-account-group-outline</v-icon>
-            <div class="text-body-1">No users found</div>
+            <v-icon size="large" class="mb-2">mdi-folder-multiple-outline</v-icon>
+            <div class="text-body-1">No collections found</div>
           </div>
         </template>
       </v-data-table-server>
@@ -65,23 +58,21 @@
 <script setup lang="ts">
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import type { Paginator } from '@/types/base'
-import type { User } from '@/types/user'
+import type { CollectionLight } from '@/types/collections'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
 const props = defineProps<{
   headers: { title: string; key: string; sortable?: boolean }[]
-  users: User[]
+  collections: CollectionLight[]
   paginator: Paginator
   loading: boolean
   errors: string[]
   loadingText: string
-  toggleText: string
 }>()
 
 const emit = defineEmits<{
   limitChanged: [limit: number]
-  toggleUsersList: []
 }>()
 
 const limits = [10, 20, 50, 100]
@@ -105,17 +96,8 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
   }
 }
 
-const getRoleColor = (role: string): string => {
-  const colorMap: Record<string, string> = {
-    editor: 'error',
-    viewer: 'primary',
-    zimfarm: 'secondary',
-  }
-  return colorMap[role] || 'default'
-}
-
-function onRowClick(event: Event, { item }: { item: User }) {
-  router.push({ name: 'user-detail', params: { userId: item.id } })
+function onRowClick(event: Event, { item }: { item: CollectionLight }) {
+  router.push({ name: 'collection-detail', params: { id: item.name } })
 }
 </script>
 

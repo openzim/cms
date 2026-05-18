@@ -19,6 +19,7 @@ from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import (
     Book,
+    Collection,
     CollectionTitle,
     Title,
 )
@@ -121,6 +122,7 @@ def get_titles(
     limit: int,
     name: str | None = None,
     omit_names: list[str] | None = None,
+    collection_name: str | None = None,
 ) -> ListResult[TitleLightSchema]:
     """Get a list of titles"""
 
@@ -130,6 +132,8 @@ def get_titles(
             Title.name.label("title_name"),
             Title.maturity.label("title_maturity"),
         )
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
+        .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
         .order_by(Title.name)
         .where(
             # If a client provides an argument i.e it is not None,
@@ -141,6 +145,12 @@ def get_titles(
                 | (name is None)
             ),
             (Title.name.not_in(omit_names or []) | (omit_names is None)),
+            (
+                Collection.name.ilike(
+                    f"%{collection_name if collection_name is not None else ''}%"
+                )
+                | (collection_name is None)
+            ),
         )
     )
 

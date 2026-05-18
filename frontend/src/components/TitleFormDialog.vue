@@ -131,7 +131,7 @@
 import { useCollectionsStore } from '@/stores/collections'
 import { useTitleStore } from '@/stores/title'
 import type { BaseTitleCollection, Title, TitleCreate, TitleUpdate } from '@/types/title'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -381,10 +381,6 @@ function resetForm() {
     formRef.value?.resetValidation()
   }
 }
-
-onMounted(async () => {
-  await fetchCollections()
-})
 </script>
 
 <style scoped>

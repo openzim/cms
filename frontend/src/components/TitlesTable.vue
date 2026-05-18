@@ -2,31 +2,10 @@
   <div>
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
       <v-card-title
-        v-if="showSelection || showFilters || $slots.actions"
+        v-if="showSelection || $slots.actions"
         class="d-flex flex-column-reverse flex-sm-row align-sm-center justify-sm-end ga-2"
       >
         <slot name="actions" />
-        <v-btn
-          v-if="showSelection"
-          size="small"
-          variant="elevated"
-          color="warning"
-          :disabled="selectedTitles.length === 0"
-          @click="clearSelections"
-        >
-          <v-icon size="small" class="mr-1">mdi-checkbox-multiple-blank-outline</v-icon>
-          clear selections
-        </v-btn>
-        <v-btn
-          v-if="showFilters"
-          size="small"
-          variant="outlined"
-          :disabled="!hasActiveFilters"
-          @click="handleClearFilters"
-        >
-          <v-icon size="small" class="mr-1">mdi-close-circle</v-icon>
-          clear filters
-        </v-btn>
       </v-card-title>
 
       <v-data-table-server
@@ -36,12 +15,13 @@
         :items-per-page="selectedLimit"
         :items-length="paginator.count"
         :items-per-page-options="limits"
-        class="elevation-1"
+        class="elevation-1 cursor-pointer-table"
         item-value="name"
-        :show-select="showSelection"
         :model-value="selectedTitles"
+        hover
         @update:model-value="handleSelectionChange"
         @update:options="onUpdateOptions"
+        @click:row="onRowClick"
         :hide-default-footer="props.paginator.count === 0"
         :hide-default-header="props.paginator.count === 0"
       >
@@ -53,11 +33,9 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <router-link :to="{ name: 'title-detail', params: { id: item.name } }">
-            <span class="d-flex align-center">
-              {{ item.name }}
-            </span>
-          </router-link>
+          <span class="d-flex align-center">
+            {{ item.name }}
+          </span>
         </template>
 
         <template #no-data>
@@ -74,7 +52,8 @@
 <script setup lang="ts">
 import type { Paginator } from '@/types/base'
 import type { TitleLight } from '@/types/title'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 // Props
 interface Props {
@@ -86,60 +65,65 @@ interface Props {
   loadingText: string
   filters?: {
     name: string
+    collection_name: string
   }
   selectedTitles?: string[]
   showSelection?: boolean
-  showFilters?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  filters: () => ({ name: '', categories: [], languages: [], tags: [] }),
+  filters: () => ({ name: '', collection_name: '' }),
   selectedTitles: () => [],
   showSelection: true,
-  showFilters: true,
 })
 
 // Define emits
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]
-  clearFilters: []
   selectionChanged: [selectedTitles: string[]]
 }>()
 
+const router = useRouter()
+const route = useRoute()
 const limits = [10, 20, 50, 100]
 const selectedLimit = ref(props.paginator.limit)
 
 const selectedTitles = computed(() => props.selectedTitles)
 
-// Check if any filters are active
-const hasActiveFilters = computed(() => {
-  return props.filters.name.length > 0
-})
-
 function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
-  // page is 1-indexed, we need to calculate the skip for the request
-  const page = options.page > 1 ? options.page - 1 : 0
-  emit('loadData', options.itemsPerPage, page * options.itemsPerPage)
-}
+  const query = { ...route.query }
+  if (options.page > 1) {
+    query.page = options.page.toString()
+  } else {
+    delete query.page
+  }
 
-watch(
-  () => props.paginator,
-  (newPaginator) => {
-    selectedLimit.value = newPaginator.limit
-  },
-  { immediate: true },
-)
+  router.push({ query })
+
+  // Emit limit change when it actually changes as the query would be the
+  // same and we need to reload the data.
+  if (options.itemsPerPage != props.paginator.limit) {
+    emit('limitChanged', options.itemsPerPage)
+  }
+}
 
 function handleSelectionChange(selection: string[]) {
   emit('selectionChanged', selection)
 }
 
-function clearSelections() {
-  emit('selectionChanged', [])
-}
-
-function handleClearFilters() {
-  emit('clearFilters')
+function onRowClick(event: Event, { item }: { item: TitleLight }) {
+  // Don't navigate if clicking on checkbox column
+  const target = event.target as HTMLElement
+  if (target.closest('.v-selection-control') || target.closest('td.v-data-table__td--select')) {
+    return
+  }
+  router.push({ name: 'title-detail', params: { id: item.name } })
 }
 </script>
+
+<style scoped>
+:deep(.cursor-pointer-table tbody tr) {
+  cursor: pointer;
+}
+</style>

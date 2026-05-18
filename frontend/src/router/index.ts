@@ -5,6 +5,8 @@ import SignInView from '@/views/SignInView.vue'
 import OAuthCallbackView from '@/views/OAuthCallbackView.vue'
 import UsersView from '@/views/UsersView.vue'
 import UserView from '@/views/UserView.vue'
+import CollectionsView from '@/views/CollectionsView.vue'
+import CollectionView from '@/views/CollectionView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
@@ -97,6 +99,21 @@ const routes = [
     name: 'users-list',
     component: UsersView,
     meta: { title: 'Zimfarm | Users' },
+  },
+  {
+    path: '/collections',
+    name: 'collections',
+    component: CollectionsView,
+    meta: { title: 'CMS | Collections' },
+  },
+  {
+    path: '/collection/:id',
+    name: 'collection-detail',
+    component: CollectionView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Collection • ${to.params.id}`,
+    },
   },
   {
     path: '/:pathMatch(.*)*',
