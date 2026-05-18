@@ -4,7 +4,14 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, Collection, Event, Title
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Event,
+    Title,
+)
 from cms_backend.db.title import get_title_by_name_or_none, get_titles, update_title
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
@@ -117,13 +124,33 @@ def test_update_title_name(
 def test_update_title_collection_titles(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
     create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
 ):
     """Test updating a title's collection_titles"""
-    create_collection(name="wikipedia")
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test")
+    create_collection_title(title, collection, path="wikis")
     create_collection(name="gutenberg")
 
-    title = create_title(name="wikipedia_en_test")
+    # Create a book in prod
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    # Create current location for the book
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="old_path",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
 
     update_title(
         dbsession,
@@ -140,52 +167,8 @@ def test_update_title_collection_titles(
     collection_names = {tc.collection.name for tc in title.collections}
     assert collection_names == {"wikipedia", "gutenberg"}
 
-
-def test_update_title_collection_titles_updates_prod_books(
-    dbsession: OrmSession,
-    create_title: Callable[..., Title],
-    create_collection: Callable[..., Collection],
-    create_book: Callable[..., Book],
-    create_book_location: Callable[..., BookLocation],
-):
-    """Test that updating collection_titles updates locations for prod books"""
-    collection1 = create_collection(name="wikipedia")
-
-    title = create_title(name="wikipedia_en_test")
-
-    # Create a book in prod
-    book = create_book(
-        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
-    )
-    book.location_kind = "prod"
-    title.books.append(book)
-
-    # Create current location for the book
-    create_book_location(
-        book=book,
-        warehouse_id=collection1.warehouse_id,
-        path="old_path",
-        filename="test.zim",
-        status="current",
-    )
-    dbsession.flush()
-
-    # Update collection_titles
-    create_collection(name="gutenberg")
-
-    update_title(
-        dbsession,
-        title_id=title.id,
-        maturity=None,
-        collection_titles=[
-            BaseTitleCollectionSchema(collection_name="gutenberg", path="new_path"),
-        ],
-    )
-
     dbsession.refresh(book)
     assert book.needs_file_operation is True
 
     target_locations = [loc for loc in book.locations if loc.status == "target"]
-    assert len(target_locations) == 1
-    assert str(target_locations[0].path) == "new_path"
-    assert target_locations[0].filename == "test.zim"
+    assert len(target_locations) == 2

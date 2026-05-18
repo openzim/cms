@@ -271,6 +271,8 @@ def update_title(
             for tc in title.collections:
                 session.delete(tc)
 
+            title.collections.clear()
+
             for entry in collection_titles:
                 collection = get_collection_by_name(
                     session, collection_name=entry.collection_name
