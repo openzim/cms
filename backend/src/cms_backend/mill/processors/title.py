@@ -4,7 +4,7 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db.book import create_book_target_locations
 from cms_backend.db.models import Book, Title
-from cms_backend.db.title import apply_retention_rules
+from cms_backend.db.rules import apply_retention_rules
 from cms_backend.schemas.models import FileLocation
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename

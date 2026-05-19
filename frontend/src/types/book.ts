@@ -36,6 +36,7 @@ export interface Book extends BookLight {
   events: string[]
   current_locations: BookLocation[]
   target_locations: BookLocation[]
+  title_archived: boolean
 }
 
 export interface ZimUrl {

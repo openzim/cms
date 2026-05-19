@@ -729,6 +729,35 @@ def test_move_book_no_title_raises_error(
         move_book(dbsession, book_id=book.id, destination="prod")
 
 
+def test_move_book_archived_title_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that moving a book associated to an archived title raises an error"""
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    title = create_title(archived=True)
+    book.location_kind = "staging"
+    book.title = title
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(
+        ValueError, match=f"Book title {book.title_id} is currently archived"
+    ):
+        move_book(dbsession, book_id=book.id, destination="prod")
+
+
 def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavour(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
@@ -1017,6 +1046,40 @@ def test_recover_book_no_current_location(
     dbsession.flush()
 
     with pytest.raises(ValueError, match="has no current location"):
+        recover_book(dbsession, book_id=book.id)
+
+
+def test_recover_book_archived_title(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that recovering a book associated to archived title raises an error"""
+
+    title = create_title(archived=True)
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path="wikis",
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    now = getnow()
+    book.location_kind = "to_delete"
+    book.needs_file_operation = True
+    book.deletion_date = now + datetime.timedelta(days=1)
+    dbsession.flush()
+
+    with pytest.raises(
+        ValueError, match=f"Book title {book.title_id} is currently archived"
+    ):
         recover_book(dbsession, book_id=book.id)
 
 

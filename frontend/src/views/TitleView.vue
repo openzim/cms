@@ -15,84 +15,143 @@
         </v-btn>
       </div>
 
-      <div>
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Id</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            <code>{{ title.id }}</code>
-          </v-col>
-        </v-row>
-        <v-divider class="my-2"></v-divider>
+      <v-tabs
+        v-model="currentTab"
+        class="mb-4"
+        color="primary"
+        slider-color="primary"
+        :grow="!smAndDown"
+        show-arrows
+      >
+        <v-tab
+          base-color="primary"
+          value="details"
+          :to="{
+            name: 'title-detail',
+            params: { id: title.name },
+          }"
+        >
+          <v-icon class="mr-2">mdi-information</v-icon>
+          Info
+        </v-tab>
 
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Name</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            {{ title.name }}
-          </v-col>
-        </v-row>
-        <v-divider class="my-2"></v-divider>
+        <v-tab
+          base-color="primary"
+          v-if="canArchiveTitle"
+          value="archive"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.name, selectedTab: 'archive' },
+          }"
+        >
+          <v-icon class="mr-2">{{
+            title?.archived ? 'mdi-archive-arrow-up' : 'mdi-archive'
+          }}</v-icon>
+          {{ title?.archived ? 'Restore' : 'Archive' }}
+        </v-tab>
+      </v-tabs>
 
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Collections</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            <div v-if="title.collections && title.collections.length > 0">
-              <div
-                v-for="tc in title.collections"
-                :key="`collection-${tc.collection_id}`"
-                class="mb-2"
-              >
-                {{ tc.collection_name }}: {{ tc.path }}
+      <v-window v-model="currentTab">
+        <!-- Details Tab -->
+        <v-window-item value="details">
+          <v-card flat>
+            <v-card-text class="pa-0">
+              <div class="ml-4 mr-4 mt-2 mb-2">
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Id</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <code>{{ title.id }}</code>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Name</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    {{ title.name }}
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Collections</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <div v-if="title.collections && title.collections.length > 0">
+                      <div
+                        v-for="tc in title.collections"
+                        :key="`collection-${tc.collection_id}`"
+                        class="mb-2"
+                      >
+                        {{ tc.collection_name }}: {{ tc.path }}
+                      </div>
+                    </div>
+                    <span v-else class="text-grey"
+                      >This title is not published in any collection</span
+                    >
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Maturity</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    {{ title.maturity }}
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Events</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <EventsList :events="title.events" />
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Books</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <BookTable
+                      v-if="title.books.length > 0"
+                      :headers="bookHeaders"
+                      :books="sortedBooks"
+                      :is-server-side="false"
+                      :show-urls="true"
+                      :zim-urls="zimUrls"
+                      :loading-urls="loadingUrls"
+                    />
+                    <span v-else class="text-grey">No books</span>
+                  </v-col>
+                </v-row>
               </div>
-            </div>
-            <span v-else class="text-grey">This title is not published in any collection</span>
-          </v-col>
-        </v-row>
-        <v-divider class="my-2"></v-divider>
+            </v-card-text>
+          </v-card>
+        </v-window-item>
 
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Maturity</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            {{ title.maturity }}
-          </v-col>
-        </v-row>
-        <v-divider class="my-2"></v-divider>
-
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Events</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            <EventsList :events="title.events" />
-          </v-col>
-        </v-row>
-        <v-divider class="my-2"></v-divider>
-
-        <v-row no-gutters class="py-2">
-          <v-col cols="12" md="3">
-            <div class="text-subtitle-2">Books</div>
-          </v-col>
-          <v-col cols="12" md="9">
-            <BookTable
-              v-if="title.books.length > 0"
-              :headers="bookHeaders"
-              :books="sortedBooks"
-              :is-server-side="false"
-              :show-urls="true"
-              :zim-urls="zimUrls"
-              :loading-urls="loadingUrls"
+        <!-- Archive Tab -->
+        <v-window-item value="archive">
+          <div v-if="canArchiveTitle" class="pa-4">
+            <ArchiveTitle
+              :name="title.name"
+              :is-archived="title?.archived || false"
+              @archive-title="archiveTitle"
+              @restore-title="restoreTitle"
             />
-            <span v-else class="text-grey">No books</span>
-          </v-col>
-        </v-row>
-      </div>
+          </div>
+        </v-window-item>
+      </v-window>
     </div>
 
     <EditTitleDialog v-model="editDialogOpen" :title="title" @updated="handleTitleUpdated" />
@@ -103,6 +162,7 @@
 import BookTable from '@/components/BookTable.vue'
 import EditTitleDialog from '@/components/EditTitleDialog.vue'
 import EventsList from '@/components/EventsList.vue'
+import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
@@ -110,8 +170,9 @@ import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
 import type { Title } from '@/types/title'
 import type { ZimUrl } from '@/types/book'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify'
 
 const router = useRouter()
 
@@ -120,6 +181,8 @@ const titleStore = useTitleStore()
 const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
+
+const { smAndDown } = useDisplay()
 
 const error = ref<string | null>(null)
 const title = ref<Title | null>(null)
@@ -130,9 +193,12 @@ const zimUrls = ref<Record<string, ZimUrl[]>>({})
 
 interface Props {
   id: string
+  selectedTab?: string
 }
 
-const props = withDefaults(defineProps<Props>(), {})
+const props = withDefaults(defineProps<Props>(), {
+  selectedTab: 'details',
+})
 
 const bookHeaders = [
   { title: 'Name', value: 'name', sortable: false },
@@ -143,7 +209,13 @@ const bookHeaders = [
   { title: 'URLs', value: 'urls', sortable: false },
 ]
 
-const canEditTitle = computed(() => authStore.hasPermission('title', 'update'))
+const canEditTitle = computed(
+  () => authStore.hasPermission('title', 'update') && title.value && !title.value.archived,
+)
+
+const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive'))
+
+const currentTab = ref(props.selectedTab)
 
 const sortedBooks = computed(() => {
   if (!title.value?.books) return []
@@ -194,6 +266,36 @@ const loadZimUrls = async () => {
   loadingUrls.value = false
 }
 
+const archiveTitle = async () => {
+  const response = await titleStore.archiveTitle(props.id)
+  if (response) {
+    notificationStore.showSuccess(`Title <code>${props.id}</code> has been archived.`)
+    // Refresh the title data to update the archive status
+    await loadData(true)
+    // Switch to info tab after archiving
+    currentTab.value = 'details'
+  } else {
+    for (const error of titleStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+}
+
+const restoreTitle = async () => {
+  const response = await titleStore.restoreTitle(props.id)
+  if (response) {
+    notificationStore.showSuccess(`Title <code>${props.id}</code> has been restored.`)
+    // Refresh the title data to update the archive status
+    await loadData(true)
+    // Switch to info tab after restoring
+    currentTab.value = 'details'
+  } else {
+    for (const error of titleStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+}
+
 onMounted(async () => {
   await loadData(true)
 })
@@ -211,4 +313,27 @@ const handleTitleUpdated = async (updatedTitle: { id: string; name: string }) =>
   }
   await loadData(true)
 }
+
+// Watch for tab changes
+watch(
+  () => props.selectedTab,
+  async (newTab) => {
+    currentTab.value = newTab
+    // Only refresh data if we don't have any data yet, or if not archiving
+    if (!title.value || newTab != 'archive') {
+      await loadData(true)
+    }
+  },
+)
+
+// Watch for title id changes (when navigating to a different title)
+watch(
+  () => props.id,
+  async () => {
+    // Reset the current tab to details when switching title
+    // Clear current data and reload the new title
+    title.value = null
+    currentTab.value = 'details'
+  },
+)
 </script>

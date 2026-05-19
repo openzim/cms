@@ -7,6 +7,7 @@ import UsersView from '@/views/UsersView.vue'
 import UserView from '@/views/UserView.vue'
 import CollectionsView from '@/views/CollectionsView.vue'
 import CollectionView from '@/views/CollectionView.vue'
+import ArchivedTitlesView from '@/views/ArchivedTitlesView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
@@ -50,8 +51,23 @@ const routes = [
     meta: { title: 'CMS | Titles' },
   },
   {
+    path: '/titles/archives',
+    name: 'archived-titles',
+    component: ArchivedTitlesView,
+    meta: { title: 'CMS | Archived Titles' },
+  },
+  {
     path: '/title/:id',
     name: 'title-detail',
+    component: TitleView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Title • ${to.params.id}`,
+    },
+  },
+  {
+    path: '/title/:id/:selectedTab',
+    name: 'title-detail-tab',
     component: TitleView,
     props: true,
     meta: {

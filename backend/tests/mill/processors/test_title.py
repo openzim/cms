@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, BookLocation, Title
-from cms_backend.db.title import sort_books_by_filename_period
+from cms_backend.db.rules import sort_books_by_filename_period
 from cms_backend.mill.processors.title import (
     apply_retention_rules,
 )
@@ -177,7 +177,7 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
     dbsession.flush()
 
     with patch(
-        "cms_backend.db.title.getnow",
+        "cms_backend.db.rules.getnow",
         return_value=datetime.datetime(2024, 4, 1),
     ):
         apply_retention_rules(dbsession, title)
@@ -263,7 +263,7 @@ def test_apply_retention_rules_handles_different_flavours_separately(
     dbsession.flush()
 
     with patch(
-        "cms_backend.db.title.getnow",
+        "cms_backend.db.rules.getnow",
         return_value=datetime.datetime(2024, 2, 1),
     ):
         apply_retention_rules(dbsession, title)
@@ -349,7 +349,7 @@ def test_apply_retention_rules_all_older_than_30_days(
 
     # Set 'now' to 2024-06-01 so all books are older than 30 days
     with patch(
-        "cms_backend.db.title.getnow",
+        "cms_backend.db.rules.getnow",
         return_value=datetime.datetime(2024, 6, 1),
     ):
         apply_retention_rules(dbsession, title)

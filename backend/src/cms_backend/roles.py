@@ -18,6 +18,10 @@ class ResourcePermissions(Permissions):
     names: ClassVar[list[str]] = ["create", "read", "update", "delete"]
 
 
+class TitlePermissions(ResourcePermissions):
+    names: ClassVar[list[str]] = [*ResourcePermissions.names, "archive"]
+
+
 class RoleEnum(StrEnum):
     EDITOR = "editor"
     VIEWER = "viewer"
@@ -28,7 +32,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
     RoleEnum.VIEWER: {},
     RoleEnum.EDITOR: {
         "book": ResourcePermissions.get_all(),
-        "title": ResourcePermissions.get_all(),
+        "title": TitlePermissions.get_all(),
         "zimfarm_notification": ResourcePermissions.get_all(),
         "account": ResourcePermissions.get_all(),
         "collection": ResourcePermissions.get_all(),

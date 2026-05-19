@@ -8,7 +8,7 @@ from cms_backend.db.warehouse import get_warehouses
 
 
 def test_get_warehouses_empty(dbsession: OrmSession):
-    """Test that get_warehouses returns empty list when no recipes exist"""
+    """Test that get_warehouses returns empty list when no warehouses exist"""
     result = get_warehouses(dbsession, skip=0, limit=10)
     assert result.nb_records == 0
     assert len(result.records) == 0
