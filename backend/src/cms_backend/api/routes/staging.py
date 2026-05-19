@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Annotated
 
 import xxhash
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session as OrmSession
 
@@ -16,11 +16,12 @@ router = APIRouter(prefix="/staging", tags=["staging"])
 @router.get("/catalog.xml")
 async def get_library_catalog_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    path_prefix: Annotated[str | None, Query()] = None,
 ):
     """Get staging catalog as XML library."""
 
     entries = get_staging_books_library_data(session)
-    xml_content = build_library_xml(entries, staging=True)
+    xml_content = build_library_xml(entries, path_prefix=path_prefix)
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
 
     return Response(
@@ -34,9 +35,10 @@ async def get_library_catalog_xml(
 @router.head("/catalog.xml")
 async def head_library_catalog_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    path_prefix: Annotated[str | None, Query()] = None,
 ):
     entries = get_staging_books_library_data(session)
-    xml_content = build_library_xml(entries, staging=True)
+    xml_content = build_library_xml(entries, path_prefix=path_prefix)
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
     return Response(
         status_code=HTTPStatus.OK,

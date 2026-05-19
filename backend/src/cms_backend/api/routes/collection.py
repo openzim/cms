@@ -128,7 +128,7 @@ def update_collection(
 
 
 def _get_catalog_xml_content(
-    collection_id_or_name: str, session: OrmSession
+    collection_id_or_name: str, session: OrmSession, path_prefix: str | None
 ) -> tuple[str, int]:
     # Try to parse as UUID first, otherwise treat as name
     collection = None
@@ -150,7 +150,7 @@ def _get_catalog_xml_content(
         )
 
     entries = get_latest_books_for_collection(session, collection.id)
-    xml_content = build_library_xml(entries)
+    xml_content = build_library_xml(entries, path_prefix=path_prefix)
 
     return xml_content, HTTPStatus.OK
 
@@ -159,9 +159,12 @@ def _get_catalog_xml_content(
 def get_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    path_prefix: Annotated[str | None, Query()] = None,
 ):
     """Get collection catalog as XML library by collection ID (UUID) or name."""
-    xml_content, status_code = _get_catalog_xml_content(collection_id_or_name, session)
+    xml_content, status_code = _get_catalog_xml_content(
+        collection_id_or_name, session, path_prefix
+    )
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
 
     return Response(
@@ -176,9 +179,12 @@ def get_library_catalog_xml(
 def head_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    path_prefix: Annotated[str | None, Query()] = None,
 ):
     """Get collection catalog as XML library by collection ID (UUID) or name."""
-    xml_content, status_code = _get_catalog_xml_content(collection_id_or_name, session)
+    xml_content, status_code = _get_catalog_xml_content(
+        collection_id_or_name, session, path_prefix
+    )
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
     return Response(
         status_code=status_code,
