@@ -55,7 +55,7 @@ def build_library_xml(
             if path_prefix.endswith("/"):
                 path_prefix = path_prefix[:-1]
 
-            book_elem.set("path", f"{path_prefix}/{filename}")
+            book_elem.set("path", f"{path_prefix}/{path / filename}")
 
         if flavour := zim_meta.get("Flavour"):
             book_elem.set("flavour", flavour)

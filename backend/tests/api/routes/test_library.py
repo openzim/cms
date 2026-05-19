@@ -245,7 +245,7 @@ def test_get_collection_catalog_xml_single_book(
         == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
     )
     assert book_elem.get("flavour") == "test"
-    assert book_elem.get("path") == "/data/dev/test_en_all.zim"
+    assert book_elem.get("path") == "/data/dev/wikipedia/test_en_all.zim"
 
 
 def test_get_collection_catalog_xml_root_path(
@@ -943,7 +943,9 @@ def test_get_prod_and_staging_catalog_xml(
     dbsession.flush()
 
     # Test prod
-    response = client.get(f"/v1/collections/{collection.name}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.name}/catalog.xml?path_prefix=/data/dev"
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -956,7 +958,7 @@ def test_get_prod_and_staging_catalog_xml(
         books[0].get("url")
         == "https://download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
     )
-    assert books[0].get("path") is None
+    assert books[0].get("path") == "/data/dev/wikipedia/wiki_2024-12.zim"
 
     # Test staging
     response = client.get("/v1/staging/catalog.xml?path_prefix=/data/dev")
