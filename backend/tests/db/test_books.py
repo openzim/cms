@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Callable
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.orm import Session as OrmSession
@@ -120,6 +120,7 @@ def test_get_books_pagination(
     ],
 )
 def test_get_books_filter_by_has_title(
+    *,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -174,7 +175,6 @@ def test_get_books_book_id_filter(
     expected_ids: list[str],
 ):
     """Test that get_books works with book_id filter"""
-    from uuid import UUID
 
     # Create books with specific UUIDs
     book_mapping = {
@@ -222,7 +222,6 @@ def test_get_books_book_id_combined_with_other_filters(
     create_title: Callable[..., Title],
 ):
     """Test book_id filter combined with other filters"""
-    from uuid import UUID
 
     title = create_title()
 
@@ -274,6 +273,7 @@ def test_get_books_book_id_combined_with_other_filters(
     ],
 )
 def test_get_books_filter_by_needs_attention(
+    *,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -416,7 +416,6 @@ def test_get_zim_urls_book_with_subpath(
     create_book_location: Callable[..., BookLocation],
 ):
     """Download URL includes subpath when book is not at root"""
-    from pathlib import Path
 
     warehouse = create_warehouse()
     title = create_title(name="test_en_all")

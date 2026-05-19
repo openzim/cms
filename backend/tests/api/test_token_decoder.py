@@ -36,9 +36,7 @@ def create_test_session_jwt_token(
     }
 
     # Create a test token (unsigned for testing purposes)
-    return jwt.encode(
-        payload, "test-secret", algorithm="HS256"
-    )  # pyright: ignore[reportUnknownMemberType]
+    return jwt.encode(payload, "test-secret", algorithm="HS256")  # pyright: ignore[reportUnknownMemberType]
 
 
 def create_test_client_jwt_token(
@@ -61,9 +59,7 @@ def create_test_client_jwt_token(
     }
 
     # Create a test token (unsigned for testing purposes)
-    return jwt.encode(
-        payload, "test-secret", algorithm="HS256"
-    )  # pyright: ignore[reportUnknownMemberType]
+    return jwt.encode(payload, "test-secret", algorithm="HS256")  # pyright: ignore[reportUnknownMemberType]
 
 
 def test_verify_session_access_token_expired_token(

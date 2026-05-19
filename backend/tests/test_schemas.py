@@ -2,7 +2,7 @@
 
 import json
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 from dateutil.parser import isoparse
 
@@ -70,7 +70,7 @@ class TestBaseModel:
     def test_use_enum_values(self):
         """Test that enum values are used instead of enum instances"""
 
-        class Status(str, Enum):
+        class Status(StrEnum):
             ACTIVE = "active"
             INACTIVE = "inactive"
 

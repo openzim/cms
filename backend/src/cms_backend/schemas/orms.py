@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 from cms_backend.api.routes.fields import NotEmptyString
@@ -9,7 +9,7 @@ from cms_backend.schemas import BaseModel
 T = TypeVar("T")
 
 
-class ListResult(BaseModel, Generic[T]):
+class ListResult[T](BaseModel):
     nb_records: int
     records: list[T]
 

@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from http import HTTPStatus
 from typing import Any
+from uuid import UUID
 
 import pytest
 from dateutil.parser import isoparse
@@ -392,7 +393,6 @@ def test_get_zimfarm_notifications_filter_by_id(
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
 ):
     """Test get zimfarm_notifications endpoint passes id filter to database layer"""
-    from uuid import UUID
 
     # Create notifications with specific UUIDs for partial matching
     notif1 = create_zimfarm_notification(

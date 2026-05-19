@@ -1,6 +1,7 @@
 import datetime
 from collections.abc import Callable
 from http import HTTPStatus
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -183,6 +184,7 @@ def test_get_books_combined_filters(
     ],
 )
 def test_get_books_filter_by_needs_attention(
+    *,
     client: TestClient,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -243,7 +245,6 @@ def test_get_books_filter_by_id(
     create_book: Callable[..., Book],
 ):
     """Test get books endpoint passes id filter to database layer"""
-    from uuid import UUID
 
     # Create books with specific UUIDs for partial matching
     book1 = create_book(
@@ -326,7 +327,6 @@ def test_get_book_by_id_not_found(
     book: Book,  # noqa: ARG001 - needed for conftest
 ):
     """Test get book by ID endpoint when book doesn't exist"""
-    from uuid import uuid4
 
     non_existent_id = uuid4()
     response = client.get(f"/v1/books/{non_existent_id}")

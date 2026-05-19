@@ -1,5 +1,5 @@
 import math
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import Field
 
@@ -16,7 +16,7 @@ class Paginator(BaseModel):
     page: int
 
 
-class ListResponse(BaseModel, Generic[T]):
+class ListResponse[T](BaseModel):
     meta: Paginator
     items: list[T]
 
