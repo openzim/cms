@@ -2,6 +2,7 @@ import math
 from collections.abc import Callable
 from datetime import timedelta
 from http import HTTPStatus
+from pathlib import Path
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -92,7 +93,6 @@ def _add_title_to_collection(
     path: str,
 ) -> None:
     """Helper to add a title to a collection"""
-    from pathlib import Path
 
     ct = CollectionTitle(path=Path(path))
     ct.title = title

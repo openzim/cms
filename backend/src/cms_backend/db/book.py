@@ -302,9 +302,8 @@ def determine_current_location_kind(
         ):
             return "quarantine"
 
-        if (
-            loc.warehouse_id == Context.staging_warehouse_id
-            and loc.path.is_relative_to(Context.staging_base_path)
+        if loc.warehouse_id == Context.staging_warehouse_id and loc.path.is_relative_to(
+            Context.staging_base_path
         ):
             return "staging"
 

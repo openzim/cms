@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from datetime import timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from faker import Faker
@@ -105,6 +105,7 @@ def test_get_next_notification_to_process_or_none(
     ],
 )
 def test_get_zimfarm_notifications_filters(
+    *,
     dbsession: OrmSession,
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
     create_book: Callable[..., Book],
@@ -289,7 +290,6 @@ def test_get_zimfarm_notifications_notification_id_filter(
     expected_ids: list[str],
 ):
     """Test that get_zimfarm_notifications works with notification_id filter"""
-    from uuid import UUID
 
     # Create notifications with specific UUIDs
     notif_mapping = {
@@ -343,7 +343,6 @@ def test_get_zimfarm_notifications_notification_id_combined_with_other_filters(
     create_book: Callable[..., Book],
 ):
     """Test notification_id filter combined with other filters"""
-    from uuid import UUID
 
     # Create notifications with specific characteristics
     notif1 = create_zimfarm_notification(

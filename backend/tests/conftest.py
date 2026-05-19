@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 from collections.abc import Callable, Generator
 from datetime import datetime
 from pathlib import Path

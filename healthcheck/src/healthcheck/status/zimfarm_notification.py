@@ -16,9 +16,9 @@ class PendingZimfarmNotifications(BaseModel):
     )
 
 
-async def check_zimfarm_notifications_processed() -> (
-    Result[PendingZimfarmNotifications]
-):
+async def check_zimfarm_notifications_processed() -> Result[
+    PendingZimfarmNotifications
+]:
     """Check that no zimfarm notifications stuck in pending state."""
     check_name = "cms-pending-zimfarm-notifications"
     received_before = getnow() - Context.zimfarm_notification_pending_delay
