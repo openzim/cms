@@ -1,7 +1,5 @@
 import datetime
-from collections import defaultdict
 from pathlib import Path
-from typing import cast
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
@@ -11,14 +9,13 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
-from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
+from cms_backend.db.book import delete_book, recover_book
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import (
-    Book,
     Collection,
     CollectionTitle,
     Title,
@@ -32,11 +29,8 @@ from cms_backend.schemas.orms import (
     TitleFullSchema,
     TitleLightSchema,
 )
+from cms_backend.utils import is_valid_uuid
 from cms_backend.utils.datetime import getnow
-from cms_backend.utils.filename import (
-    PERIOD_LENGTH,
-    get_period_and_suffix_from_filename,
-)
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
@@ -81,6 +75,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
             )
             for tc in title.collections
         ],
+        archived=title.archived,
     )
 
 
@@ -115,6 +110,20 @@ def get_title_by_name(session: OrmSession, *, name: str) -> Title:
     return title
 
 
+def get_title_or_none(session: OrmSession, title_identifier: str) -> Title | None:
+    if is_valid_uuid(title_identifier):
+        return get_title_by_id_or_none(session, title_id=UUID(title_identifier))
+    else:
+        return get_title_by_name_or_none(session, name=title_identifier)
+
+
+def get_title(session: OrmSession, title_identifier: str) -> Title:
+    if is_valid_uuid(title_identifier):
+        return get_title_by_id(session, title_id=UUID(title_identifier))
+    else:
+        return get_title_by_name(session, name=title_identifier)
+
+
 def get_titles(
     session: OrmSession,
     *,
@@ -123,6 +132,7 @@ def get_titles(
     name: str | None = None,
     omit_names: list[str] | None = None,
     collection_name: str | None = None,
+    archived: bool = False,
 ) -> ListResult[TitleLightSchema]:
     """Get a list of titles"""
 
@@ -131,9 +141,11 @@ def get_titles(
             Title.id.label("title_id"),
             Title.name.label("title_name"),
             Title.maturity.label("title_maturity"),
+            Title.archived.label("title_archived"),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
+        .distinct()
         .order_by(Title.name)
         .where(
             # If a client provides an argument i.e it is not None,
@@ -145,6 +157,7 @@ def get_titles(
                 | (name is None)
             ),
             (Title.name.not_in(omit_names or []) | (omit_names is None)),
+            (Title.archived.is_(archived)),
             (
                 Collection.name.ilike(
                     f"%{collection_name if collection_name is not None else ''}%"
@@ -161,11 +174,13 @@ def get_titles(
                 id=title_id,
                 name=title_name,
                 maturity=title_maturity,
+                archived=title_archived,
             )
             for (
                 title_id,
                 title_name,
                 title_maturity,
+                title_archived,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
@@ -235,6 +250,8 @@ def update_title(
     - Sets the needs_file_operation flag to true for these books
     """
     title = get_title_by_id(session, title_id=title_id)
+    if title.archived:
+        raise RecordDoesNotExistError("Title is archived")
 
     # Update maturity if provided
     if maturity is not None and maturity != title.maturity:
@@ -345,87 +362,96 @@ def update_title(
     return get_title_by_id(session, title_id=title.id)
 
 
-def sort_books_by_filename_period(books: list[Book]) -> list[Book]:
-    """Sort a list of books by period.
+def archive_title(
+    session: OrmSession,
+    title_identifier: str,
+) -> Title:
+    """Mark a title as archived.
 
-    Assumes:
-    - the book's location exists since it contains the filename of the book
+    All books belonging to the title are marked for deletion immediately
     """
+    title = get_title(session, title_identifier=title_identifier)
+    if title.archived:
+        raise RecordDoesNotExistError("Title is archived.")
 
-    def sort_fn(book: Book) -> tuple[str, int, str]:
-        period, suffix = get_period_and_suffix_from_filename(book.locations[0].filename)
-        return (period, len(suffix), suffix)
-
-    return sorted(
-        books,
-        key=sort_fn,
-        reverse=True,
-    )
-
-
-def apply_retention_rules(session: OrmSession, title: Title):
-    """Apply retention rules to `prod` books belonging to same title and flavour group.
-
-    The retention rules are described in https://wiki.openzim.org/wiki/ZIM_Updates
-    - Keep last version of two ZIM files from the two last distinct months (e.g
-        if we have `2024-04`, `2024-04a`, `2024-06`, `2024-06a`, `2024-06b`,
-        then we keep `2024-04a` and `2024-06b`)
-    - AND keep every version which is 30 days old or less.
-    """
-
+    title.archived = True
     now = getnow()
-    thirty_days_ago = (now - datetime.timedelta(days=30)).date()
+    title.events.append(f"{now}: marked title as archived.")
+    logger.info(f"marking books belonging to title {title.id} for deletion.")
 
-    books_by_flavour: dict[str, list[Book]] = defaultdict(list)
-    for book in session.scalars(
-        select(Book).where(
-            Book.title_id == title.id,
-            Book.has_error.is_(False),
-            Book.date.is_not(None),
-            Book.location_kind == "prod",
-            Book.needs_file_operation.is_(False),
-        )
-    ).all():
-        books_by_flavour[book.flavour or ""].append(book)
+    nb_deleted = 0
+    for book in title.books:
+        with session.begin_nested():
+            try:
+                delete_book(session, book_id=book.id)
+            except Exception:
+                logger.exception(f"error while deleting book {book.id}")
+            else:
+                nb_deleted += 1
 
-    books_to_delete: list[Book] = []
+    if nb_deleted:
+        title.events.append(f"{now}: marked books in title for deletion.")
 
-    for _, books in books_by_flavour.items():
-        # Group books by period (without the suffix)
-        books_by_period: dict[str, list[Book]] = defaultdict(list)
-        for book in books:
-            books_by_period[cast(str, book.date)[:PERIOD_LENGTH]].append(book)
-
-        sorted_periods = sorted(books_by_period.keys(), reverse=True)
-        # Keep latest version from each of the 2 most recent periods
-        books_to_keep: set[UUID] = set()
-
-        for period in sorted_periods[:2]:
-            sorted_books_by_period = sort_books_by_filename_period(
-                books_by_period[period]
-            )
-            books_to_keep.add(sorted_books_by_period[0].id)
-
-        for book in books:
-            book_date = datetime.date.fromisoformat(cast(str, book.date))
-            if book_date <= thirty_days_ago and book.id not in books_to_keep:
-                books_to_delete.append(book)
-
-    deletion_date = now + Context.book_deletion_delay
-
-    for book in books_to_delete:
-        logger.info(
-            f"Marking book {book.id} for deletion, deletion_date={deletion_date}"
-        )
-        book.location_kind = "to_delete"
-        book.deletion_date = deletion_date
-        book.needs_file_operation = True
-        book.events.append(
-            f"{now}: marked for deletion due to retention policy, "
-            f"will be deleted after {deletion_date}"
-        )
-        title.events.append(f"{now}: book {book.id} marked for deletion.")
-        session.add(book)
-        session.add(title)
-
+    session.add(title)
     session.flush()
+
+    return title
+
+
+def archive_titles(
+    session: OrmSession,
+    *,
+    title_names: list[str],
+) -> None:
+    """Archive a list of titles"""
+    for title_name in title_names:
+        archive_title(session, title_name)
+
+
+def restore_title(
+    session: OrmSession,
+    title_identifier: str,
+) -> Title:
+    """Remove a title from the archive status.
+
+    Restores books belonging to title that have not been deleted.
+    """
+
+    title = get_title(session, title_identifier=title_identifier)
+    if not title.archived:
+        raise RecordDoesNotExistError("Title is not archived.")
+
+    title.archived = False
+    now = getnow()
+    title.events.append(f"{now}: restored title from archive")
+    logger.info(
+        f"recovering books belonging to title {title.id} that have been marked for "
+        "deletion."
+    )
+    nb_recovered = 0
+    for book in title.books:
+        with session.begin_nested():
+            try:
+                recover_book(session, book.id)
+            except Exception:
+                logger.exception(f"error while restoring title book {book.id}")
+            else:
+                nb_recovered += 1
+
+    if nb_recovered:
+        title.events.append(f"{now}: recovered books in title for deletion.")
+
+    session.add(title)
+    session.flush()
+
+    return title
+
+
+def restore_titles(
+    session: OrmSession,
+    *,
+    title_names: list[str],
+) -> None:
+    """Restore a list of archived titles"""
+    for title_name in title_names:
+        restore_title(session, title_name)

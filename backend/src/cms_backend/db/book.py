@@ -9,7 +9,7 @@ from cms_backend.context import Context
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Book, ZimfarmNotification
-from cms_backend.db.title import apply_retention_rules
+from cms_backend.db.rules import apply_retention_rules
 from cms_backend.schemas.models import FileLocation
 from cms_backend.schemas.orms import BookFullSchema, BookLocationSchema
 from cms_backend.utils.datetime import getnow
@@ -98,6 +98,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         events=book.events,
         current_locations=current_locations,
         target_locations=target_locations,
+        title_archived=book.title.archived if book.title else False,
     )
 
 
@@ -218,6 +219,7 @@ def move_book(
     """Move a book in staging/prod to prod/staging.
 
     Destination location must be different from current location.
+    Book title must not be archived
     """
     book = get_book_or_none(
         session,
@@ -232,6 +234,9 @@ def move_book(
         raise RecordDoesNotExistError(
             f"Book {book_id} does not meet criteria to be moved."
         )
+
+    if book.title and book.title.archived:
+        raise ValueError(f"Book title {book.title_id} is currently archived")
 
     if book.location_kind == destination:
         raise ValueError("Book destination must be different from current location.")
@@ -318,6 +323,9 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
     )
     if book is None or (book.deletion_date and book.deletion_date <= now):
         raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
+
+    if book.title and book.title.archived:
+        raise ValueError(f"Book title {book.title_id} is currently archived")
 
     location_kind = determine_current_location_kind(book)
     book.needs_processing = False

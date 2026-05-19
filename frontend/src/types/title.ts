@@ -15,19 +15,17 @@ export interface TitleCollection extends BaseTitleCollection {
   collection_id: string
 }
 
-export interface Title {
-  id: string
-  name: string
-  maturity: string
-  events: string[]
-  books: BookLight[]
-  collections: TitleCollection[]
-}
-
 export interface TitleLight {
   id: string
   name: string
   maturity: string
+  archived: boolean
+}
+
+export interface Title extends TitleLight {
+  events: string[]
+  books: BookLight[]
+  collections: TitleCollection[]
 }
 
 export interface TitleCreate {

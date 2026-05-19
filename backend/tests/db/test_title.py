@@ -12,7 +12,13 @@ from cms_backend.db.models import (
     Event,
     Title,
 )
-from cms_backend.db.title import get_title_by_name_or_none, get_titles, update_title
+from cms_backend.db.title import (
+    archive_title,
+    get_title_by_name_or_none,
+    get_titles,
+    restore_title,
+    update_title,
+)
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
 
@@ -172,3 +178,78 @@ def test_update_title_collection_titles(
 
     target_locations = [loc for loc in book.locations if loc.status == "target"]
     assert len(target_locations) == 2
+
+
+def test_archive_title(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+):
+    """Test marking a book as archived"""
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test")
+    create_collection_title(title, collection, path="wikis")
+
+    # Create a book in prod
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    # Create current location for the book
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="old_path",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    title = archive_title(dbsession, str(title.id))
+
+    assert title.archived is True
+    for book in title.books:
+        assert book.location_kind == "to_delete"
+
+
+def test_restore_title(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+):
+    """Test restoration of archived title"""
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test")
+    create_collection_title(title, collection, path="wikis")
+
+    # Create a book in prod
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    # Create current location for the book
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="old_path",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    archive_title(dbsession, str(title.id))
+    title = restore_title(dbsession, str(title.id))
+
+    assert title.archived is False
+    for book in title.books:
+        assert book.location_kind == "prod"

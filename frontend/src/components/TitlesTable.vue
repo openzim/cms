@@ -3,9 +3,33 @@
     <v-card v-if="!errors.length" :class="{ loading: loading }" flat>
       <v-card-title
         v-if="showSelection || $slots.actions"
-        class="d-flex flex-column-reverse flex-sm-row align-sm-center justify-sm-end ga-2"
+        class="d-flex flex-column-reverse flex-sm-row align-sm-center justify-sm-start ga-2"
       >
         <slot name="actions" />
+        <v-btn
+          v-if="showSelection"
+          size="small"
+          variant="elevated"
+          color="warning"
+          :disabled="selectedTitles.length === 0"
+          @click="promptClearSelections"
+        >
+          <v-icon size="small" class="mr-1">mdi-checkbox-multiple-blank-outline</v-icon>
+          clear selections
+        </v-btn>
+
+        <ConfirmDialog
+          v-model="showClearConfirm"
+          title="Confirm Clear Selections"
+          message="Are you sure you want to clear your current selection?"
+          confirm-text="Proceed"
+          cancel-text="Abort"
+          confirm-color="warning"
+          icon="mdi-help-circle"
+          icon-color="warning"
+          @confirm="clearSelections"
+          @cancel="showClearConfirm = false"
+        />
       </v-card-title>
 
       <v-data-table-server
@@ -18,6 +42,7 @@
         class="elevation-1 cursor-pointer-table"
         item-value="name"
         :model-value="selectedTitles"
+        :show-select="showSelection"
         hover
         @update:model-value="handleSelectionChange"
         @update:options="onUpdateOptions"
@@ -55,6 +80,8 @@ import type { TitleLight } from '@/types/title'
 import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
 // Props
 interface Props {
   headers: { title: string; value: string }[]
@@ -74,7 +101,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   filters: () => ({ name: '', collection_name: '' }),
   selectedTitles: () => [],
-  showSelection: true,
+  showSelection: false,
 })
 
 // Define emits
@@ -90,6 +117,7 @@ const limits = [10, 20, 50, 100]
 const selectedLimit = ref(props.paginator.limit)
 
 const selectedTitles = computed(() => props.selectedTitles)
+const showClearConfirm = ref(false)
 
 function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
   const query = { ...route.query }
@@ -110,6 +138,15 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
 
 function handleSelectionChange(selection: string[]) {
   emit('selectionChanged', selection)
+}
+
+function promptClearSelections() {
+  showClearConfirm.value = true
+}
+
+function clearSelections() {
+  emit('selectionChanged', [])
+  showClearConfirm.value = false
 }
 
 function onRowClick(event: Event, { item }: { item: TitleLight }) {

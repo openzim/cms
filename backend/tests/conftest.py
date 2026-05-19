@@ -157,9 +157,11 @@ def create_title(
     def _create_title(
         *,
         name: str = "test_en_all",
+        archived: bool = False,
     ) -> Title:
         title = Title(
             name=name,
+            archived=archived,
         )
         dbsession.add(title)
         dbsession.flush()

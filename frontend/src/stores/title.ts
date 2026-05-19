@@ -10,7 +10,7 @@ export const useTitleStore = defineStore('title', () => {
   const title = ref<Title | null>(null)
   const errors = ref<string[]>([])
   const titles = ref<TitleLight[]>([])
-  const defaultLimit = ref<number>(Number(localStorage.getItem('recipes-table-limit') || 20))
+  const defaultLimit = ref<number>(Number(localStorage.getItem('titles-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
     page_size: defaultLimit.value,
@@ -46,6 +46,7 @@ export const useTitleStore = defineStore('title', () => {
     skip: number,
     name: string | undefined,
     collection_name: string | undefined,
+    archived: boolean = false,
   ) => {
     const service = await authStore.getApiService('titles')
     // filter out undefined values from params
@@ -55,6 +56,7 @@ export const useTitleStore = defineStore('title', () => {
         skip,
         name,
         collection_name,
+        archived: archived || undefined,
       }).filter(([, value]) => !!value),
     )
     try {
@@ -69,6 +71,32 @@ export const useTitleStore = defineStore('title', () => {
       console.error('Failed to fetch titles', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return null
+    }
+  }
+
+  const countTitles = async (
+    name: string | undefined,
+    collection_name: string | undefined,
+    archived: boolean = false,
+  ): Promise<number> => {
+    const service = await authStore.getApiService('titles')
+    const cleanedParams = Object.fromEntries(
+      Object.entries({
+        limit: 1,
+        skip: 0,
+        name,
+        collection_name,
+        archived: archived || undefined,
+      }).filter(([, value]) => !!value),
+    )
+    try {
+      const response = await service.get<null, ListResponse<TitleLight>>('', {
+        params: cleanedParams,
+      })
+      return response.meta.count
+    } catch (_error) {
+      console.error('Failed to count titles', _error)
+      return 0
     }
   }
 
@@ -102,6 +130,58 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const archiveTitle = async (titleName: string) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.patch<null, TitleLight>(`/${titleName}/archive`)
+      return true
+    } catch (_error) {
+      console.error('Failed to archive title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const restoreTitle = async (titleName: string) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.patch<null, TitleLight>(`/${titleName}/restore`)
+      return true
+    } catch (_error) {
+      console.error('Failed to restore title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const archiveTitles = async (titleNames: string[]) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ title_names: string[] }, null>('/archive', {
+        title_names: titleNames,
+      })
+      return true
+    } catch (_error) {
+      console.error('Failed to archive titles', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const restoreTitles = async (titleNames: string[]) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ title_names: string[] }, null>('/restore', {
+        title_names: titleNames,
+      })
+      return true
+    } catch (_error) {
+      console.error('Failed to restore titles', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
   return {
     // State
     title,
@@ -112,8 +192,13 @@ export const useTitleStore = defineStore('title', () => {
     // Actions
     fetchTitleById,
     fetchTitles,
+    countTitles,
     savePaginatorLimit,
     createTitle,
     updateTitle,
+    archiveTitle,
+    restoreTitle,
+    archiveTitles,
+    restoreTitles,
   }
 })

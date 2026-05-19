@@ -444,3 +444,46 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False
+
+
+class TestValidNotificationOnArchivedTitle:
+    """Test valid notifications that are associated to an archived title."""
+
+    def test_book_association_with_archived_title(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        title = create_title(name="test_en_all", archived=True)
+        title.maturity = "robust"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id is None
+        assert book.needs_processing is False
+        assert any(
+            "cannot add book to title because title is archived" in event
+            for event in book.events
+        )

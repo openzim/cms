@@ -1,19 +1,30 @@
+from http import HTTPStatus
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import model_validator
+from fastapi import APIRouter, Depends, Query, Response
+from pydantic import Field, model_validator
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import require_permission
+from cms_backend.api.routes.dependencies import (
+    get_current_account_or_none,
+    require_permission,
+)
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
+from cms_backend.api.routes.http_errors import ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
+from cms_backend.db.account import check_account_permission
+from cms_backend.db.models import Account
+from cms_backend.db.title import archive_title as db_archive_title
+from cms_backend.db.title import archive_titles as db_archive_titles
 from cms_backend.db.title import create_title as db_create_title
 from cms_backend.db.title import create_title_full_schema
 from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_title_by_name as db_get_title_by_name
 from cms_backend.db.title import get_titles as db_get_titles
+from cms_backend.db.title import restore_title as db_restore_title
+from cms_backend.db.title import restore_titles as db_restore_titles
 from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import (
@@ -31,6 +42,11 @@ class TitlesGetSchema(BaseModel):
     limit: LimitFieldMax200 = 20
     name: NotEmptyString | None = None
     collection_name: NotEmptyString | None = None
+    archived: bool = False
+
+
+class RestoreTitlesSchema(BaseModel):
+    title_names: list[NotEmptyString] = Field(default_factory=list)
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):
@@ -65,13 +81,20 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
 def get_titles(
     params: Annotated[TitlesGetSchema, Query()],
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account | None = Depends(get_current_account_or_none),
 ) -> ListResponse[TitleLightSchema]:
+    if params.archived and not (
+        current_account
+        and check_account_permission(current_account, namespace="title", name="archive")
+    ):
+        raise ForbiddenError("You are not allowed to view archived titles.")
     results = db_get_titles(
         session,
         skip=params.skip,
         limit=params.limit,
         name=params.name,
         collection_name=params.collection_name,
+        archived=params.archived,
     )
     return ListResponse[TitleLightSchema](
         meta=calculate_pagination_metadata(
@@ -115,6 +138,7 @@ def create_title(
         id=title.id,
         name=title.name,
         maturity=title.maturity,
+        archived=title.archived,
     )
 
 
@@ -139,4 +163,77 @@ def update_title(
         id=title.id,
         name=title.name,
         maturity=title.maturity,
+        archived=title.archived,
+    )
+
+
+@router.post(
+    "/archive",
+    dependencies=[Depends(require_permission(namespace="title", name="archive"))],
+)
+def archive_titles(
+    request: RestoreTitlesSchema,
+    session: OrmSession = Depends(gen_dbsession),
+) -> Response:
+    db_archive_titles(
+        session,
+        title_names=request.title_names,
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.post(
+    "/restore",
+    dependencies=[Depends(require_permission(namespace="title", name="archive"))],
+)
+def restore_archived_titles(
+    request: RestoreTitlesSchema,
+    session: OrmSession = Depends(gen_dbsession),
+) -> Response:
+    db_restore_titles(
+        session,
+        title_names=request.title_names,
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.patch(
+    "/{title_id}/archive",
+    dependencies=[Depends(require_permission(namespace="title", name="archive"))],
+)
+def archive_title(
+    title_id: NotEmptyString,
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleLightSchema:
+    """Mark a title as archived"""
+    title = db_archive_title(
+        session,
+        title_identifier=title_id,
+    )
+    return TitleLightSchema(
+        id=title.id,
+        name=title.name,
+        maturity=title.maturity,
+        archived=title.archived,
+    )
+
+
+@router.patch(
+    "/{title_id}/restore",
+    dependencies=[Depends(require_permission(namespace="title", name="archive"))],
+)
+def restore_archived_title(
+    title_id: NotEmptyString,
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleLightSchema:
+    """Restore an archived title"""
+    title = db_restore_title(
+        session,
+        title_identifier=title_id,
+    )
+    return TitleLightSchema(
+        id=title.id,
+        name=title.name,
+        maturity=title.maturity,
+        archived=title.archived,
     )

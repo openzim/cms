@@ -22,6 +22,7 @@ class TitleLightSchema(BaseModel):
     id: UUID
     name: str
     maturity: str | None
+    archived: bool
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -115,6 +116,7 @@ class BookFullSchema(BookLightSchema):
     events: list[str]
     current_locations: list[BookLocationSchema]
     target_locations: list[BookLocationSchema]
+    title_archived: bool
 
 
 class WarehousePathSchema(BaseModel):

@@ -18,6 +18,12 @@ def process_book(session: ORMSession, book: Book):
         if not title:
             return
 
+        if title.archived:
+            book.events.append(
+                f"{getnow()}: cannot add book to title because title is archived"
+            )
+            return
+
         add_book_to_title(session, book, title)
 
     finally:

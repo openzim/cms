@@ -47,6 +47,7 @@ def test_get_titles(
         "id",
         "name",
         "maturity",
+        "archived",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
@@ -239,6 +240,7 @@ def test_get_title_by_id(
         "events",
         "books",
         "collections",
+        "archived",
     }
 
     # Verify field values
@@ -396,3 +398,117 @@ def test_update_title_with_existing_title_name(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.CONFLICT
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_archive_title_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test archiving a title with different roles"""
+    title = create_title(name="wikipedia_en_test")
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.patch(
+        f"/v1/titles/{title.id}/archive",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.NO_CONTENT, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_archive_multiple_titles_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test archiving multiple titles with different roles"""
+    title1 = create_title(name="wikipedia_en_test")
+    title2 = create_title(name="wikipedia_fr_test")
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.post(
+        "/v1/titles/archive",
+        json={"title_names": [title1.name, title2.name]},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_restore_archived_title_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test restoring an archived title with different roles"""
+    title = create_title(name="wikipedia_en_test", archived=True)
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.patch(
+        f"/v1/titles/{title.id}/restore",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.NO_CONTENT, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_restore_multiple_titles_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test archiving multiple titles with different roles"""
+    title1 = create_title(name="wikipedia_en_test", archived=True)
+    title2 = create_title(name="wikipedia_fr_test", archived=True)
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.post(
+        "/v1/titles/restore",
+        json={"title_names": [title1.name, title2.name]},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code

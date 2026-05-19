@@ -287,7 +287,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
 import type { Book, ZimUrl } from '@/types/book'
 import { formatDt, fromNow } from '@/utils/format'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 
 const { smAndDown } = useDisplay()
@@ -327,7 +327,8 @@ const canMoveBook = computed(() => {
     book.value.current_locations.length > 0 &&
     !book.value.has_error &&
     !book.value.needs_file_operation &&
-    !book.value.needs_processing
+    !book.value.needs_processing &&
+    !book.value.title_archived
   )
 })
 
@@ -353,14 +354,15 @@ const canRecoverBook = computed(() => {
     book.value.location_kind === 'to_delete' &&
     book.value.needs_file_operation &&
     !book.value.needs_processing &&
-    hasFutureDeletionDate
+    hasFutureDeletionDate &&
+    !book.value.title_archived
   )
 })
 
-const loadData = async () => {
+const loadData = async (forceReload: boolean = false) => {
   loadingStore.startLoading('Fetching book...')
 
-  const data = await bookStore.fetchBook(props.id)
+  const data = await bookStore.fetchBook(props.id, forceReload)
   if (data) {
     error.value = null
     book.value = data
@@ -399,8 +401,16 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
-  await loadData()
+  await loadData(true)
 })
+
+// Watch for book id changes (e.g. navigating between books without remounting)
+watch(
+  () => props.id,
+  async () => {
+    await loadData(true)
+  },
+)
 
 const copyToClipboard = async (text: string) => {
   try {

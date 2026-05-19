@@ -198,6 +198,7 @@ class Title(Base):
     name: Mapped[str] = mapped_column(unique=True, index=True)
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="dev")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
+    archived: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
