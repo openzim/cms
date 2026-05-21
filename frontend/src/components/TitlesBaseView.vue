@@ -132,7 +132,10 @@ const props = withDefaults(
 // Define headers for the table
 const headers = [
   { title: 'Name', value: 'name' },
-  { title: 'Maturity', value: 'maturity' },
+  {
+    title: 'Maturity',
+    value: 'maturity',
+  },
 ]
 
 // Reactive state

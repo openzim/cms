@@ -501,13 +501,13 @@ def process_zim_file(
             get_collection(session, UUID("96fb60c0-2de6-46bd-8e67-41213298a5e8"))
         ]
         title_path = get_kiwix_path_from_staging_name(normalized_name)
-        title_maturity = "dev"
+        title_maturity = "unstable"
     else:
         collections = find_collections_for_zim(
             session, warehouse_id, zim_path_in_warehouse
         )
         title_path = zim_path_in_warehouse.parent
-        title_maturity = "robust"
+        title_maturity = "stable"
 
     if not collections:
         logger.error(

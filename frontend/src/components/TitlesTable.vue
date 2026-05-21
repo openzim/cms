@@ -57,6 +57,26 @@
           </div>
         </template>
 
+        <template #[`header.maturity`]="{ column }">
+          <div class="d-flex align-center">
+            <span>{{ column.title }}</span>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-icon v-bind="tooltipProps" size="small" class="ml-1" color="grey-darken-1">
+                  mdi-information-outline
+                </v-icon>
+              </template>
+              <div>
+                <div>
+                  <strong>Unstable:</strong> ZIM files go through staging first before moving to
+                  production
+                </div>
+                <div><strong>Stable:</strong> ZIM files go directly to production</div>
+              </div>
+            </v-tooltip>
+          </div>
+        </template>
+
         <template #[`item.name`]="{ item }">
           <span class="d-flex align-center">
             {{ item.name }}
