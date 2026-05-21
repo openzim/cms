@@ -128,7 +128,7 @@ def test_create_title_all_fields(
     collection = create_collection(name="wikipedia")
     title_data = {
         "name": "wikipedia_en_test",
-        "maturity": "dev",
+        "maturity": "unstable",
         "collection_titles": [
             {
                 "collection_name": "wikipedia",
@@ -149,7 +149,7 @@ def test_create_title_all_fields(
     assert "name" in data
     assert data["name"] == "wikipedia_en_test"
     assert "maturity" in data
-    assert data["maturity"] == "dev"
+    assert data["maturity"] == "unstable"
 
     # Verify the title was created in the database and belongs to the collection
     title = dbsession.get(Title, data["id"])
@@ -174,7 +174,7 @@ def test_create_title_with_duplicate_collection_name(
     """Test creating a title with the same collection repeated."""
     title_data = {
         "name": "wikipedia_en_test",
-        "maturity": "dev",
+        "maturity": "unstable",
         "collection_titles": [
             {
                 "collection_name": "wikipedia",
@@ -328,7 +328,7 @@ def test_update_title_required_permissions(
     """Test updating a title with different roles"""
     title = create_title(name="wikipedia_en_test")
     update_data = {
-        "maturity": "robust",
+        "maturity": "stable",
     }
 
     account = create_account(permission=permission)
@@ -351,10 +351,10 @@ def test_update_title(
 ):
     """Test updating a title's data"""
     title = create_title(name="wikipedia_en_test")
-    assert title.maturity == "dev"
+    assert title.maturity == "unstable"
 
     update_data = {
-        "maturity": "robust",
+        "maturity": "stable",
         "name": "wikipedia_en",
     }
 
@@ -368,7 +368,7 @@ def test_update_title(
 
     assert data["id"] == str(title.id)
     assert data["name"] == "wikipedia_en"
-    assert data["maturity"] == "robust"
+    assert data["maturity"] == "stable"
 
     events = dbsession.scalars(
         select(Event).where(Event.topic == "title_modified")
@@ -388,7 +388,7 @@ def test_update_title_with_existing_title_name(
     create_title(name="wikipedia_fr_test")
     title = create_title(name="wikipedia_en_test")
     update_data = {
-        "maturity": "robust",
+        "maturity": "stable",
         "name": "wikipedia_fr_test",
     }
 

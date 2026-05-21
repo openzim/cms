@@ -16,15 +16,20 @@
             class="mb-2"
           />
 
-          <v-select
-            v-model="formData.maturity"
-            label="Maturity"
-            :items="maturityOptions"
-            :rules="[rules.required]"
-            variant="outlined"
+          <v-switch
+            v-model="isStable"
+            color="primary"
             density="comfortable"
             class="mb-2"
-          />
+            :hint="maturityHint"
+            persistent-hint
+          >
+            <template #label>
+              <span class="text-subtitle-1"
+                >Maturity: <strong>{{ formData.maturity }}</strong></span
+              >
+            </template>
+          </v-switch>
 
           <v-divider class="my-4" />
 
@@ -157,12 +162,26 @@ const loading = ref(false)
 const loadingCollections = ref(false)
 const error = ref('')
 
-const maturityOptions = ['dev', 'robust']
-
 const formData = ref<TitleCreate>({
   name: '',
-  maturity: 'dev',
+  maturity: 'unstable',
   collection_titles: [],
+})
+
+const maturityHint = computed(() => {
+  if (formData.value.maturity === 'unstable') {
+    return 'ZIM files will go through staging first before moving to production.'
+  } else if (formData.value.maturity === 'stable') {
+    return 'ZIM files will go directly to production.'
+  }
+  return ''
+})
+
+const isStable = computed({
+  get: () => formData.value.maturity === 'stable',
+  set: (value: boolean) => {
+    formData.value.maturity = value ? 'stable' : 'unstable'
+  },
 })
 
 const originalCollections = ref<BaseTitleCollection[]>([])
@@ -373,7 +392,7 @@ function resetForm() {
   } else {
     formData.value = {
       name: '',
-      maturity: 'dev',
+      maturity: 'unstable',
       collection_titles: [],
     }
     originalCollections.value = []

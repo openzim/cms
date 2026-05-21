@@ -40,9 +40,9 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         )
 
         # Determine if this book goes to staging or prod based on title maturity
-        # For now, only 'robust' maturity move straight to prod, other maturity moves
+        # For now, only 'stable' maturity move straight to prod, other maturity moves
         # through staging first
-        goes_to_staging = title.maturity != "robust"
+        goes_to_staging = title.maturity != "stable"
 
         target_locations = (
             [

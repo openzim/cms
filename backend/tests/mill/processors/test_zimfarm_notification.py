@@ -236,10 +236,10 @@ class TestValidNotificationMissingZimMetadata:
         assert book.needs_file_operation is False
 
 
-class TestValidNotificationWithMatchingTitleDevMaturity:
-    """Test valid notifications that match an existing title with dev maturity.
+class TestValidNotificationWithMatchingTitleUnstableMaturity:
+    """Test valid notifications that match an existing title with unstable maturity.
 
-    Dev maturity titles should have their books moved to staging.
+    Unstable maturity titles should have their books moved to staging.
     """
 
     def test_moves_book_to_staging(
@@ -249,10 +249,12 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
     ):
-        """Valid notification + matching dev maturity title → book moves to staging."""
+        """
+        Valid notification + matching unstable maturity title → book moves to staging.
+        """
         # Create title that matches book name
         title = create_title(name="test_en_all")
-        title.maturity = "dev"
+        title.maturity = "unstable"
         dbsession.flush()
 
         notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -291,12 +293,12 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
         create_title: Callable[..., Title],
     ):
         """
-        Valid notification with empty folder_name + dev maturity title → book
+        Valid notification with empty folder_name + unstable maturity title → book
         moves to staging.
         """
         # Create title that matches book name
         title = create_title(name="test_en_all")
-        title.maturity = "dev"
+        title.maturity = "unstable"
         dbsession.flush()
 
         content = VALID_NOTIFICATION_CONTENT.copy()
@@ -329,10 +331,10 @@ class TestValidNotificationWithMatchingTitleDevMaturity:
         assert book.needs_processing is False
 
 
-class TestValidNotificationWithMatchingTitleRobustMaturity:
-    """Test valid notifications that match a robust maturity title.
+class TestValidNotificationWithMatchingTitleStableMaturity:
+    """Test valid notifications that match a stable maturity title.
 
-    Robust maturity titles have their books moved directly to production collections.
+    Stable maturity titles have their books moved directly to production collections.
     """
 
     def test_moves_book_to_collection_warehouses(
@@ -344,10 +346,10 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
     ):
-        """Valid notification + robust title → book has collection warehouse targets."""
+        """Valid notification + stable title → book has collection warehouse targets."""
 
         title = create_title(name="test_en_all")
-        title.maturity = "robust"
+        title.maturity = "stable"
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -398,12 +400,12 @@ class TestValidNotificationWithMatchingTitleRobustMaturity:
         create_warehouse: Callable[..., Warehouse],
     ):
         """
-        Valid notification with empty folder_name + robust title → book has collection
+        Valid notification with empty folder_name + stable title → book has collection
         warehouse targets.
         """
 
         title = create_title(name="test_en_all")
-        title.maturity = "robust"
+        title.maturity = "stable"
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -459,7 +461,7 @@ class TestValidNotificationOnArchivedTitle:
         create_warehouse: Callable[..., Warehouse],
     ):
         title = create_title(name="test_en_all", archived=True)
-        title.maturity = "robust"
+        title.maturity = "stable"
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")

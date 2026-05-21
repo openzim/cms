@@ -69,12 +69,12 @@ class BaseTitleCreateUpdateSchema(BaseModel):
 
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString
-    maturity: Literal["dev", "robust"] = "dev"
+    maturity: Literal["unstable", "stable"] = "unstable"
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString | None = None
-    maturity: Literal["dev", "robust"] | None = None
+    maturity: Literal["unstable", "stable"] | None = None
 
 
 @router.get("")
