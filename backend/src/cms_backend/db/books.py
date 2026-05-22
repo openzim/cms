@@ -82,7 +82,7 @@ def get_books(
         stmt = stmt.where(
             or_(
                 Book.location_kind.in_(["quarantine", "staging"]),
-                Book.title_id.is_(None),
+                and_(Book.title_id.is_(None), Book.location_kind.not_in(["deleted"])),
                 Book.needs_processing.is_(True),
                 Book.needs_file_operation.is_(True),
                 Book.has_error.is_(True),
