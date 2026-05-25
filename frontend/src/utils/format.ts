@@ -1,3 +1,5 @@
+import { filesize } from 'filesize'
+
 import { DateTime } from 'luxon'
 
 export function fromNow(value: string) {
@@ -13,4 +15,8 @@ export function formatDt(value?: string, format: string = 'fff') {
   const dt = DateTime.fromISO(value)
   if (!dt.isValid) return value
   return dt.toFormat(format)
+}
+
+export function formattedBytesSize(value: number) {
+  return filesize(value, { base: 2, standard: 'iec', precision: 3 }) // display in KiB, MiB,... instead of KB, MB,...
 }

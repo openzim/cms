@@ -42,7 +42,7 @@ NOTIFICATIONS_CONFIG = [
         "media_count": 5000,
         "size": 1024000000,
         "metadata": {
-            "Name": "wikipedia_en_all",
+            "Name": "dev_wikipedia_en_all",
             "Title": "Wikipedia English All Maxi",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -53,14 +53,14 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_BLUE,
         },
         "folder_name": "wikipedia",
-        "filename": "wikipedia_en_all_maxi_2025-01.zim",
+        "filename": "dev_wikipedia_en_all_maxi_2025-01.zim",
     },
     {
         "article_count": 500,
         "media_count": 200,
         "size": 50000000,
         "metadata": {
-            "Name": "wiktionary_fr_all",
+            "Name": "dev_wiktionary_fr_all",
             "Title": "Wiktionnaire Francais",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -71,14 +71,14 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_GREEN,
         },
         "folder_name": "wiktionary",
-        "filename": "wiktionary_fr_all_maxi_2025-01.zim",
+        "filename": "dev_wiktionary_fr_all_maxi_2025-01.zim",
     },
     {
         "article_count": 1500,
         "media_count": 2020,
         "size": 40000,
         "metadata": {
-            "Name": "wiktionary_en_all",
+            "Name": "dev_wiktionary_en_all",
             "Title": "English Wiktionary",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -89,7 +89,7 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_RED,
         },
         "folder_name": "",
-        "filename": "wiktionary_en_all_maxi_2025-01.zim",
+        "filename": "dev_wiktionary_en_all_maxi_2025-01.zim",
     },
 ]
 
@@ -109,7 +109,7 @@ def create_notifications():
 
             # Check if file already exists in warehouse
             file_path = (
-                WAREHOUSE_BASE_PATH / "hidden/quarantine" / folder_name / filename
+                WAREHOUSE_BASE_PATH / "dev_hidden/quarantine" / folder_name / filename
             )
             if file_path.exists():
                 print(f"  - File already exists at {file_path} (skipping)")

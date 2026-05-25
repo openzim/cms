@@ -113,7 +113,6 @@ export const useTitleStore = defineStore('title', () => {
     } catch (_error) {
       console.error('Failed to create title', _error)
       errors.value = translateErrors(_error as ErrorResponse)
-      throw _error
     }
   }
 
@@ -126,7 +125,6 @@ export const useTitleStore = defineStore('title', () => {
     } catch (_error) {
       console.error('Failed to update title', _error)
       errors.value = translateErrors(_error as ErrorResponse)
-      throw _error
     }
   }
 

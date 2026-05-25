@@ -17,11 +17,11 @@ from cms_backend.db.models import Collection
 
 # Configuration: Define collections
 COLLECTIONS_CONFIG = {
-    "prod": {
+    "dev_prod": {
         "id": UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         "warehouse_id": UUID("22222222-2222-2222-2222-222222222222"),
     },
-    "client1": {
+    "dev_client1": {
         "id": UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
         "warehouse_id": UUID("33333333-3333-3333-3333-333333333333"),
     },

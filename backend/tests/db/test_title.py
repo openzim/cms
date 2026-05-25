@@ -253,3 +253,76 @@ def test_restore_title(
     assert title.archived is False
     for book in title.books:
         assert book.location_kind == "prod"
+
+
+def test_update_title_metadata(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+):
+    """Test updating title metadata fields"""
+    title = create_title(name="wikipedia_en_test")
+
+    updated_title = update_title(
+        dbsession,
+        title_id=title.id,
+        _title="Wikipedia in English",
+        creator="Wikipedia Contributors",
+        publisher="Kiwix",
+        language="eng",
+        description="A free encyclopedia",
+        long_description="Wikipedia is a free online encyclopedia.",
+        illustration_48x48_at_1="data:image/png;base64,test",
+        license_="CC-BY-SA",
+        relation="wikipedia",
+        source="https://en.wikipedia.org",
+    )
+
+    dbsession.refresh(updated_title)
+    assert updated_title.title == "Wikipedia in English"
+    assert updated_title.creator == "Wikipedia Contributors"
+    assert updated_title.publisher == "Kiwix"
+    assert updated_title.language == "eng"
+    assert updated_title.description == "A free encyclopedia"
+    assert updated_title.long_description == "Wikipedia is a free online encyclopedia."
+    assert updated_title.illustration_48x48_at_1 == "data:image/png;base64,test"
+    assert updated_title.license == "CC-BY-SA"
+    assert updated_title.relation == "wikipedia"
+    assert updated_title.source == "https://en.wikipedia.org"
+
+    assert any("title updated" in event for event in updated_title.events)
+    assert any("creator updated" in event for event in updated_title.events)
+    assert any("publisher updated" in event for event in updated_title.events)
+    assert any("language updated" in event for event in updated_title.events)
+    assert any("description updated" in event for event in updated_title.events)
+    assert any("long description updated" in event for event in updated_title.events)
+    assert any("license updated" in event for event in updated_title.events)
+    assert any("relation updated" in event for event in updated_title.events)
+    assert any("source updated" in event for event in updated_title.events)
+
+
+def test_update_title_metadata_no_change(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+):
+    """Test updating title with same values doesn't create events"""
+    title = create_title(name="wikipedia_en_test")
+
+    update_title(
+        dbsession,
+        title_id=title.id,
+        _title="Wikipedia",
+        creator="Contributors",
+    )
+    dbsession.refresh(title)
+
+    initial_event_count = len(title.events)
+
+    update_title(
+        dbsession,
+        title_id=title.id,
+        _title="Wikipedia",
+        creator="Contributors",
+    )
+    dbsession.refresh(title)
+
+    assert len(title.events) == initial_event_count

@@ -48,6 +48,16 @@ def test_get_titles(
         "name",
         "maturity",
         "archived",
+        "title",
+        "creator",
+        "publisher",
+        "description",
+        "language",
+        "illustration_48x48_at_1",
+        "long_description",
+        "relation",
+        "source",
+        "license",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
@@ -62,12 +72,19 @@ def test_get_titles(
 def test_create_title_required_permissions(
     client: TestClient,
     create_account: Callable[..., Account],
+    illustration_48x48_at_1: str,
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
     """Test creating a title with different roles"""
     title_data = {
         "name": "wikipedia_en_test",
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
     }
 
     account = create_account(permission=permission)
@@ -86,10 +103,17 @@ def test_create_title_required_fields_only(
     client: TestClient,
     dbsession: OrmSession,
     access_token: str,
+    illustration_48x48_at_1: str,
 ):
     """Test creating a title with only required fields"""
     title_data = {
         "name": "wikipedia_en_test",
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
     }
 
     response = client.post(
@@ -103,6 +127,12 @@ def test_create_title_required_fields_only(
     assert "id" in data
     assert "name" in data
     assert data["name"] == "wikipedia_en_test"
+    assert data["title"] == "Wikipedia in English"
+    assert data["creator"] == "Wikipedia Contributors"
+    assert data["publisher"] == "Kiwix"
+    assert data["language"] == "eng"
+    assert data["description"] == "A free encyclopedia"
+    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
 
     # Verify the title was created in the database
     title = dbsession.get(Title, data["id"])
@@ -123,12 +153,23 @@ def test_create_title_all_fields(
     dbsession: OrmSession,
     create_collection: Callable[..., Collection],
     access_token: str,
+    illustration_48x48_at_1: str,
 ):
     """Test creating a title with all fields"""
     collection = create_collection(name="wikipedia")
     title_data = {
         "name": "wikipedia_en_test",
         "maturity": "unstable",
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "long_description": "Wikipedia is a free online encyclopedia.",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
+        "license": "CC-BY-SA",
+        "relation": "wikipedia",
+        "source": "https://en.wikipedia.org",
         "collection_titles": [
             {
                 "collection_name": "wikipedia",
@@ -150,11 +191,31 @@ def test_create_title_all_fields(
     assert data["name"] == "wikipedia_en_test"
     assert "maturity" in data
     assert data["maturity"] == "unstable"
+    assert data["title"] == "Wikipedia in English"
+    assert data["creator"] == "Wikipedia Contributors"
+    assert data["publisher"] == "Kiwix"
+    assert data["language"] == "eng"
+    assert data["description"] == "A free encyclopedia"
+    assert data["long_description"] == "Wikipedia is a free online encyclopedia."
+    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert data["license"] == "CC-BY-SA"
+    assert data["relation"] == "wikipedia"
+    assert data["source"] == "https://en.wikipedia.org"
 
     # Verify the title was created in the database and belongs to the collection
     title = dbsession.get(Title, data["id"])
     assert title is not None
     assert title.name == "wikipedia_en_test"
+    assert title.title == "Wikipedia in English"
+    assert title.creator == "Wikipedia Contributors"
+    assert title.publisher == "Kiwix"
+    assert title.language == "eng"
+    assert title.description == "A free encyclopedia"
+    assert title.long_description == "Wikipedia is a free online encyclopedia."
+    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert title.license == "CC-BY-SA"
+    assert title.relation == "wikipedia"
+    assert title.source == "https://en.wikipedia.org"
     assert str(title.collections[0].path) == "wikis"
     assert title.collections[0].collection_id == collection.id
 
@@ -170,11 +231,18 @@ def test_create_title_all_fields(
 def test_create_title_with_duplicate_collection_name(
     client: TestClient,
     access_token: str,
+    illustration_48x48_at_1: str,
 ):
     """Test creating a title with the same collection repeated."""
     title_data = {
         "name": "wikipedia_en_test",
         "maturity": "unstable",
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
         "collection_titles": [
             {
                 "collection_name": "wikipedia",
@@ -195,10 +263,17 @@ def test_create_title_with_duplicate_collection_name(
 def test_create_title_duplicate_name(
     client: TestClient,
     access_token: str,
+    illustration_48x48_at_1: str,
 ):
     """Test creating a title with duplicate name returns conflict error"""
     title_data = {
         "name": "wikipedia_en_duplicate",
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
     }
 
     # Create the first title
@@ -241,6 +316,16 @@ def test_get_title_by_id(
         "books",
         "collections",
         "archived",
+        "title",
+        "creator",
+        "publisher",
+        "description",
+        "language",
+        "illustration_48x48_at_1",
+        "long_description",
+        "relation",
+        "source",
+        "license",
     }
 
     # Verify field values
@@ -293,6 +378,7 @@ def test_get_title_by_id_with_books(
         "date",
         "flavour",
         "deletion_date",
+        "issues",
     }
     assert data["books"][0]["title_id"] == str(title.id)
     assert data["books"][1]["title_id"] == str(title.id)
@@ -398,6 +484,64 @@ def test_update_title_with_existing_title_name(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.CONFLICT
+
+
+def test_update_title_metadata(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    access_token: str,
+    illustration_48x48_at_1: str,
+):
+    """Test updating a title's metadata fields"""
+    title = create_title(name="wikipedia_en_test")
+
+    update_data = {
+        "title": "Wikipedia in English",
+        "creator": "Wikipedia Contributors",
+        "publisher": "Kiwix",
+        "language": "eng",
+        "description": "A free encyclopedia",
+        "long_description": "Wikipedia is a free online encyclopedia.",
+        "illustration_48x48_at_1": illustration_48x48_at_1,
+        "license": "CC-BY-SA",
+        "relation": "wikipedia",
+        "source": "https://en.wikipedia.org",
+    }
+
+    response = client.patch(
+        f"/v1/titles/{title.id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    assert data["id"] == str(title.id)
+    assert data["name"] == "wikipedia_en_test"
+    assert data["title"] == "Wikipedia in English"
+    assert data["creator"] == "Wikipedia Contributors"
+    assert data["publisher"] == "Kiwix"
+    assert data["language"] == "eng"
+    assert data["description"] == "A free encyclopedia"
+    assert data["long_description"] == "Wikipedia is a free online encyclopedia."
+    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert data["license"] == "CC-BY-SA"
+    assert data["relation"] == "wikipedia"
+    assert data["source"] == "https://en.wikipedia.org"
+
+    # Verify the metadata was updated in the database
+    dbsession.refresh(title)
+    assert title.title == "Wikipedia in English"
+    assert title.creator == "Wikipedia Contributors"
+    assert title.publisher == "Kiwix"
+    assert title.language == "eng"
+    assert title.description == "A free encyclopedia"
+    assert title.long_description == "Wikipedia is a free online encyclopedia."
+    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert title.license == "CC-BY-SA"
+    assert title.relation == "wikipedia"
+    assert title.source == "https://en.wikipedia.org"
 
 
 @pytest.mark.parametrize(

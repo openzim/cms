@@ -9,6 +9,7 @@ from cms_backend.db.collection import LibraryBookData
 from cms_backend.db.models import (
     Book,
     BookLocation,
+    Title,
 )
 
 
@@ -27,9 +28,11 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
     stmt = (
         select(
             Book,
+            Title,
             BookLocation.filename,
         )
         .join(BookLocation)
+        .join(Title, Book.title_id == Title.id)
         .where(
             and_(
                 Book.location_kind == "staging",
@@ -46,6 +49,7 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
     return [
         LibraryBookData(
             book=cast(Book, row.Book),
+            title=cast(Title, row.Title),
             # staging download url is supposed to contain the whole path already
             # for convenience in deployment
             path=Path(""),

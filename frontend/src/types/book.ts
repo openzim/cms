@@ -21,6 +21,7 @@ export interface BookLight {
   needs_file_operation: boolean
   location_kind: LocationKind
   created_at: string
+  issues: string[]
   deletion_date?: string
   name?: string
   date?: string

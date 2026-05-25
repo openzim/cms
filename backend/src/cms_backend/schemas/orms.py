@@ -23,6 +23,16 @@ class TitleLightSchema(BaseModel):
     name: str
     maturity: str | None
     archived: bool
+    title: str | None
+    creator: str | None
+    publisher: str | None
+    description: str | None
+    language: str | None
+    illustration_48x48_at_1: str | None
+    long_description: str | None
+    license: str | None
+    relation: str | None
+    source: str | None
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -105,6 +115,7 @@ class BookLightSchema(BaseModel):
     name: str | None
     date: str | None
     flavour: str | None
+    issues: list[str]
 
 
 class BookFullSchema(BookLightSchema):

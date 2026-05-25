@@ -90,6 +90,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         date=book.date,
         deletion_date=book.deletion_date,
         flavour=book.flavour,
+        issues=book.issues,
         article_count=book.article_count,
         media_count=book.media_count,
         size=book.size,
@@ -337,6 +338,37 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
     session.add(book)
     session.flush()
     return book
+
+
+def get_differing_metadata_keys(book: Book) -> list[str]:
+    """Get the list of metadata keys that are different between book and it's title.
+
+    Assumes book and title both have mandatory metadata set.
+    Assumes that the book name and title name already match, thus aren't checked.
+    """
+
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    book_metadata = {
+        "Title": book.zim_metadata["Title"],
+        "Creator": book.zim_metadata["Creator"],
+        "Publisher": book.zim_metadata["Publisher"],
+        "Description": book.zim_metadata["Description"],
+        "Language": book.zim_metadata["Language"],
+        "Illustration_48x48@1": book.zim_metadata["Illustration_48x48@1"],
+    }
+
+    title_metadata = {
+        "Title": book.title.title,
+        "Creator": book.title.creator,
+        "Publisher": book.title.publisher,
+        "Description": book.title.description,
+        "Language": book.title.language,
+        "Illustration_48x48@1": book.title.illustration_48x48_at_1,
+    }
+
+    return [key for key in book_metadata if book_metadata[key] != title_metadata[key]]
 
 
 def update_book(session: OrmSession, book_id: UUID, *, flavour: str) -> Book:

@@ -65,6 +65,7 @@ class LibraryBookData(NamedTuple):
     """Tuple containing book alongside other data needed for library rendering."""
 
     book: Book
+    title: Title
     download_base_url: str | None
     path: Path
     filename: str
@@ -91,7 +92,7 @@ def get_latest_books_for_collection(
     stmt = (
         select(
             Book,
-            Title.id.label("title_id"),
+            Title,
             Collection.download_base_url,
             CollectionTitle.path.label("subpath"),
             BookLocation.filename,
@@ -115,16 +116,18 @@ def get_latest_books_for_collection(
         .order_by(Title.id, Book.flavour, Book.created_at.desc())
     )
     # Filter to keep only the latest book per name+flavour combination
-    seen: set[tuple[str | None, str | None]] = set()
+    seen: set[tuple[UUID, str | None]] = set()
     latest_books: list[LibraryBookData] = []
     for row in session.execute(stmt).all():
         book = cast(Book, row.Book)
-        key = (row.title_id, book.flavour)
+        title = cast(Title, row.Title)
+        key = (title.id, book.flavour)
         if key not in seen:
             seen.add(key)
             latest_books.append(
                 LibraryBookData(
                     book=book,
+                    title=title,
                     path=row.subpath,
                     download_base_url=row.download_base_url,
                     filename=row.filename,

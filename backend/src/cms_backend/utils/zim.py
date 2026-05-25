@@ -17,6 +17,7 @@ def get_missing_metadata_keys(zim_metadata: dict[str, Any]) -> list[str]:
         "Date",
         "Description",
         "Language",
+        "Illustration_48x48@1",
     )
 
 
