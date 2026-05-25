@@ -14,7 +14,7 @@ def build_library_xml(
     library_elem.set("version", "20110515")
 
     for entry in entries:
-        book, download_base_url, path, filename = entry
+        book, title, download_base_url, path, filename = entry
         if not book.zim_metadata:
             continue
 
@@ -30,11 +30,13 @@ def build_library_xml(
 
         # Metadata from zim_metadata dict
         zim_meta = book.zim_metadata
-        book_elem.set("title", zim_meta.get("Title", ""))
-        book_elem.set("description", zim_meta.get("Description", ""))
-        book_elem.set("language", zim_meta.get("Language", ""))
-        book_elem.set("creator", zim_meta.get("Creator", ""))
-        book_elem.set("publisher", zim_meta.get("Publisher", ""))
+        book_elem.set("title", title.title or zim_meta.get("Title", ""))
+        book_elem.set(
+            "description", title.description or zim_meta.get("Description", "")
+        )
+        book_elem.set("language", title.language or zim_meta.get("Language", ""))
+        book_elem.set("creator", title.creator or zim_meta.get("Creator", ""))
+        book_elem.set("publisher", title.publisher or zim_meta.get("Publisher", ""))
         book_elem.set("name", zim_meta.get("Name", ""))
         book_elem.set("date", zim_meta.get("Date", ""))
 
@@ -42,7 +44,9 @@ def build_library_xml(
         tags = zim_meta.get("Tags", "")
         book_elem.set("tags", ";".join(convert_tags(tags)))
 
-        favicon = zim_meta.get("Illustration_48x48@1", "")
+        favicon = title.illustration_48x48_at_1 or zim_meta.get(
+            "Illustration_48x48@1", ""
+        )
         if favicon:
             book_elem.set("favicon", favicon)
             book_elem.set("faviconMimeType", "image/png")

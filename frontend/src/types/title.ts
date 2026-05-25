@@ -20,6 +20,16 @@ export interface TitleLight {
   name: string
   maturity: string
   archived: boolean
+  title: string | null
+  creator: string | null
+  publisher: string | null
+  description: string | null
+  language: string | null
+  illustration_48x48_at_1: string | null
+  long_description: string | null
+  license: string | null
+  relation: string | null
+  source: string | null
 }
 
 export interface Title extends TitleLight {
@@ -32,10 +42,30 @@ export interface TitleCreate {
   name: string
   maturity: string
   collection_titles: BaseTitleCollection[]
+  title: string
+  creator: string
+  publisher: string
+  description: string
+  language: string
+  illustration_48x48_at_1: string
+  long_description?: string | null
+  license?: string | null
+  relation?: string | null
+  source?: string | null
 }
 
 export interface TitleUpdate {
   name?: string
   maturity: string
   collection_titles: BaseTitleCollection[]
+  title?: string | null
+  creator?: string | null
+  publisher?: string | null
+  description?: string | null
+  language?: string | null
+  illustration_48x48_at_1?: string | null
+  long_description?: string | null
+  license?: string | null
+  relation?: string | null
+  source?: string | null
 }

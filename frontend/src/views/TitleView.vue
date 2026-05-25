@@ -9,12 +9,6 @@
     </div>
 
     <div v-if="dataLoaded && title">
-      <div class="d-flex justify-end mb-4" v-if="canEditTitle">
-        <v-btn color="primary" prepend-icon="mdi-pencil" @click="openEditDialog">
-          Edit Title
-        </v-btn>
-      </div>
-
       <v-tabs
         v-model="currentTab"
         class="mb-4"
@@ -33,6 +27,19 @@
         >
           <v-icon class="mr-2">mdi-information</v-icon>
           Info
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canEditTitle"
+          value="edit"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.name, selectedTab: 'edit' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-pencil</v-icon>
+          Edit
         </v-tab>
 
         <v-tab
@@ -110,6 +117,125 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Title</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.title">{{ title.title }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Description</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.description">{{ title.description }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Long Description</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.long_description" style="white-space: pre-wrap">{{
+                      title.long_description
+                    }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Creator</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.creator">{{ title.creator }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Publisher</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.publisher">{{ title.publisher }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Language</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.language">{{ title.language }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">License</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.license">{{ title.license }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Source</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.source">{{ title.source }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Relation</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="title.relation">{{ title.relation }}</span>
+                    <span v-else class="text-grey">Not set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Illustration</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <div v-if="title.illustration_48x48_at_1">
+                      <v-img
+                        :src="getIllustrationSrc"
+                        max-width="48"
+                        max-height="48"
+                        alt="Title illustration"
+                      />
+                    </div>
+                    <span v-else class="text-grey">No illustration</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Events</div>
                   </v-col>
                   <v-col cols="12" md="9">
@@ -140,6 +266,73 @@
           </v-card>
         </v-window-item>
 
+        <!-- Edit Tab -->
+        <v-window-item value="edit">
+          <div v-if="canEditTitle" class="pa-4">
+            <v-card flat>
+              <v-card-actions class="pa-4 pb-0">
+                <v-spacer />
+                <v-btn
+                  color="default"
+                  variant="outlined"
+                  @click="handleReset"
+                  :disabled="updating || !hasChanges"
+                >
+                  <v-icon class="mr-2">mdi-restore</v-icon>
+                  Reset
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  variant="elevated"
+                  @click="handleUpdate"
+                  :loading="updating"
+                  :disabled="!formValid || updating || !hasChanges"
+                >
+                  <v-icon class="mr-2">mdi-content-save</v-icon>
+                  Save Changes
+                </v-btn>
+              </v-card-actions>
+
+              <v-card-text>
+                <TitleForm
+                  ref="titleFormRef"
+                  :title="title"
+                  @update:valid="formValid = $event"
+                  @update:has-changes="hasChanges = $event"
+                />
+
+                <v-alert v-if="updateError" type="error" class="mt-4" density="compact">
+                  {{ updateError }}
+                </v-alert>
+              </v-card-text>
+
+              <!-- Action Buttons at Bottom -->
+              <v-card-actions class="pa-4 pt-0">
+                <v-spacer />
+                <v-btn
+                  color="default"
+                  variant="outlined"
+                  @click="handleReset"
+                  :disabled="updating || !hasChanges"
+                >
+                  <v-icon class="mr-2">mdi-restore</v-icon>
+                  Reset
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  variant="elevated"
+                  @click="handleUpdate"
+                  :loading="updating"
+                  :disabled="!formValid || updating || !hasChanges"
+                >
+                  <v-icon class="mr-2">mdi-content-save</v-icon>
+                  Save Changes
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </div>
+        </v-window-item>
+
         <!-- Archive Tab -->
         <v-window-item value="archive">
           <div v-if="canArchiveTitle" class="pa-4">
@@ -153,16 +346,14 @@
         </v-window-item>
       </v-window>
     </div>
-
-    <EditTitleDialog v-model="editDialogOpen" :title="title" @updated="handleTitleUpdated" />
   </v-container>
 </template>
 
 <script setup lang="ts">
 import BookTable from '@/components/BookTable.vue'
-import EditTitleDialog from '@/components/EditTitleDialog.vue'
 import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
+import TitleForm from '@/components/TitleForm.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
@@ -187,9 +378,15 @@ const { smAndDown } = useDisplay()
 const error = ref<string | null>(null)
 const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
-const editDialogOpen = ref(false)
 const loadingUrls = ref(false)
 const zimUrls = ref<Record<string, ZimUrl[]>>({})
+
+// Edit form state
+const titleFormRef = ref<InstanceType<typeof TitleForm>>()
+const formValid = ref(false)
+const hasChanges = ref(false)
+const updating = ref(false)
+const updateError = ref('')
 
 interface Props {
   id: string
@@ -214,6 +411,19 @@ const canEditTitle = computed(
 )
 
 const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive'))
+
+// Helper to convert raw base64 to data URL
+const getIllustrationSrc = computed(() => {
+  if (!title.value?.illustration_48x48_at_1) return ''
+
+  const illustration = title.value.illustration_48x48_at_1
+
+  if (illustration.startsWith('data:')) {
+    return illustration
+  }
+
+  return `data:image/png;base64,${illustration}`
+})
 
 const currentTab = ref(props.selectedTab)
 
@@ -296,29 +506,60 @@ const restoreTitle = async () => {
   }
 }
 
+const handleUpdate = async () => {
+  if (!formValid.value || !title.value) return
+
+  updating.value = true
+  updateError.value = ''
+
+  try {
+    const updatePayload = titleFormRef.value?.getUpdatePayload()
+
+    if (!updatePayload) {
+      throw new Error('Failed to get update payload')
+    }
+
+    const response = await titleStore.updateTitle(title.value.id, updatePayload)
+    if (!response) {
+      updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+      return
+    }
+    notificationStore.showSuccess('Title updated successfully!')
+
+    // If the name changed, navigate to the new URL
+    if (response.name !== props.id) {
+      await router.push({ name: 'title-detail', params: { id: response.name } })
+    }
+
+    await loadData(true)
+    currentTab.value = 'details'
+  } catch (err) {
+    console.error('Failed to update title', err)
+    updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+  } finally {
+    updating.value = false
+  }
+}
+
+const handleReset = () => {
+  if (!title.value) return
+  titleFormRef.value?.resetFormToTitle(title.value)
+}
+
 onMounted(async () => {
   await loadData(true)
 })
-
-const openEditDialog = () => {
-  editDialogOpen.value = true
-}
-
-const handleTitleUpdated = async (updatedTitle: { id: string; name: string }) => {
-  notificationStore.showSuccess('Title updated successfully!')
-
-  // If the name changed, navigate to the new URL
-  if (updatedTitle.name !== props.id) {
-    await router.push({ name: 'title-detail', params: { id: updatedTitle.name } })
-  }
-  await loadData(true)
-}
 
 // Watch for tab changes
 watch(
   () => props.selectedTab,
   async (newTab) => {
     currentTab.value = newTab
+    // Load collections and reset form when switching to edit tab
+    if (newTab === 'edit' && title.value) {
+      await titleFormRef.value?.fetchCollections()
+      titleFormRef.value?.resetFormToTitle(title.value)
+    }
     // Only refresh data if we don't have any data yet, or if not archiving
     if (!title.value || newTab != 'archive') {
       await loadData(true)

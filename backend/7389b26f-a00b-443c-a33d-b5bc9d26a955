@@ -1,0 +1,285 @@
+{
+  "id": "7389b26f-a00b-443c-a33d-b5bc9d26a955",
+  "status": "succeeded",
+  "timestamp": [
+    ["requested", "2026-05-13T04:02:23Z"],
+    ["reserved", "2026-05-22T10:46:36Z"],
+    ["started", "2026-05-22T10:46:47Z"],
+    ["scraper_started", "2026-05-22T10:46:51Z"],
+    ["scraper_completed", "2026-05-25T07:32:37Z"],
+    ["succeeded", "2026-05-25T08:14:06Z"]
+  ],
+  "recipe_name": "wikisource_en",
+  "worker_name": "mwoffliner4",
+  "updated_at": "2026-05-25T08:14:06Z",
+  "requested_by": "period-scheduler",
+  "original_recipe_name": "wikisource_en",
+  "context": "wikimedia_long",
+  "priority": 0,
+  "config": {
+    "warehouse_path": "",
+    "resources": {
+      "cpu": 3,
+      "memory": 7516192768,
+      "disk": 32212254720,
+      "shm": null,
+      "cap_add": [],
+      "cap_drop": []
+    },
+    "offliner": {
+      "offliner_id": "mwoffliner",
+      "mwUrl": "https://en.wikisource.org/",
+      "adminEmail": "contact@kiwix.org",
+      "articleList": null,
+      "articleListToIgnore": null,
+      "customMainPage": null,
+      "customZimTitle": null,
+      "customZimDescription": "Wikisource is an library of public domain texts",
+      "customZimLongDescription": null,
+      "customZimFavicon": null,
+      "customZimTags": null,
+      "customZimLanguage": null,
+      "publisher": "openZIM",
+      "filenamePrefix": null,
+      "format": ["nopic:nopic", "novid:maxi"],
+      "customFlavour": null,
+      "optimisationCacheUrl": "************************",
+      "addNamespaces": "100",
+      "getCategories": null,
+      "keepEmptyParagraphs": null,
+      "minifyHtml": null,
+      "mwWikiPath": null,
+      "mwActionApiPath": null,
+      "mwRestApiPath": null,
+      "mwModulePath": null,
+      "mwIndexPhpPath": null,
+      "mwDomain": null,
+      "mwUsername": null,
+      "mwPassword": null,
+      "osTmpDir": "/dev/shm",
+      "outputDirectory": "/output",
+      "requestTimeout": null,
+      "speed": null,
+      "withoutZimFullTextIndex": null,
+      "verbose": "log",
+      "webp": true,
+      "forceRender": "ActionParse",
+      "forceSkin": null,
+      "insecure": null,
+      "langVariant": null
+    },
+    "platform": "wikimedia",
+    "artifacts_globs": [],
+    "monitor": false,
+    "image": { "name": "ghcr.io/openzim/mwoffliner", "tag": "1.17.5" },
+    "mount_point": "/output",
+    "command": [
+      "mwoffliner",
+      "--mwUrl=https://en.wikisource.org/",
+      "--adminEmail=contact@kiwix.org",
+      "--customZimDescription='Wikisource is an library of public domain texts'",
+      "--publisher=openZIM",
+      "--format=nopic:nopic",
+      "--format=novid:maxi",
+      "--optimisationCacheUrl='************************'",
+      "--addNamespaces=100",
+      "--osTmpDir=/dev/shm",
+      "--outputDirectory=/output",
+      "--verbose=log",
+      "--webp",
+      "--forceRender=ActionParse"
+    ],
+    "str_command": "mwoffliner --mwUrl=https://en.wikisource.org/ --adminEmail=contact@kiwix.org --customZimDescription='Wikisource is an library of public domain texts' --publisher=openZIM --format=nopic:nopic --format=novid:maxi --optimisationCacheUrl='************************' --addNamespaces=100 --osTmpDir=/dev/shm --outputDirectory=/output --verbose=log --webp --forceRender=ActionParse"
+  },
+  "events": [
+    { "code": "requested", "timestamp": "2026-05-13T04:02:23Z" },
+    { "code": "reserved", "timestamp": "2026-05-22T10:46:36Z" },
+    { "code": "started", "timestamp": "2026-05-22T10:46:47Z" },
+    { "code": "scraper_started", "timestamp": "2026-05-22T10:46:51Z" },
+    { "code": "scraper_completed", "timestamp": "2026-05-25T07:32:37Z" },
+    { "code": "succeeded", "timestamp": "2026-05-25T08:14:06Z" }
+  ],
+  "debug": {
+    "log": "[2026-05-22 10:46:46,531: INFO] starting zimfarm task-worker for 7389b26f-a00b-443c-a33d-b5bc9d26a955.\n[2026-05-22 10:46:46,531: INFO] configuration:\n\twokrker_name=mwoffliner4\n\twebapi_uris=['https://api.farm.openzim.org/v2']\n\tworkdir=/data\n\ttask_id=7389b26f-a00b-443c-a33d-b5bc9d26a955\n[2026-05-22 10:46:46,531: INFO] testing workdir at /data…\n[2026-05-22 10:46:46,531: INFO] \tworkdir is available and writable\n[2026-05-22 10:46:46,531: INFO] testing private key at /etc/ssh/keys/zimfarm…\n[2026-05-22 10:46:46,536: INFO] \tprivate key is available and readable (SHA256:bvIpNQHY3pruOe4/1wPsdAifK1Y0JH203Fu17wgWM9s)\n[2026-05-22 10:46:46,536: INFO] testing authentication with https://api.farm.openzim.org/v2…\n[2026-05-22 10:46:46,873: INFO] \tauthentication successful\n[2026-05-22 10:46:46,873: INFO] testing docker API on /var/run/docker.sock…\n[2026-05-22 10:46:46,936: INFO] \tdocker API access successful\n[2026-05-22 10:46:46,954: INFO] Hardware resources:\n\tCPU : 6 (total) ;  3 (avail)\n\tRAM : 30 GiB (total) ;  15 GiB (avail)\n\tDisk: 200 GiB (configured) ; 70 GiB (avail) ; 130 GiB (reserved) ; \n[2026-05-22 10:46:46,954: INFO] registering exit signals\n[2026-05-22 10:46:46,954: INFO] Fetching task details for 7389b26f-a00b-443c-a33d-b5bc9d26a955\n[2026-05-22 10:46:47,336: INFO] Updating task-status=started\n[2026-05-22 10:46:47,736: INFO] Setting-up workdir\n[2026-05-22 10:46:47,745: INFO] Starting DNS cache\n[2026-05-22 10:46:48,692: DEBUG] DNS Cache started using IPs: ['172.17.0.8']\n[2026-05-22 10:46:48,693: INFO] Starting scraper. Expects files at: /data/volume1/zimfarm/data/7389b26f-a00b-443c-a33d-b5bc9d26a955 \n[2026-05-22 10:46:48,696: DEBUG] Pulling image ghcr.io/openzim/mwoffliner:1.17.5\n[2026-05-22 10:46:50,698: INFO] Updating task-status=scraper_started\n[2026-05-23 19:20:33,677: INFO] Gathering ZIM metadata for /data/7389b26f-a00b-443c-a33d-b5bc9d26a955/8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-23 19:20:33,709: INFO] ZIM file created: 8598bf15-0e01-70a0-3675-0be035961159.zim, 11.01 GiB\n[2026-05-23 19:20:34,079: INFO] Starting zim uploader for /8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-23 19:20:35,093: INFO] Starting zim checker for 8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-23 19:29:35,866: INFO] Updating file-status=uploaded for 8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-23 19:58:42,345: INFO] Updating file check-result=1 for 8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-23 19:58:42,708: INFO] Zimcheck output written to 8598bf15-0e01-70a0-3675-0be035961159_zimcheck.json\n[2026-05-23 19:58:42,756: INFO] Starting zimcheck uploader for 8598bf15-0e01-70a0-3675-0be035961159_zimcheck.json\n[2026-05-23 19:59:42,882: INFO] Zimcheck Uploader for 8598bf15-0e01-70a0-3675-0be035961159_zimcheck.json complete 0\n[2026-05-23 19:59:42,883: INFO] Updating file check-result-uploaded=8598bf15-0e01-70a0-3675-0be035961159_zimcheck.json for 8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-25 07:32:37,549: INFO] Updating task-status=scraper_completed. Exit code: 0\n[2026-05-25 07:32:38,050: DEBUG] Dumping docker logs to file…\n[2026-05-25 07:32:38,257: DEBUG] Starting log uploader container…\n[2026-05-25 07:32:39,514: DEBUG] No artifacts configured for upload\n[2026-05-25 07:32:39,525: INFO] Gathering ZIM metadata for /data/7389b26f-a00b-443c-a33d-b5bc9d26a955/950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 07:32:39,546: INFO] ZIM file created: 950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim, 18.31 GiB\n[2026-05-25 07:32:39,940: INFO] Starting zim uploader for /950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 07:32:41,038: INFO] Starting zim checker for 950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 07:33:03,054: INFO] Scraper log upload complete: 0\n[2026-05-25 07:33:03,054: INFO] Sending scraper log filename: 7389b26f-a00b-443c-a33d-b5bc9d26a955_mwoffliner.log\n[2026-05-25 07:33:03,405: INFO] Stopping and removing log_uploader\n[2026-05-25 07:47:03,807: INFO] Updating file-status=uploaded for 950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 08:13:04,889: INFO] Updating file check-result=1 for 950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 08:13:05,378: INFO] Zimcheck output written to 950dfcf0-873e-1938-2bc0-ddfe4bea7674_zimcheck.json\n[2026-05-25 08:13:05,427: INFO] Starting zimcheck uploader for 950dfcf0-873e-1938-2bc0-ddfe4bea7674_zimcheck.json\n[2026-05-25 08:14:05,455: INFO] Zimcheck Uploader for 950dfcf0-873e-1938-2bc0-ddfe4bea7674_zimcheck.json complete 0\n[2026-05-25 08:14:05,455: INFO] Updating file check-result-uploaded=950dfcf0-873e-1938-2bc0-ddfe4bea7674_zimcheck.json for 950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 08:14:05,907: INFO] Contents of /data/7389b26f-a00b-443c-a33d-b5bc9d26a955 (recursive):\n[2026-05-25 08:14:05,908: INFO]   8598bf15-0e01-70a0-3675-0be035961159.zim\n[2026-05-25 08:14:05,909: INFO]   950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim\n[2026-05-25 08:14:05,909: INFO] Updating task-status=succeeded\n"
+  },
+  "canceled_by": null,
+  "container": {
+    "log": "7389b26f-a00b-443c-a33d-b5bc9d26a955_mwoffliner.log",
+    "image": "ghcr.io/openzim/mwoffliner:1.17.5",
+    "stats": {
+      "memory": { "max": 7516192768 },
+      "cpu": { "max": 678.475183116077, "avg": 239.03 },
+      "disk": { "max": 41753439045 }
+    },
+    "artifacts": null,
+    "stderr": "[warn] [2026-05-25T07:12:26.105Z] Skipping redirect of 'Ultor_de_Lacy' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy' because target is not a known article\n[warn] [2026-05-25T07:13:02.076Z] Skipping redirect of 'The_Haunted_Baronet' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet' because target is not a known article\n[warn] [2026-05-25T07:13:03.522Z] Skipping redirect of 'Ghost_Stories_of_Chapelizod' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_4/Ghost_Stories_of_Chapelizod' because target is not a known article\n[warn] [2026-05-25T07:14:05.307Z] Skipping redirect of 'The_Gallic_Wars' to 'Commentaries_on_the_Gallic_War' because target is not a known article\n[warn] [2026-05-25T07:14:05.912Z] Skipping redirect of 'The_Drunkard's_Dream' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_4/The_Drunkard's_Dream' because target is not a known article\n[warn] [2026-05-25T07:15:06.017Z] Skipping redirect of 'Reports_on_the_Gallic_War' to 'Commentaries_on_the_Gallic_War' because target is not a known article\n[warn] [2026-05-25T07:15:07.583Z] Skipping redirect of 'Laura_Silver_Bell' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Laura_Silver_Bell' because target is not a known article\n[warn] [2026-05-25T07:16:13.080Z] Skipping redirect of 'The_Vision_of_Tom_Chuff' to 'J._S._Le_Fanu's_Ghostly_Tales/Volume_5/The_Vision_of_Tom_Chuff' because target is not a known article\n",
+    "stdout": "[log] [2026-05-25T07:11:53.893Z] 65000 redirects have been processed (49.2 %)\n[log] [2026-05-25T07:12:24.963Z] 70000 redirects have been processed (53 %)\n[log] [2026-05-25T07:12:26.082Z] 75000 redirects have been processed (56.8 %)\n[log] [2026-05-25T07:13:02.543Z] 80000 redirects have been processed (60.6 %)\n[log] [2026-05-25T07:13:03.797Z] 85000 redirects have been processed (64.4 %)\n[log] [2026-05-25T07:14:05.502Z] 90000 redirects have been processed (68.2 %)\n[log] [2026-05-25T07:14:06.658Z] 95000 redirects have been processed (72 %)\n[log] [2026-05-25T07:15:06.565Z] 100000 redirects have been processed (75.7 %)\n[log] [2026-05-25T07:15:07.735Z] 105000 redirects have been processed (79.5 %)\n[log] [2026-05-25T07:15:39.663Z] 110000 redirects have been processed (83.3 %)\n[log] [2026-05-25T07:15:40.816Z] 115000 redirects have been processed (87.1 %)\n[log] [2026-05-25T07:16:12.146Z] 120000 redirects have been processed (90.9 %)\n[log] [2026-05-25T07:16:13.265Z] 125000 redirects have been processed (94.7 %)\n[log] [2026-05-25T07:16:44.410Z] 130000 redirects have been processed (98.5 %)\n[log] [2026-05-25T07:16:44.840Z] Finishing ZIM Creation\nResolve redirect\nset index\n[log] [2026-05-25T07:32:35.909Z] Summary of scrape actions: {\n\t\"files\": {\n\t\t\"success\": 351845,\n\t\t\"fail\": 75\n\t},\n\t\"articles\": {\n\t\t\"success\": 4443232,\n\t\t\"hardFail\": 0,\n\t\t\"hardFailedArticleIds\": [],\n\t\t\"softFail\": 51,\n\t\t\"softFailedArticleIds\": [\n\t\t\t\"Portal:Johann_August_Ernesti\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXVII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_V\",\n\t\t\t\"DeCSS_Haiku\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_X\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XVIII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXI\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/Ghost_Stories_of_Chapelizod/The_Village_Bully\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/The_Vision_of_Tom_Chuff\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/The_Child_That_Went_with_the_Fairies\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_VIII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Wicked_Captain_Walshawe,_of_Wauling/Chapter_III\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/The_Mysterious_Lodger/Part_II\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/Ghost_Stories_of_Chapelizod/The_Spectre_Lovers\",\n\t\t\t\"Commentaries_on_the_Gallic_War/Book_6\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXV\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/The_Mysterious_Lodger\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXIII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_IX\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_I\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_III\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Laura_Silver_Bell\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Wicked_Captain_Walshawe,_of_Wauling/Chapter_VI\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_II\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XI\",\n\t\t\t\"Commentaries_on_the_Gallic_War\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_VII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_1/Schalken_the_Painter\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_VII\",\n\t\t\t\"Madam_Crowl's_Ghost_and_the_Dead_Sexton\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/The_Drunkard's_Dream\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Stories_of_Lough_Guir/The_Banshee\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_VI\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_VIII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_IV\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XIV\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXIX\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/The_Mysterious_Lodger/Part_I\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_5/Wicked_Captain_Walshawe,_of_Wauling/Chapter_I\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XXVIII\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_XV\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/An_Authentic_Narrative_of_a_Haunted_House\",\n\t\t\t\"Commentaries_on_the_Gallic_War/Book_4\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy\",\n\t\t\t\"Two_Ghostly_Mysteries\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_2/Ultor_de_Lacy/Chapter_IV\",\n\t\t\t\"Two_Ghostly_Mysteries/A_Chapter_in_the_History_of_a_Tyrone_Family\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_4/Ghost_Stories_of_Chapelizod\",\n\t\t\t\"J._S._Le_Fanu's_Ghostly_Tales/Volume_3/The_Haunted_Baronet/Chapter_V\"\n\t\t]\n\t},\n\t\"redirects\": {\n\t\t\"written\": 132021\n\t}\n}\n[log] [2026-05-25T07:32:35.909Z] ZIM is ready at [/output/wikisource_en_all_maxi_2026-05.zim]\n[log] [2026-05-25T07:32:35.921Z] Finished dump\n[log] [2026-05-25T07:32:35.921Z] Closing HTTP agents...\n[log] [2026-05-25T07:32:35.921Z] All dumping(s) finished with success.\n[log] [2026-05-25T07:32:35.925Z] Flushing Redis DBs\n[log] [2026-05-25T07:32:35.926Z] Exiting with code [0]\n[log] [2026-05-25T07:32:35.926Z] Deleting temporary directory [/dev/shm/mwoffliner-1779446819566]\n",
+    "command": [
+      "mwoffliner",
+      "--mwUrl=https://en.wikisource.org/",
+      "--adminEmail=contact@kiwix.org",
+      "--customZimDescription='Wikisource is an library of public domain texts'",
+      "--publisher=openZIM",
+      "--format=nopic:nopic",
+      "--format=novid:maxi",
+      "--optimisationCacheUrl='************************'",
+      "--addNamespaces=100",
+      "--osTmpDir=/dev/shm",
+      "--outputDirectory=/output",
+      "--verbose=log",
+      "--webp",
+      "--forceRender=ActionParse"
+    ],
+    "progress": null,
+    "exit_code": 0
+  },
+  "notification": null,
+  "files": {
+    "8598bf15-0e01-70a0-3675-0be035961159.zim": {
+      "name": "8598bf15-0e01-70a0-3675-0be035961159.zim",
+      "task_id": "7389b26f-a00b-443c-a33d-b5bc9d26a955",
+      "status": "check_results_uploaded",
+      "size": 11824699968,
+      "cms_on": "2026-05-23T20:00:18Z",
+      "cms_notified": true,
+      "created_timestamp": "2026-05-23T19:20:34Z",
+      "uploaded_timestamp": "2026-05-23T19:29:36Z",
+      "failed_timestamp": null,
+      "check_timestamp": "2026-05-23T19:58:42Z",
+      "check_result": 1,
+      "check_filename": "8598bf15-0e01-70a0-3675-0be035961159_zimcheck.json",
+      "check_upload_timestamp": "2026-05-23T19:59:43Z",
+      "info": {
+        "id": "8598bf15-0e01-70a0-3675-0be035961159",
+        "size": 11824699968,
+        "counter": {
+          "font/ttf": 1,
+          "text/css": 30,
+          "image/png": 14,
+          "text/html": 4449189,
+          "image/jpeg": 1,
+          "image/svg+xml": 24,
+          "application/pdf": 2,
+          "text/javascript": 3,
+          "application/javascript": 4,
+          "text/html; charset=iso-8859-1": 1,
+          "image/svg+xml; profile=\"https://www.mediawiki.org/wiki/Specs/SVG/1.0.0\"": 70789
+        },
+        "metadata": {
+          "Date": "2026-05-22",
+          "Name": "wikisource_en_all",
+          "Tags": "wikisource;_category:wikisource;_pictures:no;_videos:no;_details:yes;_ftindex:yes",
+          "Title": "Wikisource",
+          "Source": "en.wikisource.org",
+          "Counter": "application/javascript=4;application/pdf=2;font/ttf=1;image/jpeg=1;image/png=14;image/svg+xml=24;image/svg+xml; charset=utf-8; profile=\"https://www.mediawiki.org/wiki/Specs/SVG/1.0.0\"=70789;text/css=30;text/html=4449189;text/html; charset=iso-8859-1=1;text/javascript=3",
+          "Creator": "Wikisource",
+          "Flavour": "nopic",
+          "Scraper": "mwoffliner 1.17.5",
+          "Language": "eng",
+          "Publisher": "openZIM",
+          "Description": "Wikisource is an library of public domain texts",
+          "Illustration_48x48@1": "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"
+        },
+        "media_count": 70828,
+        "article_count": 4575267
+      },
+      "zim_urls": [
+        {
+          "kind": "download",
+          "url": "https://lbo.download.kiwix.org/zim/wikisource/wikisource_en_all_nopic_2026-05.zim",
+          "collection": "Kiwix"
+        },
+        {
+          "kind": "view",
+          "url": "https://browse.library.kiwix.org/viewer#wikisource_en_all_nopic_2026-05",
+          "collection": "Kiwix"
+        }
+      ]
+    },
+    "950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim": {
+      "name": "950dfcf0-873e-1938-2bc0-ddfe4bea7674.zim",
+      "task_id": "7389b26f-a00b-443c-a33d-b5bc9d26a955",
+      "status": "check_results_uploaded",
+      "size": 19663666206,
+      "cms_on": "2026-05-25T08:14:30Z",
+      "cms_notified": true,
+      "created_timestamp": "2026-05-25T07:32:39Z",
+      "uploaded_timestamp": "2026-05-25T07:47:04Z",
+      "failed_timestamp": null,
+      "check_timestamp": "2026-05-25T08:13:05Z",
+      "check_result": 1,
+      "check_filename": "950dfcf0-873e-1938-2bc0-ddfe4bea7674_zimcheck.json",
+      "check_upload_timestamp": "2026-05-25T08:14:05Z",
+      "info": {
+        "id": "950dfcf0-873e-1938-2bc0-ddfe4bea7674",
+        "size": 19663666206,
+        "counter": {
+          "font/ttf": 1,
+          "text/css": 30,
+          "image/gif": 1142,
+          "image/png": 14,
+          "text/html": 4449187,
+          "image/jpeg": 1,
+          "image/webp": 278082,
+          "image/svg+xml": 24,
+          "application/pdf": 2,
+          "text/javascript": 3,
+          "application/javascript": 4,
+          "text/html; charset=iso-8859-1": 1,
+          "image/svg+xml; profile=\"https://www.mediawiki.org/wiki/Specs/SVG/1.0.0\"": 72582
+        },
+        "metadata": {
+          "Date": "2026-05-22",
+          "Name": "wikisource_en_all",
+          "Tags": "wikisource;_category:wikisource;_pictures:yes;_videos:no;_details:yes;_ftindex:yes",
+          "Title": "Wikisource",
+          "Source": "en.wikisource.org",
+          "Counter": "application/javascript=4;application/pdf=2;font/ttf=1;image/gif=1142;image/jpeg=1;image/png=14;image/svg+xml=24;image/svg+xml; charset=utf-8; profile=\"https://www.mediawiki.org/wiki/Specs/SVG/1.0.0\"=72582;image/webp=278082;text/css=30;text/html=4449187;text/html; charset=iso-8859-1=1;text/javascript=3",
+          "Creator": "Wikisource",
+          "Flavour": "maxi",
+          "Scraper": "mwoffliner 1.17.5",
+          "Language": "eng",
+          "Publisher": "openZIM",
+          "Description": "Wikisource is an library of public domain texts",
+          "Illustration_48x48@1": "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"
+        },
+        "media_count": 351845,
+        "article_count": 4575253
+      },
+      "zim_urls": [
+        {
+          "kind": "download",
+          "url": "https://lbo.download.kiwix.org/zim/wikisource/wikisource_en_all_maxi_2026-05.zim",
+          "collection": "Kiwix"
+        },
+        {
+          "kind": "view",
+          "url": "https://browse.library.kiwix.org/viewer#wikisource_en_all_maxi_2026-05",
+          "collection": "Kiwix"
+        }
+      ]
+    }
+  },
+  "upload": {
+    "zim": {
+      "expiration": 0,
+      "upload_uri": "sftp://uploader@warehouse-b.farm.openzim.org:30222/zim",
+      "zimcheck": "--all",
+      "disable_warehouse_path": true
+    },
+    "logs": {
+      "expiration": 60,
+      "upload_uri": "s3://s3.us-west-1.wasabisys.com/?keyId=************************&secretAccessKey=************************&bucketName=org-kiwix-zimfarm-logs"
+    },
+    "artifacts": {
+      "expiration": 30,
+      "upload_uri": "s3://s3.us-west-1.wasabisys.com/?keyId=************************&secretAccessKey=************************&bucketName=org-kiwix-zimfarm-artifacts"
+    },
+    "check": {
+      "expiration": 0,
+      "upload_uri": "s3://s3.us-west-1.wasabisys.com/?keyId=************************&secretAccessKey=************************&bucketName=org-kiwix-zimfarm-zimcheck-results"
+    }
+  },
+  "offliner": "mwoffliner",
+  "version": "1.17.5"
+}

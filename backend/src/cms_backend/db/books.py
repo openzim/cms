@@ -43,6 +43,7 @@ def get_books(
         Book.name,
         Book.date,
         Book.flavour,
+        Book.warnings,
     ).order_by(
         Book.has_error.desc(),
         Book.location_kind,
@@ -114,6 +115,7 @@ def get_books(
                 name=name,
                 date=date,
                 flavour=flavour,
+                warnings=book_warnings,
             )
             for (
                 book_id_result,
@@ -127,6 +129,7 @@ def get_books(
                 name,
                 date,
                 flavour,
+                book_warnings,
             ) in session.execute(
                 stmt.offset(skip)
                 .limit(limit)

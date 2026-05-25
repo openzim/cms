@@ -10,7 +10,12 @@ from cms_backend.api.routes.dependencies import (
     get_current_account_or_none,
     require_permission,
 )
-from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
+from cms_backend.api.routes.fields import (
+    Base64Str,
+    LimitFieldMax200,
+    NotEmptyString,
+    SkipField,
+)
 from cms_backend.api.routes.http_errors import ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -19,7 +24,7 @@ from cms_backend.db.models import Account
 from cms_backend.db.title import archive_title as db_archive_title
 from cms_backend.db.title import archive_titles as db_archive_titles
 from cms_backend.db.title import create_title as db_create_title
-from cms_backend.db.title import create_title_full_schema
+from cms_backend.db.title import create_title_full_schema, create_title_light_schema
 from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_title_by_name as db_get_title_by_name
 from cms_backend.db.title import get_titles as db_get_titles
@@ -51,6 +56,10 @@ class RestoreTitlesSchema(BaseModel):
 
 class BaseTitleCreateUpdateSchema(BaseModel):
     collection_titles: list[BaseTitleCollectionSchema] | None = None
+    long_description: NotEmptyString | None = None
+    license: NotEmptyString | None = None
+    relation: NotEmptyString | None = None
+    source: NotEmptyString | None = None
 
     @model_validator(mode="after")
     def validate_unique_collection_titles(self) -> Self:
@@ -70,11 +79,23 @@ class BaseTitleCreateUpdateSchema(BaseModel):
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString
     maturity: Literal["unstable", "stable"] = "unstable"
+    title: NotEmptyString
+    creator: NotEmptyString
+    publisher: NotEmptyString
+    language: NotEmptyString
+    description: NotEmptyString
+    illustration_48x48_at_1: Base64Str
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString | None = None
     maturity: Literal["unstable", "stable"] | None = None
+    title: NotEmptyString | None = None
+    creator: NotEmptyString | None = None
+    description: NotEmptyString | None = None
+    publisher: NotEmptyString | None = None
+    language: NotEmptyString | None = None
+    illustration_48x48_at_1: Base64Str | None = None
 
 
 @router.get("")
@@ -133,13 +154,18 @@ def create_title(
         name=title_data.name,
         maturity=title_data.maturity,
         collection_titles=title_data.collection_titles,
+        _title=title_data.title,
+        creator=title_data.creator,
+        publisher=title_data.publisher,
+        language=title_data.language,
+        illustration_48x48_at_1=title_data.illustration_48x48_at_1,
+        license_=title_data.license,
+        relation=title_data.relation,
+        source=title_data.source,
+        long_description=title_data.long_description,
+        description=title_data.description,
     )
-    return TitleLightSchema(
-        id=title.id,
-        name=title.name,
-        maturity=title.maturity,
-        archived=title.archived,
-    )
+    return create_title_light_schema(title)
 
 
 @router.patch(
@@ -151,20 +177,25 @@ def update_title(
     title_data: TitleUpdateSchema,
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleLightSchema:
-    """Update a title's maturity and/or collection_titles"""
+    """Update a title"""
     title = db_update_title(
         session,
         title_id=title_id,
         name=title_data.name,
         maturity=title_data.maturity,
         collection_titles=title_data.collection_titles,
+        _title=title_data.title,
+        creator=title_data.creator,
+        description=title_data.description,
+        long_description=title_data.long_description,
+        publisher=title_data.publisher,
+        language=title_data.language,
+        illustration_48x48_at_1=title_data.illustration_48x48_at_1,
+        license_=title_data.license,
+        relation=title_data.relation,
+        source=title_data.source,
     )
-    return TitleLightSchema(
-        id=title.id,
-        name=title.name,
-        maturity=title.maturity,
-        archived=title.archived,
-    )
+    return create_title_light_schema(title)
 
 
 @router.post(
@@ -210,12 +241,7 @@ def archive_title(
         session,
         title_identifier=title_id,
     )
-    return TitleLightSchema(
-        id=title.id,
-        name=title.name,
-        maturity=title.maturity,
-        archived=title.archived,
-    )
+    return create_title_light_schema(title)
 
 
 @router.patch(
@@ -231,9 +257,4 @@ def restore_archived_title(
         session,
         title_identifier=title_id,
     )
-    return TitleLightSchema(
-        id=title.id,
-        name=title.name,
-        maturity=title.maturity,
-        archived=title.archived,
-    )
+    return create_title_light_schema(title)

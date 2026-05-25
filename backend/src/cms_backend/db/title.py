@@ -34,12 +34,22 @@ from cms_backend.utils.datetime import getnow
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
-    """Create a schema of a tilte."""
+    """Create a full schema of a tilte."""
     return TitleFullSchema(
         id=title.id,
         name=title.name,
         maturity=title.maturity,
         events=title.events,
+        title=title.title,
+        creator=title.creator,
+        publisher=title.publisher,
+        description=title.description,
+        language=title.language,
+        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        long_description=title.long_description,
+        license=title.license,
+        relation=title.relation,
+        source=title.source,
         books=[
             BookLightSchema(
                 id=book.id,
@@ -53,6 +63,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 name=book.name,
                 date=book.date,
                 flavour=book.flavour,
+                warnings=book.warnings,
             )
             for book in sorted(
                 title.books,
@@ -76,6 +87,26 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
             for tc in title.collections
         ],
         archived=title.archived,
+    )
+
+
+def create_title_light_schema(title: Title) -> TitleLightSchema:
+    """Create a light schema of a title."""
+    return TitleLightSchema(
+        id=title.id,
+        name=title.name,
+        maturity=title.maturity,
+        archived=title.archived,
+        title=title.title,
+        creator=title.creator,
+        publisher=title.publisher,
+        description=title.description,
+        language=title.language,
+        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        long_description=title.long_description,
+        license=title.license,
+        relation=title.relation,
+        source=title.source,
     )
 
 
@@ -142,6 +173,16 @@ def get_titles(
             Title.name.label("title_name"),
             Title.maturity.label("title_maturity"),
             Title.archived.label("title_archived"),
+            Title.title.label("title_title"),
+            Title.creator.label("title_creator"),
+            Title.publisher.label("title_publisher"),
+            Title.description.label("title_description"),
+            Title.language.label("title_language"),
+            Title.illustration_48x48_at_1.label("title_illustration_48x48_at_1"),
+            Title.long_description.label("title_long_description"),
+            Title.license.label("title_license"),
+            Title.relation.label("title_relation"),
+            Title.source.label("title_source"),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
@@ -175,12 +216,32 @@ def get_titles(
                 name=title_name,
                 maturity=title_maturity,
                 archived=title_archived,
+                title=title_title,
+                creator=title_creator,
+                publisher=title_publisher,
+                description=title_description,
+                language=title_language,
+                illustration_48x48_at_1=title_illustration_48x48_at_1,
+                long_description=title_long_description,
+                license=title_license,
+                relation=title_relation,
+                source=title_source,
             )
             for (
                 title_id,
                 title_name,
                 title_maturity,
                 title_archived,
+                title_title,
+                title_creator,
+                title_publisher,
+                title_description,
+                title_language,
+                title_illustration_48x48_at_1,
+                title_long_description,
+                title_license,
+                title_relation,
+                title_source,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
@@ -192,6 +253,16 @@ def create_title(
     name: str,
     maturity: str | None,
     collection_titles: list[BaseTitleCollectionSchema] | None,
+    _title: str,
+    creator: str,
+    publisher: str,
+    language: str,
+    description: str,
+    long_description: str | None = None,
+    illustration_48x48_at_1: str | None = None,
+    license_: str | None = None,
+    relation: str | None = None,
+    source: str | None = None,
 ) -> Title:
     """Create a new title"""
 
@@ -200,6 +271,16 @@ def create_title(
     )
     if maturity:
         title.maturity = maturity
+    title.title = _title
+    title.creator = creator
+    title.publisher = publisher
+    title.language = language
+    title.illustration_48x48_at_1 = illustration_48x48_at_1
+    title.license = license_
+    title.relation = relation
+    title.source = source
+    title.description = description
+    title.long_description = long_description
     title.events.append(f"{getnow()}: title created")
 
     session.add(title)
@@ -241,8 +322,18 @@ def update_title(
     maturity: str | None = None,
     name: str | None = None,
     collection_titles: list[BaseTitleCollectionSchema] | None = None,
+    _title: str | None = None,
+    creator: str | None = None,
+    publisher: str | None = None,
+    language: str | None = None,
+    description: str | None = None,
+    long_description: str | None = None,
+    illustration_48x48_at_1: str | None = None,
+    license_: str | None = None,
+    relation: str | None = None,
+    source: str | None = None,
 ) -> Title:
-    """Update a title's maturity and/or collection_titles.
+    """Update a title's details
 
     When collection_titles changes:
     - Finds all books associated with this title where location_kind == 'prod'
@@ -260,6 +351,82 @@ def update_title(
         title.events.append(
             f"{getnow()}: maturity updated from {old_maturity} to {maturity}"
         )
+
+    # Update title if provided
+    if _title is not None and _title != title.title:
+        old_title = title.title
+        title.title = _title
+        title.events.append(f"{getnow()}: title updated from {old_title} to {_title}")
+
+    # Update creator if provided
+    if creator is not None and creator != title.creator:
+        old_creator = title.creator
+        title.creator = creator
+        title.events.append(
+            f"{getnow()}: creator updated from {old_creator} to {creator}"
+        )
+
+    # Update description if provided
+    if description is not None and description != title.description:
+        old_description = title.description
+        title.description = description
+        title.events.append(
+            f"{getnow()}: description updated from {old_description} to {description}"
+        )
+
+    if long_description is not None and long_description != title.long_description:
+        old_long_description = title.long_description
+        title.long_description = long_description
+        title.events.append(
+            f"{getnow()}: long description updated from "
+            f"{old_long_description} to {long_description}"
+        )
+
+    # Update publisher if provided
+    if publisher is not None and publisher != title.publisher:
+        old_publisher = title.publisher
+        title.publisher = publisher
+        title.events.append(
+            f"{getnow()}: publisher updated from {old_publisher} to {publisher}"
+        )
+
+    # Update language if provided
+    if language is not None and language != title.language:
+        old_language = title.language
+        title.language = language
+        title.events.append(
+            f"{getnow()}: language updated from {old_language} to {language}"
+        )
+
+    # Update illustration_48x48_at_1 if provided
+    if (
+        illustration_48x48_at_1 is not None
+        and illustration_48x48_at_1 != title.illustration_48x48_at_1
+    ):
+        title.illustration_48x48_at_1 = illustration_48x48_at_1
+        title.events.append(f"{getnow()}: illustration_48x48@1 updated")
+
+    # Update license if provided
+    if license_ is not None and license_ != title.license:
+        old_license = title.license
+        title.license = license_
+        title.events.append(
+            f"{getnow()}: license updated from {old_license} to {license_}"
+        )
+
+    # Update relation if provided
+    if relation is not None and relation != title.relation:
+        old_relation = title.relation
+        title.relation = relation
+        title.events.append(
+            f"{getnow()}: relation updated from {old_relation} to {relation}"
+        )
+
+    # Update source if provided
+    if source is not None and source != title.source:
+        old_source = title.source
+        title.source = source
+        title.events.append(f"{getnow()}: source updated from {old_source} to {source}")
 
     name_changed: bool = False
     # Update name if provided
@@ -455,3 +622,22 @@ def restore_titles(
     """Restore a list of archived titles"""
     for title_name in title_names:
         restore_title(session, title_name)
+
+
+def title_is_missing_mandatory_metadata(title: Title) -> bool:
+    """Check if a title is missing the mandatory metadata information
+
+    See https://wiki.openzim.org/wiki/Metadata for the list of metadata
+    """
+
+    return any(
+        value is None
+        for value in [
+            title.title,
+            title.creator,
+            title.publisher,
+            title.description,
+            title.language,
+            title.illustration_48x48_at_1,
+        ]
+    )

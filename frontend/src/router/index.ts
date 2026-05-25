@@ -84,6 +84,15 @@ const routes = [
     },
   },
   {
+    path: '/book/:id/:selectedTab',
+    name: 'book-detail-tab',
+    component: BookView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Book • ${to.params.id}`,
+    },
+  },
+  {
     path: '/zimfarm-notification/:id',
     name: 'zimfarm-notification-detail',
     component: ZimfarmNotificationView,
