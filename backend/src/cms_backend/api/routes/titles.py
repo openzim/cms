@@ -60,6 +60,12 @@ class BaseTitleCreateUpdateSchema(BaseModel):
     license: NotEmptyString | None = None
     relation: NotEmptyString | None = None
     source: NotEmptyString | None = None
+    title: NotEmptyString | None = None
+    creator: NotEmptyString | None = None
+    description: NotEmptyString | None = None
+    publisher: NotEmptyString | None = None
+    language: NotEmptyString | None = None
+    illustration_48x48_at_1: Base64Str | None = None
 
     @model_validator(mode="after")
     def validate_unique_collection_titles(self) -> Self:
@@ -79,23 +85,11 @@ class BaseTitleCreateUpdateSchema(BaseModel):
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString
     maturity: Literal["unstable", "stable"] = "unstable"
-    title: NotEmptyString
-    creator: NotEmptyString
-    publisher: NotEmptyString
-    language: NotEmptyString
-    description: NotEmptyString
-    illustration_48x48_at_1: Base64Str
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString | None = None
     maturity: Literal["unstable", "stable"] | None = None
-    title: NotEmptyString | None = None
-    creator: NotEmptyString | None = None
-    description: NotEmptyString | None = None
-    publisher: NotEmptyString | None = None
-    language: NotEmptyString | None = None
-    illustration_48x48_at_1: Base64Str | None = None
 
 
 @router.get("")

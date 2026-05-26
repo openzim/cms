@@ -90,7 +90,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         date=book.date,
         deletion_date=book.deletion_date,
         flavour=book.flavour,
-        warnings=book.warnings,
+        issues=book.issues,
         article_count=book.article_count,
         media_count=book.media_count,
         size=book.size,

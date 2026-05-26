@@ -138,9 +138,8 @@ class Book(Base):
     location_kind: Mapped[str] = mapped_column(
         init=False, default="quarantine", server_default="quarantine"
     )
-    # should be used for storing warning messages about a book. ideally,
-    # these warning messsages should not prevent a book from being acted upon
-    warnings: Mapped[list[str]] = mapped_column(
+    # ideally, these issues should not prevent a book from being acted upon
+    issues: Mapped[list[str]] = mapped_column(
         default_factory=list, server_default="{}", init=False
     )
     deletion_date: Mapped[datetime | None] = mapped_column(default=None, init=False)

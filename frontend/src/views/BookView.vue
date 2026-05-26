@@ -57,19 +57,6 @@
           <v-icon class="mr-2">mdi-information</v-icon>
           Info
         </v-tab>
-
-        <v-tab
-          base-color="primary"
-          v-if="book.title_id && canSyncMetadata"
-          value="sync"
-          :to="{
-            name: 'book-detail-tab',
-            params: { id: book.id, selectedTab: 'sync' },
-          }"
-        >
-          <v-icon class="mr-2">mdi-sync</v-icon>
-          Sync Metadata
-        </v-tab>
       </v-tabs>
 
       <v-window v-model="currentTab">
@@ -308,13 +295,6 @@
             </v-card-text>
           </v-card>
         </v-window-item>
-
-        <!-- Sync Metadata Tab -->
-        <v-window-item value="sync">
-          <div class="pa-4">
-            <BookToTitleMetadataSync :book="book" :title="title" @synced="handleMetadataSynced" />
-          </div>
-        </v-window-item>
       </v-window>
     </div>
 
@@ -326,7 +306,6 @@
 
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
-import BookToTitleMetadataSync from '@/components/BookToTitleMetadataSync.vue'
 import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import EventsList from '@/components/EventsList.vue'
 import MoveBookDialog from '@/components/MoveBookDialog.vue'
@@ -415,18 +394,6 @@ const canRecoverBook = computed(() => {
     book.value.needs_file_operation &&
     !book.value.needs_processing &&
     hasFutureDeletionDate &&
-    !book.value.title_archived
-  )
-})
-
-const canSyncMetadata = computed(() => {
-  // User needs permission to update titles
-  // Title must exist and not be archived
-  return (
-    authStore.hasPermission('title', 'update') &&
-    book.value?.title_id &&
-    title.value &&
-    !title.value.archived &&
     !book.value.title_archived
   )
 })
@@ -551,15 +518,5 @@ const openDeleteDialog = () => {
 const handleBookDeleted = async () => {
   notificationStore.showSuccess('Book deleted successfully!')
   await loadData()
-}
-
-const handleMetadataSynced = async () => {
-  // Force reload to get fresh data from the server
-  if (book.value?.title_id) {
-    const data = await titleStore.fetchTitleById(book.value.title_id, true)
-    if (data) {
-      title.value = data
-    }
-  }
 }
 </script>

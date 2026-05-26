@@ -49,8 +49,8 @@
       {{ locationLabel }}
     </v-chip>
 
-    <!-- Warnings indicator -->
-    <v-menu v-if="hasWarnings" :close-on-content-click="false">
+    <!-- Issues indicator -->
+    <v-menu v-if="hasIssues" :close-on-content-click="false">
       <template #activator="{ props: menuProps }">
         <v-chip
           v-bind="menuProps"
@@ -61,12 +61,12 @@
           class="align-self-start"
         >
           <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
-          {{ book.warnings.length }}
+          {{ book.issues.length }}
         </v-chip>
       </template>
 
       <v-list class="pa-2">
-        <v-list-item v-for="(warning, index) in book.warnings" :key="index">
+        <v-list-item v-for="(warning, index) in book.issues" :key="index">
           <template #prepend>
             <span class="mr-2">•</span>
           </template>
@@ -104,7 +104,7 @@ const isMovingFiles = computed(
     props.book.location_kind !== 'deleted',
 )
 const hasTitle = computed(() => props.book.title_id)
-const hasWarnings = computed(() => props.book.warnings && props.book.warnings.length > 0)
+const hasIssues = computed(() => props.book.issues && props.book.issues.length > 0)
 
 const showLocationChip = computed(() => {
   // If the evaluated status is 'Errored' or 'Processing', we want to show the location chip

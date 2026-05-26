@@ -57,7 +57,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
 
         different_metadata_keys = get_differing_metadata_keys(book)
         if different_metadata_keys:
-            book.warnings = ["metadata mismatch"]
+            book.issues = ["metadata mismatch"]
             book.events.append(
                 f"{getnow()}: book metadata is different from title metadata: "
                 f"{','.join(different_metadata_keys)}"

@@ -115,7 +115,7 @@ class BookLightSchema(BaseModel):
     name: str | None
     date: str | None
     flavour: str | None
-    warnings: list[str]
+    issues: list[str]
 
 
 class BookFullSchema(BookLightSchema):

@@ -267,7 +267,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
 
         book = dbsession.query(Book).filter_by(id=notification.id).first()
         assert book is not None
-        assert len(book.warnings) == 0
+        assert len(book.issues) == 0
         assert book.title_id == title.id
 
         dbsession.refresh(title)
@@ -312,8 +312,8 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         book = dbsession.query(Book).filter_by(id=notification.id).first()
         assert book is not None
         assert book.title_id == title.id
-        assert len(book.warnings) == 1
-        assert set(book.warnings) == {"metadata mismatch"}
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"metadata mismatch"}
 
         dbsession.refresh(title)
         assert title.language != book.zim_metadata["Language"]
@@ -576,8 +576,8 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book is not None
         assert book.title_id == title.id
         assert book.location_kind == "staging"
-        assert len(book.warnings) == 1
-        assert set(book.warnings) == {"metadata mismatch"}
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"metadata mismatch"}
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False

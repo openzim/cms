@@ -14,11 +14,19 @@
         <v-text-field
           v-model="formData.title"
           label="Title"
-          :rules="inDialog && !isEditMode ? [rules.required] : []"
           variant="outlined"
           density="comfortable"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.title }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('title')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -27,21 +35,37 @@
         <v-text-field
           v-model="formData.creator"
           label="Creator"
-          :rules="inDialog && !isEditMode ? [rules.required] : []"
           variant="outlined"
           density="comfortable"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.creator }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('creator')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
       <v-col cols="12" :md="inDialog ? 12 : 6">
         <v-text-field
           v-model="formData.publisher"
           label="Publisher"
-          :rules="inDialog && !isEditMode ? [rules.required] : []"
           variant="outlined"
           density="comfortable"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.publisher }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('publisher')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -50,11 +74,19 @@
         <v-text-field
           v-model="formData.language"
           label="Language"
-          :rules="inDialog && !isEditMode ? [rules.required] : []"
           variant="outlined"
           density="comfortable"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.language }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('language')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
       <v-col cols="12" :md="inDialog ? 12 : 6">
         <v-text-field
@@ -72,9 +104,30 @@
         <ImageEditor
           v-model="formData.illustration_48x48_at_1"
           label="Illustration"
-          :required="inDialog && !isEditMode"
           description="Upload a 48x48 pixel illustration image"
         />
+        <div
+          v-if="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
+          class="text-body-2 mt-2 mb-2"
+        >
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between mb-2">
+            <v-img
+              :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
+              width="48"
+              height="48"
+              class="rounded border"
+            />
+            <v-btn
+              size="small"
+              variant="text"
+              color="primary"
+              @click="useBookValue('illustration_48x48_at_1')"
+            >
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -83,12 +136,20 @@
         <v-textarea
           v-model="formData.description"
           label="Description"
-          :rules="inDialog && !isEditMode ? [rules.required] : []"
           variant="outlined"
           density="comfortable"
           rows="3"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.description }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('description')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -102,6 +163,20 @@
           rows="5"
           clearable
         />
+        <div v-if="isFieldDifferent('long_description')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.long_description }}</strong>
+            <v-btn
+              size="small"
+              variant="text"
+              color="primary"
+              @click="useBookValue('long_description')"
+            >
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -114,6 +189,15 @@
           density="comfortable"
           clearable
         />
+        <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mt-n2 mb-2">
+          <div class="mb-1">Latest book has:</div>
+          <div class="d-flex align-center justify-space-between">
+            <strong>{{ bookMetadata?.license }}</strong>
+            <v-btn size="small" variant="text" color="primary" @click="useBookValue('license')">
+              Use this
+            </v-btn>
+          </div>
+        </div>
       </v-col>
       <v-col cols="12" :md="inDialog ? 12 : 6">
         <v-text-field
@@ -235,16 +319,19 @@
 import ImageEditor from '@/components/ImageEditor.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
+import type { Book } from '@/types/book'
 import { computed, ref, watch } from 'vue'
 
 interface Props {
   title?: Title | null
   inDialog?: boolean
+  latestBook?: Book | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: null,
   inDialog: false,
+  latestBook: null,
 })
 
 const emit = defineEmits<{
@@ -293,6 +380,97 @@ const isStable = computed({
     formData.value.maturity = value ? 'stable' : 'unstable'
   },
 })
+
+// Extract book metadata for comparison
+type BookMetadataFields = {
+  title: string | undefined
+  creator: string | undefined
+  publisher: string | undefined
+  description: string | undefined
+  long_description: string | undefined
+  language: string | undefined
+  license: string | undefined
+  illustration_48x48_at_1: string | undefined
+}
+
+const bookMetadata = computed<BookMetadataFields | null>(() => {
+  if (!props.latestBook?.zim_metadata) return null
+  const metadata = props.latestBook.zim_metadata
+  return {
+    title: metadata.Title as string | undefined,
+    creator: metadata.Creator as string | undefined,
+    publisher: metadata.Publisher as string | undefined,
+    description: metadata.Description as string | undefined,
+    long_description: metadata.LongDescription as string | undefined,
+    language: metadata.Language as string | undefined,
+    license: metadata.License as string | undefined,
+    illustration_48x48_at_1: metadata['Illustration_48x48@1'] as string | undefined,
+  }
+})
+
+const isFieldDifferent = (field: keyof BookMetadataFields) => {
+  if (!bookMetadata.value || !isEditMode.value) return false
+  const bookValue = bookMetadata.value[field]
+  const titleValue = formData.value[field as keyof typeof formData.value]
+
+  // If book has no value, don't show hint
+  if (bookValue === undefined || bookValue === null) return false
+
+  // If values are the same, don't show hint
+  if (bookValue === titleValue) return false
+
+  return true
+}
+
+const hasAnyDifferences = computed(() => {
+  if (!bookMetadata.value || !isEditMode.value) return false
+  const fields: (keyof BookMetadataFields)[] = [
+    'title',
+    'creator',
+    'publisher',
+    'description',
+    'long_description',
+    'language',
+    'license',
+    'illustration_48x48_at_1',
+  ]
+  return fields.some((field) => isFieldDifferent(field))
+})
+
+const useBookValue = (field: keyof BookMetadataFields) => {
+  if (!bookMetadata.value) return
+  const value = bookMetadata.value[field]
+  if (value !== undefined && value !== null) {
+    ;(formData.value[field as keyof typeof formData.value] as string | null) = value
+  }
+}
+
+const useAllBookValues = () => {
+  if (!bookMetadata.value) return
+  const fields: (keyof BookMetadataFields)[] = [
+    'title',
+    'creator',
+    'publisher',
+    'description',
+    'long_description',
+    'language',
+    'license',
+    'illustration_48x48_at_1',
+  ]
+  fields.forEach((field) => {
+    if (isFieldDifferent(field)) {
+      useBookValue(field)
+    }
+  })
+}
+
+const getImageDataUrl = (base64String: string | undefined): string | undefined => {
+  if (!base64String) return undefined
+  if (base64String.startsWith('data:') || base64String.startsWith('http')) {
+    return base64String
+  }
+  return `data:image/png;base64,${base64String}`
+}
 
 const collectionNames = computed(() => {
   return collectionsStore.collections.map((collection) => collection.name)
@@ -490,18 +668,18 @@ async function fetchCollections() {
 }
 
 function getFormData(): TitleUpdate {
-  // For creation (non-edit mode), ensure required fields are not null/undefined
+  // For creation (non-edit mode), include all fields with their current values (null if not set)
   if (!isEditMode.value) {
     return {
       name: formData.value.name || '',
       maturity: formData.value.maturity || 'unstable',
       collection_titles: formData.value.collection_titles,
-      title: formData.value.title || '',
-      creator: formData.value.creator || '',
-      publisher: formData.value.publisher || '',
-      description: formData.value.description || '',
-      language: formData.value.language || '',
-      illustration_48x48_at_1: formData.value.illustration_48x48_at_1 || '',
+      title: formData.value.title || null,
+      creator: formData.value.creator || null,
+      publisher: formData.value.publisher || null,
+      description: formData.value.description || null,
+      language: formData.value.language || null,
+      illustration_48x48_at_1: formData.value.illustration_48x48_at_1 || null,
       long_description: formData.value.long_description,
       license: formData.value.license,
       relation: formData.value.relation,
@@ -580,6 +758,8 @@ defineExpose({
   getUpdatePayload,
   formValid,
   formData,
+  hasAnyDifferences,
+  useAllBookValues,
 })
 </script>
 

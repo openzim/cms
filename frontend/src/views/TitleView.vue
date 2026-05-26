@@ -270,23 +270,38 @@
         <v-window-item value="edit">
           <div v-if="canEditTitle" class="pa-4">
             <v-card flat>
-              <v-card-actions class="pa-4 pb-0">
-                <v-spacer />
+              <v-card-actions class="pa-4 pb-0 d-flex flex-column flex-md-row">
                 <v-btn
-                  color="default"
+                  v-if="titleFormRef?.hasAnyDifferences"
+                  :color="updating ? undefined : 'primary'"
+                  variant="elevated"
+                  @click="handleUseLatestBook"
+                  :disabled="updating"
+                  :block="smAndDown"
+                  class="mb-2 mb-md-0"
+                >
+                  <v-icon class="mr-2">mdi-download</v-icon>
+                  Use Metadata from Latest Book
+                </v-btn>
+                <v-spacer class="d-none d-md-flex" />
+                <v-btn
+                  :color="updating || !hasChanges ? undefined : 'default'"
                   variant="outlined"
                   @click="handleReset"
                   :disabled="updating || !hasChanges"
+                  :block="smAndDown"
+                  class="mb-2 mb-md-0 mr-md-2"
                 >
                   <v-icon class="mr-2">mdi-restore</v-icon>
                   Reset
                 </v-btn>
                 <v-btn
-                  color="primary"
+                  :color="!formValid || updating || !hasChanges ? undefined : 'primary'"
                   variant="elevated"
                   @click="handleUpdate"
                   :loading="updating"
                   :disabled="!formValid || updating || !hasChanges"
+                  :block="smAndDown"
                 >
                   <v-icon class="mr-2">mdi-content-save</v-icon>
                   Save Changes
@@ -297,6 +312,7 @@
                 <TitleForm
                   ref="titleFormRef"
                   :title="title"
+                  :latest-book="latestBook"
                   @update:valid="formValid = $event"
                   @update:has-changes="hasChanges = $event"
                 />
@@ -307,23 +323,38 @@
               </v-card-text>
 
               <!-- Action Buttons at Bottom -->
-              <v-card-actions class="pa-4 pt-0">
-                <v-spacer />
+              <v-card-actions class="pa-4 pt-0 d-flex flex-column flex-md-row">
                 <v-btn
-                  color="default"
+                  v-if="titleFormRef?.hasAnyDifferences"
+                  :color="updating ? undefined : 'primary'"
+                  variant="elevated"
+                  @click="handleUseLatestBook"
+                  :disabled="updating"
+                  :block="smAndDown"
+                  class="mb-2 mb-md-0"
+                >
+                  <v-icon class="mr-2">mdi-download</v-icon>
+                  Use Metadata from Latest Book
+                </v-btn>
+                <v-spacer class="d-none d-md-flex" />
+                <v-btn
+                  :color="updating || !hasChanges ? undefined : 'default'"
                   variant="outlined"
                   @click="handleReset"
                   :disabled="updating || !hasChanges"
+                  :block="smAndDown"
+                  class="mb-2 mb-md-0 mr-md-2"
                 >
                   <v-icon class="mr-2">mdi-restore</v-icon>
                   Reset
                 </v-btn>
                 <v-btn
-                  color="primary"
+                  :color="!formValid || updating || !hasChanges ? undefined : 'primary'"
                   variant="elevated"
                   @click="handleUpdate"
                   :loading="updating"
                   :disabled="!formValid || updating || !hasChanges"
+                  :block="smAndDown"
                 >
                   <v-icon class="mr-2">mdi-content-save</v-icon>
                   Save Changes
@@ -360,7 +391,7 @@ import { useTitleStore } from '@/stores/title'
 import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
 import type { Title } from '@/types/title'
-import type { ZimUrl } from '@/types/book'
+import type { Book, ZimUrl } from '@/types/book'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -380,6 +411,7 @@ const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
 const loadingUrls = ref(false)
 const zimUrls = ref<Record<string, ZimUrl[]>>({})
+const latestBook = ref<Book | null>(null)
 
 // Edit form state
 const titleFormRef = ref<InstanceType<typeof TitleForm>>()
@@ -433,6 +465,27 @@ const sortedBooks = computed(() => {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
 })
+
+const loadLatestBook = async () => {
+  if (!title.value?.books || title.value.books.length === 0) {
+    latestBook.value = null
+    return
+  }
+
+  const latestBookId = sortedBooks.value[0]?.id
+  if (!latestBookId) {
+    latestBook.value = null
+    return
+  }
+
+  try {
+    const book = await bookStore.fetchBook(latestBookId, true)
+    latestBook.value = book
+  } catch (err) {
+    console.error('Failed to fetch latest book', err)
+    latestBook.value = null
+  }
+}
 
 const loadData = async (forceReload: boolean = false) => {
   loadingStore.startLoading('Fetching title...')
@@ -546,8 +599,17 @@ const handleReset = () => {
   titleFormRef.value?.resetFormToTitle(title.value)
 }
 
+const handleUseLatestBook = () => {
+  titleFormRef.value?.useAllBookValues()
+}
+
 onMounted(async () => {
   await loadData(true)
+  if (props.selectedTab === 'edit' && title.value) {
+    await titleFormRef.value?.fetchCollections()
+    await loadLatestBook()
+    titleFormRef.value?.resetFormToTitle(title.value)
+  }
 })
 
 // Watch for tab changes
@@ -555,14 +617,15 @@ watch(
   () => props.selectedTab,
   async (newTab) => {
     currentTab.value = newTab
-    // Load collections and reset form when switching to edit tab
-    if (newTab === 'edit' && title.value) {
-      await titleFormRef.value?.fetchCollections()
-      titleFormRef.value?.resetFormToTitle(title.value)
-    }
-    // Only refresh data if we don't have any data yet, or if not archiving
+
     if (!title.value || newTab != 'archive') {
       await loadData(true)
+    }
+
+    if (newTab === 'edit' && title.value) {
+      await titleFormRef.value?.fetchCollections()
+      await loadLatestBook()
+      titleFormRef.value?.resetFormToTitle(title.value)
     }
   },
 )

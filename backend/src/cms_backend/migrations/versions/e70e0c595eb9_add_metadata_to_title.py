@@ -34,7 +34,7 @@ def upgrade():
     op.add_column(
         "book",
         sa.Column(
-            "warnings",
+            "issues",
             postgresql.ARRAY(sa.String()),
             server_default="{}",
             nullable=False,
@@ -55,5 +55,5 @@ def downgrade():
     op.drop_column("title", "publisher")
     op.drop_column("title", "creator")
     op.drop_column("title", "title")
-    op.drop_column("book", "warnings")
+    op.drop_column("book", "issues")
     # ### end Alembic commands ###
