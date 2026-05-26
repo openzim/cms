@@ -20,6 +20,8 @@ def get_books(
     skip: int,
     limit: int,
     book_id: str | None = None,
+    name: str | None = None,
+    flavour: str | None = None,
     has_title: bool | None = None,
     needs_processing: bool | None = None,
     has_error: bool | None = None,
@@ -53,6 +55,12 @@ def get_books(
 
     if book_id is not None:
         stmt = stmt.where(Book.id.cast(String).ilike(f"%{book_id}%"))
+
+    if name is not None:
+        stmt = stmt.where(Book.name.ilike(f"%{name}%"))
+
+    if flavour is not None:
+        stmt = stmt.where(Book.flavour == flavour)
 
     if has_title is not None:
         if has_title:
@@ -91,7 +99,7 @@ def get_books(
     elif needs_attention is False:
         stmt = stmt.where(
             and_(
-                Book.location_kind.not_in(["quarantine", "staging"]),
+                Book.location_kind.not_in(["quarantine", "staging", "deleted"]),
                 Book.title_id.is_not(None),
                 Book.needs_processing.is_(False),
                 Book.needs_file_operation.is_(False),
@@ -313,3 +321,19 @@ def get_book_languages(session: OrmSession) -> BookLanguagesSchema:
                 languages.add(normalized_language)
 
     return BookLanguagesSchema(languages=sorted(languages))
+
+
+def get_book_flavours(session: OrmSession) -> ListResult[str]:
+    """Get a list of book falavours"""
+    stmt = (
+        select(Book.flavour)
+        .distinct()
+        .order_by(Book.flavour)
+        .where(Book.flavour.isnot(None))
+    )
+    return ListResult[str](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            flavour for flavour in session.scalars(stmt).all() if flavour is not None
+        ],
+    )

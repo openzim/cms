@@ -48,6 +48,8 @@ export const useBookStore = defineStore('book', () => {
     id: string | undefined = undefined,
     location_kinds: string[] | undefined = undefined,
     flag: string | undefined = undefined,
+    name: string | undefined = undefined,
+    flavour: string | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
 
@@ -68,6 +70,8 @@ export const useBookStore = defineStore('book', () => {
         needs_processing,
         has_error,
         has_title,
+        name,
+        flavour,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),
@@ -151,6 +155,36 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const fetchBookFlavours = async () => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.get<null, ListResponse<string>>('/flavours')
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch book flavours', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
+  const updateBook = async (bookId: string, bookData: Partial<{ flavour: string }>) => {
+    const service = await authStore.getApiService('books')
+    try {
+      errors.value = []
+      const response = await service.patch<Partial<{ flavour: string }>, Book>(
+        `/${bookId}`,
+        bookData,
+      )
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to update book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -166,5 +200,7 @@ export const useBookStore = defineStore('book', () => {
     deleteBook,
     recoverBook,
     moveBook,
+    fetchBookFlavours,
+    updateBook,
   }
 })

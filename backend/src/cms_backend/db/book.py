@@ -337,3 +337,23 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
     session.add(book)
     session.flush()
     return book
+
+
+def update_book(session: OrmSession, book_id: UUID, *, flavour: str) -> Book:
+    book = get_book(session, book_id)
+    if book.location_kind == "deleted":
+        raise RecordDoesNotExistError(f"Book {book_id} is already deleted.")
+
+    if book.title and book.title.archived:
+        raise ValueError(f"Book title {book.title_id} is currently archived")
+
+    if book.flavour == flavour:
+        return book
+
+    book.events.append(
+        f"{getnow()}: flavour updated from '{book.flavour}' to '{flavour}'"
+    )
+    book.flavour = flavour
+    session.add(book)
+    session.flush()
+    return book
