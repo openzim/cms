@@ -2,7 +2,7 @@
 
 <template>
   <TabsList :active-tab="currentTab" :tab-options="tabOptions" @tab-changed="handleTabChange" />
-  <BookFilters
+  <InboxBookFilters
     v-if="currentTab == 'books'"
     :filters="bookFilters"
     :location-kind-options="['quarantine', 'staging']"
@@ -60,7 +60,7 @@
 
 <script setup lang="ts">
 import TabsList from '@/components/TabsList.vue'
-import BookFilters from '@/components/BookFilters.vue'
+import InboxBookFilters from '@/components/InboxBookFilters.vue'
 import BookTable from '@/components/BookTable.vue'
 import ZimfarmNotificationFilters from '@/components/ZimfarmNotificationFilters.vue'
 import ZimfarmNotificationTable from '@/components/ZimfarmNotificationTable.vue'
@@ -240,6 +240,8 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         bookFilters.value.id || undefined,
         bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
         bookFilters.value.flag || undefined,
+        undefined, // name not used in inbox
+        undefined, // flavour not used in inbox
       )
       books.value = bookStore.books
       errors.value = bookStore.errors

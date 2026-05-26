@@ -22,9 +22,8 @@
             variant="outlined"
             density="compact"
             hide-details
-            :clearable="hasActiveFilters"
+            clearable
             @update:model-value="emitFilters"
-            @click:clear="handleClearFilters"
           />
         </v-col>
         <v-col cols="12" sm="6" md="3">
@@ -36,9 +35,8 @@
             variant="outlined"
             density="compact"
             hide-details
-            :clearable="hasActiveFilters"
+            clearable
             @update:model-value="emitFilters"
-            @click:clear="handleClearFilters"
           />
         </v-col>
         <v-col

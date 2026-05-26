@@ -7,7 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, Title
+from cms_backend.api.token import generate_access_token
+from cms_backend.db.models import Account, Book, Title
+from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
 
 
@@ -293,6 +295,21 @@ def test_get_book_languages(
     assert response.json() == {"languages": ["deu", "eng", "fra", "spa"]}
 
 
+def test_get_book_flavours(
+    client: TestClient,
+    create_book: Callable[..., Book],
+):
+    """Test books flavours endpoint returns sorted distinct flavours."""
+    for flavour in ["maxi", "mini", "nopic", "maxi", "mini"]:
+        create_book(flavour=flavour)
+
+    response = client.get("/v1/books/flavours")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["items"] == ["maxi", "mini", "nopic"]
+    assert response_doc["meta"]["count"] == 3
+
+
 def test_get_book_by_id(
     client: TestClient,
     book: Book,
@@ -391,3 +408,31 @@ def test_get_books_filter_by_date_range(
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1  # only two days ago
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_update_book_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_book: Callable[..., Book],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test updating a book with different roles"""
+    book = create_book(flavour="maxi")
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.patch(
+        f"/v1/books/{book.id}",
+        json={"flavour": "mini"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
