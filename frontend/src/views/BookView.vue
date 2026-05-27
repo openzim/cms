@@ -57,6 +57,19 @@
           <v-icon class="mr-2">mdi-information</v-icon>
           Info
         </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canEditBook"
+          value="edit"
+          :to="{
+            name: 'book-detail-tab',
+            params: { id: book.id, selectedTab: 'edit' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-pencil</v-icon>
+          Edit
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="currentTab">
@@ -295,6 +308,19 @@
             </v-card-text>
           </v-card>
         </v-window-item>
+
+        <!-- Edit Tab -->
+        <v-window-item value="edit">
+          <div v-if="canEditBook" class="pa-4">
+            <EditBookForm
+              :book="book"
+              :loading="updatingBook"
+              :flavour-options="flavours"
+              :loading-flavours="loadingFlavours"
+              @submit="handleUpdateBook"
+            />
+          </div>
+        </v-window-item>
       </v-window>
     </div>
 
@@ -307,6 +333,7 @@
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
 import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
+import EditBookForm from '@/components/EditBookForm.vue'
 import EventsList from '@/components/EventsList.vue'
 import MoveBookDialog from '@/components/MoveBookDialog.vue'
 import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
@@ -339,6 +366,9 @@ const zimUrls = ref<ZimUrl[]>([])
 const moveDialogOpen = ref(false)
 const recoverDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const updatingBook = ref(false)
+const flavours = ref<string[]>([])
+const loadingFlavours = ref(false)
 
 interface Props {
   id: string
@@ -356,6 +386,11 @@ const locationHeaders = [
   { title: 'Folder', value: 'path', sortable: false },
   { title: 'Filename', value: 'filename', sortable: false },
 ]
+
+const canEditBook = computed(() => {
+  if (!book.value) return false
+  return authStore.hasPermission('book', 'update') && !book.value.title_archived
+})
 
 const canMoveBook = computed(() => {
   if (!book.value) return false
@@ -458,22 +493,6 @@ onMounted(async () => {
   await loadData(true)
 })
 
-watch(
-  () => props.selectedTab,
-  (newTab) => {
-    currentTab.value = newTab
-  },
-)
-
-// Watch for book id changes (e.g. navigating between books without remounting)
-watch(
-  () => props.id,
-  async () => {
-    currentTab.value = 'info'
-    await loadData(true)
-  },
-)
-
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText('```\n' + text + '\n```\n')
@@ -519,4 +538,43 @@ const handleBookDeleted = async () => {
   notificationStore.showSuccess('Book deleted successfully!')
   await loadData()
 }
+
+const handleUpdateBook = async (bookData: { flavour: string }) => {
+  updatingBook.value = true
+  const updatedBook = await bookStore.updateBook(props.id, bookData)
+  if (updatedBook) {
+    book.value = updatedBook
+    notificationStore.showSuccess('Book updated successfully!')
+  } else {
+    for (const error of bookStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+  updatingBook.value = false
+}
+
+watch(
+  () => props.selectedTab,
+  async (newTab) => {
+    if (newTab === 'edit' && flavours.value.length == 0) {
+      loadingFlavours.value = true
+      const fetchedFlavours = await bookStore.fetchBookFlavours()
+      if (fetchedFlavours) {
+        flavours.value = fetchedFlavours
+      }
+      loadingFlavours.value = false
+    }
+    currentTab.value = newTab
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.id,
+  async () => {
+    book.value = null
+    currentTab.value = 'info'
+    await loadData(true)
+  },
+)
 </script>

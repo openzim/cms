@@ -12,6 +12,7 @@ import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vu
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
 import BookView from '@/views/BookView.vue'
+import BooksView from '@/views/BooksView.vue'
 import ZimfarmNotificationView from '@/views/ZimfarmNotificationView.vue'
 
 const routes = [
@@ -43,6 +44,12 @@ const routes = [
     name: 'inbox',
     component: InboxView,
     meta: { title: 'CMS | Inbox' },
+  },
+  {
+    path: '/books',
+    name: 'books',
+    component: BooksView,
+    meta: { title: 'CMS | Books' },
   },
   {
     path: '/titles',

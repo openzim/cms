@@ -14,11 +14,16 @@ from cms_backend.db.book import delete_book as db_delete_book
 from cms_backend.db.book import get_book as db_get_book
 from cms_backend.db.book import move_book as db_move_book
 from cms_backend.db.book import recover_book as db_recover_book
+from cms_backend.db.book import update_book as db_update_book
+from cms_backend.db.books import get_book_flavours as db_get_book_flavours
 from cms_backend.db.books import get_book_languages as db_get_book_languages
 from cms_backend.db.books import get_books as db_get_books
 from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlsSchema
+from cms_backend.schemas.models import (
+    BookLanguagesSchema,
+    ZimUrlsSchema,
+)
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookLightSchema,
@@ -43,6 +48,12 @@ class BooksGetSchema(BaseModel):
     needs_attention: bool | None = None
     updated_before: datetime.datetime | None = None
     updated_after: datetime.datetime | None = None
+    name: NotEmptyString | None = None
+    flavour: NotEmptyString | None = None
+
+
+class BookUpdateSchema(BaseModel):
+    flavour: NotEmptyString
 
 
 @router.get("")
@@ -65,6 +76,8 @@ def get_books(
         needs_attention=params.needs_attention,
         updated_before=params.updated_before,
         updated_after=params.updated_after,
+        name=params.name,
+        flavour=params.flavour,
     )
 
     return ListResponse[BookLightSchema](
@@ -93,6 +106,22 @@ def get_book_languages(
     return db_get_book_languages(session)
 
 
+@router.get("/flavours")
+def get_book_flavours(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> ListResponse[str]:
+    results = db_get_book_flavours(session)
+    return ListResponse[str](
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=0,
+            limit=len(results.records),
+            page_size=len(results.records),
+        ),
+        items=results.records,
+    )
+
+
 @router.get("/{book_id}")
 def get_book(
     book_id: Annotated[UUID, Path()],
@@ -100,6 +129,20 @@ def get_book(
 ) -> BookFullSchema:
     """Get a book by ID"""
     return create_book_full_schema(db_get_book(session=session, book_id=book_id))
+
+
+@router.patch(
+    "/{book_id}",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def update_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    request: BookUpdateSchema,
+) -> BookFullSchema:
+    return create_book_full_schema(
+        db_update_book(session, book_id=book_id, flavour=request.flavour)
+    )
 
 
 @router.delete(
