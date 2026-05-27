@@ -270,27 +270,12 @@
         <v-window-item value="edit">
           <div v-if="canEditTitle" class="pa-4">
             <v-card flat>
-              <v-card-actions class="pa-4 pb-0 d-flex flex-column flex-md-row">
-                <v-btn
-                  v-if="titleFormRef?.hasAnyDifferences"
-                  :color="updating ? undefined : 'primary'"
-                  variant="elevated"
-                  @click="handleUseLatestBook"
-                  :disabled="updating"
-                  :block="smAndDown"
-                  class="mb-2 mb-md-0"
-                >
-                  <v-icon class="mr-2">mdi-download</v-icon>
-                  Use Metadata from Latest Book
-                </v-btn>
-                <v-spacer class="d-none d-md-flex" />
+              <div class="d-flex flex-column flex-sm-row justify-end ga-2">
                 <v-btn
                   :color="updating || !hasChanges ? undefined : 'default'"
                   variant="outlined"
                   @click="handleReset"
                   :disabled="updating || !hasChanges"
-                  :block="smAndDown"
-                  class="mb-2 mb-md-0 mr-md-2"
                 >
                   <v-icon class="mr-2">mdi-restore</v-icon>
                   Reset
@@ -301,12 +286,11 @@
                   @click="handleUpdate"
                   :loading="updating"
                   :disabled="!formValid || updating || !hasChanges"
-                  :block="smAndDown"
                 >
                   <v-icon class="mr-2">mdi-content-save</v-icon>
                   Save Changes
                 </v-btn>
-              </v-card-actions>
+              </div>
 
               <v-card-text>
                 <TitleForm
@@ -323,27 +307,12 @@
               </v-card-text>
 
               <!-- Action Buttons at Bottom -->
-              <v-card-actions class="pa-4 pt-0 d-flex flex-column flex-md-row">
-                <v-btn
-                  v-if="titleFormRef?.hasAnyDifferences"
-                  :color="updating ? undefined : 'primary'"
-                  variant="elevated"
-                  @click="handleUseLatestBook"
-                  :disabled="updating"
-                  :block="smAndDown"
-                  class="mb-2 mb-md-0"
-                >
-                  <v-icon class="mr-2">mdi-download</v-icon>
-                  Use Metadata from Latest Book
-                </v-btn>
-                <v-spacer class="d-none d-md-flex" />
+              <div class="d-flex flex-column flex-sm-row justify-end ga-2">
                 <v-btn
                   :color="updating || !hasChanges ? undefined : 'default'"
                   variant="outlined"
                   @click="handleReset"
                   :disabled="updating || !hasChanges"
-                  :block="smAndDown"
-                  class="mb-2 mb-md-0 mr-md-2"
                 >
                   <v-icon class="mr-2">mdi-restore</v-icon>
                   Reset
@@ -354,12 +323,11 @@
                   @click="handleUpdate"
                   :loading="updating"
                   :disabled="!formValid || updating || !hasChanges"
-                  :block="smAndDown"
                 >
                   <v-icon class="mr-2">mdi-content-save</v-icon>
                   Save Changes
                 </v-btn>
-              </v-card-actions>
+              </div>
             </v-card>
           </div>
         </v-window-item>
@@ -597,10 +565,6 @@ const handleUpdate = async () => {
 const handleReset = () => {
   if (!title.value) return
   titleFormRef.value?.resetFormToTitle(title.value)
-}
-
-const handleUseLatestBook = () => {
-  titleFormRef.value?.useAllBookValues()
 }
 
 onMounted(async () => {

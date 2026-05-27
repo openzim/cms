@@ -1,317 +1,341 @@
 <template>
   <v-form ref="formRef" v-model="formValid">
-    <v-row>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.name"
-          label="Title Name"
+    <!-- Basic Settings Section -->
+    <div class="mb-6">
+      <h3 class="text-h6 mb-4">Basic Settings</h3>
+      <v-row>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.name"
+            label="Title Name"
+            :rules="[rules.required]"
+            variant="outlined"
+            density="comfortable"
+          />
+        </v-col>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-switch
+            v-model="isStable"
+            color="primary"
+            density="comfortable"
+            :hint="maturityHint"
+            persistent-hint
+          >
+            <template #label>
+              <span class="text-subtitle-1"
+                >Maturity: <strong>{{ formData.maturity }}</strong></span
+              >
+            </template>
+          </v-switch>
+        </v-col>
+      </v-row>
+    </div>
+
+    <v-divider class="my-6" />
+
+    <!-- Metadata Section -->
+    <div class="mb-6">
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6">Metadata</h3>
+        <v-btn
+          v-if="!inDialog && hasAnyDifferences"
+          color="primary"
+          variant="elevated"
+          size="small"
+          prepend-icon="mdi-download"
+          @click="useAllBookValues"
+        >
+          Use All from Latest Book
+        </v-btn>
+      </div>
+
+      <v-row>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.title"
+            label="Title"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.title }}</strong>
+              <v-btn size="small" variant="text" color="primary" @click="useBookValue('title')">
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.creator"
+            label="Creator"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.creator }}</strong>
+              <v-btn size="small" variant="text" color="primary" @click="useBookValue('creator')">
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-row>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.publisher"
+            label="Publisher"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.publisher }}</strong>
+              <v-btn size="small" variant="text" color="primary" @click="useBookValue('publisher')">
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.language"
+            label="Language"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.language }}</strong>
+              <v-btn size="small" variant="text" color="primary" @click="useBookValue('language')">
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-row>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.license"
+            label="License"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.license }}</strong>
+              <v-btn size="small" variant="text" color="primary" @click="useBookValue('license')">
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.relation"
+            label="Relation"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+        </v-col>
+      </v-row>
+
+      <v-row>
+        <v-col cols="12" :md="inDialog ? 12 : 6">
+          <v-text-field
+            v-model="formData.source"
+            label="Source"
+            variant="outlined"
+            density="comfortable"
+            clearable
+          />
+        </v-col>
+      </v-row>
+
+      <v-row>
+        <v-col cols="12">
+          <ImageEditor
+            v-model="formData.illustration_48x48_at_1"
+            label="Illustration"
+            description="Upload a 48x48 pixel illustration image"
+          />
+          <div
+            v-if="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
+            class="text-body-2 mt-2 mb-2"
+          >
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between mb-2">
+              <v-img
+                :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
+                width="48"
+                height="48"
+                class="rounded border"
+              />
+              <v-btn
+                size="small"
+                variant="text"
+                color="primary"
+                @click="useBookValue('illustration_48x48_at_1')"
+              >
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-row>
+        <v-col cols="12">
+          <v-textarea
+            v-model="formData.description"
+            label="Description"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            clearable
+          />
+          <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.description }}</strong>
+              <v-btn
+                size="small"
+                variant="text"
+                color="primary"
+                @click="useBookValue('description')"
+              >
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-row v-if="!inDialog">
+        <v-col cols="12">
+          <v-textarea
+            v-model="formData.long_description"
+            label="Long Description"
+            variant="outlined"
+            density="comfortable"
+            rows="5"
+            clearable
+          />
+          <div v-if="isFieldDifferent('long_description')" class="text-body-2 mt-n2 mb-2">
+            <div class="mb-1">Latest book has:</div>
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ bookMetadata?.long_description }}</strong>
+              <v-btn
+                size="small"
+                variant="text"
+                color="primary"
+                @click="useBookValue('long_description')"
+              >
+                Use this
+              </v-btn>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
+    </div>
+
+    <v-divider class="my-6" />
+
+    <!-- Collections Section -->
+    <div>
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6">Collections</h3>
+        <v-btn
+          color="primary"
+          variant="text"
+          size="small"
+          prepend-icon="mdi-plus"
+          @click="addCollectionTitle"
+          :disabled="loadingCollections || !canAddMoreCollections"
+        >
+          Add Collection
+        </v-btn>
+      </div>
+
+      <v-alert
+        v-if="formData.collection_titles.length === 0"
+        type="info"
+        density="compact"
+        class="mb-4"
+      >
+        No collections added.
+      </v-alert>
+
+      <div
+        v-for="(collectionTitle, index) in formData.collection_titles"
+        :key="index"
+        class="mb-4 pa-3 border rounded"
+      >
+        <div class="d-flex align-center mb-2">
+          <span class="text-subtitle-2 flex-grow-1">Collection #{{ index + 1 }}</span>
+          <v-btn
+            icon="mdi-delete"
+            size="x-small"
+            variant="text"
+            color="error"
+            @click="removeCollectionTitle(index)"
+          />
+        </div>
+
+        <v-select
+          v-model="collectionTitle.collection_name"
+          label="Collection"
+          :items="getAvailableCollections(index)"
           :rules="[rules.required]"
           variant="outlined"
           density="comfortable"
+          class="mb-2"
+          :loading="loadingCollections"
+          @update:model-value="handleCollectionChange(index)"
         />
-      </v-col>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.title"
-          label="Title"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.title }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('title')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
 
-    <v-row>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.creator"
-          label="Creator"
+        <v-select
+          v-model="collectionTitle.path"
+          label="Path"
+          :items="getAvailablePaths(collectionTitle.collection_name)"
+          :rules="[rules.required]"
           variant="outlined"
           density="comfortable"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.creator }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('creator')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.publisher"
-          label="Publisher"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.publisher }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('publisher')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.language"
-          label="Language"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.language }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('language')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.relation"
-          label="Relation"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12">
-        <ImageEditor
-          v-model="formData.illustration_48x48_at_1"
-          label="Illustration"
-          description="Upload a 48x48 pixel illustration image"
-        />
-        <div
-          v-if="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
-          class="text-body-2 mt-2 mb-2"
-        >
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between mb-2">
-            <v-img
-              :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
-              width="48"
-              height="48"
-              class="rounded border"
-            />
-            <v-btn
-              size="small"
-              variant="text"
-              color="primary"
-              @click="useBookValue('illustration_48x48_at_1')"
-            >
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12">
-        <v-textarea
-          v-model="formData.description"
-          label="Description"
-          variant="outlined"
-          density="comfortable"
-          rows="3"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.description }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('description')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
-
-    <v-row v-if="!inDialog">
-      <v-col cols="12">
-        <v-textarea
-          v-model="formData.long_description"
-          label="Long Description"
-          variant="outlined"
-          density="comfortable"
-          rows="5"
-          clearable
-        />
-        <div v-if="isFieldDifferent('long_description')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.long_description }}</strong>
-            <v-btn
-              size="small"
-              variant="text"
-              color="primary"
-              @click="useBookValue('long_description')"
-            >
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.license"
-          label="License"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-        <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mt-n2 mb-2">
-          <div class="mb-1">Latest book has:</div>
-          <div class="d-flex align-center justify-space-between">
-            <strong>{{ bookMetadata?.license }}</strong>
-            <v-btn size="small" variant="text" color="primary" @click="useBookValue('license')">
-              Use this
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <v-text-field
-          v-model="formData.source"
-          label="Source"
-          variant="outlined"
-          density="comfortable"
-          clearable
-        />
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12" :md="inDialog ? 12 : 6">
-        <!-- Empty column for layout in edit tab -->
-      </v-col>
-    </v-row>
-
-    <v-row>
-      <v-col cols="12">
-        <v-switch
-          v-model="isStable"
-          color="primary"
-          density="comfortable"
-          :class="inDialog ? 'mb-2' : ''"
-          :hint="maturityHint"
+          :disabled="!collectionTitle.collection_name"
+          :hint="!collectionTitle.collection_name ? 'Please select a collection first' : ''"
           persistent-hint
-        >
-          <template #label>
-            <span class="text-subtitle-1"
-              >Maturity: <strong>{{ formData.maturity }}</strong></span
-            >
-          </template>
-        </v-switch>
-      </v-col>
-    </v-row>
-
-    <v-divider class="my-4" />
-
-    <div class="d-flex align-center justify-space-between mb-3">
-      <h3 class="text-subtitle-1">Collection Paths</h3>
-      <v-btn
-        color="primary"
-        variant="text"
-        size="small"
-        prepend-icon="mdi-plus"
-        @click="addCollectionTitle"
-        :disabled="loadingCollections || !canAddMoreCollections"
-      >
-        Add Collection
-      </v-btn>
-    </div>
-
-    <v-alert
-      v-if="formData.collection_titles.length === 0"
-      type="info"
-      density="compact"
-      class="mb-4"
-    >
-      No collections added.
-    </v-alert>
-
-    <div
-      v-for="(collectionTitle, index) in formData.collection_titles"
-      :key="index"
-      class="mb-4 pa-3 border rounded"
-    >
-      <div class="d-flex align-center mb-2">
-        <span class="text-subtitle-2 flex-grow-1">Collection #{{ index + 1 }}</span>
-        <v-btn
-          icon="mdi-delete"
-          size="x-small"
-          variant="text"
-          color="error"
-          @click="removeCollectionTitle(index)"
         />
       </div>
 
-      <v-select
-        v-model="collectionTitle.collection_name"
-        label="Collection"
-        :items="getAvailableCollections(index)"
-        :rules="[rules.required]"
-        variant="outlined"
-        density="comfortable"
-        class="mb-2"
-        :loading="loadingCollections"
-        @update:model-value="handleCollectionChange(index)"
-      />
-
-      <v-select
-        v-model="collectionTitle.path"
-        label="Path"
-        :items="getAvailablePaths(collectionTitle.collection_name)"
-        :rules="[rules.required]"
-        variant="outlined"
-        density="comfortable"
-        :disabled="!collectionTitle.collection_name"
-        :hint="!collectionTitle.collection_name ? 'Please select a collection first' : ''"
-        persistent-hint
-      />
+      <v-alert
+        v-if="isEditMode && hasCollectionChanges"
+        type="warning"
+        density="compact"
+        class="mt-4"
+        icon="mdi-alert"
+      >
+        Modifying title collections settings will cause books in production to be altered as
+        specified. Beware of potential impact of removing a book from a location already in use by
+        the library or currently being downloaded by users.
+      </v-alert>
     </div>
-
-    <v-alert
-      v-if="isEditMode && hasCollectionChanges"
-      type="warning"
-      density="compact"
-      class="mt-4"
-      icon="mdi-alert"
-    >
-      Modifying title collections settings will cause books in production to be altered as
-      specified. Beware of potential impact of removing a book from a location already in use by the
-      library or currently being downloaded by users.
-    </v-alert>
   </v-form>
 </template>
 
