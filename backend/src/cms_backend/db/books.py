@@ -46,13 +46,8 @@ def get_books(
         Book.date,
         Book.flavour,
         Book.issues,
-    ).order_by(
-        Book.has_error.desc(),
-        Book.location_kind,
-        Book.needs_file_operation.desc(),
-        Book.created_at.desc(),
-        Book.id,
-    )
+        Title.flavours,
+    ).join(Title, Book.title_id == Title.id, isouter=True)
 
     if book_id is not None:
         stmt = stmt.where(Book.id.cast(String).ilike(f"%{book_id}%"))
@@ -124,6 +119,9 @@ def get_books(
                 date=date,
                 flavour=flavour,
                 issues=book_issues,
+                has_flavour_mismatch=flavour not in title_flavours
+                if title_flavours is not None
+                else False,
             )
             for (
                 book_id_result,
@@ -138,6 +136,7 @@ def get_books(
                 date,
                 flavour,
                 book_issues,
+                title_flavours,
             ) in session.execute(
                 stmt.offset(skip)
                 .limit(limit)
@@ -146,6 +145,7 @@ def get_books(
                     Book.location_kind,
                     Book.needs_file_operation,
                     Book.created_at.desc(),
+                    Book.id,
                 )
             ).all()
         ],
@@ -327,7 +327,7 @@ def get_book_languages(session: OrmSession) -> BookLanguagesSchema:
 
 
 def get_book_flavours(session: OrmSession) -> ListResult[str]:
-    """Get a list of book falavours"""
+    """Get a list of book flavours"""
     stmt = (
         select(Book.flavour)
         .distinct()

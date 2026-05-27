@@ -213,6 +213,9 @@ class Title(Base):
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
+    flavours: Mapped[list[str]] = mapped_column(
+        default_factory=list, server_default="{}"
+    )
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",

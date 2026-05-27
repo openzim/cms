@@ -38,6 +38,33 @@
         </v-btn>
       </div>
 
+      <v-alert
+        v-if="book.has_flavour_mismatch"
+        type="warning"
+        variant="tonal"
+        class="mb-4"
+        icon="mdi-alert"
+      >
+        <div class="d-flex align-center">
+          <div class="flex-grow-1">
+            <div class="font-weight-bold mb-1">Flavour Mismatch</div>
+            <div>
+              This book's flavour is not in the list of flavours supported by the title. Consider
+              updating the book flavour to maintain consistency.
+            </div>
+          </div>
+          <v-btn
+            v-if="canEditBook"
+            variant="outlined"
+            color="warning"
+            size="small"
+            @click="currentTab = 'edit'"
+          >
+            Edit Book
+          </v-btn>
+        </div>
+      </v-alert>
+
       <v-tabs
         v-model="currentTab"
         class="mb-4"
@@ -147,8 +174,18 @@
                     <div class="text-subtitle-2">Flavour</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <span v-if="book.flavour">{{ book.flavour }}</span>
-                    <span v-else class="text-grey">-</span>
+                    <div>
+                      <span v-if="book.flavour">{{ book.flavour }}</span>
+                      <span v-else class="text-grey">-</span>
+                      <v-tooltip v-if="book.has_flavour_mismatch" location="top">
+                        <template #activator="{ props: tooltipProps }">
+                          <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
+                            mdi-alert
+                          </v-icon>
+                        </template>
+                        <span>Book flavour does not match title flavour</span>
+                      </v-tooltip>
+                    </div>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>

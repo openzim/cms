@@ -105,6 +105,14 @@ async def request_validation_error_handler(_, exc: RequestValidationError):
     )
 
 
+@app.exception_handler(ValueError)
+async def value_error_handler(_, exc: ValueError):
+    return JSONResponse(
+        status_code=HTTPStatus.BAD_REQUEST,
+        content={"success": False, "message": exc.args[0]},
+    )
+
+
 @app.exception_handler(ValidationError)
 async def validation_error_handler(_, exc: ValidationError):
     # transform the pydantic validation errors to a dictionary mapping

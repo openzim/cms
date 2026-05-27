@@ -117,6 +117,28 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Flavours</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <div v-if="title.flavours && title.flavours.length > 0">
+                      <v-chip
+                        v-for="flavour in title.flavours"
+                        :key="flavour"
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        class="mr-2 mb-1"
+                      >
+                        {{ flavour }}
+                      </v-chip>
+                    </div>
+                    <span v-else class="text-grey">No flavours set</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Title</div>
                   </v-col>
                   <v-col cols="12" md="9">
@@ -570,6 +592,7 @@ onMounted(async () => {
   await loadData(true)
   if (props.selectedTab === 'edit' && title.value) {
     await titleFormRef.value?.fetchCollections()
+    await titleFormRef.value?.fetchFlavours()
     await loadLatestBook()
     titleFormRef.value?.resetFormToTitle(title.value)
   }
@@ -587,6 +610,7 @@ watch(
 
     if (newTab === 'edit' && title.value) {
       await titleFormRef.value?.fetchCollections()
+      await titleFormRef.value?.fetchFlavours()
       await loadLatestBook()
       titleFormRef.value?.resetFormToTitle(title.value)
     }

@@ -582,6 +582,54 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    def test_moves_book_to_staging_due_to_diffrent_flavour_from_title(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        """
+        Test that book goes to staging because there is a flavour mismatch between
+        it and it's title
+        """
+
+        title = create_title(name="test_en_all", flavours=["maxi", "mini"])
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["folder_name"] = ""
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+        assert book.location_kind == "staging"
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"flavour mismatch"}
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
 
 class TestValidNotificationOnArchivedTitle:
     """Test valid notifications that are associated to an archived title."""
