@@ -633,11 +633,11 @@ def test_move_book_staging_to_prod(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test moving a book from staging to prod"""
-    title = create_title(name="test_en_all")
+    title = create_title(name="test_en_all", flavours=["mini", "maxi"])
     collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path("zim"))
 
-    book = create_book(name="test_en_all", date="2024-01")
+    book = create_book(name="test_en_all", date="2024-01", flavour="maxi")
     book.title = title
     book.location_kind = "staging"
     create_book_location(
@@ -664,6 +664,39 @@ def test_move_book_staging_to_prod(
     assert target_locations[0].warehouse_id == warehouse.id
     assert target_locations[0].path == Path("zim")
     assert target_locations[0].filename == "test_en_all_2024-01.zim"
+
+
+def test_move_book_with_different_flavor_from_title_to_prod(
+    dbsession: OrmSession,
+    warehouse: Warehouse,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test moving a book with different flavor from it's title from staging to prod"""
+    title = create_title(name="test_en_all", flavours=["mini", "maxi"])
+    collection = create_collection(warehouse=warehouse)
+    create_collection_title(title=title, collection=collection, path=Path("zim"))
+
+    book = create_book(name="test_en_all", date="2024-01", flavour="nopic")
+    book.title = title
+    book.location_kind = "staging"
+    create_book_location(
+        book=book,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    now = getnow()
+    monkeypatch.setattr("cms_backend.db.book.getnow", lambda: now)
+    with pytest.raises(ValueError):
+        move_book(dbsession, book_id=book.id, destination="prod")
 
 
 def test_move_book_same_destination_raises_error(

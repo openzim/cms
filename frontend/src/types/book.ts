@@ -26,6 +26,7 @@ export interface BookLight {
   name?: string
   date?: string
   flavour?: string
+  has_flavour_mismatch: boolean
 }
 
 export interface Book extends BookLight {

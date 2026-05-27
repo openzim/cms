@@ -41,8 +41,18 @@
         </template>
 
         <template #[`item.flavour`]="{ item }">
-          <span v-if="item.flavour">{{ item.flavour }}</span>
-          <span v-else class="text-grey">-</span>
+          <div>
+            <span v-if="item.flavour">{{ item.flavour }}</span>
+            <span v-else class="text-grey"></span>
+            <v-tooltip v-if="item.has_flavour_mismatch" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
+                  mdi-alert
+                </v-icon>
+              </template>
+              <span>Book flavour does not match title flavour</span>
+            </v-tooltip>
+          </div>
         </template>
 
         <template #[`item.date`]="{ item }">

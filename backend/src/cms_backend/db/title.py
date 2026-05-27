@@ -50,6 +50,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         license=title.license,
         relation=title.relation,
         source=title.source,
+        flavours=title.flavours,
         books=[
             BookLightSchema(
                 id=book.id,
@@ -64,6 +65,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 date=book.date,
                 flavour=book.flavour,
                 issues=book.issues,
+                has_flavour_mismatch=book.flavour not in title.flavours,
             )
             for book in sorted(
                 title.books,
@@ -107,6 +109,7 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         license=title.license,
         relation=title.relation,
         source=title.source,
+        flavours=title.flavours,
     )
 
 
@@ -183,6 +186,7 @@ def get_titles(
             Title.license.label("title_license"),
             Title.relation.label("title_relation"),
             Title.source.label("title_source"),
+            Title.flavours.label("title_flavours"),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
@@ -226,6 +230,7 @@ def get_titles(
                 license=title_license,
                 relation=title_relation,
                 source=title_source,
+                flavours=title_flavours,
             )
             for (
                 title_id,
@@ -242,6 +247,7 @@ def get_titles(
                 title_license,
                 title_relation,
                 title_source,
+                title_flavours,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
@@ -263,6 +269,7 @@ def create_title(
     license_: str | None = None,
     relation: str | None = None,
     source: str | None = None,
+    flavours: list[str] | None = None,
 ) -> Title:
     """Create a new title"""
 
@@ -281,6 +288,7 @@ def create_title(
     title.source = source
     title.description = description
     title.long_description = long_description
+    title.flavours = [] if flavours is None else flavours
     title.events.append(f"{getnow()}: title created")
 
     session.add(title)
@@ -332,6 +340,7 @@ def update_title(
     license_: str | None = None,
     relation: str | None = None,
     source: str | None = None,
+    flavours: list[str] | None = None,
 ) -> Title:
     """Update a title's details
 
@@ -427,6 +436,9 @@ def update_title(
         old_source = title.source
         title.source = source
         title.events.append(f"{getnow()}: source updated from {old_source} to {source}")
+
+    if flavours is not None:
+        title.flavours = flavours
 
     name_changed: bool = False
     # Update name if provided

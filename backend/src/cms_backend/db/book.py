@@ -100,6 +100,9 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         current_locations=current_locations,
         target_locations=target_locations,
         title_archived=book.title.archived if book.title else False,
+        has_flavour_mismatch=book.flavour not in book.title.flavours
+        if book.title
+        else False,
     )
 
 
@@ -250,6 +253,12 @@ def move_book(
 
     if not book.title:
         raise ValueError(f"Book {book_id} has no associated title.")
+
+    if destination == "prod" and book.flavour not in book.title.flavours:
+        raise ValueError(
+            f"Book flavour '{book.flavour}' is not in title flavours "
+            f"{book.title.flavours}"
+        )
 
     existing_filename = current_location.filename
 
