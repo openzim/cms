@@ -38,6 +38,45 @@
         </v-btn>
       </div>
 
+      <v-alert
+        v-if="book.has_flavour_mismatch"
+        type="warning"
+        variant="tonal"
+        class="mb-4"
+        icon="mdi-alert"
+      >
+        <div class="d-flex align-center ga-2">
+          <div class="flex-grow-1">
+            <div class="font-weight-bold mb-1">Flavour Mismatch</div>
+            <div>
+              This book's flavour is not in the list of flavours expected by the title. Consider
+              updating the book flavour or title expected flavours to maintain consistency.
+            </div>
+          </div>
+          <v-btn
+            v-if="canEditBook"
+            variant="outlined"
+            color="warning"
+            size="small"
+            @click="currentTab = 'edit'"
+          >
+            Edit Book
+          </v-btn>
+          <v-btn
+            v-if="canEditBookTitle"
+            variant="outlined"
+            color="warning"
+            size="small"
+            :to="{
+              name: 'title-detail-tab',
+              params: { id: book.title_id, selectedTab: 'edit' },
+            }"
+          >
+            Edit Title
+          </v-btn>
+        </div>
+      </v-alert>
+
       <v-tabs
         v-model="currentTab"
         class="mb-4"
@@ -147,8 +186,18 @@
                     <div class="text-subtitle-2">Flavour</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <span v-if="book.flavour">{{ book.flavour }}</span>
-                    <span v-else class="text-grey">-</span>
+                    <div>
+                      <span v-if="book.flavour">{{ book.flavour }}</span>
+                      <span v-else class="text-grey">-</span>
+                      <v-tooltip v-if="book.has_flavour_mismatch" location="top">
+                        <template #activator="{ props: tooltipProps }">
+                          <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
+                            mdi-alert
+                          </v-icon>
+                        </template>
+                        <span>Book flavour does not match title flavours</span>
+                      </v-tooltip>
+                    </div>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -413,6 +462,14 @@ const canDeleteBook = computed(() => {
     ['staging', 'prod', 'quarantine'].includes(book.value.location_kind) &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing
+  )
+})
+
+const canEditBookTitle = computed(() => {
+  if (!book.value) return false
+
+  return (
+    authStore.hasPermission('title', 'update') && book.value.title_id && !book.value.title_archived
   )
 })
 

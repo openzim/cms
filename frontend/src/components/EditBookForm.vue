@@ -1,7 +1,7 @@
 <template>
   <v-card flat>
     <v-card-text>
-      <v-form ref="formRef" @submit.prevent="handleSubmit">
+      <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
         <v-row>
           <v-col cols="12">
             <v-select
@@ -55,6 +55,7 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref()
+const formValid = ref(false)
 
 const localBook = ref({
   flavour: props.book?.flavour || '',
@@ -65,7 +66,7 @@ const rules = {
 }
 
 const isDisabled = computed(() => {
-  return props.loading || !hasChanges.value
+  return props.loading || !hasChanges.value || !formValid.value
 })
 
 const formattedFlavourOptions = computed(() => {
@@ -87,6 +88,8 @@ watch(
       localBook.value = {
         flavour: newBook.flavour || '',
       }
+      // Reset form validation when book changes
+      formRef.value?.resetValidation()
     }
   },
   { deep: true, immediate: true },

@@ -30,6 +30,7 @@ export interface TitleLight {
   license: string | null
   relation: string | null
   source: string | null
+  flavours: string[]
 }
 
 export interface Title extends TitleLight {
@@ -52,6 +53,7 @@ export interface TitleCreate {
   license?: string | null
   relation?: string | null
   source?: string | null
+  flavours?: string[] | null
 }
 
 export interface TitleUpdate {
@@ -68,4 +70,5 @@ export interface TitleUpdate {
   license?: string | null
   relation?: string | null
   source?: string | null
+  flavours?: string[] | null
 }

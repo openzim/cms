@@ -66,6 +66,7 @@ class BaseTitleCreateUpdateSchema(BaseModel):
     publisher: NotEmptyString | None = None
     language: NotEmptyString | None = None
     illustration_48x48_at_1: Base64Str | None = None
+    flavours: list[str] | None = None
 
     @model_validator(mode="after")
     def validate_unique_collection_titles(self) -> Self:
@@ -158,6 +159,7 @@ def create_title(
         source=title_data.source,
         long_description=title_data.long_description,
         description=title_data.description,
+        flavours=title_data.flavours,
     )
     return create_title_light_schema(title)
 
@@ -188,6 +190,7 @@ def update_title(
         license_=title_data.license,
         relation=title_data.relation,
         source=title_data.source,
+        flavours=title_data.flavours,
     )
     return create_title_light_schema(title)
 

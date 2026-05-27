@@ -55,21 +55,29 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             title.relation = book.zim_metadata.get("Relation")
             title.source = book.zim_metadata.get("Source")
 
+        issues: list[str] = []
+
         different_metadata_keys = get_differing_metadata_keys(book)
         if different_metadata_keys:
-            book.issues = ["metadata mismatch"]
+            issues.append("metadata mismatch")
             book.events.append(
                 f"{getnow()}: book metadata is different from title metadata: "
                 f"{','.join(different_metadata_keys)}"
             )
 
+        if title.flavours and book.flavour not in title.flavours:
+            issues.append("flavour mismatch")
+            book.events.append(
+                f"{getnow()}: book flavour is not in list of title flavours"
+            )
+
+        book.issues = issues
+
         # Determine if this book goes to staging or prod based on
         # - title maturity: For now, only 'stable' maturity move straight to prod,
         # other maturity moves through staging first
-        # - if book has different metadata from title
-        goes_to_staging = (
-            title.maturity != "stable" or len(different_metadata_keys) != 0
-        )
+        # - issues: books with any issues move to staging regardless of maturity
+        goes_to_staging = title.maturity != "stable" or len(issues) != 0
 
         target_locations = (
             [
