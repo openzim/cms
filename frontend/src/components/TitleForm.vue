@@ -33,7 +33,7 @@
         <v-col cols="12">
           <v-combobox
             v-model="formData.flavours"
-            label="Flavours"
+            label="Expected Flavours"
             variant="outlined"
             density="compact"
             clearable

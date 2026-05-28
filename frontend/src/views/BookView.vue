@@ -49,8 +49,8 @@
           <div class="flex-grow-1">
             <div class="font-weight-bold mb-1">Flavour Mismatch</div>
             <div>
-              This book's flavour is not in the list of flavours supported by the title. Consider
-              updating the book flavour to maintain consistency.
+              This book's flavour is not in the list of flavours expected by the title. Consider
+              updating the book flavour or title expected flavours to maintain consistency.
             </div>
           </div>
           <v-btn
@@ -183,7 +183,7 @@
                             mdi-alert
                           </v-icon>
                         </template>
-                        <span>Book flavour does not match title flavour</span>
+                        <span>Book flavour does not match title flavours</span>
                       </v-tooltip>
                     </div>
                   </v-col>
