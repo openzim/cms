@@ -256,7 +256,7 @@ def move_book(
 
     if destination == "prod" and book.flavour not in book.title.flavours:
         raise ValueError(
-            f"Book flavour '{book.flavour}' is not in title flavours "
+            f"Book flavour '{book.flavour}' is not in title expected flavours "
             f"{book.title.flavours}"
         )
 

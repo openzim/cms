@@ -117,7 +117,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Flavours</div>
+                    <div class="text-subtitle-2">Expected Flavours</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div v-if="title.flavours && title.flavours.length > 0">
