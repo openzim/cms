@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
 from cms_backend.db.models import Account, Book, Collection, Event, Title
+from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
+from cms_backend.schemas.models import TitleUpdateSchema
 from cms_backend.utils.datetime import getnow
 
 
@@ -656,6 +658,134 @@ def test_restore_multiple_titles_required_permissions(
     response = client.post(
         "/v1/titles/restore",
         json={"title_names": [title1.name, title2.name]},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "skip, limit, expected_count",
+    [
+        pytest.param(0, 3, 3, id="first-page"),
+        pytest.param(3, 3, 3, id="second-page"),
+        pytest.param(6, 2, 0, id="page-num-too-high-no-results"),
+        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
+        pytest.param(0, 10, 6, id="first-page-with-high-limit"),
+    ],
+)
+def test_get_title_history(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_title: Callable[..., Title],
+    access_token: str,
+    account: Account,
+    skip: int,
+    limit: int,
+    expected_count: int,
+):
+    """Test retrieving title history"""
+    title = create_title(name="wikipedia_en_test")
+    for i in range(5):
+        update_title(
+            dbsession,
+            title_identifier=str(title.id),
+            author_id=account.id,
+            payload=TitleUpdateSchema(
+                title=f"Wikipedia Version {i}",
+                comment=f"Update {i}",
+            ),
+        )
+
+    response = client.get(
+        f"/v1/titles/{title.id}/history?skip={skip}&limit={limit}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["meta"]["skip"] == skip
+    assert data["meta"]["limit"] == limit
+    assert data["meta"]["page_size"] == expected_count
+    assert len(data["items"]) == expected_count
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_get_title_history_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test retrieving title history with different roles"""
+    title = create_title(name="wikipedia_en_test")
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.get(
+        f"/v1/titles/{title.id}/history?skip=0&limit=10",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+def test_get_title_history_entry(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    access_token: str,
+):
+    """Test retrieving a specific history entry using title name"""
+    title = create_title(name="wikipedia_en_test")
+    history_id = title.history_entries[0].id
+    response = client.get(
+        f"/v1/titles/{title.name}/history/{history_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_revert_title_required_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test reverting a title with different roles"""
+    title = create_title(name="wikipedia_en_test")
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    title = update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            title="Wikipedia Version 1",
+            comment="Update 1",
+        ),
+    )
+    assert len(title.history_entries) == 2
+    history_id = title.history_entries[0].id
+    response = client.patch(
+        f"/v1/titles/{title.id}/revert/{history_id}",
+        json={"comment": "Reverting"},
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code

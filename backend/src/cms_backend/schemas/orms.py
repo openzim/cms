@@ -55,6 +55,18 @@ class TitleFullSchema(TitleLightSchema):
     collections: list["TitleCollectionSchema"]
 
 
+class TitleHistorySchema(TitleLightSchema):
+    """
+    Schema for reading a title history model
+    """
+
+    id: UUID
+    comment: str | None
+    author: str
+    collections: list[BaseTitleCollectionSchema]
+    created_at: datetime
+
+
 class CollectionLightSchema(BaseModel):
     """Schema for reading a collection with all the paths in it."""
 
