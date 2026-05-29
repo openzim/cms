@@ -28,7 +28,7 @@ class Context:
 
     process_title_modifications_interval: timedelta = timedelta(
         seconds=parse_timespan(
-            os.getenv("PROCESS_TILTE_MODIFICATIONS_INTERVAL", default="1m")
+            os.getenv("PROCESS_TITLE_MODIFICATIONS_INTERVAL", default="1m")
         )
     )
 
