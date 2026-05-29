@@ -1,9 +1,10 @@
 import datetime
 from pathlib import Path
+from typing import Literal, cast
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -19,14 +20,20 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleHistory,
 )
-from cms_backend.schemas.models import FileLocation
+from cms_backend.schemas.models import (
+    FileLocation,
+    TitleCreateSchema,
+    TitleUpdateSchema,
+)
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
     BookLightSchema,
     ListResult,
     TitleCollectionSchema,
     TitleFullSchema,
+    TitleHistorySchema,
     TitleLightSchema,
 )
 from cms_backend.utils import is_valid_uuid
@@ -34,7 +41,7 @@ from cms_backend.utils.datetime import getnow
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
-    """Create a full schema of a tilte."""
+    """Create a full schema of a title."""
     return TitleFullSchema(
         id=title.id,
         name=title.name,
@@ -118,7 +125,9 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
 def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | None:
     """Get a title by ID"""
     return session.scalars(
-        select(Title).options(selectinload(Title.books)).where(Title.id == title_id)
+        select(Title)
+        .options(selectinload(Title.books), selectinload(Title.collections))
+        .where(Title.id == title_id)
     ).one_or_none()
 
 
@@ -135,7 +144,9 @@ def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None
     """Get a title by name if possible else None"""
 
     return session.scalars(
-        select(Title).options(selectinload(Title.books)).where(Title.name == name)
+        select(Title)
+        .options(selectinload(Title.books), selectinload(Title.collections))
+        .where(Title.name == name)
     ).one_or_none()
 
 
@@ -256,48 +267,33 @@ def get_titles(
 
 
 def create_title(
-    session: OrmSession,
-    *,
-    name: str,
-    maturity: str | None,
-    collection_titles: list[BaseTitleCollectionSchema] | None,
-    _title: str | None = None,
-    creator: str | None = None,
-    publisher: str | None = None,
-    language: str | None = None,
-    description: str | None = None,
-    long_description: str | None = None,
-    illustration_48x48_at_1: str | None = None,
-    license_: str | None = None,
-    relation: str | None = None,
-    source: str | None = None,
-    flavours: list[str] | None = None,
+    session: OrmSession, *, author_id: UUID, payload: TitleCreateSchema
 ) -> Title:
     """Create a new title"""
 
     title = Title(
-        name=name,
+        name=payload.name,
     )
-    if maturity:
-        title.maturity = maturity
-    title.title = _title
-    title.creator = creator
-    title.publisher = publisher
-    title.language = language
-    title.illustration_48x48_at_1 = illustration_48x48_at_1
-    title.license = license_
-    title.relation = relation
-    title.source = source
-    title.description = description
-    title.long_description = long_description
-    title.flavours = [] if flavours is None else flavours
+    if payload.maturity:
+        title.maturity = payload.maturity
+    title.title = payload.title
+    title.creator = payload.creator
+    title.publisher = payload.publisher
+    title.language = payload.language
+    title.illustration_48x48_at_1 = payload.illustration_48x48_at_1
+    title.license = payload.license
+    title.relation = payload.relation
+    title.source = payload.source
+    title.description = payload.description
+    title.long_description = payload.long_description
+    title.flavours = [] if payload.flavours is None else payload.flavours
     title.events.append(f"{getnow()}: title created")
 
     session.add(title)
 
-    if collection_titles:
+    if payload.collection_titles:
         # Create the collection titles for the title
-        for entry in collection_titles:
+        for entry in payload.collection_titles:
             collection = get_collection_by_name(
                 session, collection_name=entry.collection_name
             )
@@ -308,12 +304,15 @@ def create_title(
 
             session.add(collection_title)
 
+    create_title_history_entry(
+        session, title, author_id, comment="Create initial history"
+    )
     try:
         session.flush()
     except IntegrityError as exc:
         if isinstance(exc.orig, UniqueViolation):
             raise RecordAlreadyExistsError(
-                f"Title with name {name} already exists"
+                f"Title with name {payload.name} already exists"
             ) from exc
         logger.exception("Unknown exception encountered while creating title")
         raise
@@ -325,24 +324,45 @@ def create_title(
     return title
 
 
+def create_title_history_entry(
+    session: OrmSession, title: Title, author_id: UUID, comment: str | None = None
+) -> TitleHistory:
+    history_entry = TitleHistory(
+        name=title.name,
+        title=title.title,
+        comment=comment,
+        creator=title.creator,
+        publisher=title.publisher,
+        description=title.description,
+        language=title.language,
+        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        long_description=title.long_description,
+        license=title.license,
+        relation=title.relation,
+        source=title.source,
+        maturity=title.maturity,
+        archived=title.archived,
+        flavours=title.flavours,
+        collection_titles=[
+            {
+                "collection_name": ct.collection.name,
+                "path": str(ct.path),
+            }
+            for ct in title.collections
+        ],
+    )
+    history_entry.title_ = title
+    history_entry.author_id = author_id
+    session.add(history_entry)
+    return history_entry
+
+
 def update_title(
     session: OrmSession,
     *,
-    title_id: UUID,
-    maturity: str | None = None,
-    name: str | None = None,
-    collection_titles: list[BaseTitleCollectionSchema] | None = None,
-    _title: str | None = None,
-    creator: str | None = None,
-    publisher: str | None = None,
-    language: str | None = None,
-    description: str | None = None,
-    long_description: str | None = None,
-    illustration_48x48_at_1: str | None = None,
-    license_: str | None = None,
-    relation: str | None = None,
-    source: str | None = None,
-    flavours: list[str] | None = None,
+    title_identifier: str,
+    author_id: UUID,
+    payload: TitleUpdateSchema,
 ) -> Title:
     """Update a title's details
 
@@ -351,151 +371,77 @@ def update_title(
     - Updates their locations according to the new collection configuration
     - Sets the needs_file_operation flag to true for these books
     """
-    title = get_title_by_id(session, title_id=title_id)
-    if title.archived:
+    title = get_title(session, title_identifier)
+
+    # Return early if no update data
+    if not payload.model_dump(exclude_unset=True):
+        return title
+
+    # Determine whether to permit update based on value of archived parameter
+    if payload.archived is None and title.archived:
         raise RecordDoesNotExistError("Title is archived")
 
-    # Update maturity if provided
-    if maturity is not None and maturity != title.maturity:
-        old_maturity = title.maturity
-        title.maturity = maturity
-        title.events.append(
-            f"{getnow()}: maturity updated from {old_maturity} to {maturity}"
-        )
+    if payload.archived is True and title.archived:
+        raise RecordDoesNotExistError("Title is already archived.")
 
-    # Update title if provided
-    if _title is not None and _title != title.title:
-        old_title = title.title
-        title.title = _title
-        title.events.append(f"{getnow()}: title updated from {old_title} to {_title}")
+    if payload.archived is False and not title.archived:
+        raise RecordDoesNotExistError("Title is not archived.")
 
-    # Update creator if provided
-    if creator is not None and creator != title.creator:
-        old_creator = title.creator
-        title.creator = creator
-        title.events.append(
-            f"{getnow()}: creator updated from {old_creator} to {creator}"
-        )
+    update_data = payload.model_dump(
+        exclude_unset=True, exclude={"collection_titles", "comment"}
+    )
+    name_changed = payload.name is not None and payload.name != title.name
 
-    # Update description if provided
-    if description is not None and description != title.description:
-        old_description = title.description
-        title.description = description
-        title.events.append(
-            f"{getnow()}: description updated from {old_description} to {description}"
-        )
-
-    if long_description is not None and long_description != title.long_description:
-        old_long_description = title.long_description
-        title.long_description = long_description
-        title.events.append(
-            f"{getnow()}: long description updated from "
-            f"{old_long_description} to {long_description}"
-        )
-
-    # Update publisher if provided
-    if publisher is not None and publisher != title.publisher:
-        old_publisher = title.publisher
-        title.publisher = publisher
-        title.events.append(
-            f"{getnow()}: publisher updated from {old_publisher} to {publisher}"
-        )
-
-    # Update language if provided
-    if language is not None and language != title.language:
-        old_language = title.language
-        title.language = language
-        title.events.append(
-            f"{getnow()}: language updated from {old_language} to {language}"
-        )
-
-    # Update illustration_48x48_at_1 if provided
-    if (
-        illustration_48x48_at_1 is not None
-        and illustration_48x48_at_1 != title.illustration_48x48_at_1
-    ):
-        title.illustration_48x48_at_1 = illustration_48x48_at_1
-        title.events.append(f"{getnow()}: illustration_48x48@1 updated")
-
-    # Update license if provided
-    if license_ is not None and license_ != title.license:
-        old_license = title.license
-        title.license = license_
-        title.events.append(
-            f"{getnow()}: license updated from {old_license} to {license_}"
-        )
-
-    # Update relation if provided
-    if relation is not None and relation != title.relation:
-        old_relation = title.relation
-        title.relation = relation
-        title.events.append(
-            f"{getnow()}: relation updated from {old_relation} to {relation}"
-        )
-
-    # Update source if provided
-    if source is not None and source != title.source:
-        old_source = title.source
-        title.source = source
-        title.events.append(f"{getnow()}: source updated from {old_source} to {source}")
-
-    if flavours is not None:
-        title.flavours = flavours
-
-    name_changed: bool = False
-    # Update name if provided
-    if name and name != title.name:
-        old_name = title.name
-        title.name = name
-        title.events.append(f"{getnow()}: name updated from {old_name} to {name}")
-        name_changed = True
-        session.add(title)
+    if update_data:
         try:
-            session.flush()
+            title = session.scalars(
+                update(Title)
+                .where(Title.id == title.id)
+                .values(**update_data)
+                .returning(Title)
+            ).one()
         except IntegrityError as exc:
             raise RecordAlreadyExistsError(
-                f"Title with name '{name}' already exists"
+                f"Title with name '{payload.name}' already exists"
             ) from exc
 
     # Determine if collection titles changed
     collection_titles_changed = False
 
-    if collection_titles is not None:
-        if len(title.collections) != len(collection_titles):
+    if payload.collection_titles is not None:
+        if len(title.collections) != len(payload.collection_titles):
             collection_titles_changed = True
         else:
             current_collections: set[str] = {
                 f"{tc.collection.name}:{tc.path}" for tc in title.collections
             }
             new_collections: set[str] = {
-                f"{entry.collection_name}:{entry.path}" for entry in collection_titles
+                f"{entry.collection_name}:{entry.path}"
+                for entry in payload.collection_titles
             }
 
             if current_collections != new_collections:
                 collection_titles_changed = True
 
-        if collection_titles_changed:
-            # Remove existing collection_titles
-            for tc in title.collections:
-                session.delete(tc)
+    if collection_titles_changed and payload.collection_titles is not None:
+        # Remove existing collection_titles
+        for tc in title.collections:
+            session.delete(tc)
 
-            title.collections.clear()
+        title.collections.clear()
 
-            for entry in collection_titles:
-                collection = get_collection_by_name(
-                    session, collection_name=entry.collection_name
-                )
+        for entry in payload.collection_titles:
+            collection = get_collection_by_name(
+                session, collection_name=entry.collection_name
+            )
 
-                collection_title = CollectionTitle(path=Path(entry.path))
-                collection_title.collection = collection
-                collection_title.title = title
+            collection_title = CollectionTitle(path=Path(entry.path))
+            collection_title.collection = collection
+            collection_title.title = title
 
-                session.add(collection_title)
+            session.add(collection_title)
 
-            title.events.append(f"{getnow()}: collection titles updated")
-
-    # If collection_titles changed, update book locations for prod books
-    if collection_titles_changed:
+        # If collection_titles changed, update book locations for prod books
         prod_books = [book for book in title.books if book.location_kind == "prod"]
         for book in prod_books:
             # Since book is already in prod, it should have at least one
@@ -540,24 +486,28 @@ def update_title(
         create_title_modified_event(
             session, action="updated", title_name=title.name, title_id=title.id
         )
+
+    create_title_history_entry(session, title, author_id, payload.comment)
+
     return get_title_by_id(session, title_id=title.id)
 
 
 def archive_title(
     session: OrmSession,
     title_identifier: str,
+    author_id: UUID,
 ) -> Title:
     """Mark a title as archived.
 
     All books belonging to the title are marked for deletion immediately
     """
-    title = get_title(session, title_identifier=title_identifier)
-    if title.archived:
-        raise RecordDoesNotExistError("Title is archived.")
+    title = update_title(
+        session,
+        author_id=author_id,
+        title_identifier=title_identifier,
+        payload=TitleUpdateSchema(archived=True),
+    )
 
-    title.archived = True
-    now = getnow()
-    title.events.append(f"{now}: marked title as archived.")
     logger.info(f"marking books belonging to title {title.id} for deletion.")
 
     nb_deleted = 0
@@ -571,7 +521,7 @@ def archive_title(
                 nb_deleted += 1
 
     if nb_deleted:
-        title.events.append(f"{now}: marked books in title for deletion.")
+        title.events.append(f"{getnow()}: marked books in title for deletion.")
 
     session.add(title)
     session.flush()
@@ -582,29 +532,31 @@ def archive_title(
 def archive_titles(
     session: OrmSession,
     *,
+    author_id: UUID,
     title_names: list[str],
 ) -> None:
     """Archive a list of titles"""
     for title_name in title_names:
-        archive_title(session, title_name)
+        archive_title(session, title_name, author_id)
 
 
 def restore_title(
     session: OrmSession,
     title_identifier: str,
+    author_id: UUID,
 ) -> Title:
     """Remove a title from the archive status.
 
     Restores books belonging to title that have not been deleted.
     """
 
-    title = get_title(session, title_identifier=title_identifier)
-    if not title.archived:
-        raise RecordDoesNotExistError("Title is not archived.")
-
-    title.archived = False
+    title = update_title(
+        session,
+        author_id=author_id,
+        title_identifier=title_identifier,
+        payload=TitleUpdateSchema(archived=False),
+    )
     now = getnow()
-    title.events.append(f"{now}: restored title from archive")
     logger.info(
         f"recovering books belonging to title {title.id} that have been marked for "
         "deletion."
@@ -629,13 +581,11 @@ def restore_title(
 
 
 def restore_titles(
-    session: OrmSession,
-    *,
-    title_names: list[str],
+    session: OrmSession, *, title_names: list[str], author_id: UUID
 ) -> None:
     """Restore a list of archived titles"""
     for title_name in title_names:
-        restore_title(session, title_name)
+        restore_title(session, title_name, author_id)
 
 
 def title_is_missing_mandatory_metadata(title: Title) -> bool:
@@ -655,3 +605,120 @@ def title_is_missing_mandatory_metadata(title: Title) -> bool:
             title.illustration_48x48_at_1,
         ]
     )
+
+
+def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
+    return TitleHistorySchema(
+        id=entry.id,
+        created_at=entry.created_at,
+        archived=entry.archived,
+        name=entry.name,
+        maturity=entry.maturity,
+        author=entry.author.display_name,
+        title=entry.title,
+        creator=entry.creator,
+        publisher=entry.publisher,
+        description=entry.description,
+        language=entry.language,
+        illustration_48x48_at_1=entry.illustration_48x48_at_1,
+        long_description=entry.long_description,
+        license=entry.license,
+        relation=entry.relation,
+        source=entry.source,
+        flavours=entry.flavours,
+        comment=entry.comment,
+        collections=[
+            BaseTitleCollectionSchema(
+                collection_name=collection["collection_name"], path=collection["path"]
+            )
+            for collection in entry.collection_titles
+        ],
+    )
+
+
+def get_title_history(
+    session: OrmSession, *, title_identifier: str, skip: int, limit: int
+) -> ListResult[TitleHistorySchema]:
+    """Get a title's history"""
+    title = get_title(session, title_identifier)
+    stmt = (
+        select(TitleHistory)
+        .where(TitleHistory.title_id == title.id)
+        .options(selectinload(TitleHistory.author))
+        .order_by(TitleHistory.created_at.desc())
+    )
+    return ListResult[TitleHistorySchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            create_title_history_schema(entry)
+            for entry in session.scalars(stmt.offset(skip).limit(limit)).all()
+        ],
+    )
+
+
+def get_title_history_entry_or_none(
+    session: OrmSession, *, title_identifier: str, history_id: UUID
+) -> TitleHistory | None:
+    """Get a title's history entry or None if it does not exist"""
+    title = get_title(session, title_identifier)
+    return session.scalars(
+        select(TitleHistory).where(
+            TitleHistory.id == history_id, TitleHistory.title_id == title.id
+        )
+    ).one_or_none()
+
+
+def get_title_history_entry(
+    session: OrmSession, *, title_identifier: str, history_id: UUID
+) -> TitleHistory:
+    """Get a title's history entry"""
+    if history_entry := get_title_history_entry_or_none(
+        session, title_identifier=title_identifier, history_id=history_id
+    ):
+        return history_entry
+    raise RecordDoesNotExistError(
+        f"Title '{title_identifier}' does not have a history entry with id {history_id}"
+    )
+
+
+def revert_title(
+    session: OrmSession,
+    *,
+    title_identifier: str,
+    history_id: UUID,
+    author_id: UUID,
+    comment: str | None = None,
+) -> Title:
+    """Revert the title configuration and settings to those defined in history_id"""
+    entry = get_title_history_entry(
+        session, title_identifier=title_identifier, history_id=history_id
+    )
+    title = update_title(
+        session,
+        title_identifier=title_identifier,
+        author_id=author_id,
+        payload=TitleUpdateSchema(
+            comment=comment,
+            name=entry.name,
+            maturity=cast(Literal["unstable", "stable"], entry.maturity),
+            collection_titles=[
+                BaseTitleCollectionSchema(
+                    collection_name=collection["collection_name"],
+                    path=collection["path"],
+                )
+                for collection in entry.collection_titles
+            ],
+            long_description=entry.long_description,
+            license=entry.license,
+            relation=entry.relation,
+            source=entry.source,
+            title=entry.title,
+            creator=entry.creator,
+            description=entry.description,
+            publisher=entry.publisher,
+            language=entry.language,
+            illustration_48x48_at_1=entry.illustration_48x48_at_1,
+            flavours=entry.flavours,
+        ),
+    )
+    return title

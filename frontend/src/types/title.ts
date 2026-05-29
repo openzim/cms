@@ -39,6 +39,14 @@ export interface Title extends TitleLight {
   collections: TitleCollection[]
 }
 
+export interface TitleHistorySchema {
+  id: string
+  comment: string | null
+  author: string
+  collections: BaseTitleCollection[]
+  created_at: string
+}
+
 export interface TitleCreate {
   name: string
   maturity: string
@@ -71,4 +79,5 @@ export interface TitleUpdate {
   relation?: string | null
   source?: string | null
   flavours?: string[] | null
+  comment?: string
 }

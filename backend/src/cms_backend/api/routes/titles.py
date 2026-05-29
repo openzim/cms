@@ -1,17 +1,18 @@
 from http import HTTPStatus
-from typing import Annotated, Literal, Self
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
-from pydantic import Field, model_validator
+from fastapi import APIRouter, Depends, Path, Query, Response
+from fastapi.responses import JSONResponse
+from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import (
+    get_current_account,
     get_current_account_or_none,
     require_permission,
 )
 from cms_backend.api.routes.fields import (
-    Base64Str,
     LimitFieldMax200,
     NotEmptyString,
     SkipField,
@@ -24,17 +25,25 @@ from cms_backend.db.models import Account
 from cms_backend.db.title import archive_title as db_archive_title
 from cms_backend.db.title import archive_titles as db_archive_titles
 from cms_backend.db.title import create_title as db_create_title
-from cms_backend.db.title import create_title_full_schema, create_title_light_schema
+from cms_backend.db.title import (
+    create_title_full_schema,
+    create_title_history_schema,
+    create_title_light_schema,
+)
 from cms_backend.db.title import get_title_by_id as db_get_title_by_id
 from cms_backend.db.title import get_title_by_name as db_get_title_by_name
+from cms_backend.db.title import get_title_history as db_get_title_history
+from cms_backend.db.title import get_title_history_entry as db_get_title_history_entry
 from cms_backend.db.title import get_titles as db_get_titles
 from cms_backend.db.title import restore_title as db_restore_title
 from cms_backend.db.title import restore_titles as db_restore_titles
+from cms_backend.db.title import revert_title as db_revert_title
 from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.models import TitleCreateSchema, TitleUpdateSchema
 from cms_backend.schemas.orms import (
-    BaseTitleCollectionSchema,
     TitleFullSchema,
+    TitleHistorySchema,
     TitleLightSchema,
 )
 from cms_backend.utils import is_valid_uuid
@@ -54,43 +63,8 @@ class RestoreTitlesSchema(BaseModel):
     title_names: list[NotEmptyString] = Field(default_factory=list)
 
 
-class BaseTitleCreateUpdateSchema(BaseModel):
-    collection_titles: list[BaseTitleCollectionSchema] | None = None
-    long_description: NotEmptyString | None = None
-    license: NotEmptyString | None = None
-    relation: NotEmptyString | None = None
-    source: NotEmptyString | None = None
-    title: NotEmptyString | None = None
-    creator: NotEmptyString | None = None
-    description: NotEmptyString | None = None
-    publisher: NotEmptyString | None = None
-    language: NotEmptyString | None = None
-    illustration_48x48_at_1: Base64Str | None = None
-    flavours: list[str] | None = None
-
-    @model_validator(mode="after")
-    def validate_unique_collection_titles(self) -> Self:
-        if self.collection_titles:
-            seen: set[str] = set()
-            for entry in self.collection_titles:
-                if entry.collection_name in seen:
-                    raise ValueError(
-                        f"Collection title {entry.collection_name} duplicated, "
-                        "cannot use a collection twice in a given title"
-                    )
-                else:
-                    seen.add(entry.collection_name)
-        return self
-
-
-class TitleCreateSchema(BaseTitleCreateUpdateSchema):
-    name: NotEmptyString
-    maturity: Literal["unstable", "stable"] = "unstable"
-
-
-class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
-    name: NotEmptyString | None = None
-    maturity: Literal["unstable", "stable"] | None = None
+class RevertTitleSchema(BaseModel):
+    comment: NotEmptyString | None = None
 
 
 @router.get("")
@@ -125,7 +99,7 @@ def get_titles(
 
 @router.get("/{title_identifier}")
 def get_title(
-    title_identifier: str,
+    title_identifier: Annotated[NotEmptyString, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleFullSchema:
     """Get a title by ID with full details including books"""
@@ -142,55 +116,33 @@ def get_title(
 def create_title(
     title_data: TitleCreateSchema,
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Create a new title"""
     title = db_create_title(
         session,
-        name=title_data.name,
-        maturity=title_data.maturity,
-        collection_titles=title_data.collection_titles,
-        _title=title_data.title,
-        creator=title_data.creator,
-        publisher=title_data.publisher,
-        language=title_data.language,
-        illustration_48x48_at_1=title_data.illustration_48x48_at_1,
-        license_=title_data.license,
-        relation=title_data.relation,
-        source=title_data.source,
-        long_description=title_data.long_description,
-        description=title_data.description,
-        flavours=title_data.flavours,
+        author_id=current_account.id,
+        payload=title_data,
     )
     return create_title_light_schema(title)
 
 
 @router.patch(
-    "/{title_id}",
+    "/{title_identifier}",
     dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
 def update_title(
-    title_id: UUID,
+    title_identifier: Annotated[NotEmptyString, Path()],
     title_data: TitleUpdateSchema,
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Update a title"""
     title = db_update_title(
         session,
-        title_id=title_id,
-        name=title_data.name,
-        maturity=title_data.maturity,
-        collection_titles=title_data.collection_titles,
-        _title=title_data.title,
-        creator=title_data.creator,
-        description=title_data.description,
-        long_description=title_data.long_description,
-        publisher=title_data.publisher,
-        language=title_data.language,
-        illustration_48x48_at_1=title_data.illustration_48x48_at_1,
-        license_=title_data.license,
-        relation=title_data.relation,
-        source=title_data.source,
-        flavours=title_data.flavours,
+        title_identifier=title_identifier,
+        author_id=current_account.id,
+        payload=title_data,
     )
     return create_title_light_schema(title)
 
@@ -202,10 +154,12 @@ def update_title(
 def archive_titles(
     request: RestoreTitlesSchema,
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> Response:
     db_archive_titles(
         session,
         title_names=request.title_names,
+        author_id=current_account.id,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -217,41 +171,111 @@ def archive_titles(
 def restore_archived_titles(
     request: RestoreTitlesSchema,
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> Response:
     db_restore_titles(
         session,
         title_names=request.title_names,
+        author_id=current_account.id,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.patch(
-    "/{title_id}/archive",
+    "/{title_identifier}/archive",
     dependencies=[Depends(require_permission(namespace="title", name="archive"))],
 )
 def archive_title(
-    title_id: NotEmptyString,
+    title_identifier: Annotated[NotEmptyString, Path()],
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Mark a title as archived"""
     title = db_archive_title(
         session,
-        title_identifier=title_id,
+        title_identifier=title_identifier,
+        author_id=current_account.id,
     )
     return create_title_light_schema(title)
 
 
 @router.patch(
-    "/{title_id}/restore",
+    "/{title_identifier}/restore",
     dependencies=[Depends(require_permission(namespace="title", name="archive"))],
 )
 def restore_archived_title(
-    title_id: NotEmptyString,
+    title_identifier: Annotated[NotEmptyString, Path()],
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Restore an archived title"""
     title = db_restore_title(
         session,
-        title_identifier=title_id,
+        title_identifier=title_identifier,
+        author_id=current_account.id,
     )
     return create_title_light_schema(title)
+
+
+@router.get(
+    "/{title_identifier}/history",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_title_history(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+    skip: Annotated[SkipField, Query()] = 0,
+    limit: Annotated[LimitFieldMax200, Query()] = 200,
+) -> ListResponse[TitleHistorySchema]:
+    results = db_get_title_history(
+        session, title_identifier=title_identifier, skip=skip, limit=limit
+    )
+    return ListResponse(
+        items=results.records,
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=skip,
+            limit=limit,
+            page_size=len(results.records),
+        ),
+    )
+
+
+@router.get(
+    "/{title_identifier}/history/{history_id}",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_title_history_entry(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    history_id: Annotated[UUID, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleHistorySchema:
+    history_entry = db_get_title_history_entry(
+        session, title_identifier=title_identifier, history_id=history_id
+    )
+    return create_title_history_schema(history_entry)
+
+
+@router.patch(
+    "/{title_identifier}/revert/{history_id}",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def revert_title(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    history_id: Annotated[UUID, Path()],
+    request: RevertTitleSchema,
+    session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
+) -> JSONResponse:
+    """Revert a title to a previous history."""
+    db_revert_title(
+        session,
+        title_identifier=title_identifier,
+        history_id=history_id,
+        author_id=current_account.id,
+        comment=request.comment,
+    )
+    return JSONResponse(
+        content={"message": f"title '{title_identifier}' has been restored"},
+        status_code=HTTPStatus.OK,
+    )

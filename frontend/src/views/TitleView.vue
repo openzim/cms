@@ -32,6 +32,19 @@
         <v-tab
           base-color="primary"
           v-if="canEditTitle"
+          value="history"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.name, selectedTab: 'history' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-history</v-icon>
+          History
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canEditTitle"
           value="edit"
           :to="{
             name: 'title-detail-tab',
@@ -288,6 +301,19 @@
           </v-card>
         </v-window-item>
 
+        <v-window-item value="history">
+          <TitleHistory
+            v-if="canEditTitle"
+            :history="titleHistoryStore.history"
+            :has-more="canLoadMoreHistory"
+            :loading="loadingHistory"
+            :paginator="titleHistoryStore.paginator"
+            :title-name="title.name"
+            @load="loadHistory"
+            @revert="handleRevert"
+          />
+        </v-window-item>
+
         <!-- Edit Tab -->
         <v-window-item value="edit">
           <div v-if="canEditTitle" class="pa-4">
@@ -366,6 +392,46 @@
         </v-window-item>
       </v-window>
     </div>
+
+    <!-- Title Update Confirmation Dialog -->
+    <ConfirmDialog
+      v-model="showConfirmDialog"
+      title="Confirm Title Update"
+      confirm-text="Save Changes"
+      cancel-text="Cancel"
+      confirm-color="primary"
+      icon="mdi-pencil"
+      icon-color="primary"
+      :max-width="600"
+      :loading="updating"
+      @confirm="handleConfirmUpdate"
+      @cancel="handleCancelUpdate"
+    >
+      <template #content>
+        <div class="mb-4">
+          <h3 class="text-h6 mb-2">Changes Summary</h3>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Please review the changes below and optionally add a comment describing what you've
+            modified.
+          </p>
+        </div>
+
+        <div class="mb-4">
+          <DiffViewer :differences="enhancedTitleDifferences" />
+        </div>
+
+        <div>
+          <v-textarea
+            v-model.trim="pendingComment"
+            label="Comment (optional)"
+            variant="outlined"
+            auto-grow
+            rows="3"
+            persistent-hint
+          />
+        </div>
+      </template>
+    </ConfirmDialog>
   </v-container>
 </template>
 
@@ -374,16 +440,22 @@ import BookTable from '@/components/BookTable.vue'
 import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import TitleForm from '@/components/TitleForm.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DiffViewer from '@/components/DiffViewer.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
 import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
-import type { Title } from '@/types/title'
+import { useTitleHistoryStore } from '@/stores/titleHistory'
+import type { Title, TitleUpdate } from '@/types/title'
 import type { Book, ZimUrl } from '@/types/book'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
+import TitleHistory from '@/components/TitleHistory.vue'
+import { diff } from 'deep-diff'
+import type { EnhancedDiff } from '@/utils/diff'
 
 const router = useRouter()
 
@@ -392,6 +464,7 @@ const titleStore = useTitleStore()
 const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
+const titleHistoryStore = useTitleHistoryStore()
 
 const { smAndDown } = useDisplay()
 
@@ -399,6 +472,7 @@ const error = ref<string | null>(null)
 const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
 const loadingUrls = ref(false)
+const loadingHistory = ref<boolean>(false)
 const zimUrls = ref<Record<string, ZimUrl[]>>({})
 const latestBook = ref<Book | null>(null)
 
@@ -408,6 +482,33 @@ const formValid = ref(false)
 const hasChanges = ref(false)
 const updating = ref(false)
 const updateError = ref('')
+
+// Confirmation dialog state
+const showConfirmDialog = ref(false)
+const pendingComment = ref('')
+const pendingUpdatePayload = ref<Partial<TitleUpdate> | null>(null)
+
+const titleDifferences = computed(() => {
+  if (!(title.value && pendingUpdatePayload.value)) return undefined
+
+  const currentTitle = JSON.parse(JSON.stringify(title.value))
+  const updatedTitle = JSON.parse(JSON.stringify({ ...title.value, ...pendingUpdatePayload.value }))
+
+  return diff(currentTitle, updatedTitle)
+})
+
+const enhancedTitleDifferences = computed((): EnhancedDiff[] | undefined => {
+  if (!titleDifferences.value) {
+    return undefined
+  }
+  return titleDifferences.value.map((diff) => {
+    const enhanced: EnhancedDiff = { ...diff }
+    if (diff.path?.includes('illustration_48x48_at_1')) {
+      enhanced.isBlob = true
+    }
+    return enhanced
+  })
+})
 
 interface Props {
   id: string
@@ -432,6 +533,12 @@ const canEditTitle = computed(
 )
 
 const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive'))
+
+// History-related computed properties
+const canLoadMoreHistory = computed(() => {
+  const { skip, limit, count } = titleHistoryStore.paginator
+  return skip + limit < count
+})
 
 // Helper to convert raw base64 to data URL
 const getIllustrationSrc = computed(() => {
@@ -476,10 +583,37 @@ const loadLatestBook = async () => {
   }
 }
 
-const loadData = async (forceReload: boolean = false) => {
+// History-related methods
+const loadHistory = async ({ limit, skip }: { limit: number; skip: number }) => {
+  if (skip > 0 && !canLoadMoreHistory.value) return
+
+  loadingHistory.value = true
+  try {
+    const response = await titleHistoryStore.fetchHistory(props.id, limit, skip)
+    if (!response) {
+      notificationStore.showError(`Failed to ${skip > 0 ? 'load more' : 'load'} history items`)
+    }
+  } catch (error) {
+    console.error('Failed to load history items', error)
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+const loadData = async (
+  forceReload: boolean = false,
+  fetchHistory: boolean = false,
+  fetchZimUrls: boolean = false,
+) => {
   loadingStore.startLoading('Fetching title...')
 
   const data = await titleStore.fetchTitleById(props.id, forceReload)
+
+  if (fetchHistory) {
+    titleHistoryStore.clearHistory()
+    await loadHistory({ limit: titleHistoryStore.paginator.limit, skip: 0 })
+  }
+
   if (data) {
     error.value = null
     title.value = data
@@ -495,7 +629,7 @@ const loadData = async (forceReload: boolean = false) => {
     loadingStore.stopLoading()
   }
 
-  if (title.value?.books && title.value.books.length > 0) {
+  if (fetchZimUrls && title.value?.books && title.value.books.length > 0) {
     loadZimUrls()
   }
 }
@@ -551,7 +685,6 @@ const restoreTitle = async () => {
 const handleUpdate = async () => {
   if (!formValid.value || !title.value) return
 
-  updating.value = true
   updateError.value = ''
 
   try {
@@ -561,12 +694,49 @@ const handleUpdate = async () => {
       throw new Error('Failed to get update payload')
     }
 
-    const response = await titleStore.updateTitle(title.value.id, updatePayload)
-    if (!response) {
-      updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+    // Check if there are any changes
+    const currentTitle = JSON.parse(JSON.stringify(title.value))
+    const updatedTitle = JSON.parse(JSON.stringify({ ...title.value, ...updatePayload }))
+    const differences = diff(currentTitle, updatedTitle)
+
+    if (!differences || differences.length === 0) {
+      notificationStore.showInfo('No changes detected')
       return
     }
+    pendingUpdatePayload.value = updatePayload
+    pendingComment.value = ''
+    showConfirmDialog.value = true
+  } catch (err) {
+    console.error('Failed to prepare update', err)
+    updateError.value = 'Failed to prepare update'
+  }
+}
+
+const handleConfirmUpdate = async () => {
+  if (!title.value || !pendingUpdatePayload.value) return
+
+  updating.value = true
+  updateError.value = ''
+
+  try {
+    // Add comment to the payload if provided
+    const payloadWithComment = {
+      ...pendingUpdatePayload.value,
+      comment: pendingComment.value || undefined,
+    }
+
+    const response = await titleStore.updateTitle(title.value.id, payloadWithComment)
+    if (!response) {
+      updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+      showConfirmDialog.value = false
+      return
+    }
+
     notificationStore.showSuccess('Title updated successfully!')
+    showConfirmDialog.value = false
+
+    pendingUpdatePayload.value = null
+    pendingComment.value = ''
 
     // If the name changed, navigate to the new URL
     if (response.name !== props.id) {
@@ -578,9 +748,17 @@ const handleUpdate = async () => {
   } catch (err) {
     console.error('Failed to update title', err)
     updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+    showConfirmDialog.value = false
   } finally {
     updating.value = false
   }
+}
+
+const handleCancelUpdate = () => {
+  showConfirmDialog.value = false
+  pendingUpdatePayload.value = null
+  pendingComment.value = ''
+  updating.value = false
 }
 
 const handleReset = () => {
@@ -588,14 +766,31 @@ const handleReset = () => {
   titleFormRef.value?.resetFormToTitle(title.value)
 }
 
+const handleRevert = async () => {
+  // Reload title data after revert
+  await loadData(true, true)
+}
+
 onMounted(async () => {
-  await loadData(true)
+  await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
+
+  // Redirect to details if trying to access restricted tabs without permission
+  if (props.selectedTab !== 'details' && !canEditTitle.value) {
+    router.push({ name: 'title-detail', params: { id: props.id } })
+    return
+  }
+
   if (props.selectedTab === 'edit' && title.value) {
     await titleFormRef.value?.fetchCollections()
     await titleFormRef.value?.fetchFlavours()
     await loadLatestBook()
     titleFormRef.value?.resetFormToTitle(title.value)
   }
+})
+
+onUnmounted(() => {
+  // Clear recipe history to prevent accumulation of history items
+  titleHistoryStore.clearHistory()
 })
 
 // Watch for tab changes
@@ -605,7 +800,7 @@ watch(
     currentTab.value = newTab
 
     if (!title.value || newTab != 'archive') {
-      await loadData(true)
+      await loadData(true, newTab === 'history', newTab === 'details')
     }
 
     if (newTab === 'edit' && title.value) {
