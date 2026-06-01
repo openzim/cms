@@ -65,7 +65,9 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 date=book.date,
                 flavour=book.flavour,
                 issues=book.issues,
-                has_flavour_mismatch=book.flavour not in title.flavours,
+                has_flavour_mismatch=book.flavour not in title.flavours
+                if title.flavours
+                else False,
             )
             for book in sorted(
                 title.books,

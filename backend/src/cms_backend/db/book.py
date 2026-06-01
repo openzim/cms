@@ -101,7 +101,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         target_locations=target_locations,
         title_archived=book.title.archived if book.title else False,
         has_flavour_mismatch=book.flavour not in book.title.flavours
-        if book.title
+        if book.title and book.title.flavours
         else False,
     )
 

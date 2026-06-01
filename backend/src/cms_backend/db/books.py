@@ -120,7 +120,7 @@ def get_books(
                 flavour=flavour,
                 issues=book_issues,
                 has_flavour_mismatch=flavour not in title_flavours
-                if title_flavours is not None
+                if title_flavours
                 else False,
             )
             for (

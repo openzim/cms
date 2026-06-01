@@ -45,7 +45,7 @@
         class="mb-4"
         icon="mdi-alert"
       >
-        <div class="d-flex align-center">
+        <div class="d-flex align-center ga-2">
           <div class="flex-grow-1">
             <div class="font-weight-bold mb-1">Flavour Mismatch</div>
             <div>
@@ -61,6 +61,18 @@
             @click="currentTab = 'edit'"
           >
             Edit Book
+          </v-btn>
+          <v-btn
+            v-if="canEditBookTitle"
+            variant="outlined"
+            color="warning"
+            size="small"
+            :to="{
+              name: 'title-detail-tab',
+              params: { id: book.title_id, selectedTab: 'edit' },
+            }"
+          >
+            Edit Title
           </v-btn>
         </div>
       </v-alert>
@@ -450,6 +462,14 @@ const canDeleteBook = computed(() => {
     ['staging', 'prod', 'quarantine'].includes(book.value.location_kind) &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing
+  )
+})
+
+const canEditBookTitle = computed(() => {
+  if (!book.value) return false
+
+  return (
+    authStore.hasPermission('title', 'update') && book.value.title_id && !book.value.title_archived
   )
 })
 
