@@ -342,7 +342,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
+import { useTitleStore } from '@/stores/title'
 import type { Book, ZimUrl } from '@/types/book'
+import type { Title } from '@/types/title'
 import { formatDt, fromNow } from '@/utils/format'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
@@ -353,9 +355,11 @@ const loadingStore = useLoadingStore()
 const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
+const titleStore = useTitleStore()
 
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
+const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
 const loadingUrls = ref(false)
 const zimUrls = ref<ZimUrl[]>([])
@@ -375,13 +379,13 @@ const props = withDefaults(defineProps<Props>(), {
   selectedTab: 'info',
 })
 
+const currentTab = ref(props.selectedTab)
+
 const locationHeaders = [
   { title: 'Warehouse', value: 'warehouse_name', sortable: false },
   { title: 'Folder', value: 'path', sortable: false },
   { title: 'Filename', value: 'filename', sortable: false },
 ]
-
-const currentTab = ref(props.selectedTab)
 
 const canEditBook = computed(() => {
   if (!book.value) return false
@@ -429,6 +433,20 @@ const canRecoverBook = computed(() => {
   )
 })
 
+const loadTitleData = async () => {
+  if (!book.value?.title_id) {
+    title.value = null
+    return
+  }
+
+  const data = await titleStore.fetchTitleById(book.value.title_id, false)
+  if (data) {
+    title.value = data
+  } else {
+    title.value = null
+  }
+}
+
 const loadData = async (forceReload: boolean = false) => {
   loadingStore.startLoading('Fetching book...')
 
@@ -437,6 +455,7 @@ const loadData = async (forceReload: boolean = false) => {
     error.value = null
     book.value = data
     dataLoaded.value = true
+    await loadTitleData()
   } else {
     error.value = 'Failed to load book'
     for (const err of bookStore.errors) {

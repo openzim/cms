@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.book import create_book as db_create_book
-from cms_backend.db.book import update_book
+from cms_backend.db.book import get_differing_metadata_keys, update_book
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Book, Title, ZimfarmNotification
 
@@ -37,6 +37,42 @@ def test_create_book(
     assert any(
         event for event in book.events if "created from Zimfarm notification" in event
     )
+
+
+def test_get_differing_metadata_keys(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
+):
+    """Get the different metadata keys between book and it's title."""
+    title = create_title(
+        title="Title",
+        creator="Title Creator",
+        publisher="openZIM",
+        description="Title Description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+
+    book = create_book(
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        }
+    )
+    book.title_id = title.id
+    dbsession.add(book)
+    dbsession.flush()
+
+    differences = get_differing_metadata_keys(book)
+    assert set(differences) == {"Title", "Creator", "Publisher", "Description"}
 
 
 def test_update_deleted_book(dbsession: OrmSession, create_book: Callable[..., Book]):

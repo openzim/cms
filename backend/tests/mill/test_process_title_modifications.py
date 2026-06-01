@@ -102,6 +102,7 @@ def test_process_title_modifications_processes_matching_book(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
 ):
     """Test that matching books are processed"""
     title = create_title(name="wikipedia_en_all")
@@ -118,6 +119,7 @@ def test_process_title_modifications_processes_matching_book(
             "Date": "2025-01",
             "Description": "Wikipedia Encyclopedia",
             "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
         },
     )
     book.has_error = False

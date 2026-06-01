@@ -138,6 +138,10 @@ class Book(Base):
     location_kind: Mapped[str] = mapped_column(
         init=False, default="quarantine", server_default="quarantine"
     )
+    # ideally, these issues should not prevent a book from being acted upon
+    issues: Mapped[list[str]] = mapped_column(
+        default_factory=list, server_default="{}", init=False
+    )
     deletion_date: Mapped[datetime | None] = mapped_column(default=None, init=False)
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
@@ -196,6 +200,16 @@ class Title(Base):
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
     name: Mapped[str] = mapped_column(unique=True, index=True)
+    title: Mapped[str | None] = mapped_column(default=None)
+    creator: Mapped[str | None] = mapped_column(default=None)
+    publisher: Mapped[str | None] = mapped_column(default=None)
+    description: Mapped[str | None] = mapped_column(default=None)
+    language: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    long_description: Mapped[str | None] = mapped_column(default=None)
+    license: Mapped[str | None] = mapped_column(default=None)
+    relation: Mapped[str | None] = mapped_column(default=None)
+    source: Mapped[str | None] = mapped_column(default=None)
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())

@@ -2,9 +2,13 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.context import Context
-from cms_backend.db.book import create_book_target_locations
+from cms_backend.db.book import (
+    create_book_target_locations,
+    get_differing_metadata_keys,
+)
 from cms_backend.db.models import Book, Title
 from cms_backend.db.rules import apply_retention_rules
+from cms_backend.db.title import title_is_missing_mandatory_metadata
 from cms_backend.schemas.models import FileLocation
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename
@@ -39,10 +43,33 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             book_id=book.id,
         )
 
-        # Determine if this book goes to staging or prod based on title maturity
-        # For now, only 'stable' maturity move straight to prod, other maturity moves
-        # through staging first
-        goes_to_staging = title.maturity != "stable"
+        if title_is_missing_mandatory_metadata(title):
+            title.title = book.zim_metadata["Title"]
+            title.creator = book.zim_metadata["Creator"]
+            title.publisher = book.zim_metadata["Publisher"]
+            title.description = book.zim_metadata["Description"]
+            title.language = book.zim_metadata["Language"]
+            title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
+            title.long_description = book.zim_metadata.get("LongDescription")
+            title.license = book.zim_metadata.get("License")
+            title.relation = book.zim_metadata.get("Relation")
+            title.source = book.zim_metadata.get("Source")
+
+        different_metadata_keys = get_differing_metadata_keys(book)
+        if different_metadata_keys:
+            book.issues = ["metadata mismatch"]
+            book.events.append(
+                f"{getnow()}: book metadata is different from title metadata: "
+                f"{','.join(different_metadata_keys)}"
+            )
+
+        # Determine if this book goes to staging or prod based on
+        # - title maturity: For now, only 'stable' maturity move straight to prod,
+        # other maturity moves through staging first
+        # - if book has different metadata from title
+        goes_to_staging = (
+            title.maturity != "stable" or len(different_metadata_keys) != 0
+        )
 
         target_locations = (
             [

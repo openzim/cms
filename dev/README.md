@@ -126,6 +126,45 @@ docker exec cms_shuttle python /scripts/wipe.py
 
 This is useful when you need to reset everything to a clean state before re-running setup scripts.
 
+### Import production DB dump
+
+If you have access to a production DB dump, you can restore it locally.
+
+Mount you dump at `/data/cms` in PG container.
+
+Drop and recreate the `cms` database:
+
+```
+docker exec -it cms_postgresdb bash -c \
+  'psql -U cms -d postgres -c "DROP DATABASE cms WITH (FORCE);" -c "CREATE DATABASE cms;"'
+```
+
+Restore DB dump (assuming it is mounted in /data/cms)
+
+```
+docker exec -it cms_postgresdb bash -c \
+  'pg_restore -U cms -d cms /data/cms'
+```
+
+Delete admin user so that it is recreated by API startup with admin/admin_pass credentials:
+
+```
+docker exec -it cms_postgresdb bash -c \
+  "psql -U cms -d cms -c \"DELETE FROM account WHERE username='admin';\""
+```
+
+Restart the API:
+
+```
+docker restart cms_api
+```
+
+Create missing ZIM files locally so that shuttle operations works fine (it will create empty files with `touch`).
+
+```sh
+docker exec cms_mill python /scripts/setup_books.py
+```
+
 ### Restart the backend
 
 The backend might typically fail if the DB schema is not up-to-date, or if you create some nasty bug while modifying the code.
