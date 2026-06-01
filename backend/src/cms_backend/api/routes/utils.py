@@ -61,7 +61,7 @@ def build_library_xml(
 
             book_elem.set("path", f"{path_prefix}/{path / filename}")
 
-        if flavour := zim_meta.get("Flavour"):
+        if flavour := book.flavour:
             book_elem.set("flavour", flavour)
 
     ET.indent(library_elem, space="  ", level=0)
