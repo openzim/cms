@@ -24,7 +24,6 @@ def update_title_flavour(session: OrmSession, title: Title) -> tuple[bool, str]:
     books = session.scalars(
         select(Book)
         .join(Title, Book.title_id == Title.id)
-        .distinct()
         .order_by(Book.flavour)
         .where(Book.flavour.isnot(None), Book.title_id == title.id)
     ).all()
@@ -37,8 +36,10 @@ def update_title_flavour(session: OrmSession, title: Title) -> tuple[bool, str]:
             book.flavour = new_flavour
             session.add(book)
 
-    flavours = [book.flavour for book in books if book.flavour is not None]
-    title.flavours = []
+    flavours = {book.flavour for book in books if book.flavour is not None}
+    title.flavours = list(flavours)
+    session.add(title)
+    session.flush()
 
     if not flavours:
         logger.info(
