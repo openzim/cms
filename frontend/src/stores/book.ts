@@ -168,11 +168,14 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
-  const updateBook = async (bookId: string, bookData: Partial<{ flavour: string }>) => {
+  const updateBook = async (
+    bookId: string,
+    bookData: Partial<{ flavour: string; comment?: string }>,
+  ) => {
     const service = await authStore.getApiService('books')
     try {
       errors.value = []
-      const response = await service.patch<Partial<{ flavour: string }>, Book>(
+      const response = await service.patch<Partial<{ flavour: string; comment?: string }>, Book>(
         `/${bookId}`,
         bookData,
       )

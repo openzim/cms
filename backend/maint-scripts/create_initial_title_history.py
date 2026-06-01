@@ -29,7 +29,7 @@ def create_initial_history_for_titles(session: OrmSession) -> None:
     for title_name, title_id in title_data:
         existing_history = session.scalars(
             select(TitleHistory).where(TitleHistory.title_id == title_id)
-        ).one_or_none()
+        ).first()
 
         if existing_history:
             logger.info(

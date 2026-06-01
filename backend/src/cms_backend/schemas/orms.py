@@ -144,6 +144,19 @@ class BookFullSchema(BookLightSchema):
     title_archived: bool
 
 
+class BookHistorySchema(BaseModel):
+    """
+    Schema for reading a book history model
+    """
+
+    id: UUID
+    comment: str | None
+    author: str
+    name: str | None
+    flavour: str | None
+    created_at: datetime
+
+
 class WarehousePathSchema(BaseModel):
     """
     Schema for reading warehouse path with warehouse information

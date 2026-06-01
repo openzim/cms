@@ -1,17 +1,23 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend.context import Context
+from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, ZimfarmNotification
+from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
 from cms_backend.db.rules import apply_retention_rules
-from cms_backend.schemas.models import FileLocation
-from cms_backend.schemas.orms import BookFullSchema, BookLocationSchema
+from cms_backend.schemas.models import BookUpdateSchema, FileLocation
+from cms_backend.schemas.orms import (
+    BookFullSchema,
+    BookHistorySchema,
+    BookLocationSchema,
+    ListResult,
+)
 from cms_backend.utils.datetime import getnow
 
 
@@ -110,6 +116,7 @@ def create_book(
     session: OrmSession,
     *,
     book_id: UUID,
+    author_id: UUID,
     article_count: int,
     media_count: int,
     size: int,
@@ -143,6 +150,10 @@ def create_book(
     )
     book.events.append(
         f"{getnow()}: created from Zimfarm notification {zimfarm_notification.id}"
+    )
+
+    create_book_history_entry(
+        session, book, author_id, comment="Create initial history"
     )
 
     return book
@@ -380,7 +391,23 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
     return [key for key in book_metadata if book_metadata[key] != title_metadata[key]]
 
 
-def update_book(session: OrmSession, book_id: UUID, *, flavour: str) -> Book:
+def create_book_history_entry(
+    session: OrmSession, book: Book, author_id: UUID, comment: str | None = None
+) -> BookHistory:
+    history_entry = BookHistory(
+        name=book.name,
+        comment=comment,
+        flavour=book.flavour,
+    )
+    history_entry.book = book
+    history_entry.author_id = author_id
+    session.add(history_entry)
+    return history_entry
+
+
+def update_book(
+    session: OrmSession, *, author_id: UUID, book_id: UUID, payload: BookUpdateSchema
+) -> Book:
     book = get_book(session, book_id)
     if book.location_kind == "deleted":
         raise RecordDoesNotExistError(f"Book {book_id} is already deleted.")
@@ -388,13 +415,97 @@ def update_book(session: OrmSession, book_id: UUID, *, flavour: str) -> Book:
     if book.title and book.title.archived:
         raise ValueError(f"Book title {book.title_id} is currently archived")
 
-    if book.flavour == flavour:
+    # Return early if no update data
+    update_data = payload.model_dump(exclude_unset=True, exclude={"comment"})
+    if not update_data:
         return book
 
-    book.events.append(
-        f"{getnow()}: flavour updated from '{book.flavour}' to '{flavour}'"
-    )
-    book.flavour = flavour
-    session.add(book)
+    if payload.flavour and payload.flavour == book.flavour:
+        return book
+
+    book = session.scalars(
+        update(Book).where(Book.id == book.id).values(**update_data).returning(Book)
+    ).one()
+
+    create_book_history_entry(session, book, author_id, payload.comment)
     session.flush()
+    return book
+
+
+def create_book_history_schema(entry: BookHistory) -> BookHistorySchema:
+    return BookHistorySchema(
+        id=entry.id,
+        created_at=entry.created_at,
+        name=entry.name,
+        flavour=entry.flavour,
+        comment=entry.comment,
+        author=entry.author.display_name,
+    )
+
+
+def get_book_history(
+    session: OrmSession, *, book_id: UUID, skip: int, limit: int
+) -> ListResult[BookHistorySchema]:
+    """Get a book's history"""
+    book = get_book(session, book_id)
+    stmt = (
+        select(BookHistory)
+        .where(BookHistory.book_id == book.id)
+        .options(selectinload(BookHistory.author))
+        .order_by(BookHistory.created_at.desc())
+    )
+    return ListResult[BookHistorySchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            create_book_history_schema(entry)
+            for entry in session.scalars(stmt.offset(skip).limit(limit)).all()
+        ],
+    )
+
+
+def get_book_history_entry_or_none(
+    session: OrmSession, *, book_id: UUID, history_id: UUID
+) -> BookHistory | None:
+    """Get a book's history entry or None if it does not exist"""
+    book = get_book(session, book_id)
+    return session.scalars(
+        select(BookHistory).where(
+            BookHistory.id == history_id, BookHistory.book_id == book.id
+        )
+    ).one_or_none()
+
+
+def get_book_history_entry(
+    session: OrmSession, *, book_id: UUID, history_id: UUID
+) -> BookHistory:
+    """Get a book's history entry"""
+    if history_entry := get_book_history_entry_or_none(
+        session, book_id=book_id, history_id=history_id
+    ):
+        return history_entry
+    raise RecordDoesNotExistError(
+        f"Book '{book_id}' does not have a history entry with id {history_id}"
+    )
+
+
+def revert_book(
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    history_id: UUID,
+    author_id: UUID,
+    comment: str | None = None,
+) -> Book:
+    """Revert the book configuration and settings to those defined in history_id"""
+    entry = get_book_history_entry(session, book_id=book_id, history_id=history_id)
+    book = update_book(
+        session,
+        author_id=author_id,
+        book_id=book_id,
+        payload=BookUpdateSchema(
+            comment=comment,
+            flavour=entry.flavour,
+        ),
+    )
+
     return book
