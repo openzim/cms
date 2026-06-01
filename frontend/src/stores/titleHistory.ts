@@ -43,7 +43,7 @@ export const useTitleHistoryStore = defineStore('titleHistory', () => {
   }
 
   const fetchHistoryEntry = async (titleName: string, historyId: string) => {
-    const service = await authStore.getApiService('title')
+    const service = await authStore.getApiService('titles')
     try {
       const response = await service.get<null, TitleHistorySchema>(
         `/${titleName}/history/${historyId}`,
