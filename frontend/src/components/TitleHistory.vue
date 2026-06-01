@@ -102,12 +102,7 @@
               </v-chip>
             </div>
 
-            <div v-if="loadingOfflinerDef" class="d-flex justify-center align-center pa-8">
-              <v-progress-circular indeterminate color="primary" />
-              <span class="ml-4">Loading offliner definitions...</span>
-            </div>
-
-            <DiffViewer v-else :differences="enhancedDifferences" />
+            <DiffViewer :differences="enhancedDifferences" />
           </v-card-text>
         </v-card>
       </template>
@@ -143,12 +138,7 @@
             Review the changes below:
           </v-alert>
 
-          <div v-if="loadingOfflinerDef" class="d-flex justify-center align-center pa-8">
-            <v-progress-circular indeterminate color="primary" />
-            <span class="ml-4">Loading differences...</span>
-          </div>
-
-          <DiffViewer v-else :differences="enhancedDifferences" />
+          <DiffViewer :differences="enhancedDifferences" />
 
           <!-- Comment Input -->
           <div class="mt-4">
@@ -202,7 +192,6 @@ const notificationStore = useNotificationStore()
 // New state for multi-selection
 const selectedItems = ref<Set<number>>(new Set())
 const showDiffViewer = ref(false)
-const loadingOfflinerDef = ref(false)
 const showRevertDialog = ref(false)
 const selectedHistoryItem = ref<TitleHistorySchema | null>(null)
 const isReverting = ref(false)
