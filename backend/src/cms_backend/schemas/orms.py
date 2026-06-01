@@ -33,6 +33,7 @@ class TitleLightSchema(BaseModel):
     license: str | None
     relation: str | None
     source: str | None
+    flavours: list[str]
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -116,6 +117,7 @@ class BookLightSchema(BaseModel):
     date: str | None
     flavour: str | None
     issues: list[str]
+    has_flavour_mismatch: bool
 
 
 class BookFullSchema(BookLightSchema):

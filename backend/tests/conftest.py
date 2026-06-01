@@ -167,6 +167,7 @@ def create_title(
         license: str | None = None,  # noqa: A002
         relation: str | None = None,
         source: str | None = None,
+        flavours: list[str] | None = None,
     ) -> Title:
         db_title = Title(
             name=name,
@@ -181,6 +182,7 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
+            flavours=flavours if flavours is not None else [],
         )
         dbsession.add(db_title)
         dbsession.flush()
