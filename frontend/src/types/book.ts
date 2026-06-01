@@ -50,3 +50,12 @@ export interface ZimUrl {
 export interface ZimUrls {
   urls: Record<string, ZimUrl[]>
 }
+
+export interface BookHistory {
+  id: string
+  comment: string | null
+  author: string
+  created_at: string
+  flavour: string | null
+  name: string | null
+}

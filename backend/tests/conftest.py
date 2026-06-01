@@ -16,6 +16,7 @@ from cms_backend.db.models import (
     Account,
     Base,
     Book,
+    BookHistory,
     BookLocation,
     Collection,
     CollectionTitle,
@@ -86,6 +87,7 @@ def zimfarm_notification(
 @pytest.fixture
 def create_book(
     dbsession: OrmSession,
+    account: Account,
     faker: Faker,
 ) -> Callable[..., Book]:
     def _create_book(
@@ -136,6 +138,15 @@ def create_book(
         book.location_kind = location_kind
         if updated_at:
             book.updated_at = updated_at
+
+        history_entry = BookHistory(
+            name=name,
+            flavour=flavour,
+            comment="Initial history entry",
+        )
+        history_entry.author_id = account.id
+        history_entry.book = book
+
         dbsession.add(book)
         dbsession.flush()
         return book

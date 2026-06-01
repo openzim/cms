@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
 from cms_backend.context import Context
+from cms_backend.db.account import get_account_by_username
 from cms_backend.db.book import create_book
 from cms_backend.db.book_location import create_book_location
 from cms_backend.db.models import ZimfarmNotification
@@ -71,9 +72,12 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
+        account = get_account_by_username(session, username="maint-scripts")
+
         book = create_book(
             session=session,
             book_id=notification.id,
+            author_id=account.id,
             article_count=notification.content["article_count"],
             media_count=notification.content["media_count"],
             size=notification.content["size"],

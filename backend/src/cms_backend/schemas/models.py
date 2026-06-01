@@ -90,3 +90,8 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString | None = None
     maturity: Literal["unstable", "stable"] | None = None
     comment: NotEmptyString | None = None
+
+
+class BookUpdateSchema(BaseModel):
+    comment: NotEmptyString | None = None
+    flavour: NotEmptyString | None = None
