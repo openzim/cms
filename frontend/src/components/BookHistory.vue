@@ -4,14 +4,14 @@
     :has-more="props.hasMore"
     :loading="props.loading"
     :paginator="props.paginator"
-    :entity-id="props.titleName"
-    entity-name="title"
-    loading-text="Loading Title history..."
-    empty-state-text="No history available for this title"
+    :entity-id="props.bookId"
+    entity-name="book"
+    loading-text="Loading Book history..."
+    empty-state-text="No history available for this book"
     :fetch-history-entry="fetchEntry"
     :revert-to-history="revertEntry"
     :get-history-errors="getErrors"
-    :compute-diff="computeTitleDiff"
+    :compute-diff="computeBookDiff"
     @load="handleLoad"
     @revert="handleRevert"
   />
@@ -20,18 +20,18 @@
 <script setup lang="ts">
 import HistoryViewer from '@/components/HistoryViewer.vue'
 import type { HistoryItem } from '@/components/HistoryViewer.vue'
-import { useTitleHistoryStore } from '@/stores/titleHistory'
+import { useBookHistoryStore } from '@/stores/bookHistory'
 import type { Paginator } from '@/types/base'
-import type { TitleHistorySchema } from '@/types/title'
+import type { BookHistory } from '@/types/book'
+import type * as DeepDiff from 'deep-diff'
 import { diff } from 'deep-diff'
-import type { EnhancedDiff } from '@/utils/diff'
 
 const props = defineProps<{
-  history: TitleHistorySchema[]
+  history: BookHistory[]
   hasMore: boolean
   loading: boolean
   paginator: Paginator
-  titleName: string
+  bookId: string
 }>()
 
 const emit = defineEmits<{
@@ -39,31 +39,28 @@ const emit = defineEmits<{
   revert: []
 }>()
 
-const titleHistoryStore = useTitleHistoryStore()
+const bookHistoryStore = useBookHistoryStore()
 
-const fetchEntry = async (
-  titleName: string,
-  historyId: string,
-): Promise<TitleHistorySchema | null> => {
-  return await titleHistoryStore.fetchHistoryEntry(titleName, historyId)
+const fetchEntry = async (bookId: string, historyId: string): Promise<BookHistory | null> => {
+  return await bookHistoryStore.fetchHistoryEntry(bookId, historyId)
 }
 
 const revertEntry = async (
-  titleName: string,
+  bookId: string,
   historyId: string,
   comment?: string,
 ): Promise<boolean> => {
-  return await titleHistoryStore.revertToHistory(titleName, historyId, comment)
+  return await bookHistoryStore.revertToHistory(bookId, historyId, comment)
 }
 
 const getErrors = (): string[] => {
-  return titleHistoryStore.errors
+  return bookHistoryStore.errors
 }
 
-const computeTitleDiff = (
-  item1: HistoryItem & TitleHistorySchema,
-  item2: HistoryItem & TitleHistorySchema,
-): EnhancedDiff[] | undefined => {
+const computeBookDiff = (
+  item1: HistoryItem & BookHistory,
+  item2: HistoryItem & BookHistory,
+): DeepDiff.Diff<Record<string, unknown>, Record<string, unknown>>[] | undefined => {
   // Extract the subset from both items (excluding id, author, comment, created_at)
   const { id, author, comment, created_at, ...subset1 } = item1
   const { id: _id, author: _author, comment: _comment, created_at: _created_at, ...subset2 } = item2
@@ -78,20 +75,7 @@ const computeTitleDiff = (
   void _comment
   void _created_at
 
-  const differences = diff(subset1, subset2)
-
-  if (!differences) {
-    return undefined
-  }
-
-  // Enhance differences with blob metadata
-  return differences.map((diff) => {
-    const enhanced: EnhancedDiff = { ...diff }
-    if (diff.path?.includes('illustration_48x48_at_1')) {
-      enhanced.isBlob = true
-    }
-    return enhanced
-  }) as EnhancedDiff[]
+  return diff(subset1, subset2)
 }
 
 const handleLoad = (params: { limit: number; skip: number }) => {

@@ -161,6 +161,34 @@ class Book(Base):
         cascade="all, delete-orphan",
         init=False,
     )
+    history_entries: Mapped[list["BookHistory"]] = relationship(
+        back_populates="book",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
+        # return the history entries in descending order of created_at
+        order_by="BookHistory.created_at.desc()",
+    )
+
+
+class BookHistory(Base):
+    __tablename__ = "book_history"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    book_id: Mapped[UUID] = mapped_column(
+        ForeignKey("book.id", ondelete="CASCADE"), init=False
+    )
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
+    comment: Mapped[str | None]
+    name: Mapped[str | None]
+    flavour: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    book: Mapped["Book"] = relationship(back_populates="history_entries", init=False)
+    author: Mapped["Account"] = relationship(init=False)
 
 
 Index(

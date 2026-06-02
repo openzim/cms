@@ -100,6 +100,19 @@
         <v-tab
           base-color="primary"
           v-if="canEditBook"
+          value="history"
+          :to="{
+            name: 'book-detail-tab',
+            params: { id: book.id, selectedTab: 'history' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-history</v-icon>
+          History
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canEditBook"
           value="edit"
           :to="{
             name: 'book-detail-tab',
@@ -370,33 +383,92 @@
             />
           </div>
         </v-window-item>
+
+        <!-- History Tab -->
+        <v-window-item value="history">
+          <BookHistory
+            v-if="canEditBook"
+            :history="bookHistoryStore.history"
+            :has-more="canLoadMoreHistory"
+            :loading="loadingHistory"
+            :paginator="bookHistoryStore.paginator"
+            :book-id="book.id"
+            @load="loadHistory"
+            @revert="handleRevert"
+          />
+        </v-window-item>
       </v-window>
     </div>
 
     <MoveBookDialog v-model="moveDialogOpen" :book="book" @moved="handleBookMoved" />
     <RecoverBookDialog v-model="recoverDialogOpen" :book="book" @recovered="handleBookRecovered" />
     <DeleteBookDialog v-model="deleteDialogOpen" :book="book" @deleted="handleBookDeleted" />
+
+    <ConfirmDialog
+      v-model="showConfirmDialog"
+      title="Confirm Book Update"
+      confirm-text="Save Changes"
+      cancel-text="Cancel"
+      confirm-color="primary"
+      icon="mdi-pencil"
+      icon-color="primary"
+      :max-width="600"
+      :loading="updatingBook"
+      @confirm="handleConfirmUpdate"
+      @cancel="handleCancelUpdate"
+    >
+      <template #content>
+        <div class="mb-4">
+          <h3 class="text-h6 mb-2">Changes Summary</h3>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Please review the changes below and optionally add a comment describing what you've
+            modified.
+          </p>
+        </div>
+
+        <div class="mb-4">
+          <DiffViewer :differences="enhancedBookDifferences" />
+        </div>
+
+        <div>
+          <v-textarea
+            v-model.trim="pendingComment"
+            label="Comment (optional)"
+            variant="outlined"
+            auto-grow
+            rows="3"
+            persistent-hint
+          />
+        </div>
+      </template>
+    </ConfirmDialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import BookStatus from '@/components/BookStatus.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
+import DiffViewer from '@/components/DiffViewer.vue'
 import EditBookForm from '@/components/EditBookForm.vue'
 import EventsList from '@/components/EventsList.vue'
 import MoveBookDialog from '@/components/MoveBookDialog.vue'
 import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
 import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
+import BookHistory from '@/components/BookHistory.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
+import { useBookHistoryStore } from '@/stores/bookHistory'
 import type { Book, ZimUrl } from '@/types/book'
 import type { Title } from '@/types/title'
 import { formatDt, fromNow } from '@/utils/format'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { diff } from 'deep-diff'
+import type { EnhancedDiff } from '@/utils/diff'
 
 const { smAndDown } = useDisplay()
 
@@ -405,6 +477,7 @@ const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 const titleStore = useTitleStore()
+const bookHistoryStore = useBookHistoryStore()
 
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
@@ -416,8 +489,14 @@ const moveDialogOpen = ref(false)
 const recoverDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const updatingBook = ref(false)
+const updateError = ref('')
 const flavours = ref<string[]>([])
 const loadingFlavours = ref(false)
+const loadingHistory = ref(false)
+
+const showConfirmDialog = ref(false)
+const pendingComment = ref('')
+const pendingUpdatePayload = ref<{ flavour: string } | null>(null)
 
 interface Props {
   id: string
@@ -429,6 +508,24 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const currentTab = ref(props.selectedTab)
+
+const bookDifferences = computed(() => {
+  if (!(book.value && pendingUpdatePayload.value)) return undefined
+
+  const currentBook = JSON.parse(
+    JSON.stringify({ name: book.value.name, flavour: book.value.flavour }),
+  )
+  const updatedBook = JSON.parse(JSON.stringify({ ...currentBook, ...pendingUpdatePayload.value }))
+
+  return diff(currentBook, updatedBook)
+})
+
+const enhancedBookDifferences = computed((): EnhancedDiff[] | undefined => {
+  if (!bookDifferences.value) {
+    return undefined
+  }
+  return bookDifferences.value as EnhancedDiff[]
+})
 
 const locationHeaders = [
   { title: 'Warehouse', value: 'warehouse_name', sortable: false },
@@ -490,6 +587,11 @@ const canRecoverBook = computed(() => {
   )
 })
 
+const canLoadMoreHistory = computed(() => {
+  const { skip, limit, count } = bookHistoryStore.paginator
+  return skip + limit < count
+})
+
 const loadTitleData = async () => {
   if (!book.value?.title_id) {
     title.value = null
@@ -504,10 +606,20 @@ const loadTitleData = async () => {
   }
 }
 
-const loadData = async (forceReload: boolean = false) => {
+const loadData = async (
+  forceReload: boolean = false,
+  fetchHistory: boolean = false,
+  fetchZimUrls: boolean = false,
+) => {
   loadingStore.startLoading('Fetching book...')
 
   const data = await bookStore.fetchBook(props.id, forceReload)
+
+  if (fetchHistory) {
+    bookHistoryStore.clearHistory()
+    await loadHistory({ limit: bookHistoryStore.paginator.limit, skip: 0 })
+  }
+
   if (data) {
     error.value = null
     book.value = data
@@ -524,7 +636,7 @@ const loadData = async (forceReload: boolean = false) => {
     loadingStore.stopLoading()
   }
 
-  if (book.value) {
+  if (fetchZimUrls && book.value) {
     loadZimUrls()
   }
 }
@@ -547,7 +659,7 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
-  await loadData(true)
+  await loadData(true, props.selectedTab === 'history', true)
 })
 
 const copyToClipboard = async (text: string) => {
@@ -597,23 +709,105 @@ const handleBookDeleted = async () => {
 }
 
 const handleUpdateBook = async (bookData: { flavour: string }) => {
-  updatingBook.value = true
-  const updatedBook = await bookStore.updateBook(props.id, bookData)
-  if (updatedBook) {
-    book.value = updatedBook
-    notificationStore.showSuccess('Book updated successfully!')
-  } else {
-    for (const error of bookStore.errors) {
-      notificationStore.showError(error)
+  if (!book.value) return
+
+  updateError.value = ''
+
+  try {
+    // Check if there are any changes
+    const currentBook = JSON.parse(
+      JSON.stringify({ name: book.value.name, flavour: book.value.flavour }),
+    )
+    const updatedBook = JSON.parse(JSON.stringify({ ...currentBook, ...bookData }))
+    const differences = diff(currentBook, updatedBook)
+
+    if (!differences || differences.length === 0) {
+      notificationStore.showInfo('No changes detected')
+      return
     }
+
+    pendingUpdatePayload.value = bookData
+    pendingComment.value = ''
+    showConfirmDialog.value = true
+  } catch (err) {
+    console.error('Failed to prepare update', err)
+    updateError.value = 'Failed to prepare update'
   }
+}
+
+const handleConfirmUpdate = async () => {
+  if (!book.value || !pendingUpdatePayload.value) return
+
+  updatingBook.value = true
+  updateError.value = ''
+
+  try {
+    // Add comment to the payload if provided
+    const payloadWithComment = {
+      ...pendingUpdatePayload.value,
+      comment: pendingComment.value || undefined,
+    }
+
+    const response = await bookStore.updateBook(props.id, payloadWithComment)
+    if (!response) {
+      updateError.value = bookStore.errors.join(', ') || 'Failed to update book'
+      showConfirmDialog.value = false
+      return
+    }
+
+    notificationStore.showSuccess('Book updated successfully!')
+    showConfirmDialog.value = false
+
+    pendingUpdatePayload.value = null
+    pendingComment.value = ''
+
+    book.value = response
+    await loadData(true)
+    currentTab.value = 'info'
+  } catch (err) {
+    console.error('Failed to update book', err)
+    updateError.value = bookStore.errors.join(', ') || 'Failed to update book'
+    showConfirmDialog.value = false
+  } finally {
+    updatingBook.value = false
+  }
+}
+
+const handleCancelUpdate = () => {
+  showConfirmDialog.value = false
+  pendingUpdatePayload.value = null
+  pendingComment.value = ''
   updatingBook.value = false
+}
+
+const loadHistory = async ({ limit, skip }: { limit: number; skip: number }) => {
+  loadingHistory.value = true
+  try {
+    const response = await bookHistoryStore.fetchHistory(props.id, limit, skip)
+    if (!response) {
+      notificationStore.showError(`Failed to ${skip > 0 ? 'load more' : 'load'} history items`)
+    }
+  } catch (error) {
+    console.error('Failed to load book history', error)
+    notificationStore.showError('Failed to load book history')
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+const handleRevert = async () => {
+  // Reload book data and history after successful revert
+  await loadData(true, true)
 }
 
 watch(
   () => props.selectedTab,
   async (newTab) => {
-    if (newTab === 'edit' && flavours.value.length == 0) {
+    currentTab.value = newTab
+
+    await loadData(true, newTab === 'history', newTab === 'info')
+
+    if (newTab === 'edit' && book.value && flavours.value.length == 0) {
       loadingFlavours.value = true
       const fetchedFlavours = await bookStore.fetchBookFlavours()
       if (fetchedFlavours) {
@@ -621,9 +815,7 @@ watch(
       }
       loadingFlavours.value = false
     }
-    currentTab.value = newTab
   },
-  { immediate: true },
 )
 
 watch(
@@ -634,4 +826,9 @@ watch(
     await loadData(true)
   },
 )
+
+onUnmounted(() => {
+  // Clear book history to prevent accumulation of history items
+  bookHistoryStore.clearHistory()
+})
 </script>
