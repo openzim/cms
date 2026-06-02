@@ -72,8 +72,8 @@ const isOpen = computed({
 
 watch(isOpen, async (newValue) => {
   if (newValue) {
-    // Fetch collections when dialog opens
     await titleFormRef.value?.fetchCollections()
+    await titleFormRef.value?.fetchFlavours()
     error.value = ''
   }
 })

@@ -58,6 +58,7 @@ def test_get_titles(
         "relation",
         "source",
         "license",
+        "flavours",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
@@ -326,6 +327,7 @@ def test_get_title_by_id(
         "relation",
         "source",
         "license",
+        "flavours",
     }
 
     # Verify field values
@@ -379,6 +381,7 @@ def test_get_title_by_id_with_books(
         "flavour",
         "deletion_date",
         "issues",
+        "has_flavour_mismatch",
     }
     assert data["books"][0]["title_id"] == str(title.id)
     assert data["books"][1]["title_id"] == str(title.id)
