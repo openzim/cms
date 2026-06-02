@@ -230,6 +230,52 @@ class Title(Base):
         init=False,
     )
 
+    history_entries: Mapped[list["TitleHistory"]] = relationship(
+        back_populates="title_",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
+        # return the history entries in descending order of created_at
+        order_by="TitleHistory.created_at.desc()",
+    )
+
+
+class TitleHistory(Base):
+    __tablename__ = "title_history"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_id: Mapped[UUID] = mapped_column(
+        ForeignKey("title.id", ondelete="CASCADE"), init=False
+    )
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
+    comment: Mapped[str | None]
+    name: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    title: Mapped[str | None] = mapped_column(default=None)
+    creator: Mapped[str | None] = mapped_column(default=None)
+    publisher: Mapped[str | None] = mapped_column(default=None)
+    description: Mapped[str | None] = mapped_column(default=None)
+    language: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    long_description: Mapped[str | None] = mapped_column(default=None)
+    license: Mapped[str | None] = mapped_column(default=None)
+    relation: Mapped[str | None] = mapped_column(default=None)
+    source: Mapped[str | None] = mapped_column(default=None)
+    maturity: Mapped[str] = mapped_column(default="unstable")
+    archived: Mapped[bool] = mapped_column(default=False, server_default=false())
+    flavours: Mapped[list[str]] = mapped_column(
+        default_factory=list, server_default="{}"
+    )
+    collection_titles: Mapped[list[dict[str, Any]]] = mapped_column(
+        default_factory=list, server_default="{}"
+    )
+    title_: Mapped["Title"] = relationship(back_populates="history_entries", init=False)
+    author: Mapped["Account"] = relationship(init=False)
+
 
 class Collection(Base):
     __tablename__ = "collection"
