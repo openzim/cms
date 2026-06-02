@@ -98,6 +98,62 @@ def test_process_title_modifications_skips_books_with_errors(
     assert book.title_id is None
 
 
+def test_process_title_modifications_skips_deleted_and_to_delete_books(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
+):
+    """Test that books with location kinds delete and to_delete are not processed"""
+    zim_metadata = {
+        "Name": "wikipedia_en_all",
+        "Title": "Wikipedia",
+        "Creator": "Wikipedia Contributors",
+        "Publisher": "Kiwix",
+        "Date": "2025-01",
+        "Description": "Wikipedia Encyclopedia",
+        "Language": "eng",
+        "Illustration_48x48@1": illustration_48x48_at_1,
+    }
+    title = create_title(name="wikipedia_en_all")
+
+    book1 = create_book(
+        name="wikipedia_en_all",
+        date="2024-01",
+        location_kind="deleted",
+        zim_metadata=zim_metadata,
+    )
+    book2 = create_book(
+        name="wikipedia_en_all",
+        date="2024-01",
+        location_kind="to_delete",
+        zim_metadata=zim_metadata,
+    )
+
+    book3 = create_book(
+        name="wikipedia_en_all", date="2024-01", zim_metadata=zim_metadata
+    )
+
+    dbsession.add_all([book1, book2, book3])
+
+    create_title_modified_event(
+        dbsession,
+        action="created",
+        title_name="wikipedia_en_all",
+        title_id=title.id,
+    )
+    process_title_modifications(dbsession)
+
+    dbsession.refresh(book1)
+    assert book1.title_id is None
+
+    dbsession.refresh(book2)
+    assert book2.title_id is None
+
+    dbsession.refresh(book3)
+    assert book3.title_id == title.id
+
+
 def test_process_title_modifications_processes_matching_book(
     dbsession: OrmSession,
     create_title: Callable[..., Title],

@@ -42,6 +42,7 @@ def process_title_modifications(session: OrmSession):
                 Book.title_id.is_(None),
                 Book.has_error.is_(False),
                 Book.name == title_name,
+                Book.location_kind.not_in(["deleted", "to_delete"]),
             )
             .order_by(Book.created_at)
         ).all()
