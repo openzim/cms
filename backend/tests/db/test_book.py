@@ -269,3 +269,61 @@ def test_revert_book(
         comment="Reverting to version 1",
     )
     assert reverted_book.flavour == "mini"
+
+
+def test_update_book_flavour_mismatch_issues(
+    dbsession: OrmSession,
+    account: Account,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+):
+    """
+    Test that book with  a flavour mismatch between it and it's title has
+    it's issues reset when it's flavour is updated to the same as the title
+    """
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book = create_book(zim_metadata=content)
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    book = update_book(
+        dbsession,
+        author_id=account.id,
+        book_id=book.id,
+        payload=BookUpdateSchema(flavour="nopic"),
+    )
+    assert len(book.issues) == 1
+    assert book.issues == ["flavour mismatch"]
+
+    book = update_book(
+        dbsession,
+        author_id=account.id,
+        book_id=book.id,
+        payload=BookUpdateSchema(flavour="maxi"),
+    )
+    assert len(book.issues) == 0

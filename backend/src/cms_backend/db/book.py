@@ -10,7 +10,10 @@ from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
-from cms_backend.db.rules import apply_retention_rules
+from cms_backend.db.rules import (
+    apply_retention_rules,
+    title_is_missing_mandatory_metadata,
+)
 from cms_backend.schemas.models import BookUpdateSchema, FileLocation
 from cms_backend.schemas.orms import (
     BookFullSchema,
@@ -19,6 +22,7 @@ from cms_backend.schemas.orms import (
     ListResult,
 )
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import get_missing_metadata_keys
 
 
 def get_book_or_none(
@@ -355,6 +359,7 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
     book.location_kind = location_kind
     book.deletion_date = None
     book.needs_file_operation = False
+    update_book_issues(session, book)
     session.add(book)
     session.flush()
     return book
@@ -428,6 +433,7 @@ def update_book(
     book = session.scalars(
         update(Book).where(Book.id == book.id).values(**update_data).returning(Book)
     ).one()
+    update_book_issues(session, book)
 
     create_book_history_entry(session, book, author_id, payload.comment)
     session.flush()
@@ -511,3 +517,43 @@ def revert_book(
     )
 
     return book
+
+
+def update_book_issues(session: OrmSession, book: Book, *, update_events: bool = False):
+    """
+    Update book issues based on it's associated title and optionally update book events.
+
+    A book's issues will not be updated if:
+    - it has no associated title
+    - it is missing mandatory metadata keys
+    - it's associated title is missing mandatory metadata
+    - it's location kind is to_delete or deleted
+    """
+    if (
+        not book.title
+        or get_missing_metadata_keys(book.zim_metadata)
+        or title_is_missing_mandatory_metadata(book.title)
+        or book.location_kind in ["deleted", "to_delete"]
+    ):
+        return
+
+    issues: list[str] = []
+
+    different_metadata_keys = get_differing_metadata_keys(book)
+    if different_metadata_keys:
+        issues.append("metadata mismatch")
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book metadata is different from title metadata: "
+                f"{','.join(different_metadata_keys)}"
+            )
+
+    if book.title and book.title.flavours and book.flavour not in book.title.flavours:
+        issues.append("flavour mismatch")
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book flavour is not in list of title flavours"
+            )
+
+    book.issues = issues
+    session.add(book)

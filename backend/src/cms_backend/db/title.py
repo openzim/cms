@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
-from cms_backend.db.book import delete_book, recover_book
+from cms_backend.db.book import delete_book, recover_book, update_book_issues
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
@@ -487,6 +487,9 @@ def update_title(
             session, action="updated", title_name=title.name, title_id=title.id
         )
 
+    for book in title.books:
+        update_book_issues(session, book)
+
     create_title_history_entry(session, title, author_id, payload.comment)
 
     return get_title_by_id(session, title_id=title.id)
@@ -586,25 +589,6 @@ def restore_titles(
     """Restore a list of archived titles"""
     for title_name in title_names:
         restore_title(session, title_name, author_id)
-
-
-def title_is_missing_mandatory_metadata(title: Title) -> bool:
-    """Check if a title is missing the mandatory metadata information
-
-    See https://wiki.openzim.org/wiki/Metadata for the list of metadata
-    """
-
-    return any(
-        value is None
-        for value in [
-            title.title,
-            title.creator,
-            title.publisher,
-            title.description,
-            title.language,
-            title.illustration_48x48_at_1,
-        ]
-    )
 
 
 def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
