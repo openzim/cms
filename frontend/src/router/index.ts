@@ -148,6 +148,15 @@ const routes = [
     },
   },
   {
+    path: '/collection/:id/:selectedTab',
+    name: 'collection-detail-tab',
+    component: CollectionView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Collection • ${to.params.id}`,
+    },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: '404',
     component: NotFoundView,

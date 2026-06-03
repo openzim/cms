@@ -2,12 +2,15 @@ from collections.abc import Callable
 from http import HTTPStatus
 
 import pytest
+from faker import Faker
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
+from cms_backend.db.collection import update_collection
 from cms_backend.db.models import Account, Collection, Title, Warehouse
 from cms_backend.roles import RoleEnum
+from cms_backend.schemas.models import CollectionUpdateSchema
 from cms_backend.utils.datetime import getnow
 
 
@@ -163,3 +166,133 @@ def test_get_collection(
     assert data["warehouse"] == collection.warehouse.name
     assert data["download_base_url"] == collection.download_base_url
     assert data["view_base_url"] == collection.view_base_url
+
+
+@pytest.mark.parametrize(
+    "skip, limit, expected_count",
+    [
+        pytest.param(0, 3, 3, id="first-page"),
+        pytest.param(3, 3, 3, id="second-page"),
+        pytest.param(6, 2, 0, id="page-num-too-high-no-results"),
+        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
+        pytest.param(0, 10, 6, id="first-page-with-high-limit"),
+    ],
+)
+def test_get_collection_history(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_collection: Callable[..., Collection],
+    faker: Faker,
+    access_token: str,
+    account: Account,
+    skip: int,
+    limit: int,
+    expected_count: int,
+):
+    """Test retrieving collection history"""
+    collection = create_collection()
+    for i in range(5):
+        update_collection(
+            dbsession,
+            collection_id=collection.name,
+            author_id=account.id,
+            request=CollectionUpdateSchema(
+                name=faker.slug(),
+                comment=f"Update {i}",
+            ),
+        )
+
+    response = client.get(
+        f"/v1/collections/{collection.name}/history?skip={skip}&limit={limit}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["meta"]["skip"] == skip
+    assert data["meta"]["limit"] == limit
+    assert data["meta"]["page_size"] == expected_count
+    assert len(data["items"]) == expected_count
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_get_collection_history_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_collection: Callable[..., Collection],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test retrieving book history with different roles"""
+    collection = create_collection()
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.get(
+        f"/v1/collections/{collection.name}/history?skip=0&limit=10",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+def test_get_collection_history_entry(
+    client: TestClient,
+    create_collection: Callable[..., Collection],
+    access_token: str,
+):
+    """Test retrieving a specific history entry using title name"""
+    collection = create_collection()
+    history_id = collection.history_entries[0].id
+    response = client.get(
+        f"/v1/collections/{collection.name}/history/{history_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_revert_collection_required_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    faker: Faker,
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test reverting a book with different roles"""
+    collection = create_collection()
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    collection = update_collection(
+        dbsession,
+        collection_id=collection.name,
+        author_id=account.id,
+        request=CollectionUpdateSchema(
+            name=faker.slug(),
+            comment="Update 1",
+        ),
+    )
+    assert len(collection.history_entries) == 2
+    history_id = collection.history_entries[0].id
+    response = client.patch(
+        f"/v1/collections/{collection.name}/revert/{history_id}",
+        json={"comment": "Reverting"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code

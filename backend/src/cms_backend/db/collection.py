@@ -3,9 +3,11 @@ from typing import NamedTuple, cast
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
+from pydantic import AnyUrl
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
@@ -14,6 +16,7 @@ from cms_backend.db.models import (
     Book,
     BookLocation,
     Collection,
+    CollectionHistory,
     CollectionTitle,
     Title,
 )
@@ -21,22 +24,27 @@ from cms_backend.db.warehouse import get_warehouse
 from cms_backend.schemas.models import CollectionUpdateSchema
 from cms_backend.schemas.orms import (
     CollectionFullSchema,
+    CollectionHistorySchema,
     CollectionLightSchema,
     ListResult,
 )
 from cms_backend.utils import is_valid_uuid
 
 
-def get_collection_or_none(session: OrmSession, library_id: UUID) -> Collection | None:
+def get_collection_by_id_or_none(
+    session: OrmSession, library_id: UUID
+) -> Collection | None:
     """Get a collection by ID if possible else None"""
     return session.scalars(
         select(Collection).where(Collection.id == library_id)
     ).one_or_none()
 
 
-def get_collection(session: OrmSession, library_id: UUID) -> Collection:
+def get_collection_by_id(session: OrmSession, library_id: UUID) -> Collection:
     """Get a collection by ID if possible else raise an exception"""
-    if (collection := get_collection_or_none(session, library_id=library_id)) is None:
+    if (
+        collection := get_collection_by_id_or_none(session, library_id=library_id)
+    ) is None:
         raise RecordDoesNotExistError(f"Collection with ID {library_id} does not exist")
     return collection
 
@@ -57,7 +65,27 @@ def get_collection_by_name(session: OrmSession, collection_name: str) -> Collect
             session, collection_name=collection_name
         )
     ) is None:
-        raise RecordDoesNotExistError(f"Collection '{collection_name} does not exist")
+        raise RecordDoesNotExistError(f"Collection '{collection_name}' does not exist")
+    return collection
+
+
+def get_collection_or_none(
+    session: OrmSession, collection_identifier: str
+) -> Collection | None:
+    """Get a collection by it's name or ID if possible else None"""
+    if is_valid_uuid(collection_identifier):
+        collection = get_collection_by_id_or_none(session, UUID(collection_identifier))
+    else:
+        collection = get_collection_by_name_or_none(session, collection_identifier)
+    return collection
+
+
+def get_collection(session: OrmSession, collection_identifier: str) -> Collection:
+    collection = get_collection_or_none(session, collection_identifier)
+    if collection is None:
+        raise RecordDoesNotExistError(
+            f"Collection '{collection_identifier}' does not exist"
+        )
     return collection
 
 
@@ -192,10 +220,29 @@ def create_collection_full_schema(collection: Collection) -> CollectionFullSchem
     )
 
 
+def create_collection_history_entry(
+    session: OrmSession,
+    collection: Collection,
+    author_id: UUID,
+    comment: str | None = None,
+) -> CollectionHistory:
+    history_entry = CollectionHistory(
+        name=collection.name,
+        comment=comment,
+        download_base_url=collection.download_base_url,
+        view_base_url=collection.view_base_url,
+    )
+    history_entry.collection = collection
+    history_entry.author_id = author_id
+    session.add(history_entry)
+    return history_entry
+
+
 def create_collection(
     session: OrmSession,
     *,
     name: str,
+    author_id: UUID,
     warehouse_name: str,
     download_base_url: str | None = None,
     view_base_url: str | None,
@@ -217,26 +264,33 @@ def create_collection(
             ) from exc
         logger.exception("Unknown exception encountered while creating collection")
         raise
+    create_collection_history_entry(
+        session, collection, author_id, comment="Create initial history"
+    )
     return collection
 
 
 def update_collection(
-    session: OrmSession, *, collection_id: str, request: CollectionUpdateSchema
+    session: OrmSession,
+    *,
+    collection_id: str,
+    author_id: UUID,
+    request: CollectionUpdateSchema,
 ) -> Collection:
     """Update a collection"""
-    if is_valid_uuid(collection_id):
-        collection = get_collection(session, UUID(collection_id))
-    else:
-        collection = get_collection_by_name(session, collection_id)
+    collection = get_collection(session, collection_id)
 
-    values = request.model_dump(exclude_unset=True, mode="json")
+    values = request.model_dump(exclude_unset=True, exclude={"comment"}, mode="json")
     if not values:
         return collection
 
     try:
-        session.execute(
-            update(Collection).values(**values).where(Collection.id == collection.id)
-        )
+        collection = session.scalars(
+            update(Collection)
+            .values(**values)
+            .where(Collection.id == collection.id)
+            .returning(Collection)
+        ).one()
     except IntegrityError as exc:
         if isinstance(exc.orig, UniqueViolation):
             raise RecordAlreadyExistsError(
@@ -245,5 +299,95 @@ def update_collection(
         logger.exception("Unknown exception encountered while creating collection")
         raise
 
-    session.refresh(collection)
+    create_collection_history_entry(session, collection, author_id, request.comment)
+    return collection
+
+
+def create_collection_history_schema(
+    entry: CollectionHistory,
+) -> CollectionHistorySchema:
+    return CollectionHistorySchema(
+        id=entry.id,
+        created_at=entry.created_at,
+        comment=entry.comment,
+        name=entry.name,
+        download_base_url=entry.download_base_url,
+        view_base_url=entry.view_base_url,
+        author=entry.author.display_name,
+    )
+
+
+def get_collection_history(
+    session: OrmSession, *, collection_id: str, skip: int, limit: int
+) -> ListResult[CollectionHistorySchema]:
+    """Get a collection's history"""
+    collection = get_collection(session, collection_id)
+    stmt = (
+        select(CollectionHistory)
+        .where(CollectionHistory.collection_id == collection.id)
+        .options(selectinload(CollectionHistory.author))
+        .order_by(CollectionHistory.created_at.desc())
+    )
+    return ListResult[CollectionHistorySchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            create_collection_history_schema(entry)
+            for entry in session.scalars(stmt.offset(skip).limit(limit)).all()
+        ],
+    )
+
+
+def get_collection_history_entry_or_none(
+    session: OrmSession, *, collection_id: str, history_id: UUID
+) -> CollectionHistory | None:
+    """Get a collecton's history entry or None if it does not exist"""
+    collection = get_collection(session, collection_id)
+    return session.scalars(
+        select(CollectionHistory).where(
+            CollectionHistory.id == history_id,
+            CollectionHistory.collection_id == collection.id,
+        )
+    ).one_or_none()
+
+
+def get_collection_history_entry(
+    session: OrmSession, *, collection_id: str, history_id: UUID
+) -> CollectionHistory:
+    """Get a book's history entry"""
+    if history_entry := get_collection_history_entry_or_none(
+        session, collection_id=collection_id, history_id=history_id
+    ):
+        return history_entry
+    raise RecordDoesNotExistError(
+        f"Collection '{collection_id}' does not have a history entry with id "
+        f"{history_id}"
+    )
+
+
+def revert_collection(
+    session: OrmSession,
+    *,
+    collection_id: str,
+    history_id: UUID,
+    author_id: UUID,
+    comment: str | None = None,
+) -> Collection:
+    """Revert the collection configuration to those defined in history_id"""
+    entry = get_collection_history_entry(
+        session, collection_id=collection_id, history_id=history_id
+    )
+    collection = update_collection(
+        session,
+        author_id=author_id,
+        collection_id=str(collection_id),
+        request=CollectionUpdateSchema(
+            name=entry.name,
+            comment=comment,
+            download_base_url=AnyUrl(entry.download_base_url)
+            if entry.download_base_url
+            else None,
+            view_base_url=AnyUrl(entry.view_base_url) if entry.view_base_url else None,
+        ),
+    )
+
     return collection

@@ -23,7 +23,11 @@ export const useTitleStore = defineStore('title', () => {
   const fetchTitleById = async (titleId: string, forceReload: boolean = false) => {
     const service = await authStore.getApiService('titles')
     // Check if we already have the title and don't need to force reload
-    if (!forceReload && title.value && title.value.id === titleId) {
+    if (
+      !forceReload &&
+      title.value &&
+      (title.value.id === titleId || title.value.name === titleId)
+    ) {
       return title.value
     }
 
