@@ -7,10 +7,15 @@ implementation details.
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
+import pycountry
+import pytest
+from pytest import MonkeyPatch
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend import update_language_codes
 from cms_backend.context import Context
 from cms_backend.db.models import (
     Book,
@@ -22,7 +27,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.mill.processors.zimfarm_notification import process_notification
 
-VALID_NOTIFICATION_CONTENT = {
+VALID_NOTIFICATION_CONTENT: dict[str, Any] = {
     "article_count": 1000,
     "media_count": 500,
     "size": 1000000,
@@ -44,6 +49,28 @@ VALID_NOTIFICATION_CONTENT = {
     "folder_name": "test_folder",
     "filename": "test.zim",
 }
+
+
+@pytest.fixture(autouse=True)
+def restore_language_codes():
+    """Fixture to restore pycountry language codes after test modifications."""
+    original_entries = list(pycountry.languages)  # pyright: ignore[reportUnknownVariableType]
+    yield
+    current_entries = list(pycountry.languages)  # pyright: ignore[reportUnknownVariableType]
+    for entry in current_entries:  # pyright: ignore[reportUnknownVariableType]
+        try:
+            pycountry.languages.remove_entry(alpha_3=entry.alpha_3)  # pyright: ignore[reportUnknownMemberType,reportUnknownArgumentType]
+        except Exception:  # noqa: S110
+            pass
+
+    for entry in original_entries:  # pyright: ignore[reportUnknownVariableType]
+        try:
+            pycountry.languages.add_entry(  # pyright: ignore[reportUnknownMemberType]
+                alpha_3=entry.alpha_3,  # pyright: ignore[reportUnknownMemberType,reportUnknownArgumentType]
+                name=entry.name,  # pyright: ignore[reportUnknownMemberType,reportUnknownArgumentType]
+            )
+        except Exception:  # noqa: S110
+            pass
 
 
 class TestBadNotifications:
@@ -630,6 +657,161 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.location_kind == "staging"
         assert len(book.issues) == 1
         assert set(book.issues) == {"flavour mismatch"}
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
+    def test_moves_book_to_staging_due_to_invalid_language(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        """
+        Test that book goes to staging because it has an invalid language code
+        """
+
+        title = create_title(name="test_en_all")
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "xyz"
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+        assert book.location_kind == "staging"
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"invalid language code"}
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
+    def test_moves_book_to_prod_due_to_invalid_language_code_being_supported(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        monkeypatch: MonkeyPatch,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        """
+        Test that book goes to prod even though it's language code is invalid
+        but supported
+        """
+
+        title = create_title(name="test_en_all")
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "xyz"
+        monkeypatch.setattr(
+            "cms_backend.context.Context.custom_language_codes", ["xyz"]
+        )
+        update_language_codes()
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+        assert book.location_kind == "prod"
+        assert len(book.issues) == 0
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
+    def test_moves_book_to_staging_due_to_valid_language_code_being_disallowed(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        monkeypatch: MonkeyPatch,
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+        """
+        Test that book goes to staging because there it's language code is disallowed
+        even though it's valid
+        """
+
+        title = create_title(name="test_en_all")
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        content = VALID_NOTIFICATION_CONTENT.copy()
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "fra"
+        monkeypatch.setattr(
+            "cms_backend.context.Context.disallowed_language_codes", ["fra"]
+        )
+        update_language_codes()
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+        assert book.location_kind == "staging"
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"invalid language code"}
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False

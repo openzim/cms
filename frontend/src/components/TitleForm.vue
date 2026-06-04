@@ -78,7 +78,7 @@
             :color="!inDialog && isFieldDifferent('title') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('title') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -106,7 +106,7 @@
             :color="!inDialog && isFieldDifferent('creator') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('creator') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -137,7 +137,7 @@
             :color="!inDialog && isFieldDifferent('publisher') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('publisher') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -161,11 +161,12 @@
             label="Language"
             variant="outlined"
             density="comfortable"
+            :rules="[rules.langCode]"
             clearable
             :color="!inDialog && isFieldDifferent('language') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('language') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -196,7 +197,7 @@
             :color="!inDialog && isFieldDifferent('license') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('license') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -284,7 +285,7 @@
             :color="!inDialog && isFieldDifferent('description') ? 'warning' : undefined"
             :base-color="!inDialog && isFieldDifferent('description') ? 'warning' : undefined"
           />
-          <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -316,7 +317,7 @@
             :color="isFieldDifferent('long_description') ? 'warning' : undefined"
             :base-color="isFieldDifferent('long_description') ? 'warning' : undefined"
           />
-          <div v-if="isFieldDifferent('long_description')" class="text-body-2 mt-n2 mb-2">
+          <div v-if="isFieldDifferent('long_description')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
             </div>
@@ -663,6 +664,13 @@ const hasChanges = computed(() => {
 
 const rules = {
   required: (value: string) => !!value || 'This field is required',
+  langCode: (value: string) => {
+    if (!value) return true // optional
+    const parts = value.split(',')
+    return parts.every((part) => part.trim().length === 3)
+      ? true
+      : 'Language code(s) must be 3 characters long'
+  },
 }
 
 watch(formValid, (value) => {

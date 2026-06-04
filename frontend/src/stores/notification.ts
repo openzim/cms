@@ -70,6 +70,12 @@ export const useNotificationStore = defineStore('notification', () => {
     return addNotification(message, 'error', duration)
   }
 
+  const showErrors = (messages: string[], duration?: number) => {
+    for (const message of messages) {
+      addNotification(message, 'error', duration)
+    }
+  }
+
   const showWarning = (message: string, duration?: number) => {
     return addNotification(message, 'warning', duration)
   }
@@ -85,6 +91,7 @@ export const useNotificationStore = defineStore('notification', () => {
     clearAllNotifications,
     showSuccess,
     showError,
+    showErrors,
     showWarning,
     showInfo,
   }

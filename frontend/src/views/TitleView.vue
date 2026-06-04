@@ -348,10 +348,6 @@
                   @update:valid="formValid = $event"
                   @update:has-changes="hasChanges = $event"
                 />
-
-                <v-alert v-if="updateError" type="error" class="mt-4" density="compact">
-                  {{ updateError }}
-                </v-alert>
               </v-card-text>
 
               <div class="d-flex flex-column flex-sm-row justify-end ga-2 px-4 pb-4">
@@ -481,7 +477,6 @@ const titleFormRef = ref<InstanceType<typeof TitleForm>>()
 const formValid = ref(false)
 const hasChanges = ref(false)
 const updating = ref(false)
-const updateError = ref('')
 
 // Confirmation dialog state
 const showConfirmDialog = ref(false)
@@ -620,9 +615,7 @@ const loadData = async (
     dataLoaded.value = true
   } else {
     error.value = 'Failed to load title'
-    for (const err of titleStore.errors) {
-      notificationStore.showError(err)
-    }
+    notificationStore.showErrors(titleStore.errors)
   }
 
   if (loadingStore.isLoading) {
@@ -644,9 +637,7 @@ const loadZimUrls = async () => {
   if (response?.urls) {
     zimUrls.value = response.urls
   } else {
-    for (const err of bookStore.errors) {
-      notificationStore.showError(err)
-    }
+    notificationStore.showErrors(bookStore.errors)
   }
 
   loadingUrls.value = false
@@ -661,9 +652,7 @@ const archiveTitle = async () => {
     // Switch to info tab after archiving
     currentTab.value = 'details'
   } else {
-    for (const error of titleStore.errors) {
-      notificationStore.showError(error)
-    }
+    notificationStore.showErrors(titleStore.errors)
   }
 }
 
@@ -676,16 +665,12 @@ const restoreTitle = async () => {
     // Switch to info tab after restoring
     currentTab.value = 'details'
   } else {
-    for (const error of titleStore.errors) {
-      notificationStore.showError(error)
-    }
+    notificationStore.showErrors(titleStore.errors)
   }
 }
 
 const handleUpdate = async () => {
   if (!formValid.value || !title.value) return
-
-  updateError.value = ''
 
   try {
     const updatePayload = titleFormRef.value?.getUpdatePayload()
@@ -708,7 +693,7 @@ const handleUpdate = async () => {
     showConfirmDialog.value = true
   } catch (err) {
     console.error('Failed to prepare update', err)
-    updateError.value = 'Failed to prepare update'
+    notificationStore.showError('Failed to prepare update')
   }
 }
 
@@ -716,7 +701,6 @@ const handleConfirmUpdate = async () => {
   if (!title.value || !pendingUpdatePayload.value) return
 
   updating.value = true
-  updateError.value = ''
 
   try {
     // Add comment to the payload if provided
@@ -727,7 +711,7 @@ const handleConfirmUpdate = async () => {
 
     const response = await titleStore.updateTitle(title.value.id, payloadWithComment)
     if (!response) {
-      updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+      notificationStore.showErrors(titleStore.errors)
       showConfirmDialog.value = false
       return
     }
@@ -747,7 +731,7 @@ const handleConfirmUpdate = async () => {
     currentTab.value = 'details'
   } catch (err) {
     console.error('Failed to update title', err)
-    updateError.value = titleStore.errors.join(', ') || 'Failed to update title'
+    notificationStore.showError('Failed to update title')
     showConfirmDialog.value = false
   } finally {
     updating.value = false

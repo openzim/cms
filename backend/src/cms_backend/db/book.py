@@ -1,6 +1,7 @@
 from typing import Any, Literal
 from uuid import UUID
 
+import pycountry
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -541,6 +542,18 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
         return
 
     issues: list[str] = []
+
+    unknown_languages: list[str] = []
+    for language_code in book.zim_metadata["Language"].split(","):
+        if pycountry.languages.get(alpha_3=language_code) is None:  # pyright: ignore[reportUnknownMemberType]
+            unknown_languages.append(language_code)
+
+    if unknown_languages:
+        issues.append("invalid language code")
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book has unknown language code(s) {unknown_languages}"
+            )
 
     different_metadata_keys = get_differing_metadata_keys(book)
     if different_metadata_keys:
