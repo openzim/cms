@@ -100,3 +100,22 @@ def apply_retention_rules(session: OrmSession, title: Title):
         session.add(title)
 
     session.flush()
+
+
+def title_is_missing_mandatory_metadata(title: Title) -> bool:
+    """Check if a title is missing the mandatory metadata information
+
+    See https://wiki.openzim.org/wiki/Metadata for the list of metadata
+    """
+
+    return any(
+        value is None
+        for value in [
+            title.title,
+            title.creator,
+            title.publisher,
+            title.description,
+            title.language,
+            title.illustration_48x48_at_1,
+        ]
+    )

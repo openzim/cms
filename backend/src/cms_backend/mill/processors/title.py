@@ -2,13 +2,12 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.context import Context
-from cms_backend.db.book import (
-    create_book_target_locations,
-    get_differing_metadata_keys,
-)
+from cms_backend.db.book import create_book_target_locations, update_book_issues
 from cms_backend.db.models import Book, Title
-from cms_backend.db.rules import apply_retention_rules
-from cms_backend.db.title import title_is_missing_mandatory_metadata
+from cms_backend.db.rules import (
+    apply_retention_rules,
+    title_is_missing_mandatory_metadata,
+)
 from cms_backend.schemas.models import FileLocation
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename
@@ -55,29 +54,13 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             title.relation = book.zim_metadata.get("Relation")
             title.source = book.zim_metadata.get("Source")
 
-        issues: list[str] = []
-
-        different_metadata_keys = get_differing_metadata_keys(book)
-        if different_metadata_keys:
-            issues.append("metadata mismatch")
-            book.events.append(
-                f"{getnow()}: book metadata is different from title metadata: "
-                f"{','.join(different_metadata_keys)}"
-            )
-
-        if title.flavours and book.flavour not in title.flavours:
-            issues.append("flavour mismatch")
-            book.events.append(
-                f"{getnow()}: book flavour is not in list of title flavours"
-            )
-
-        book.issues = issues
+        update_book_issues(session, book, update_events=True)
 
         # Determine if this book goes to staging or prod based on
         # - title maturity: For now, only 'stable' maturity move straight to prod,
         # other maturity moves through staging first
         # - issues: books with any issues move to staging regardless of maturity
-        goes_to_staging = title.maturity != "stable" or len(issues) != 0
+        goes_to_staging = title.maturity != "stable" or len(book.issues) != 0
 
         target_locations = (
             [
