@@ -799,9 +799,7 @@ watch(
   async (newTab) => {
     currentTab.value = newTab
 
-    if (!title.value || newTab != 'archive') {
-      await loadData(true, newTab === 'history', newTab === 'details')
-    }
+    await loadData(newTab == 'edit', newTab === 'history', newTab === 'details')
 
     if (newTab === 'edit' && title.value) {
       await titleFormRef.value?.fetchCollections()

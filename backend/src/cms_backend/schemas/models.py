@@ -49,6 +49,7 @@ class CollectionUpdateSchema(BaseModel):
     name: NotEmptyString | None = None
     download_base_url: AnyUrl | None = None
     view_base_url: AnyUrl | None = None
+    comment: NotEmptyString | None = None
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):

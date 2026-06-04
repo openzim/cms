@@ -805,7 +805,7 @@ watch(
   async (newTab) => {
     currentTab.value = newTab
 
-    await loadData(true, newTab === 'history', newTab === 'info')
+    await loadData(newTab == 'edit', newTab === 'history', newTab === 'info')
 
     if (newTab === 'edit' && book.value && flavours.value.length == 0) {
       loadingFlavours.value = true

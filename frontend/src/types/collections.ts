@@ -16,4 +16,15 @@ export interface CollectionUpdate {
   name?: string
   download_base_url?: string | null
   view_base_url?: string | null
+  comment?: string | null
+}
+
+export interface CollectionHistory {
+  id: string
+  comment: string | null
+  author: string
+  created_at: string
+  name: string
+  download_base_url?: string
+  view_base_url?: string
 }

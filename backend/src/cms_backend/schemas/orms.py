@@ -157,6 +157,20 @@ class BookHistorySchema(BaseModel):
     created_at: datetime
 
 
+class CollectionHistorySchema(BaseModel):
+    """
+    Schema for reading a collection history model
+    """
+
+    id: UUID
+    comment: str | None
+    author: str
+    name: str | None
+    created_at: datetime
+    download_base_url: str | None
+    view_base_url: str | None
+
+
 class WarehousePathSchema(BaseModel):
     """
     Schema for reading warehouse path with warehouse information

@@ -19,6 +19,7 @@ from cms_backend.db.models import (
     BookHistory,
     BookLocation,
     Collection,
+    CollectionHistory,
     CollectionTitle,
     Event,
     Title,
@@ -313,6 +314,7 @@ def book_location(
 def create_collection(
     dbsession: OrmSession,
     faker: Faker,
+    account: Account,
     create_warehouse: Callable[..., Warehouse],
 ) -> Callable[..., Collection]:
     def _create_collection(
@@ -339,7 +341,17 @@ def create_collection(
                 ct.title_id = title_id
                 collection.titles.append(ct)
 
+        history_entry = CollectionHistory(
+            comment="Initial history",
+            name=collection.name,
+            view_base_url=collection.view_base_url,
+            download_base_url=collection.download_base_url,
+        )
+        history_entry.author_id = account.id
+        history_entry.collection = collection
+
         dbsession.add(collection)
+
         dbsession.flush()
         return collection
 

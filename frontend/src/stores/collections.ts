@@ -8,6 +8,7 @@ import { ref } from 'vue'
 
 export const useCollectionsStore = defineStore('collection', () => {
   const errors = ref<string[]>([])
+  const collection = ref<Collection | null>(null)
   const collections = ref<CollectionLight[]>([])
   const defaultLimit = ref<number>(Number(localStorage.getItem('collections-table-limit') || 20))
   const paginator = ref<Paginator>({
@@ -52,17 +53,22 @@ export const useCollectionsStore = defineStore('collection', () => {
     }
   }
 
-  const fetchCollection = async (name: string) => {
+  const fetchCollection = async (name: string, forceReload: boolean = false) => {
     const service = await authStore.getApiService('collections')
+    if (!forceReload && collection.value && collection.value.name == name) {
+      return collection.value
+    }
     try {
       const response = await service.get<null, Collection>(`/${name}`)
       errors.value = []
-      return response
+      collection.value = null
+      collection.value = response
     } catch (_error) {
       console.error('Failed to fetch collection', _error)
       errors.value = translateErrors(_error as ErrorResponse)
-      return null
     }
+
+    return collection.value
   }
 
   const createCollection = async (payload: {
