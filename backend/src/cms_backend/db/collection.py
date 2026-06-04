@@ -229,7 +229,7 @@ def update_collection(
     else:
         collection = get_collection_by_name(session, collection_id)
 
-    values = request.model_dump(exclude_unset=True)
+    values = request.model_dump(exclude_unset=True, mode="json")
     if not values:
         return collection
 

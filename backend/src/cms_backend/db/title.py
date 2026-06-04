@@ -374,7 +374,7 @@ def update_title(
     title = get_title(session, title_identifier)
 
     # Return early if no update data
-    if not payload.model_dump(exclude_unset=True):
+    if not payload.model_dump(exclude_unset=True, mode="json"):
         return title
 
     # Determine whether to permit update based on value of archived parameter
@@ -388,7 +388,7 @@ def update_title(
         raise RecordDoesNotExistError("Title is not archived.")
 
     update_data = payload.model_dump(
-        exclude_unset=True, exclude={"collection_titles", "comment"}
+        exclude_unset=True, exclude={"collection_titles", "comment"}, mode="json"
     )
     name_changed = payload.name is not None and payload.name != title.name
 

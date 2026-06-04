@@ -416,7 +416,9 @@ def update_book(
         raise ValueError(f"Book title {book.title_id} is currently archived")
 
     # Return early if no update data
-    update_data = payload.model_dump(exclude_unset=True, exclude={"comment"})
+    update_data = payload.model_dump(
+        exclude_unset=True, exclude={"comment"}, mode="json"
+    )
     if not update_data:
         return book
 
