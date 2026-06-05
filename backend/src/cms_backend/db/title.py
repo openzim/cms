@@ -289,8 +289,6 @@ def create_title(
     title.flavours = [] if payload.flavours is None else payload.flavours
     title.events.append(f"{getnow()}: title created")
 
-    session.add(title)
-
     if payload.collection_titles:
         # Create the collection titles for the title
         for entry in payload.collection_titles:
@@ -307,6 +305,9 @@ def create_title(
     create_title_history_entry(
         session, title, author_id, comment="Create initial history"
     )
+
+    session.add(title)
+
     try:
         session.flush()
     except IntegrityError as exc:

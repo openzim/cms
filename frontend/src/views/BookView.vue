@@ -9,14 +9,17 @@
     </div>
 
     <div v-if="dataLoaded && book">
-      <div class="d-flex justify-end mb-4" v-if="canMoveBook || canDeleteBook || canRecoverBook">
-        <v-btn
-          v-if="canMoveBook"
-          color="primary"
-          prepend-icon="mdi-truck"
-          @click="openMoveDialog"
-          class="mr-2"
-        >
+      <div
+        class="d-flex flex-md-row flex-column justify-md-end ga-2"
+        v-if="
+          canMoveBook ||
+          canDeleteBook ||
+          canRecoverBook ||
+          canAddBookToTitle ||
+          canCreateTitleFromBook
+        "
+      >
+        <v-btn v-if="canMoveBook" color="primary" prepend-icon="mdi-truck" @click="openMoveDialog">
           Move Book
         </v-btn>
         <v-btn
@@ -24,7 +27,6 @@
           color="success"
           prepend-icon="mdi-restore"
           @click="openRecoverDialog"
-          class="mr-2"
         >
           Recover Book
         </v-btn>
@@ -35,6 +37,22 @@
           @click="openDeleteDialog"
         >
           Delete Book
+        </v-btn>
+        <v-btn
+          v-if="canCreateTitleFromBook"
+          color="primary"
+          prepend-icon="mdi-plus-circle"
+          @click="openCreateTitleDialog"
+        >
+          Create New Title
+        </v-btn>
+        <v-btn
+          v-if="canAddBookToTitle"
+          color="warning"
+          prepend-icon="mdi-link-plus"
+          @click="openAddToTitleDialog"
+        >
+          Add to Title
         </v-btn>
       </div>
 
@@ -403,6 +421,17 @@
     <MoveBookDialog v-model="moveDialogOpen" :book="book" @moved="handleBookMoved" />
     <RecoverBookDialog v-model="recoverDialogOpen" :book="book" @recovered="handleBookRecovered" />
     <DeleteBookDialog v-model="deleteDialogOpen" :book="book" @deleted="handleBookDeleted" />
+    <TitleSelectDialog
+      v-if="book && book.name"
+      v-model="addToTitleDialogOpen"
+      :book-name="book.name"
+      @title-selected="handleTitleSelected"
+    />
+    <TitleFormDialog
+      v-model="createTitleDialogOpen"
+      :title="titleDataFromBook"
+      @created="handleTitleCreated"
+    />
 
     <ConfirmDialog
       v-model="showConfirmDialog"
@@ -454,6 +483,8 @@ import EditBookForm from '@/components/EditBookForm.vue'
 import EventsList from '@/components/EventsList.vue'
 import MoveBookDialog from '@/components/MoveBookDialog.vue'
 import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
+import TitleSelectDialog from '@/components/TitleSelectDialog.vue'
+import TitleFormDialog from '@/components/TitleFormDialog.vue'
 import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import BookHistory from '@/components/BookHistory.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -488,6 +519,8 @@ const zimUrls = ref<ZimUrl[]>([])
 const moveDialogOpen = ref(false)
 const recoverDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const addToTitleDialogOpen = ref(false)
+const createTitleDialogOpen = ref(false)
 const updatingBook = ref(false)
 const updateError = ref('')
 const flavours = ref<string[]>([])
@@ -535,7 +568,11 @@ const locationHeaders = [
 
 const canEditBook = computed(() => {
   if (!book.value) return false
-  return authStore.hasPermission('book', 'update') && !book.value.title_archived
+  return (
+    authStore.hasPermission('book', 'update') &&
+    !book.value.title_archived &&
+    book.value.location_kind != 'deleted'
+  )
 })
 
 const canMoveBook = computed(() => {
@@ -585,6 +622,56 @@ const canRecoverBook = computed(() => {
     hasFutureDeletionDate &&
     !book.value.title_archived
   )
+})
+
+const canAddBookToTitle = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('book', 'update') &&
+    book.value.location_kind == 'quarantine' &&
+    book.value.title_id === null &&
+    !!book.value.name
+  )
+})
+
+const canCreateTitleFromBook = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('title', 'create') &&
+    book.value.location_kind == 'quarantine' &&
+    book.value.title_id === null &&
+    !!book.value.name
+  )
+})
+
+const titleDataFromBook = computed<Title | null>(() => {
+  if (!book.value) return null
+
+  const metadata = book.value.zim_metadata as Record<string, unknown>
+
+  // Create a Title object with data from the book
+  return {
+    id: '', // Will be assigned on creation
+    name: book.value.name || '',
+    maturity: 'unstable',
+    archived: false,
+    collection_titles: [],
+    title: (metadata.Title as string | null | undefined) || null,
+    creator: (metadata.Creator as string | null | undefined) || null,
+    publisher: (metadata.Publisher as string | null | undefined) || null,
+    description: (metadata.Description as string | null | undefined) || null,
+    language: (metadata.Language as string | null | undefined) || null,
+    illustration_48x48_at_1:
+      (metadata['Illustration_48x48@1'] as string | null | undefined) || null,
+    long_description: (metadata.LongDescription as string | null | undefined) || null,
+    license: (metadata.License as string | null | undefined) || null,
+    relation: (metadata.Relation as string | null | undefined) || null,
+    source: (metadata.Source as string | null | undefined) || null,
+    flavours: book.value.flavour ? [book.value.flavour] : [],
+    events: [],
+    books: [],
+    collections: [],
+  }
 })
 
 const canLoadMoreHistory = computed(() => {
@@ -705,7 +792,42 @@ const openDeleteDialog = () => {
 
 const handleBookDeleted = async () => {
   notificationStore.showSuccess('Book deleted successfully!')
-  await loadData()
+  await loadData(true)
+}
+
+const openAddToTitleDialog = () => {
+  addToTitleDialogOpen.value = true
+}
+
+const openCreateTitleDialog = () => {
+  createTitleDialogOpen.value = true
+}
+
+const handleTitleSelected = async (titleName: string) => {
+  if (!book.value || !book.value.name) return
+
+  loadingStore.startLoading('Updating title name...')
+
+  const response = await titleStore.updateTitle(titleName, {
+    name: book.value.name,
+    comment: `Updated title name to "${book.value.name}" from book`,
+  })
+
+  loadingStore.stopLoading()
+
+  if (response) {
+    notificationStore.showSuccess(`Title name updated to "${book.value.name}" successfully`)
+    await loadData(true, currentTab.value == 'history', currentTab.value == 'info')
+  } else {
+    for (const error of titleStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+}
+
+const handleTitleCreated = async () => {
+  notificationStore.showSuccess('Title created successfully!')
+  await loadData(true, currentTab.value == 'history', currentTab.value == 'info')
 }
 
 const handleUpdateBook = async (bookData: { flavour: string }) => {

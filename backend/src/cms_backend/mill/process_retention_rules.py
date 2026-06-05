@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.db.models import Title
-from cms_backend.mill.processors.title import apply_retention_rules
+from cms_backend.db.rules import apply_retention_rules
 
 
 def process_retention_rules(session: OrmSession):

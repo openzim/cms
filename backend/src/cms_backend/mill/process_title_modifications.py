@@ -35,6 +35,11 @@ def process_title_modifications(session: OrmSession):
             delete_event(session, event_id=event.id)
             continue
 
+        if title.archived:
+            logger.warning(f"Title {title.id} is archived.")
+            delete_event(session, event_id=event.id)
+            continue
+
         title_name = event.payload["name"]
         books_without_title = session.scalars(
             select(Book)

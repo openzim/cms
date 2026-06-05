@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend import logger
 from cms_backend.db import Session
 from cms_backend.db.models import Book, Title
-from cms_backend.db.title import get_title_by_id, title_is_missing_mandatory_metadata
+from cms_backend.db.rules import title_is_missing_mandatory_metadata
+from cms_backend.db.title import get_title_by_id
 
 
 def get_latest_book_for_title(session: OrmSession, title: Title) -> Book | None:

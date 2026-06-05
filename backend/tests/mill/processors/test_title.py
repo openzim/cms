@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, BookLocation, Title
-from cms_backend.db.rules import sort_books_by_filename_period
-from cms_backend.mill.processors.title import (
+from cms_backend.db.rules import (
     apply_retention_rules,
+    sort_books_by_filename_period,
 )
 from cms_backend.utils.datetime import getnow
 
