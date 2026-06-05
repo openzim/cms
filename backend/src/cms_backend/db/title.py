@@ -22,6 +22,7 @@ from cms_backend.db.models import (
     Title,
     TitleHistory,
 )
+from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import (
     FileLocation,
     TitleCreateSchema,
@@ -72,9 +73,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 date=book.date,
                 flavour=book.flavour,
                 issues=book.issues,
-                has_flavour_mismatch=book.flavour not in title.flavours
-                if title.flavours
-                else False,
+                has_flavour_mismatch=has_flavour_mismatch(book.flavour, title.flavours),
             )
             for book in sorted(
                 title.books,
