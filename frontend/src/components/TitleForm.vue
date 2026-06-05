@@ -473,7 +473,7 @@ const formData = ref<TitleUpdate>({
 
 const originalCollections = ref<BaseTitleCollection[]>([])
 
-const isEditMode = computed(() => props.title !== null)
+const isEditMode = computed(() => props.title !== null && props.title.id !== '')
 
 const maturityHint = computed(() => {
   if (formData.value.maturity === 'unstable') {

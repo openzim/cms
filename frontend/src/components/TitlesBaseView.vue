@@ -142,10 +142,6 @@ const headers = [
 const titles = ref<TitleLight[]>([])
 const ready = ref<boolean>(false)
 const errors = ref<string[]>([])
-const filters = ref({
-  name: '',
-  collection_name: '',
-})
 const intervalId = ref<number | null>(null)
 const selectedTitles = ref<string[]>([])
 const showCreateDialog = ref(false)
@@ -313,8 +309,7 @@ function handleArchiveCancel() {
 }
 
 async function handleFiltersChange(newFilters: typeof filters.value) {
-  filters.value = newFilters
-  updateUrl()
+  updateUrl(newFilters)
   if (!props.archived) {
     fetchArchivedCount(newFilters)
   }
@@ -335,11 +330,11 @@ async function handleLimitChange(newLimit: number) {
 }
 
 async function clearFilters() {
-  filters.value = {
+  const emptyFilters = {
     name: '',
     collection_name: '',
   }
-  updateUrl()
+  updateUrl(emptyFilters)
 }
 
 function handleSelectionChanged(newSelection: string[]) {
@@ -351,14 +346,14 @@ async function handleTitleCreated() {
   await loadData(paginator.value.limit, paginator.value.skip)
 }
 
-function updateUrl() {
+function updateUrl(sourceFilters: typeof filters.value) {
   const query: Record<string, string | string[]> = {}
 
-  if (filters.value.name) {
-    query.name = filters.value.name
+  if (sourceFilters.name) {
+    query.name = sourceFilters.name
   }
-  if (filters.value.collection_name) {
-    query.collection_name = filters.value.collection_name
+  if (sourceFilters.collection_name) {
+    query.collection_name = sourceFilters.collection_name
   }
 
   router.push({
@@ -367,16 +362,19 @@ function updateUrl() {
   })
 }
 
-function loadFiltersFromUrl() {
+const filters = computed(() => {
   const query = router.currentRoute.value.query
+  const derived = { name: '', collection_name: '' }
 
   if (query.name && typeof query.name === 'string') {
-    filters.value.name = query.name
+    derived.name = query.name
   }
   if (query.collection_name && typeof query.collection_name === 'string') {
-    filters.value.collection_name = query.collection_name
+    derived.collection_name = query.collection_name
   }
-}
+
+  return derived
+})
 
 function navigateToArchives() {
   const query: Record<string, string | string[]> = {}
@@ -396,15 +394,9 @@ function navigateToArchives() {
 // Lifecycle
 onMounted(async () => {
   await collectionsStore.fetchCollections(100)
-  loadFiltersFromUrl()
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, true)
   }, 60000)
-
-  // Fetch archived count on mount for regular titles view
-  if (!props.archived) {
-    fetchArchivedCount(filters.value)
-  }
 
   // Mark as ready to show content - the table will handle initial load via updateOptions
   ready.value = true
@@ -415,15 +407,6 @@ onBeforeUnmount(() => {
     clearInterval(intervalId.value)
   }
 })
-
-// Watch for route changes to update filters
-watch(
-  () => router.currentRoute.value.query,
-  () => {
-    loadFiltersFromUrl()
-  },
-  { deep: true, immediate: true },
-)
 
 watch(
   () => router.currentRoute.value.query,
