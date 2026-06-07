@@ -52,6 +52,13 @@ Note that to run tests, we use a separate DB with the backend-tests container
 
 ### Setup warehouse paths
 
+**NOTE**: All the setup scripts create entries in the DB with a prefix of `dev_`. This
+allows you to retain prod entries in your DB (if you have [imported production DB dump](#import-production-db-dump)) when wiping the database with the `wipe.py` setup script.
+As a consequence, you should avoid performing operations that entangle these prod DB
+entries with the ones created by the setup scripts. For example, you shouldn't move
+a book from the prod DB to a collection created by the setup script. Doing this will
+cause the `wipe.py` script to fail in deleting it's entries.
+
 Before using the shuttle service for file operations, you need to initialize the warehouse paths in the database:
 
 ```sh
@@ -66,9 +73,10 @@ This script will:
 
 Current warehouse configuration:
 
-- **hidden**: 2 paths (`quarantine`, `staging`)
-- **prod**: 1 path (`other`, `wikipedia`)
-- **client1**: 1 path (`all`)
+- **dev_hidden**: 2 paths (`quarantine`, `staging`)
+- **dev_prod**: 1 path (`other`, `wikipedia`)
+- **dev_client1**: 1 path (`all`)
+- **dev_backup**: 1 path (`backup`)
 
 To modify warehouse configuration, edit the `WAREHOUSES_CONFIG` dict in [scripts/setup_warehouses.py](scripts/setup_warehouses.py) and re-run the script.
 
@@ -80,14 +88,14 @@ After setting up warehouses, you can create sample collections:
 docker exec cms_mill python /scripts/setup_collections.py
 ```
 
-Currently two collections are configured: **prod** (associated with **prod** warehouse) and **client1** (associated with **client1** warehouse)
+Currently two collections are configured: **dev_prod** (associated with **dev_prod** warehouse) and **dev_client1** (associated with **dev_client1** warehouse)
 
 To modify collections configuration, edit the `COLLECTIONS_CONFIG` list in [scripts/setup_collections.py](scripts/setup_collections.py) and re-run the script.
 
 Once created, collection catalogs are accessible at:
 
-- `http://localhost:37601/v1/collections/prod/catalog.xml` or `http://localhost:37601/v1/collections/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
-- `http://localhost:37601/v1/collections/client1/catalog.xml` or `http://localhost:37601/v1/collections/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
+- `http://localhost:37601/v1/collections/dev_prod/catalog.xml` or `http://localhost:37601/v1/collections/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/catalog.xml`
+- `http://localhost:37601/v1/collections/dev_client1/catalog.xml` or `http://localhost:37601/v1/collections/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/catalog.xml`
 
 ### Setup titles
 

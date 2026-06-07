@@ -139,6 +139,7 @@ def get_latest_books_for_collection(
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
                 Collection.id == collection_id,
+                BookLocation.is_backup.is_(False),
             )
         )
         .order_by(Title.id, Book.flavour, Book.created_at.desc())

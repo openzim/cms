@@ -74,6 +74,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
             path=str(location.path),
             filename=location.filename,
             status=location.status,
+            is_backup=location.is_backup,
         )
         for location in book.locations
         if location.status == "current"
@@ -85,6 +86,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
             path=str(location.path),
             filename=location.filename,
             status=location.status,
+            is_backup=location.is_backup,
         )
         for location in book.locations
         if location.status == "target"
@@ -115,6 +117,9 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         has_flavour_mismatch=has_flavour_mismatch(book.flavour, book.title.flavours)
         if book.title
         else False,
+        has_backup=any(
+            current_location.is_backup for current_location in current_locations
+        ),
     )
 
 
@@ -194,7 +199,10 @@ def get_next_book_to_process_or_none(
 
 
 def delete_book(
-    session: OrmSession, *, book_id: UUID, force_delete: bool = False
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    force_delete: bool = False,
 ) -> Book:
     """Mark a book as deleted.
 
@@ -318,7 +326,7 @@ def move_book(
 
 def determine_current_location_kind(
     book: Book,
-) -> Literal["prod", "staging", "quarantine"]:
+) -> Literal["prod", "staging", "quarantine", "backup"]:
     """Determine the location kind of a book based on its current locations."""
     current_locations = [loc for loc in book.locations if loc.status == "current"]
     if not current_locations:
@@ -335,6 +343,11 @@ def determine_current_location_kind(
             Context.staging_base_path
         ):
             return "staging"
+
+        if loc.warehouse_id == Context.backup_warehouse_id and loc.path.is_relative_to(
+            Context.backup_base_path
+        ):
+            return "backup"
 
     return "prod"
 
@@ -573,3 +586,74 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
 
     book.issues = issues
     session.add(book)
+
+
+def backup_book(
+    session: OrmSession,
+    *,
+    book_id: UUID,
+) -> Book:
+    """Create a backup of a book."""
+    book = get_book_or_none(
+        session,
+        book_id=book_id,
+        has_error=False,
+        needs_processing=False,
+        needs_file_operation=False,
+        locations=["staging", "quarantine", "prod"],
+    )
+
+    if book is None:
+        raise RecordDoesNotExistError(
+            f"Book {book_id} does not meet criteria to be backed up."
+        )
+
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    if book.title.archived:
+        raise ValueError(f"Book title {book.title_id} is currently archived")
+
+    current_location = next(
+        (loc for loc in book.locations if loc.status == "current"), None
+    )
+
+    if not current_location:
+        raise ValueError(f"Book {book_id} has no current location")
+
+    existing_backup = next(
+        (loc for loc in book.locations if loc.status == "current" and loc.is_backup),
+        None,
+    )
+
+    if existing_backup:
+        raise ValueError("Book already has a backup.")
+
+    # Create a current and tagret location for the backup using the book's details
+    existing_filename = current_location.filename
+    target_locations = [
+        FileLocation(tc.collection.warehouse_id, tc.path, existing_filename)
+        for tc in book.title.collections
+    ]
+    target_locations.append(
+        FileLocation(
+            Context.backup_warehouse_id,
+            Context.backup_base_path,
+            current_location.filename,
+        )
+    )
+    existing_filename = current_location.filename
+    create_book_target_locations(
+        session=session,
+        book=book,
+        target_locations=target_locations,
+        is_backup=True,
+    )
+    book.events.append(
+        f"{getnow()}: Book scheduled to be copied from '{book.location_kind}' to "
+        f"'backup'"
+    )
+
+    session.add(book)
+    session.flush()
+    return book

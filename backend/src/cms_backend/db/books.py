@@ -29,6 +29,7 @@ def get_books(
     needs_file_operation: bool | None = None,
     location_kinds: list[str] | None = None,
     needs_attention: bool | None = None,
+    has_backup: bool | None = None,
     updated_before: datetime.datetime | None = None,
     updated_after: datetime.datetime | None = None,
 ) -> ListResult[BookLightSchema]:
@@ -104,6 +105,13 @@ def get_books(
             )
         )
 
+    if has_backup:
+        stmt = (
+            stmt.join(BookLocation, Book.id == BookLocation.book_id, isouter=True)
+            .where(BookLocation.status == "current", BookLocation.is_backup.is_(True))
+            .distinct()
+        )
+
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
@@ -155,7 +163,7 @@ def get_books(
 
 def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     """
-    Get view and download URLs for a list of ZIM IDs (Book IDs).
+    Get view and download URLs for a list of ZIM IDs (Book IDs) in prod locations.
     """
     stmt = (
         select(
@@ -179,6 +187,7 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Collection.warehouse_id,
                 BookLocation.path == CollectionTitle.path,
+                BookLocation.is_backup.is_not(True),
             ),
         )
         .where(
@@ -239,7 +248,7 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
 
 def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     """
-    Get view and download URLs for a list of ZIM IDs (Book IDs).
+    Get view and download URLs for a list of ZIM IDs (Book IDs) in staging locations.
     """
     stmt = (
         select(
@@ -257,6 +266,7 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Context.staging_warehouse_id,
                 BookLocation.path == Context.staging_base_path,
+                BookLocation.is_backup.isnot(True),
             ),
         )
         .where(
@@ -302,11 +312,85 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
     return result
 
 
+def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
+    """
+    Get view and download URLs for a list of ZIM IDs (Book IDs) in backup locations.
+    """
+    stmt = (
+        select(
+            Book.id.label("book_id"),
+            Book.location_kind.label("book_location_kind"),
+            Title.id.label("title_id"),
+            Book.flavour.label("book_flavour"),
+            BookLocation.filename,
+        )
+        .join(Title, Book.title_id == Title.id)
+        .join(
+            BookLocation,
+            and_(
+                BookLocation.book_id == Book.id,
+                BookLocation.status == "current",
+                BookLocation.warehouse_id == Context.backup_warehouse_id,
+                BookLocation.path == Context.backup_base_path,
+                BookLocation.is_backup.is_(True),
+            ),
+        )
+        .where(
+            and_(
+                Book.id.in_(zim_ids),
+                Book.needs_processing.is_(False),
+                Book.has_error.is_(False),
+                Book.needs_file_operation.is_(False),
+                BookLocation.is_backup.is_(True),
+            )
+        )
+        .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
+    )
+
+    result = ZimUrlsSchema(urls={zim_id: [] for zim_id in zim_ids})
+
+    for row in session.execute(stmt).all():
+        if Context.backup_download_base_url:
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="download",
+                    url=AnyUrl(
+                        construct_download_url(
+                            Context.backup_download_base_url,
+                            Path(""),
+                            row.filename,
+                        )
+                    ),
+                    collection="backup",
+                )
+            )
+
+        if Context.backup_view_base_url:
+            filename_without_suffix = (
+                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
+            )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="view",
+                    url=AnyUrl(
+                        f"{Context.backup_view_base_url}{filename_without_suffix}"
+                    ),
+                    collection="backup",
+                )
+            )
+
+    return result
+
+
 def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
     prod_urls = get_zim_urls_prod(session, zim_ids).urls
     staging_urls = get_zim_urls_staging(session, zim_ids).urls
+    backup_urls = get_zim_urls_backup(session, zim_ids).urls
     return ZimUrlsSchema(
-        urls={zim_id: prod_urls[zim_id] + staging_urls[zim_id] for zim_id in zim_ids}
+        urls={
+            zim_id: prod_urls[zim_id] + staging_urls[zim_id] + backup_urls[zim_id]
+            for zim_id in zim_ids
+        }
     )
 
 

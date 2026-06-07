@@ -8,6 +8,7 @@ import UserView from '@/views/UserView.vue'
 import CollectionsView from '@/views/CollectionsView.vue'
 import CollectionView from '@/views/CollectionView.vue'
 import ArchivedTitlesView from '@/views/ArchivedTitlesView.vue'
+import BackupBooksView from '@/views/BackupBooksView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
 import TitleView from '@/views/TitleView.vue'
@@ -50,6 +51,12 @@ const routes = [
     name: 'books',
     component: BooksView,
     meta: { title: 'CMS | Books' },
+  },
+  {
+    path: '/books/backups',
+    name: 'backup-books',
+    component: BackupBooksView,
+    meta: { title: 'CMS | Backup Books' },
   },
   {
     path: '/titles',

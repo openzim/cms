@@ -396,6 +396,7 @@ class BookLocation(Base):
     path: Mapped[Path] = mapped_column(primary_key=True)
     status: Mapped[str] = mapped_column(primary_key=True)  # 'current' or 'target'
     filename: Mapped[str]
+    is_backup: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     book: Mapped["Book"] = relationship(back_populates="locations", init=False)
     warehouse: Mapped["Warehouse"] = relationship(init=False)

@@ -70,28 +70,29 @@ def delete_book_files(session: OrmSession, book: Book):
         )
         return
 
-    # Delete all current location files
-    for location in book.locations:
-        if location.status == "current":
-            try:
-                file_path = location.full_local_path(
-                    ShuttleContext.local_warehouse_paths
-                )
-                file_path.unlink(missing_ok=True)
-                logger.info(f"Deleted file for book {book.id} at {file_path}")
-                book.events.append(f"{getnow()}: deleted file at {location.full_str}")
-                session.delete(location)
-            except Exception:
-                logger.exception(
-                    f"Failed to delete file at {location.full_str} for book {book.id}"
-                )
-                raise
+    # Delete all current location files that are not backup
+    locations = [
+        location
+        for location in book.locations
+        if location.status == "current" and not location.is_backup
+    ]
+    for location in locations:
+        try:
+            file_path = location.full_local_path(ShuttleContext.local_warehouse_paths)
+            file_path.unlink(missing_ok=True)
+            logger.info(f"Deleted file for book {book.id} at {file_path}")
+            book.events.append(f"{getnow()}: deleted file at {location.full_str}")
+            session.delete(location)
+            book.locations.remove(location)
+        except Exception:
+            logger.exception(
+                f"Failed to delete file at {location.full_str} for book {book.id}"
+            )
+            raise
 
     # Mark book as deleted
     book.location_kind = "deleted"
     book.needs_file_operation = False
     book.events.append(f"{getnow()}: all files deleted, book marked as deleted")
-    session.add(book)
-
     session.flush()
     logger.info(f"Book {book.id} files have been deleted")

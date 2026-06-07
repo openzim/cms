@@ -1,19 +1,29 @@
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.book import create_book as db_create_book
+from cms_backend.context import Context
 from cms_backend.db.book import (
+    backup_book,
     get_book_history,
     get_book_history_entry_or_none,
     get_differing_metadata_keys,
     revert_book,
     update_book,
 )
+from cms_backend.db.book import create_book as db_create_book
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Account, Book, Title, ZimfarmNotification
+from cms_backend.db.models import (
+    Account,
+    Book,
+    BookLocation,
+    Title,
+    Warehouse,
+    ZimfarmNotification,
+)
 from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookUpdateSchema
 
@@ -346,3 +356,158 @@ def test_has_flavour_mismatch(
     book_flavour: str, title_flavours: list[str], *, expected: bool
 ):
     assert has_flavour_mismatch(book_flavour, title_flavours) is expected
+
+
+def test_backup_book_success(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test successfully backing up a book."""
+    backup_warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "backup_warehouse_id", backup_warehouse.id)
+    monkeypatch.setattr(Context, "backup_base_path", Path("backup"))
+
+    warehouse = create_warehouse()
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    book = backup_book(dbsession, book_id=book.id)
+
+    # Verify backup has a current location (source) and target location
+    current_locations = [loc for loc in book.locations if loc.status == "current"]
+    target_locations = [loc for loc in book.locations if loc.status == "target"]
+    assert len(current_locations) == 1
+    assert len(target_locations) == 1
+    assert target_locations[0].is_backup
+    assert current_locations[0].warehouse_id == warehouse.id
+    assert target_locations[0].warehouse_id == backup_warehouse.id
+    assert book.needs_file_operation is True
+
+
+def test_backup_book_already_has_backup_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that backing up a book that already has a backup raises an error."""
+    warehouse = create_warehouse()
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+        is_backup=True,
+    )
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="Book already has a backup"):
+        backup_book(dbsession, book_id=book.id)
+
+
+def test_backup_book_no_title_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that backing up a book without a title raises an error."""
+    warehouse = create_warehouse()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = None
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="Book has no associated title"):
+        backup_book(dbsession, book_id=book.id)
+
+
+def test_backup_book_archived_title_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that backing up a book with archived title raises an error."""
+    warehouse = create_warehouse()
+    title = create_title(archived=True)  # Archived title
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(
+        ValueError, match=f"Book title {book.title_id} is currently archived"
+    ):
+        backup_book(dbsession, book_id=book.id)
+
+
+def test_backup_book_no_current_location_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+):
+    """Test that backing up a book without current location raises an error."""
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match=f"Book {book.id} has no current location"):
+        backup_book(dbsession, book_id=book.id)

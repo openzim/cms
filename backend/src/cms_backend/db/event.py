@@ -25,9 +25,16 @@ def create_title_modified_event(
 def get_next_event_to_process_or_none(
     session: OrmSession,
     topic: str,
+    omit_events: list[UUID] | None = None,
 ) -> Event | None:
     return session.scalars(
-        select(Event).where(Event.topic == topic).order_by(Event.created_at).limit(1)
+        select(Event)
+        .where(
+            Event.topic == topic,
+            (Event.id.not_in(omit_events or []) | (omit_events is None)),
+        )
+        .order_by(Event.created_at)
+        .limit(1)
     ).one_or_none()
 
 

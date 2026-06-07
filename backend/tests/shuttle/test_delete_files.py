@@ -7,7 +7,10 @@ from unittest.mock import patch
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book, BookLocation, Warehouse
-from cms_backend.shuttle.delete_files import delete_book_files, delete_files
+from cms_backend.shuttle.delete_files import (
+    delete_book_files,
+    delete_files,
+)
 from cms_backend.utils.datetime import getnow
 
 

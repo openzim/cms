@@ -48,7 +48,10 @@ def create_collections():
 
             # Create library DB record with predefined ID
             collection = Collection(
-                name=collection_name, warehouse_id=config["warehouse_id"]
+                name=collection_name,
+                warehouse_id=config["warehouse_id"],
+                download_base_url="https://download.kiwix.org/zim/",
+                view_base_url="https://browse.library.kiwix.org/viewer#",
             )
             collection.id = collection_id
             session.add(collection)
