@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -203,6 +204,7 @@ def delete_book(
     *,
     book_id: UUID,
     force_delete: bool = False,
+    deletion_delay: datetime.timedelta = Context.book_deletion_delay,
 ) -> Book:
     """Mark a book as deleted.
 
@@ -223,7 +225,7 @@ def delete_book(
             f"Book {book_id} does not meet criteria to be marked as deleted."
         )
 
-    deletion_date = now if force_delete else now + Context.book_deletion_delay
+    deletion_date = now if force_delete else now + deletion_delay
 
     if book.location_kind in ("staging", "prod", "quarantine"):
         book.deletion_date = deletion_date
