@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, Warehouse
+from cms_backend.db.models import Book, BookLocation, Title, Warehouse
 from cms_backend.shuttle.move_files import move_book_files
 
 
@@ -334,3 +334,144 @@ def test_move_book_files_updates_book_locations(
     assert _target_loc.status == "current"
     # Old current should be removed from book.locations
     assert _current_loc not in book.locations
+
+
+def test_move_book_files_does_not_delete_backup_locations(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that backup books copy files without deleting the backup."""
+    warehouse = create_warehouse()
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+
+    book.title = title
+    book.needs_file_operation = True
+
+    backup_warehouse = create_warehouse()
+
+    # Two current locations, one backup and one a normal one
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        status="current",
+        filename="test_en_all_2024-01.zim",
+    )
+
+    create_book_location(
+        book=book,
+        warehouse_id=backup_warehouse.id,
+        path=Path("backup"),
+        status="current",
+        is_backup=True,
+        filename="test_en_all_2024-01.zim",
+    )
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("target"),
+        status="target",
+        filename="test_en_all_2024-01.zim",
+    )
+    dbsession.flush()
+
+    with ExitStack() as stack:
+        mock_context = stack.enter_context(
+            patch("cms_backend.shuttle.move_files.ShuttleContext")
+        )
+        mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
+        stack.enter_context(patch("pathlib.Path.mkdir"))
+
+        mock_context.local_warehouse_paths = {
+            warehouse.id: Path("/warehouse"),
+            backup_warehouse.id: Path("/backup_warehouse"),
+        }
+        move_book_files(dbsession, book)
+
+        # Should have copied once and deleted once
+        assert mock_copy.call_count == 1
+        assert mock_unlink.call_count == 1
+
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
+    assert any("copied book from" in event for event in book.events)
+    assert any("deleted book" in event for event in book.events)
+    # book still has backup location in addition to the target locations
+    assert len([loc for loc in book.locations if loc.status == "current"]) == 2
+
+
+def test_backup_book_files_does_not_delete_existing_current_locations(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that backup books does not delete the files from it's current locations."""
+    warehouse = create_warehouse()
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+
+    book.title = title
+    book.needs_file_operation = True
+
+    backup_warehouse = create_warehouse()
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        status="current",
+        filename="test_en_all_2024-01.zim",
+    )
+    # Create the targets (the original current location and backup)
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        status="target",
+        filename="test_en_all_2024-01.zim",
+    )
+
+    create_book_location(
+        book=book,
+        warehouse_id=backup_warehouse.id,
+        path=Path("backup"),
+        status="target",
+        is_backup=True,
+        filename="test_en_all_2024-01.zim",
+    )
+
+    dbsession.flush()
+
+    with ExitStack() as stack:
+        mock_context = stack.enter_context(
+            patch("cms_backend.shuttle.move_files.ShuttleContext")
+        )
+        mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
+        stack.enter_context(patch("pathlib.Path.mkdir"))
+
+        mock_context.local_warehouse_paths = {
+            warehouse.id: Path("/warehouse"),
+            backup_warehouse.id: Path("/backup_warehouse"),
+        }
+        move_book_files(dbsession, book)
+
+        assert mock_copy.call_count == 1
+        assert mock_unlink.call_count == 0
+
+    assert book.needs_processing is False
+    assert book.has_error is False
+    assert book.needs_file_operation is False
+    assert any("copied book from" in event for event in book.events)
+    assert not any("deleted book" in event for event in book.events)
+    assert len([loc for loc in book.locations if loc.status == "current"]) == 2
+    assert len([loc for loc in book.locations if loc.status == "target"]) == 0

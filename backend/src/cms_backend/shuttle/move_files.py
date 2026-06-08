@@ -48,13 +48,18 @@ def move_book_files(session: OrmSession, book: Book):
         )
         return
 
+    # exclude backup locations from the list of current locations as we
+    # delete the file after copying to it's target location(s)
     current_locations: list[BookLocation] = [
-        loc for loc in book.locations if loc.status == "current"
+        loc for loc in book.locations if loc.status == "current" and not loc.is_backup
     ]
 
     target_locations: list[BookLocation] = [
         loc for loc in book.locations if loc.status == "target"
     ]
+    # keep backups last so that we can skip redundant targets existing in current as
+    # early as possible
+    target_locations.sort(key=lambda book: book.is_backup)
 
     if len(current_locations) == 0:
         book.events.append(
@@ -112,7 +117,8 @@ def move_book_files(session: OrmSession, book: Book):
         target_location.status = "current"
 
         # After making one copy, delete one of the current locations
-        # that is not the original to avoid filling disk up with copies
+        # that is not the original if this is not a backup operation.
+        # This way, we avoid filling disk up with copies.
         if len(current_locations) > 1:
             loc_to_delete = current_locations.pop()
             del_path = loc_to_delete.full_local_path(

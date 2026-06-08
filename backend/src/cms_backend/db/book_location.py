@@ -16,6 +16,7 @@ def create_book_location(
     path: Path,
     filename: str,
     status: str = "current",
+    is_backup: bool = False,
 ) -> BookLocation:
     """Create a new book location.
 
@@ -44,6 +45,7 @@ def create_book_location(
         status=status,
         filename=filename,
     )
+    location.is_backup = is_backup
     session.add(location)
     book.locations.append(location)
     book.events.append(
@@ -87,6 +89,8 @@ def create_book_target_locations(
     session: OrmSession,
     book: Book,
     target_locations: list[FileLocation],
+    *,
+    is_backup: bool = False,
 ) -> None:
     """Create target locations for a book if not already at expected locations.
 
@@ -99,6 +103,7 @@ def create_book_target_locations(
         session: SQLAlchemy session
         book: Book to create target locations for
         target_locations: List of FileLocation where the book should be
+        is_backup: Whether the location is a backup location
 
     Side effects:
         - Adds event to book if targets already match current locations
@@ -131,6 +136,7 @@ def create_book_target_locations(
             path=target_location.path,
             filename=target_location.filename,
             status="target",
+            is_backup=is_backup,
         )
 
     book.needs_file_operation = True

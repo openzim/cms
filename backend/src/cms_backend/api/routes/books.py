@@ -11,6 +11,7 @@ from cms_backend.api.routes.dependencies import get_current_account, require_per
 from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
+from cms_backend.db.book import backup_book as db_backup_book
 from cms_backend.db.book import create_book_full_schema, create_book_history_schema
 from cms_backend.db.book import delete_book as db_delete_book
 from cms_backend.db.book import get_book as db_get_book
@@ -54,6 +55,7 @@ class BooksGetSchema(BaseModel):
     needs_file_operation: bool | None = None
     location_kinds: list[NotEmptyString] | None = None
     needs_attention: bool | None = None
+    has_backup: bool | None = None
     updated_before: datetime.datetime | None = None
     updated_after: datetime.datetime | None = None
     name: NotEmptyString | None = None
@@ -86,6 +88,7 @@ def get_books(
         updated_after=params.updated_after,
         name=params.name,
         flavour=params.flavour,
+        has_backup=params.has_backup,
     )
 
     return ListResponse[BookLightSchema](
@@ -194,6 +197,17 @@ def move_book(
     return create_book_full_schema(
         db_move_book(session, book_id=book_id, destination=request.destination)
     )
+
+
+@router.patch(
+    "/{book_id}/backup",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def backup_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> BookFullSchema:
+    return create_book_full_schema(db_backup_book(session, book_id=book_id))
 
 
 @router.get(

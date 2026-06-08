@@ -272,6 +272,8 @@ def create_book_location(
         path: str | Path | None = None,
         filename: str | None = None,
         status: str = "current",
+        *,
+        is_backup: bool = False,
     ) -> BookLocation:
         if book is None:
             book = create_book()
@@ -296,6 +298,7 @@ def create_book_location(
             status=status,
             filename=filename,
         )
+        location.is_backup = is_backup
         dbsession.add(location)
         dbsession.flush()
         return location

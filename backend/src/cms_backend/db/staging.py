@@ -42,6 +42,7 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
                 Book.needs_processing.is_(False),
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
+                BookLocation.is_backup.is_(False),
             )
         )
         .order_by(Book.created_at.desc())

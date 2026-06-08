@@ -16,7 +16,7 @@ from cms_backend.db.models import Event
     "action",
     [pytest.param("updated", id="updated"), pytest.param("created", id="created")],
 )
-def test_create_title_modified_eventaction(dbsession: OrmSession, action: str):
+def test_create_title_modified_event_action(dbsession: OrmSession, action: str):
     """Test creating a title_modified event with action"""
     title_id = uuid4()
     title_name = "wikipedia_en_all"

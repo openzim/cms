@@ -26,10 +26,8 @@ class Context:
         )
     )
 
-    process_title_modifications_interval: timedelta = timedelta(
-        seconds=parse_timespan(
-            os.getenv("PROCESS_TITLE_MODIFICATIONS_INTERVAL", default="1m")
-        )
+    process_events_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("PROCESS_EVENTS_INTERVAL", default="1m"))
     )
 
     process_retention_rules_interval: timedelta = timedelta(

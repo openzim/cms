@@ -11,6 +11,7 @@ export interface BookLocation {
   path: string
   filename: string
   status: string
+  is_backup: boolean
 }
 
 export interface BookLight {
@@ -39,6 +40,7 @@ export interface Book extends BookLight {
   current_locations: BookLocation[]
   target_locations: BookLocation[]
   title_archived: boolean
+  has_backup: boolean
 }
 
 export interface ZimUrl {

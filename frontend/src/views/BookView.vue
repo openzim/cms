@@ -16,7 +16,8 @@
           canDeleteBook ||
           canRecoverBook ||
           canAddBookToTitle ||
-          canCreateTitleFromBook
+          canCreateTitleFromBook ||
+          canBackupBook
         "
       >
         <v-btn v-if="canMoveBook" color="primary" prepend-icon="mdi-truck" @click="openMoveDialog">
@@ -53,6 +54,14 @@
           @click="openAddToTitleDialog"
         >
           Add to Title
+        </v-btn>
+        <v-btn
+          v-if="canBackupBook"
+          color="info"
+          prepend-icon="mdi-content-copy"
+          @click="openBackupDialog"
+        >
+          Backup Book
         </v-btn>
       </div>
 
@@ -197,6 +206,46 @@
                       </template>
                       <span>{{ formatDt(book.created_at) }}</span>
                     </v-tooltip>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row v-if="book.deletion_date" no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Deletion Date</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <v-tooltip location="bottom">
+                      <template #activator="{ props }">
+                        <span
+                          v-bind="props"
+                          :class="isDeletionDatePast ? 'text-error' : 'text-warning'"
+                        >
+                          {{ fromNow(book.deletion_date) }}
+                        </span>
+                      </template>
+                      <span>{{ formatDt(book.deletion_date) }}</span>
+                    </v-tooltip>
+                  </v-col>
+                </v-row>
+                <v-divider v-if="book.deletion_date" class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Has Backup</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <v-chip
+                      :color="book.has_backup ? 'success' : undefined"
+                      size="small"
+                      variant="tonal"
+                    >
+                      <v-icon
+                        start
+                        :icon="book.has_backup ? 'mdi-check-circle' : 'mdi-close-circle'"
+                      />
+                      {{ book.has_backup ? 'Yes' : 'No' }}
+                    </v-chip>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -434,6 +483,26 @@
     />
 
     <ConfirmDialog
+      v-model="backupDialogOpen"
+      title="Confirm Book Backup"
+      confirm-text="Backup"
+      cancel-text="Cancel"
+      confirm-color="info"
+      icon="mdi-content-copy"
+      icon-color="info"
+      :max-width="600"
+      :loading="backingUpBook"
+      @confirm="handleBackupBook"
+    >
+      <template #content>
+        <p class="text-body-1">
+          The book will be copied to the backup area. This operation may take some time depending on
+          the book size.
+        </p>
+      </template>
+    </ConfirmDialog>
+
+    <ConfirmDialog
       v-model="showConfirmDialog"
       title="Confirm Book Update"
       confirm-text="Save Changes"
@@ -521,6 +590,8 @@ const recoverDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const addToTitleDialogOpen = ref(false)
 const createTitleDialogOpen = ref(false)
+const backupDialogOpen = ref(false)
+const backingUpBook = ref(false)
 const updatingBook = ref(false)
 const updateError = ref('')
 const flavours = ref<string[]>([])
@@ -642,6 +713,25 @@ const canCreateTitleFromBook = computed(() => {
     book.value.title_id === null &&
     !!book.value.name
   )
+})
+
+const canBackupBook = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('book', 'update') &&
+    !book.value.has_error &&
+    !book.value.needs_processing &&
+    !book.value.needs_file_operation &&
+    ['staging', 'quarantine', 'prod'].includes(book.value.location_kind) &&
+    !!book.value.title_id &&
+    !book.value.title_archived &&
+    !book.value.has_backup
+  )
+})
+
+const isDeletionDatePast = computed(() => {
+  if (!book.value?.deletion_date) return false
+  return new Date(book.value.deletion_date) < new Date()
 })
 
 const titleDataFromBook = computed<Title | null>(() => {
@@ -801,6 +891,32 @@ const openAddToTitleDialog = () => {
 
 const openCreateTitleDialog = () => {
   createTitleDialogOpen.value = true
+}
+
+const openBackupDialog = () => {
+  backupDialogOpen.value = true
+}
+
+const handleBackupBook = async () => {
+  if (!book.value) return
+
+  backingUpBook.value = true
+  try {
+    const response = await bookStore.backupBook(book.value.id)
+    if (response) {
+      book.value = response
+      notificationStore.showSuccess('Book backed up successfully!')
+    } else {
+      for (const error of bookStore.errors) {
+        notificationStore.showError(error)
+      }
+    }
+  } catch {
+    notificationStore.showError('An error occurred while backing up the book')
+  } finally {
+    backingUpBook.value = false
+    backupDialogOpen.value = false
+  }
 }
 
 const handleTitleSelected = async (titleName: string) => {

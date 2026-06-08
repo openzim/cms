@@ -1,5 +1,5 @@
 <template>
-  <BooksBaseView route-name="books" />
+  <BooksBaseView route-name="backup-books" :has-backup="true" :show-backup-filter="true" />
 </template>
 
 <script setup lang="ts">

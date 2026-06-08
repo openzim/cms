@@ -31,6 +31,10 @@ WAREHOUSES_CONFIG = {
         "id": UUID("33333333-3333-3333-3333-333333333333"),
         "paths": ["all"],
     },
+    "dev_backup": {
+        "id": UUID("44444444-4444-4444-4444-444444444444"),
+        "paths": ["backup"],
+    },
 }
 
 # Base directory where warehouse folders will be created (inside container)

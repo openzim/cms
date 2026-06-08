@@ -93,3 +93,11 @@ class Context:
     disallowed_language_codes: ClassVar[list[str]] = _validate_language_codes(
         _parse_custom_language_codes(os.getenv("DISALLOWED_LANGUAGE_CODES"))
     )
+    backup_warehouse_id: UUID = field(
+        default=UUID(get_mandatory_env("BACKUP_WAREHOUSE_ID"))
+    )
+    backup_base_path: Path = field(default=Path(os.getenv("BACKUP_BASE_PATH", "")))
+    backup_download_base_url: str = field(
+        default=os.getenv("BACKUP_DOWNLOAD_BASE_URL", "")
+    )
+    backup_view_base_url: str = field(default=os.getenv("BACKUP_VIEW_BASE_URL", ""))

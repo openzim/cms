@@ -50,6 +50,7 @@ export const useBookStore = defineStore('book', () => {
     flag: string | undefined = undefined,
     name: string | undefined = undefined,
     flavour: string | undefined = undefined,
+    has_backup: boolean | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
 
@@ -72,6 +73,7 @@ export const useBookStore = defineStore('book', () => {
         has_title,
         name,
         flavour,
+        has_backup,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),
@@ -88,6 +90,53 @@ export const useBookStore = defineStore('book', () => {
       console.error('Failed to fetch books', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return null
+    }
+  }
+
+  const countBooks = async (
+    needs_attention: boolean | undefined = undefined,
+    id: string | undefined = undefined,
+    location_kinds: string[] | undefined = undefined,
+    flag: string | undefined = undefined,
+    name: string | undefined = undefined,
+    flavour: string | undefined = undefined,
+    has_backup: boolean | undefined = undefined,
+  ) => {
+    const service = await authStore.getApiService('books')
+
+    const needs_file_operation = flag === 'needs_file_operation' ? true : undefined
+    const needs_processing = flag === 'needs_processing' ? true : undefined
+    const has_error = flag === 'has_error' ? true : undefined
+    const has_title = flag == 'no_title' ? false : undefined
+
+    // filter out undefined values from params
+    const cleanedParams = Object.fromEntries(
+      Object.entries({
+        limit: 1,
+        skip: 0,
+        needs_attention,
+        id,
+        location_kinds,
+        needs_file_operation,
+        needs_processing,
+        has_error,
+        has_title,
+        name,
+        flavour,
+        has_backup,
+      }).filter(
+        ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
+      ),
+    )
+    try {
+      const response = await service.get<null, ListResponse<Book>>('', {
+        params: cleanedParams,
+      })
+      return response.meta.count
+    } catch (_error) {
+      console.error('Failed to count books', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return 0
     }
   }
 
@@ -134,6 +183,20 @@ export const useBookStore = defineStore('book', () => {
       return response
     } catch (_error) {
       console.error('Failed to recover book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
+  const backupBook = async (bookId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.patch<null, Book>(`/${bookId}/backup`)
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to backup book', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return null
     }
@@ -205,5 +268,7 @@ export const useBookStore = defineStore('book', () => {
     moveBook,
     fetchBookFlavours,
     updateBook,
+    backupBook,
+    countBooks,
   }
 })

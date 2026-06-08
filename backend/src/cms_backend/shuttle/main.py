@@ -32,7 +32,7 @@ tasks: list[TaskConfig] = [
 
 
 def main():
-    """Main entry point for mill component."""
+    """Main entry point for shuttle component."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--version",

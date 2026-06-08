@@ -29,6 +29,17 @@
             Choose how you want to delete this book.
           </v-alert>
 
+          <v-alert
+            v-if="book?.has_backup"
+            type="success"
+            density="compact"
+            class="mb-4"
+            variant="tonal"
+            icon="mdi-check-circle"
+          >
+            This book will continue to live in backup.
+          </v-alert>
+
           <v-radio-group v-model="deleteType" :rules="[rules.required]">
             <v-radio value="normal">
               <template #label>

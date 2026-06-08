@@ -110,6 +110,7 @@ class BookLocationSchema(BaseModel):
     path: str
     filename: str
     status: str  # 'current' or 'target'
+    is_backup: bool
 
 
 class BookLightSchema(BaseModel):
@@ -142,6 +143,7 @@ class BookFullSchema(BookLightSchema):
     current_locations: list[BookLocationSchema]
     target_locations: list[BookLocationSchema]
     title_archived: bool
+    has_backup: bool
 
 
 class BookHistorySchema(BaseModel):

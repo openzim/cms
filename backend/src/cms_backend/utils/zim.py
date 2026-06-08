@@ -3,7 +3,11 @@ from typing import Any
 
 def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:
     """Get the list of missing keys from payload."""
-    return [key for key in sorted(keys) if key not in payload or not payload.get(key)]
+    return [
+        key
+        for key in sorted(keys)
+        if key not in payload or payload.get(key) in (None, "")
+    ]
 
 
 def get_missing_metadata_keys(zim_metadata: dict[str, Any]) -> list[str]:

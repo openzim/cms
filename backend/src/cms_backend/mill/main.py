@@ -27,7 +27,7 @@ tasks: list[TaskConfig] = [
     ),
     TaskConfig(
         func=process_title_modifications,
-        interval=MillContext.process_title_modifications_interval,
+        interval=MillContext.process_events_interval,
     ),
     TaskConfig(
         func=process_retention_rules,
