@@ -13,10 +13,6 @@
           @update:valid="formValid = $event"
           @update:has-changes="hasChanges = $event"
         />
-
-        <v-alert v-if="error" type="error" class="mt-4" density="compact">
-          {{ error }}
-        </v-alert>
       </v-card-text>
 
       <v-card-actions class="pa-4">
@@ -41,6 +37,7 @@ import TitleForm from '@/components/TitleForm.vue'
 import { useTitleStore } from '@/stores/title'
 import type { Title, TitleCreate } from '@/types/title'
 import { computed, ref, watch } from 'vue'
+import { useNotificationStore } from '@/stores/notification'
 
 interface Props {
   modelValue: boolean
@@ -58,12 +55,12 @@ const emit = defineEmits<{
 }>()
 
 const titleStore = useTitleStore()
+const notificationStore = useNotificationStore()
 
 const titleFormRef = ref<InstanceType<typeof TitleForm>>()
 const formValid = ref(false)
 const hasChanges = ref(false)
 const loading = ref(false)
-const error = ref('')
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -74,7 +71,6 @@ watch(isOpen, async (newValue) => {
   if (newValue) {
     await titleFormRef.value?.fetchCollections()
     await titleFormRef.value?.fetchFlavours()
-    error.value = ''
   }
 })
 
@@ -82,21 +78,21 @@ async function handleSubmit() {
   if (!formValid.value || !titleFormRef.value) return
 
   loading.value = true
-  error.value = ''
 
   try {
     const formData = titleFormRef.value.getFormData() as TitleCreate
     const response = await titleStore.createTitle(formData)
     if (!response) {
-      error.value = titleStore.errors.join(', ') || `Failed to create title`
+      notificationStore.showError('Failed to create title')
+      notificationStore.showErrors(titleStore.errors)
       return
     }
     emit('created')
     titleFormRef.value.resetForm()
     isOpen.value = false
   } catch (err) {
+    notificationStore.showError('Failed to create title')
     console.error(`Failed to create title`, err)
-    error.value = titleStore.errors.join(', ') || `Failed to create title`
   } finally {
     loading.value = false
   }
@@ -104,7 +100,6 @@ async function handleSubmit() {
 
 function handleCancel() {
   titleFormRef.value?.resetForm()
-  error.value = ''
   isOpen.value = false
 }
 </script>

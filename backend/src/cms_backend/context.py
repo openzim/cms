@@ -3,9 +3,10 @@ import os
 from dataclasses import field
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 from uuid import UUID
 
+import pycountry
 from humanfriendly import parse_timespan
 
 T = TypeVar("T")
@@ -21,6 +22,25 @@ def get_mandatory_env(key: str) -> str:
     if not value:
         raise Exception(f"{key} environment variable must be set")
     return value
+
+
+def _parse_custom_language_codes(language_code: str | None) -> list[str]:
+    """Transform the env language codes (comma-seperated) into a list."""
+    if language_code is None:
+        return []
+
+    codes = language_code.split(",")
+    for code in codes:
+        if len(code) != 3:  # noqa: PLR2004
+            raise ValueError(f"Custom code '{code}' must be 3 characters long.")
+    return codes
+
+
+def _validate_language_codes(language_codes: list[str]) -> list[str]:
+    for code in language_codes:
+        if pycountry.languages.get(alpha_3=code) is None:  # pyright: ignore[reportUnknownMemberType]
+            raise ValueError(f"Code '{code}' is not a valid ISO 639-3 code.")
+    return language_codes
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -65,4 +85,11 @@ class Context:
     )
     quarantine_base_path: Path = field(
         default=Path(os.getenv("QUARANTINE_BASE_PATH", ""))
+    )
+    # Comma-seperated list of custom iso639-3 language codes
+    custom_language_codes: ClassVar[list[str]] = _parse_custom_language_codes(
+        os.getenv("CUSTOM_LANGUAGE_CODES")
+    )
+    disallowed_language_codes: ClassVar[list[str]] = _validate_language_codes(
+        _parse_custom_language_codes(os.getenv("DISALLOWED_LANGUAGE_CODES"))
     )

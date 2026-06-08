@@ -26,6 +26,7 @@ dependencies = [
     "humanfriendly == 10.0",
     "Werkzeug == 3.1.5",
     "xxhash == 3.7.0",
+    "pycountry == 26.2.16",
 ]
 dynamic = ["version"]
 
