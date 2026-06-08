@@ -14,6 +14,7 @@ from cms_backend.db.book import (
 )
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account, Book, Title, ZimfarmNotification
+from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookUpdateSchema
 
 
@@ -327,3 +328,21 @@ def test_update_book_flavour_mismatch_issues(
         payload=BookUpdateSchema(flavour="maxi"),
     )
     assert len(book.issues) == 0
+
+
+@pytest.mark.parametrize(
+    "book_flavour, title_flavours, expected",
+    [
+        pytest.param(None, ["maxi"], True),
+        pytest.param("maxi", ["maxi", "mini"], False),
+        pytest.param("maxi", ["mini", "nopic"], True),
+        pytest.param(None, [], False),
+        pytest.param("maxi", [], True),
+        pytest.param("", [], False),
+        pytest.param("", ["maxi"], True),
+    ],
+)
+def test_has_flavour_mismatch(
+    book_flavour: str, title_flavours: list[str], *, expected: bool
+):
+    assert has_flavour_mismatch(book_flavour, title_flavours) is expected

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
+from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
 from cms_backend.utils.filename import construct_download_url
@@ -119,8 +120,8 @@ def get_books(
                 date=date,
                 flavour=flavour,
                 issues=book_issues,
-                has_flavour_mismatch=flavour not in title_flavours
-                if title_flavours
+                has_flavour_mismatch=has_flavour_mismatch(flavour, title_flavours)
+                if title_flavours is not None
                 else False,
             )
             for (

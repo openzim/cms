@@ -119,3 +119,15 @@ def title_is_missing_mandatory_metadata(title: Title) -> bool:
             title.illustration_48x48_at_1,
         ]
     )
+
+
+def has_flavour_mismatch(book_flavour: str | None, title_flavours: list[str]) -> bool:
+    # Title has flavours but book has no flavour or flavour not in book flavours
+    if title_flavours and book_flavour not in title_flavours:
+        return True
+
+    # Book has flavour but title has no flavours
+    if book_flavour and not title_flavours:
+        return True
+
+    return False
