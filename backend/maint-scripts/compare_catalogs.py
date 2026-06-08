@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
-import requests
+import requests  # pyright: ignore[reportMissingModuleSource]
 
 from cms_backend import logger
 
