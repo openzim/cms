@@ -642,20 +642,82 @@ def backup_book(
             Context.backup_warehouse_id,
             Context.backup_base_path,
             current_location.filename,
+            is_backup=True,
         )
     )
-    existing_filename = current_location.filename
     create_book_target_locations(
         session=session,
         book=book,
         target_locations=target_locations,
-        is_backup=True,
     )
     book.events.append(
         f"{getnow()}: Book scheduled to be copied from '{book.location_kind}' to "
         f"'backup'"
     )
 
+    session.add(book)
+    session.flush()
+    return book
+
+
+def remove_book_backup(
+    session: OrmSession,
+    *,
+    book_id: UUID,
+) -> Book:
+    """Create a backup of a book."""
+    book = get_book_or_none(
+        session,
+        book_id=book_id,
+        has_error=False,
+        needs_processing=False,
+        needs_file_operation=False,
+        locations=["staging", "quarantine", "prod", "deleted"],
+    )
+
+    if book is None:
+        raise RecordDoesNotExistError(
+            f"Book {book_id} does not meet criteria for it's backup to be removed."
+        )
+
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    if book.title.archived:
+        raise ValueError(f"Book title {book.title_id} is currently archived")
+
+    existing_backups = [
+        loc for loc in book.locations if loc.status == "current" and loc.is_backup
+    ]
+    if not existing_backups:
+        raise ValueError("Book does not have a backup.")
+
+    target_locations = [
+        FileLocation(loc.warehouse_id, loc.path, loc.filename)
+        for loc in book.locations
+        if loc.status == "current" and not loc.is_backup
+    ]
+
+    for backup in existing_backups:
+        backup.is_backup = False
+        session.add(backup)
+
+    if book.location_kind == "deleted":
+        # book has no target locations and only backups exist
+        book.location_kind = "to_delete"
+        book.needs_file_operation = True
+        book.deletion_date = getnow()
+        session.add(book)
+        session.flush()
+        return book
+
+    create_book_target_locations(
+        session=session,
+        book=book,
+        target_locations=target_locations,
+    )
+
+    book.events.append(f"{getnow()}: Book backup scheduled to be removed")
     session.add(book)
     session.flush()
     return book

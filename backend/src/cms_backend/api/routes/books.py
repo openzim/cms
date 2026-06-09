@@ -19,6 +19,7 @@ from cms_backend.db.book import get_book_history as db_get_book_history
 from cms_backend.db.book import get_book_history_entry as db_get_book_history_entry
 from cms_backend.db.book import move_book as db_move_book
 from cms_backend.db.book import recover_book as db_recover_book
+from cms_backend.db.book import remove_book_backup as db_remove_book_backup
 from cms_backend.db.book import revert_book as db_revert_book
 from cms_backend.db.book import update_book as db_update_book
 from cms_backend.db.books import get_book_flavours as db_get_book_flavours
@@ -270,3 +271,14 @@ def revert_book(
         content={"message": f"book '{book_id}' has been restored"},
         status_code=HTTPStatus.OK,
     )
+
+
+@router.patch(
+    "/{book_id}/backup/remove",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def remove_book_backup(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+) -> BookFullSchema:
+    return create_book_full_schema(db_remove_book_backup(session, book_id=book_id))

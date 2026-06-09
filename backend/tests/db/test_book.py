@@ -11,6 +11,7 @@ from cms_backend.db.book import (
     get_book_history,
     get_book_history_entry_or_none,
     get_differing_metadata_keys,
+    remove_book_backup,
     revert_book,
     update_book,
 )
@@ -20,6 +21,7 @@ from cms_backend.db.models import (
     Account,
     Book,
     BookLocation,
+    Collection,
     Title,
     Warehouse,
     ZimfarmNotification,
@@ -511,3 +513,128 @@ def test_backup_book_no_current_location_raises_error(
 
     with pytest.raises(ValueError, match=f"Book {book.id} has no current location"):
         backup_book(dbsession, book_id=book.id)
+
+
+def test_remove_book_backup_no_existing_backup_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that removing backup for a book with no existing backups raises error"""
+    warehouse = create_warehouse()
+    title = create_title()
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match="Book does not have a backup"):
+        remove_book_backup(dbsession, book_id=book.id)
+
+
+def test_backup_locations_is_backup_property_removed(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that removing backups for a book removes the is_backup property for existing
+    backups
+    """
+    warehouse = create_warehouse()
+    title = create_title()
+    create_collection(warehouse=warehouse, title_ids_with_paths=[(title.id, "zim")])
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    # Create two current locations, one as backup and one a normal location
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("backup"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+        is_backup=True,
+    )
+    dbsession.flush()
+
+    book = remove_book_backup(dbsession, book_id=book.id)
+    assert book.needs_file_operation is True
+    # no more locations have backup property and one new target
+    assert (
+        len(
+            [loc for loc in book.locations if loc.is_backup and loc.status == "current"]
+        )
+        == 0
+    )
+    assert len([loc for loc in book.locations if loc.status == "target"]) == 1
+
+
+def test_remove_backup_for_deleted_book_moves_book_to_deleted(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    create_warehouse: Callable[..., Warehouse],
+):
+    """Test that removing backups for a deleted book moves the book to to_delete"""
+    warehouse = create_warehouse()
+    title = create_title()
+    create_collection(warehouse=warehouse, title_ids_with_paths=[(title.id, "zim")])
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "deleted"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("backup"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+        is_backup=True,
+    )
+    dbsession.flush()
+
+    book = remove_book_backup(dbsession, book_id=book.id)
+    assert book.needs_file_operation is True
+    assert book.location_kind == "to_delete"
+    # no more backup locations and backup is now the current location
+    assert (
+        len(
+            [loc for loc in book.locations if loc.is_backup and loc.status == "current"]
+        )
+        == 0
+    )
+    assert len([loc for loc in book.locations if loc.status == "target"]) == 0
+    assert len([loc for loc in book.locations if loc.status == "current"]) == 1
