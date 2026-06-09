@@ -17,7 +17,8 @@
           canRecoverBook ||
           canAddBookToTitle ||
           canCreateTitleFromBook ||
-          canBackupBook
+          canBackupBook ||
+          canRemoveBookBackup
         "
       >
         <v-btn v-if="canMoveBook" color="primary" prepend-icon="mdi-truck" @click="openMoveDialog">
@@ -62,6 +63,14 @@
           @click="openBackupDialog"
         >
           Backup Book
+        </v-btn>
+        <v-btn
+          v-if="canRemoveBookBackup"
+          color="error"
+          prepend-icon="mdi-delete-sweep"
+          @click="openRemoveBackupDialog"
+        >
+          Remove Backup
         </v-btn>
       </div>
 
@@ -503,6 +512,25 @@
     </ConfirmDialog>
 
     <ConfirmDialog
+      v-model="removeBackupDialogOpen"
+      title="Confirm Remove Book Backup"
+      confirm-text="Remove Backup"
+      cancel-text="Abort"
+      confirm-color="error"
+      icon="mdi-delete-sweep"
+      icon-color="error"
+      :max-width="600"
+      :loading="removingBackup"
+      @confirm="handleRemoveBookBackup"
+    >
+      <template #content>
+        <p class="text-body-1">
+          Are you sure you want to remove the backup for this book? This action cannot be undone.
+        </p>
+      </template>
+    </ConfirmDialog>
+
+    <ConfirmDialog
       v-model="showConfirmDialog"
       title="Confirm Book Update"
       confirm-text="Save Changes"
@@ -591,6 +619,8 @@ const deleteDialogOpen = ref(false)
 const addToTitleDialogOpen = ref(false)
 const createTitleDialogOpen = ref(false)
 const backupDialogOpen = ref(false)
+const removeBackupDialogOpen = ref(false)
+const removingBackup = ref(false)
 const backingUpBook = ref(false)
 const updatingBook = ref(false)
 const updateError = ref('')
@@ -726,6 +756,19 @@ const canBackupBook = computed(() => {
     !!book.value.title_id &&
     !book.value.title_archived &&
     !book.value.has_backup
+  )
+})
+
+const canRemoveBookBackup = computed(() => {
+  if (!book.value) return false
+  return (
+    ['quarantine', 'prod', 'staging', 'deleted'].includes(book.value.location_kind) &&
+    book.value.has_backup &&
+    authStore.hasPermission('book', 'update') &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing &&
+    !!book.value.title_id &&
+    !book.value.title_archived
   )
 })
 
@@ -919,6 +962,32 @@ const handleBackupBook = async () => {
   }
 }
 
+const openRemoveBackupDialog = () => {
+  removeBackupDialogOpen.value = true
+}
+
+const handleRemoveBookBackup = async () => {
+  if (!book.value) return
+
+  removingBackup.value = true
+  try {
+    const response = await bookStore.removeBookBackup(book.value.id)
+    if (response) {
+      book.value = response
+      notificationStore.showSuccess('Book backup removed successfully!')
+    } else {
+      for (const error of bookStore.errors) {
+        notificationStore.showError(error)
+      }
+    }
+  } catch {
+    notificationStore.showError('An error occurred while removing the book backup')
+  } finally {
+    removingBackup.value = false
+    removeBackupDialogOpen.value = false
+  }
+}
+
 const handleTitleSelected = async (titleName: string) => {
   if (!book.value || !book.value.name) return
 
@@ -1043,7 +1112,7 @@ watch(
   async (newTab) => {
     currentTab.value = newTab
 
-    await loadData(newTab == 'edit', newTab === 'history', newTab === 'info')
+    await loadData(newTab != 'history', newTab === 'history', newTab === 'info')
 
     if (newTab === 'edit' && book.value && flavours.value.length == 0) {
       loadingFlavours.value = true

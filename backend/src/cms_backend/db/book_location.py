@@ -89,8 +89,6 @@ def create_book_target_locations(
     session: OrmSession,
     book: Book,
     target_locations: list[FileLocation],
-    *,
-    is_backup: bool = False,
 ) -> None:
     """Create target locations for a book if not already at expected locations.
 
@@ -136,7 +134,7 @@ def create_book_target_locations(
             path=target_location.path,
             filename=target_location.filename,
             status="target",
-            is_backup=is_backup,
+            is_backup=target_location.is_backup,
         )
 
     book.needs_file_operation = True

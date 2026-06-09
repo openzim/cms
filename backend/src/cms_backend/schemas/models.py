@@ -32,6 +32,7 @@ class FileLocation:
     warehouse_id: UUID
     path: Path
     filename: str
+    is_backup: bool = False
 
 
 class AccountUpdateSchema(BaseModel):

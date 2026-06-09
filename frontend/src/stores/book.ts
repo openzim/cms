@@ -202,6 +202,20 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const removeBookBackup = async (bookId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.patch<null, Book>(`/${bookId}/backup/remove`)
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to remove book backup', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   const moveBook = async (bookId: string, destination: 'staging' | 'prod') => {
     const service = await authStore.getApiService('books')
     try {
@@ -265,6 +279,7 @@ export const useBookStore = defineStore('book', () => {
     fetchZimUrls,
     deleteBook,
     recoverBook,
+    removeBookBackup,
     moveBook,
     fetchBookFlavours,
     updateBook,

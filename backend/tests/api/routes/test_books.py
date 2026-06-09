@@ -11,7 +11,14 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
 from cms_backend.db.book import update_book
-from cms_backend.db.models import Account, Book, BookLocation, Title, Warehouse
+from cms_backend.db.models import (
+    Account,
+    Book,
+    BookLocation,
+    Collection,
+    Title,
+    Warehouse,
+)
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import BookUpdateSchema
 from cms_backend.utils.datetime import getnow
@@ -620,6 +627,72 @@ def test_backup_book_required_permissions(
 
     response = client.patch(
         f"/v1/books/{book.id}/backup",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_remove_book_backup_required_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    create_warehouse: Callable[..., Warehouse],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test backing up a book with different roles"""
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+
+    backup_warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "backup_warehouse_id", backup_warehouse.id)
+    monkeypatch.setattr(Context, "backup_base_path", Path("/backup"))
+
+    warehouse = create_warehouse()
+    title = create_title()
+    create_collection(warehouse=warehouse, title_ids_with_paths=[(title.id, "zim")])
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    book.location_kind = "staging"
+    book.has_error = False
+    book.needs_processing = False
+    book.needs_file_operation = False
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("backup"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+        is_backup=True,
+    )
+    dbsession.flush()
+
+    response = client.patch(
+        f"/v1/books/{book.id}/backup/remove",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
