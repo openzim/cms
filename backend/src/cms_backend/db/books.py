@@ -32,6 +32,7 @@ def get_books(
     has_backup: bool | None = None,
     updated_before: datetime.datetime | None = None,
     updated_after: datetime.datetime | None = None,
+    created_before: datetime.datetime | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -84,6 +85,9 @@ def get_books(
     if updated_after is not None:
         stmt = stmt.where(Book.updated_at > updated_after)
 
+    if created_before is not None:
+        stmt = stmt.where(Book.created_at < created_before)
+
     if needs_attention is True:
         stmt = stmt.where(
             or_(
@@ -111,6 +115,24 @@ def get_books(
             .where(BookLocation.status == "current", BookLocation.is_backup.is_(True))
             .distinct()
         )
+
+    if needs_attention is True:
+        order_clauses = [
+            Book.has_error,
+            Book.location_kind.in_(["staging", "to_delete"]).desc(),
+            Book.location_kind,
+            Book.needs_file_operation,
+            Book.created_at.desc(),
+            Book.id,
+        ]
+    else:
+        order_clauses = [
+            Book.has_error,
+            Book.location_kind,
+            Book.needs_file_operation,
+            Book.created_at.desc(),
+            Book.id,
+        ]
 
     return ListResult[BookLightSchema](
         nb_records=count_from_stmt(session, stmt),
@@ -147,15 +169,7 @@ def get_books(
                 book_issues,
                 title_flavours,
             ) in session.execute(
-                stmt.offset(skip)
-                .limit(limit)
-                .order_by(
-                    Book.has_error,
-                    Book.location_kind,
-                    Book.needs_file_operation,
-                    Book.created_at.desc(),
-                    Book.id,
-                )
+                stmt.offset(skip).limit(limit).order_by(*order_clauses)
             ).all()
         ],
     )

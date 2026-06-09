@@ -1166,3 +1166,46 @@ def test_get_books_time_filters(
     )
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
+
+
+@pytest.mark.parametrize(
+    "created_before_hours,expected_count",
+    [
+        pytest.param(None, 5, id="no-time-filters"),  # All 5 books match
+        pytest.param(6, 2, id="created-before-6h"),  # Last 2 (4h, 2h ago) - exclusive
+        pytest.param(
+            3, 4, id="created-before-3h"
+        ),  # First 4 (10h, 8h, 6h, 4h ago) - exclusive
+    ],
+)
+def test_get_books_created_before_filters(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    created_before_hours: int | None,
+    expected_count: int,
+):
+    """Test that get_books works correctly with created_before filters."""
+    now = getnow()
+    # Create 5 books with different times
+    create_book(created_at=now - datetime.timedelta(hours=10))
+    create_book(created_at=now - datetime.timedelta(hours=8))
+    create_book(created_at=now - datetime.timedelta(hours=6))
+    create_book(created_at=now - datetime.timedelta(hours=4))
+    create_book(created_at=now - datetime.timedelta(hours=2))
+
+    dbsession.flush()
+
+    created_before = (
+        now - datetime.timedelta(hours=created_before_hours)
+        if created_before_hours
+        else None
+    )
+
+    results = get_books(
+        dbsession,
+        skip=0,
+        limit=20,
+        created_before=created_before,
+    )
+    assert results.nb_records == expected_count
+    assert len(results.records) == expected_count

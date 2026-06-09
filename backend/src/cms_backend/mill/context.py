@@ -35,3 +35,19 @@ class Context:
             os.getenv("PROCESS_RETENTION_RULES_INTERVAL", default="1d")
         )
     )
+
+    mark_staging_books_for_deletion_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("MARK_STAGING_BOOKS_FOR_DELETION_INTERVAL", default="1d")
+        )
+    )
+
+    staging_books_lifespan: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("STAGING_BOOKS_LIFESPAN", default="30d"))
+    )
+
+    staging_books_deletion_grace_period: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("STAGING_BOOKS_DELETION_GRACE_PERIOD", default="7d")
+        )
+    )
