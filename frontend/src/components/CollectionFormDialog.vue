@@ -124,6 +124,8 @@ async function handleSubmit() {
         warehouse_name: formData.warehouse_name!,
         download_base_url: formData.download_base_url || undefined,
         view_base_url: formData.view_base_url || undefined,
+        article_count_change_threshold: formData.article_count_change_threshold || undefined,
+        media_count_change_threshold: formData.media_count_change_threshold || undefined,
       }
       const response = await collectionsStore.createCollection(createPayload)
       if (response) {

@@ -83,6 +83,8 @@ class CollectionFullSchema(BaseModel):
     warehouse: str
     download_base_url: str | None = None
     view_base_url: str | None = None
+    article_count_change_threshold: float | None = None
+    media_count_change_threshold: float | None = None
 
 
 class ZimfarmNotificationLightSchema(BaseModel):
@@ -171,6 +173,8 @@ class CollectionHistorySchema(BaseModel):
     created_at: datetime
     download_base_url: str | None
     view_base_url: str | None
+    article_count_change_threshold: float | None
+    media_count_change_threshold: float | None
 
 
 class WarehousePathSchema(BaseModel):

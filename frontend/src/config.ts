@@ -11,17 +11,40 @@ export interface Config {
   MATOMO_TRACKER_FILE_NAME: string
   OAUTH_BASE_URL: string
   LOGIN_MODES: Array<string>
+  MEDIA_COUNT_CHANGE_THRESHOLD: number | undefined
+  ARTICLE_COUNT_CHANGE_THRESHOLD: number | undefined
 }
 
 export const ConfigService = {
-  api: (additional_headers?: object) =>
+  api: (baseURL: string, additional_headers?: object) =>
     httpRequest({
-      baseURL: '/config.json',
+      baseURL: baseURL,
       headers: { ...additional_headers },
     }),
 
+  getStaticConfig: function () {
+    return this.api('/config.json').get<null, Config>('')
+  },
+
+  getApiConfig: function (cmsApi: string) {
+    return this.api(`${cmsApi}/config`).get<null, Config>('')
+  },
+
   getConfig: function () {
-    return this.api().get<null, Config>('')
+    return this.getStaticConfig().then((staticConfig: Config) =>
+      this.getApiConfig(staticConfig.CMS_API)
+        .then(
+          (apiConfig: Config) =>
+            ({
+              ...apiConfig,
+              ...staticConfig,
+            }) as Config,
+        )
+        .catch((error) => {
+          console.error('Failed to load API context settings:', error)
+          return staticConfig as Config
+        }),
+    )
   },
 }
 

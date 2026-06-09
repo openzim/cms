@@ -105,6 +105,7 @@ def create_book(
         zimfarm_notification: ZimfarmNotification | None = None,
         location_kind: str = "quarantine",
         updated_at: datetime | None = None,
+        title_id: UUID | None = None,
     ) -> Book:
         if zim_metadata is None:
             zim_metadata = {}
@@ -136,6 +137,7 @@ def create_book(
             flavour=flavour,
             zimfarm_notification=zimfarm_notification,
         )
+        book.title_id = title_id
         book.location_kind = location_kind
         if updated_at:
             book.updated_at = updated_at
@@ -328,6 +330,8 @@ def create_collection(
         download_base_url: str = "https://download.kiwix.org/zim/",
         view_base_url: str = "https://browse.library.kiwix.org/viewer#",
         title_ids_with_paths: list[tuple[UUID, str]] | None = None,
+        media_count_change_threshold: float | None = None,
+        article_count_change_threshold: float | None = None,
     ) -> Collection:
         if warehouse is None:
             warehouse = create_warehouse()
@@ -337,6 +341,8 @@ def create_collection(
             warehouse_id=warehouse.id,
             download_base_url=download_base_url,
             view_base_url=view_base_url,
+            media_count_change_threshold=media_count_change_threshold,
+            article_count_change_threshold=article_count_change_threshold,
         )
 
         # Add title associations if provided

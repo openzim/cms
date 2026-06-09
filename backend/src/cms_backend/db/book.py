@@ -596,8 +596,62 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
                 f"{getnow()}: book flavour is not in list of title flavours"
             )
 
+    # Get the latest prod book that isn't the current book
+    latest_book = session.scalars(
+        select(Book)
+        .where(
+            Book.location_kind == "prod",
+            Book.id != book.id,
+            Book.title_id == book.title_id,
+            Book.flavour == book.flavour,
+        )
+        .order_by(Book.created_at.desc())
+    ).first()
+    if latest_book is None:
+        latest_book = book
+
+    collection_media_count_change_threshold = min(
+        [
+            Context.media_count_change_threshold
+            if tc.collection.media_count_change_threshold is None
+            else tc.collection.media_count_change_threshold
+            for tc in book.title.collections
+        ],
+        default=Context.media_count_change_threshold,
+    )
+    collection_article_count_change_threshold = min(
+        [
+            Context.article_count_change_threshold
+            if tc.collection.article_count_change_threshold is None
+            else tc.collection.article_count_change_threshold
+            for tc in book.title.collections
+        ],
+        default=Context.article_count_change_threshold,
+    )
+
+    media_count_diff = (
+        abs(book.media_count - latest_book.media_count)
+    ) / latest_book.media_count
+
+    if media_count_diff > collection_media_count_change_threshold:
+        issues.append("media count")
+        book.events.append(
+            f"{getnow()}: book media count exceeds collection median threshold by "
+            f"{media_count_diff * 100}%"
+        )
+
+    article_count_diff = (
+        abs(book.article_count - latest_book.article_count)
+    ) / latest_book.article_count
+    if article_count_diff > collection_article_count_change_threshold:
+        issues.append("article count")
+        book.events.append(
+            f"{getnow()}: book article count exceeds collection median threshold by "
+            f"{article_count_diff * 100}%"
+        )
     book.issues = issues
     session.add(book)
+    session.flush()
 
 
 def backup_book(

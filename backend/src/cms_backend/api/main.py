@@ -14,6 +14,7 @@ from cms_backend.api.routes.account import router as account_router
 from cms_backend.api.routes.auth import router as auth_router
 from cms_backend.api.routes.books import router as books_router
 from cms_backend.api.routes.collection import router as collection_router
+from cms_backend.api.routes.config import router as config_router
 from cms_backend.api.routes.events import router as events_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
@@ -66,6 +67,7 @@ def create_app(*, debug: bool = True):
         )
 
     main_router = APIRouter(prefix="/v1")
+    main_router.include_router(router=config_router)
     main_router.include_router(router=zimfarm_notification_router)
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)

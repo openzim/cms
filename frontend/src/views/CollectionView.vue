@@ -110,6 +110,32 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Article Count Change Threshold</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <span v-if="collection.article_count_change_threshold">{{
+                  collection.article_count_change_threshold
+                }}</span>
+                <span v-else class="text-grey">Not set</span>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Media Count Change Threshold</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <span v-if="collection.media_count_change_threshold">{{
+                  collection.media_count_change_threshold
+                }}</span>
+                <span v-else class="text-grey">Not set</span>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
                 <div class="text-subtitle-2">Titles</div>
               </v-col>
               <v-col cols="12" md="9">
