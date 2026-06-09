@@ -631,11 +631,10 @@ def backup_book(
     if existing_backup:
         raise ValueError("Book already has a backup.")
 
-    # Create a current and tagret location for the backup using the book's details
-    existing_filename = current_location.filename
     target_locations = [
-        FileLocation(tc.collection.warehouse_id, tc.path, existing_filename)
-        for tc in book.title.collections
+        FileLocation(loc.warehouse_id, loc.path, loc.filename)
+        for loc in book.locations
+        if loc.status == "current"
     ]
     target_locations.append(
         FileLocation(

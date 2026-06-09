@@ -396,11 +396,14 @@ def test_backup_book_success(
     # Verify backup has a current location (source) and target location
     current_locations = [loc for loc in book.locations if loc.status == "current"]
     target_locations = [loc for loc in book.locations if loc.status == "target"]
+    backup_target_locations = [
+        loc for loc in book.locations if loc.status == "target" and loc.is_backup
+    ]
     assert len(current_locations) == 1
-    assert len(target_locations) == 1
-    assert target_locations[0].is_backup
+    assert len(target_locations) == 2
+    assert len(backup_target_locations) == 1
     assert current_locations[0].warehouse_id == warehouse.id
-    assert target_locations[0].warehouse_id == backup_warehouse.id
+    assert backup_target_locations[0].warehouse_id == backup_warehouse.id
     assert book.needs_file_operation is True
 
 
