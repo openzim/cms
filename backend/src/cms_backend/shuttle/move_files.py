@@ -93,7 +93,10 @@ def move_book_files(session: OrmSession, book: Book):
         )
         if matching_current:
             # This file is already here. Remove redundant target and remove the current
-            # location from the cleanup list
+            # location from the cleanup list after updating it's properties from the
+            # target
+            matching_current.is_backup = target_location.is_backup
+            session.add(matching_current)
             session.delete(target_location)
             book.locations.remove(target_location)
             current_locations.remove(matching_current)

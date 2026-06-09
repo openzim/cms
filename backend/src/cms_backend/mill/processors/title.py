@@ -2,7 +2,11 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.context import Context
-from cms_backend.db.book import create_book_target_locations, update_book_issues
+from cms_backend.db.book import (
+    book_goes_to_staging,
+    create_book_target_locations,
+    update_book_issues,
+)
 from cms_backend.db.models import Book, Title
 from cms_backend.db.rules import (
     apply_retention_rules,
@@ -55,12 +59,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             title.source = book.zim_metadata.get("Source")
 
         update_book_issues(session, book, update_events=True)
-
-        # Determine if this book goes to staging or prod based on
-        # - title maturity: For now, only 'stable' maturity move straight to prod,
-        # other maturity moves through staging first
-        # - issues: books with any issues move to staging regardless of maturity
-        goes_to_staging = title.maturity != "stable" or len(book.issues) != 0
+        goes_to_staging = book_goes_to_staging(book)
 
         target_locations = (
             [

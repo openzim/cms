@@ -78,7 +78,7 @@
         v-if="book.has_flavour_mismatch"
         type="warning"
         variant="tonal"
-        class="mb-4"
+        class="my-2"
         icon="mdi-alert"
       >
         <div class="d-flex align-center ga-2">
@@ -717,11 +717,14 @@ const canRecoverBook = computed(() => {
 
   return (
     authStore.hasPermission('book', 'update') &&
-    book.value.location_kind === 'to_delete' &&
-    book.value.needs_file_operation &&
     !book.value.needs_processing &&
-    hasFutureDeletionDate &&
-    !book.value.title_archived
+    !book.value.title_archived &&
+    ((book.value.needs_file_operation &&
+      book.value.location_kind === 'to_delete' &&
+      hasFutureDeletionDate) ||
+      (!book.value.needs_file_operation &&
+        book.value.location_kind === 'deleted' &&
+        book.value.has_backup))
   )
 })
 

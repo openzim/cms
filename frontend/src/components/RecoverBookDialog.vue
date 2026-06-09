@@ -21,7 +21,7 @@
           </div>
         </div>
         <v-alert type="info" density="compact" class="mb-4" variant="tonal">
-          This will recover the book and cancel the deletion process.
+          {{ message }}
         </v-alert>
       </v-card-text>
 
@@ -69,6 +69,13 @@ const loading = ref(false)
 const isOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
+})
+
+const message = computed(() => {
+  if (props.book === null) return ''
+  return props.book.location_kind === 'to_delete'
+    ? 'This will recover the book and cancel the deletion process.'
+    : 'This will recover the book using its backup.'
 })
 
 async function handleRecover() {
