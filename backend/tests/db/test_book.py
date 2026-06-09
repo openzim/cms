@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from cms_backend.db.book import (
     get_book_history,
     get_book_history_entry_or_none,
     get_differing_metadata_keys,
+    recover_book,
     remove_book_backup,
     revert_book,
     update_book,
@@ -28,6 +30,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookUpdateSchema
+from cms_backend.utils.datetime import getnow
 
 
 def test_create_book(
@@ -641,3 +644,74 @@ def test_remove_backup_for_deleted_book_moves_book_to_deleted(
     )
     assert len([loc for loc in book.locations if loc.status == "target"]) == 0
     assert len([loc for loc in book.locations if loc.status == "current"]) == 1
+
+
+def test_recover_deleted_book_with_backup(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test recovering a book that is already deleted but has a backup"""
+    warehouse = create_warehouse()
+
+    monkeypatch.setattr(Context, "staging_warehouse_id", warehouse.id)
+    monkeypatch.setattr(Context, "staging_base_path", Path("staging"))
+
+    title = create_title()
+    create_collection(warehouse=warehouse, title_ids_with_paths=[(title.id, "zim")])
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("backup"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+        is_backup=True,
+    )
+
+    now = getnow()
+    book.location_kind = "deleted"
+    book.needs_file_operation = False
+    book.needs_processing = False
+    book.deletion_date = now - datetime.timedelta(days=1)
+    dbsession.flush()
+
+    book = recover_book(dbsession, book_id=book.id)
+
+    assert book.location_kind != "deleted"
+    assert book.needs_file_operation is True
+    assert book.deletion_date is None
+    assert "Book restored from 'deleted'" in book.events[-1]
+    # book now has two target locations and one current location
+    assert len([loc for loc in book.locations if loc.status == "current"]) == 1
+    assert len([loc for loc in book.locations if loc.status == "target"]) == 2
+
+
+def test_recover_deleted_book_with_no_backup(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_warehouse: Callable[..., Warehouse],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+):
+    """Test recovering a book that is already deleted but has a backup"""
+    warehouse = create_warehouse()
+    title = create_title()
+    create_collection(warehouse=warehouse, title_ids_with_paths=[(title.id, "zim")])
+    book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
+
+    now = getnow()
+    book.location_kind = "deleted"
+    book.needs_file_operation = False
+    book.needs_processing = False
+    book.deletion_date = now - datetime.timedelta(days=1)
+    dbsession.flush()
+
+    with pytest.raises(ValueError, match=r"Book does not have a backup."):
+        recover_book(dbsession, book_id=book.id)

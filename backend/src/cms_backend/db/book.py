@@ -360,15 +360,24 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
     book = get_book_or_none(
         session,
         book_id,
-        needs_file_operation=True,
         needs_processing=False,
-        locations=["to_delete"],
+        locations=["to_delete", "deleted"],
     )
-    if book is None or (book.deletion_date and book.deletion_date <= now):
+
+    if book is None:
         raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
 
     if book.title and book.title.archived:
         raise ValueError(f"Book title {book.title_id} is currently archived")
+
+    if book.location_kind == "deleted" and book.needs_file_operation is False:
+        return _recover_deleted_book(session, book)
+
+    if book.location_kind == "to_delete" and book.needs_file_operation is False:
+        raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
+
+    if book.deletion_date and book.deletion_date <= now:
+        raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
 
     location_kind = determine_current_location_kind(book)
     book.needs_processing = False
@@ -719,4 +728,82 @@ def remove_book_backup(
     book.events.append(f"{getnow()}: Book backup scheduled to be removed")
     session.add(book)
     session.flush()
+    return book
+
+
+def book_goes_to_staging(book: Book) -> bool:
+    """Determine if a book goes to staging.
+
+    Assumes book already has an associated title. A book goes to `prod` if:
+    - book title maturity is 'stable', and
+    - book has no issues
+    """
+    if not book.title:
+        raise ValueError("Book must have a title.")
+
+    return book.title.maturity != "stable" or len(book.issues) != 0
+
+
+def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
+    """Helper function to recover a book that is deleted.
+
+    This can only happen if the book has a backup.
+    """
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    existing_backup = next(
+        (loc for loc in book.locations if loc.status == "current" and loc.is_backup),
+        None,
+    )
+
+    if not existing_backup:
+        raise ValueError("Book does not have a backup.")
+
+    target_filename = existing_backup.filename
+    # update the book location so we can update book issues
+    book.location_kind = "staging"
+    update_book_issues(session, book)
+    goes_to_staging = book_goes_to_staging(book)
+    # reset book location based on issues and title maturity
+    book.location_kind = "staging" if goes_to_staging else "prod"
+    book.deletion_date = None
+
+    target_locations = (
+        [
+            FileLocation(
+                Context.staging_warehouse_id,
+                Context.staging_base_path,
+                target_filename,
+            )
+        ]
+        if goes_to_staging
+        else [
+            FileLocation(tc.collection.warehouse_id, tc.path, target_filename)
+            for tc in book.title.collections
+        ]
+    )
+    # move_files does not consider backup locations as sources as it removes excessive
+    # current locations. so, we need to remove the backup property and recreate a new
+    # backup in target. This duplication will be a no-op that will only update the
+    # is_backup property of the existing backup.
+    existing_backup.is_backup = False
+    target_locations.append(
+        FileLocation(
+            existing_backup.warehouse_id,
+            existing_backup.path,
+            target_filename,
+            is_backup=True,
+        )
+    )
+
+    create_book_target_locations(
+        session=session,
+        book=book,
+        target_locations=target_locations,
+    )
+    book.events.append(f"{getnow()}: Book restored from 'deleted'")
+    session.add(book)
+    session.flush()
+
     return book
