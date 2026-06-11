@@ -290,6 +290,8 @@ def create_book_location(
 
         if filename is None:
             filename = "test_file.zim"
+        else:
+            book.filename = filename
 
         location = BookLocation(
             book_id=book.id,

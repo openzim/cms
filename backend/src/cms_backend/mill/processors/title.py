@@ -1,18 +1,14 @@
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
-from cms_backend.context import Context
 from cms_backend.db.book import (
-    book_goes_to_staging,
-    create_book_target_locations,
-    update_book_issues,
+    process_book,
 )
 from cms_backend.db.models import Book, Title
 from cms_backend.db.rules import (
     apply_retention_rules,
     title_is_missing_mandatory_metadata,
 )
-from cms_backend.schemas.models import FileLocation
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename
 
@@ -38,7 +34,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             title.name = book.name
 
         # Compute target filename once for this book
-        target_filename = compute_target_filename(
+        book.filename = compute_target_filename(
             session,
             name=book.name,
             flavour=book.flavour,
@@ -58,33 +54,8 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             title.relation = book.zim_metadata.get("Relation")
             title.source = book.zim_metadata.get("Source")
 
-        update_book_issues(session, book, update_events=True)
-        goes_to_staging = book_goes_to_staging(book)
-
-        target_locations = (
-            [
-                FileLocation(
-                    Context.staging_warehouse_id,
-                    Context.staging_base_path,
-                    target_filename,
-                )
-            ]
-            if goes_to_staging
-            else [
-                FileLocation(tc.collection.warehouse_id, tc.path, target_filename)
-                for tc in title.collections
-            ]
-        )
-
-        # Create target locations if not already at expected locations
-        create_book_target_locations(
-            session=session,
-            book=book,
-            target_locations=target_locations,
-        )
-        book.location_kind = "staging" if goes_to_staging else "prod"
-
-        if not goes_to_staging:
+        process_book(session, book, update_events=True)
+        if book.location_kind == "prod":
             apply_retention_rules(session, title)
 
     except Exception as exc:

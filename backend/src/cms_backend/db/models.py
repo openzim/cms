@@ -126,6 +126,7 @@ class Book(Base):
     date: Mapped[str | None]
     flavour: Mapped[str | None]
     zimcheck_result_url: Mapped[str | None]
+    filename: Mapped[str | None] = mapped_column(init=False, default=None)
     needs_processing: Mapped[bool] = mapped_column(
         init=False, default=False, server_default="false"
     )

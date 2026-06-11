@@ -35,6 +35,7 @@ from cms_backend.db.title import get_title_by_name as db_get_title_by_name
 from cms_backend.db.title import get_title_history as db_get_title_history
 from cms_backend.db.title import get_title_history_entry as db_get_title_history_entry
 from cms_backend.db.title import get_titles as db_get_titles
+from cms_backend.db.title import merge_titles as db_merge_titles
 from cms_backend.db.title import restore_title as db_restore_title
 from cms_backend.db.title import restore_titles as db_restore_titles
 from cms_backend.db.title import revert_title as db_revert_title
@@ -67,6 +68,11 @@ class RevertTitleSchema(BaseModel):
     comment: NotEmptyString | None = None
 
 
+class MergeTitlesSchema(BaseModel):
+    target: NotEmptyString
+    sources: list[NotEmptyString]
+
+
 @router.get("")
 def get_titles(
     params: Annotated[TitlesGetSchema, Query()],
@@ -94,6 +100,24 @@ def get_titles(
             page_size=len(results.records),
         ),
         items=results.records,
+    )
+
+
+@router.post(
+    "/merge",
+    dependencies=[
+        Depends(require_permission(namespace="title", name="update")),
+        Depends(require_permission(namespace="title", name="delete")),
+    ],
+)
+def merge_titles(
+    request: MergeTitlesSchema,
+    session: OrmSession = Depends(gen_dbsession),
+) -> JSONResponse:
+    db_merge_titles(session, request.target, request.sources)
+    return JSONResponse(
+        content={"message": f"Titles have been merged with {request.target}"},
+        status_code=HTTPStatus.OK,
     )
 
 

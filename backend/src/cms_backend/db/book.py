@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
+from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
@@ -742,6 +743,74 @@ def book_goes_to_staging(book: Book) -> bool:
         raise ValueError("Book must have a title.")
 
     return book.title.maturity != "stable" or len(book.issues) != 0
+
+
+def process_book(
+    session: OrmSession,
+    book: Book,
+    *,
+    update_events: bool = False,
+) -> Book:
+    """Process a book as if it just arrived.
+
+    - Makes the same assumptions as the update_book_issues function
+    - Books with location kind in "to_delete" and "deleted" are skipped
+    """
+    if book.location_kind in ["to_delete", "deleted"]:
+        logger.debug(
+            f"Skipping action to process book {book.id} with location kind "
+            f"{book.location_kind}"
+        )
+        return book
+
+    if book.needs_processing or book.needs_file_operation:
+        raise ValueError(
+            f"Cannot process book {book.id} belonging to title "
+            f"'{book.title.name}' because book either needs "  # pyright: ignore[reportOptionalMemberAccess]
+            "processing or file operation."
+        )
+
+    if not book.filename:
+        raise ValueError(f"Book {book.id} has no filename")
+
+    current_location = next(
+        (
+            loc
+            for loc in book.locations
+            if loc.status == "current" and not loc.is_backup
+        ),
+        None,
+    )
+    if not current_location:
+        logger.debug(
+            f"Skipping action to process book {book.id} because it has no current "
+            "location"
+        )
+        return book
+
+    update_book_issues(session, book, update_events=update_events)
+    goes_to_staging = book_goes_to_staging(book)
+    book.location_kind = "staging" if goes_to_staging else "prod"
+    target_locations = (
+        [
+            FileLocation(
+                Context.staging_warehouse_id,
+                Context.staging_base_path,
+                book.filename,
+            )
+        ]
+        if goes_to_staging
+        else [
+            FileLocation(tc.collection.warehouse_id, tc.path, book.filename)
+            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+        ]
+    )
+    create_book_target_locations(
+        session=session,
+        book=book,
+        target_locations=target_locations,
+    )
+    return book
 
 
 def _recover_deleted_book(session: OrmSession, book: Book) -> Book:

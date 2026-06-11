@@ -11,7 +11,12 @@ from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
 from cms_backend.db import count_from_stmt
-from cms_backend.db.book import delete_book, recover_book, update_book_issues
+from cms_backend.db.book import (
+    delete_book,
+    process_book,
+    recover_book,
+    update_book_issues,
+)
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
@@ -22,7 +27,7 @@ from cms_backend.db.models import (
     Title,
     TitleHistory,
 )
-from cms_backend.db.rules import has_flavour_mismatch
+from cms_backend.db.rules import apply_retention_rules, has_flavour_mismatch
 from cms_backend.schemas.models import (
     FileLocation,
     TitleCreateSchema,
@@ -706,3 +711,41 @@ def revert_title(
         ),
     )
     return title
+
+
+def merge_titles(
+    session: OrmSession, target_title_name: str, source_title_names: list[str]
+) -> None:
+    """
+    Merge list of titles in sources to the target title.
+
+    - Books belonging to the source titles are associated with the target title.
+    - The source titles are deleted along with their collection titles
+    - Books are re-processed as if they are new
+    """
+    if not source_title_names:
+        raise ValueError("No sources to merge from")
+
+    if target_title_name in source_title_names:
+        raise ValueError("Target title must not be in the list of sources")
+
+    source_titles = [
+        get_title_by_name(session, name=source_title_name)
+        for source_title_name in source_title_names
+    ]
+    target_title = get_title_by_name(session, name=target_title_name)
+    source_books = [book for title in source_titles for book in title.books]
+    # Attach all the books to the new title
+    for source_book in source_books:
+        source_book.title = target_title
+        session.add(source_book)
+
+    for source_title in source_titles:
+        for collection_title in source_title.collections:
+            session.delete(collection_title)
+        session.delete(source_title)
+
+    for source_book in source_books:
+        process_book(session, source_book)
+
+    apply_retention_rules(session, target_title)

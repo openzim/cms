@@ -10,7 +10,7 @@
           v-if="showSelection"
           size="small"
           variant="elevated"
-          color="warning"
+          :color="selectedTitles.length == 0 ? undefined : 'warning'"
           :disabled="selectedTitles.length === 0"
           @click="promptClearSelections"
         >

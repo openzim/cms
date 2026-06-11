@@ -1,9 +1,11 @@
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.models import (
     Account,
     Book,
@@ -12,6 +14,7 @@ from cms_backend.db.models import (
     CollectionTitle,
     Event,
     Title,
+    Warehouse,
 )
 from cms_backend.db.title import (
     archive_title,
@@ -19,6 +22,7 @@ from cms_backend.db.title import (
     get_title_history,
     get_title_history_entry_or_none,
     get_titles,
+    merge_titles,
     restore_title,
     revert_title,
     update_title,
@@ -510,3 +514,208 @@ def test_revert_title(
     assert reverted_title.flavours == ["mini", "nopic"]
     assert reverted_title.maturity == "stable"
     assert len(reverted_title.collections) == 1
+
+
+def test_merge_titles_missing_sources(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+):
+    title = create_title()
+    with pytest.raises(ValueError, match=r"No sources to merge from"):
+        merge_titles(dbsession, title.name, [])
+
+
+def test_merge_titles_target_in_sources(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+):
+    title = create_title()
+    with pytest.raises(
+        ValueError, match=r"Target title must not be in the list of sources"
+    ):
+        merge_titles(dbsession, title.name, [title.name])
+
+
+def test_merge_titles_fail_because_one_source_book_needs_processing(
+    dbsession: OrmSession,
+    create_warehouse: Callable[..., Warehouse],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "staging_warehouse_id", warehouse.id)
+    monkeypatch.setattr(Context, "staging_base_path", Path("staging"))
+
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+
+    title1 = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book1 = create_book(zim_metadata=content, location_kind="staging")
+    book1.title = title1
+    create_book_location(
+        book=book1,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2025-01.zim",
+        status="current",
+    )
+    book1.needs_processing = True
+
+    content2 = content.copy()
+    content2["Name"] = "test_eng_all"
+    content2["Date"] = "2025-02-02"
+    title2 = create_title(
+        name="test_eng_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book2 = create_book(zim_metadata=content2, location_kind="staging")
+    book2.title = title2
+    create_book_location(
+        book=book2,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_eng_all_2025-02.zim",
+        status="current",
+    )
+
+    create_collection(
+        warehouse=warehouse,
+        title_ids_with_paths=[(title1.id, "zim"), (title2.id, "zim")],
+    )
+    dbsession.flush()
+    with pytest.raises(
+        ValueError, match=r".*book either needs processing or file operation.*"
+    ):
+        merge_titles(dbsession, title2.name, [title1.name])
+
+
+def test_merge_titles_success(
+    dbsession: OrmSession,
+    create_warehouse: Callable[..., Warehouse],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "staging_warehouse_id", warehouse.id)
+    monkeypatch.setattr(Context, "staging_base_path", Path("staging"))
+
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+
+    title1 = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book1 = create_book(zim_metadata=content, location_kind="staging")
+    book1.title = title1
+    create_book_location(
+        book=book1,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2025-01.zim",
+        status="current",
+    )
+
+    content2 = content.copy()
+    content2["Name"] = "test_eng_all"
+    content2["Date"] = "2025-02-02"
+    title2 = create_title(
+        name="test_eng_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book2 = create_book(zim_metadata=content2, location_kind="staging")
+    book2.title = title2
+    create_book_location(
+        book=book2,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_eng_all_2025-02.zim",
+        status="current",
+    )
+
+    create_collection(
+        warehouse=warehouse,
+        title_ids_with_paths=[(title1.id, "zim"), (title2.id, "zim")],
+    )
+    dbsession.flush()
+    merge_titles(dbsession, title2.name, [title1.name])
+    # title1 along with it's collection titles should be deleted
+    assert (
+        dbsession.scalars(select(Title).where(Title.id == title1.id)).one_or_none()
+    ) is None
+    assert (
+        dbsession.scalars(
+            select(CollectionTitle).where(CollectionTitle.title_id == title1.id)
+        ).one_or_none()
+    ) is None
+    # book1 should now be associated with title2 with new target locations
+    book1 = dbsession.scalars(select(Book).where(Book.id == book1.id)).one()
+    assert book1.title_id == title2.id
+    assert (
+        len(
+            [
+                loc
+                for loc in book1.locations
+                if loc.status == "target" and not loc.is_backup
+            ]
+        )
+        != 0
+    )
+    assert book1.needs_file_operation is True

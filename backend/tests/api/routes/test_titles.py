@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from http import HTTPStatus
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -8,7 +9,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
-from cms_backend.db.models import Account, Book, Collection, Event, Title
+from cms_backend.context import Context
+from cms_backend.db.models import (
+    Account,
+    Book,
+    BookLocation,
+    Collection,
+    Event,
+    Title,
+    Warehouse,
+)
 from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import TitleUpdateSchema
@@ -786,6 +796,106 @@ def test_revert_title_required_permissions(
     response = client.patch(
         f"/v1/titles/{title.id}/revert/{history_id}",
         json={"comment": "Reverting"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_merge_titles_required_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_warehouse: Callable[..., Warehouse],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    monkeypatch: pytest.MonkeyPatch,
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test reverting a title with different roles"""
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "staging_warehouse_id", warehouse.id)
+    monkeypatch.setattr(Context, "staging_base_path", Path("staging"))
+
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+
+    title1 = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book1 = create_book(zim_metadata=content, location_kind="staging")
+    book1.title = title1
+    create_book_location(
+        book=book1,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2025-01.zim",
+        status="current",
+    )
+
+    content2 = content.copy()
+    content2["Name"] = "test_eng_all"
+    content2["Date"] = "2025-02-02"
+    title2 = create_title(
+        name="test_eng_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    book2 = create_book(zim_metadata=content2, location_kind="staging")
+    book2.title = title2
+    create_book_location(
+        book=book2,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_eng_all_2025-02.zim",
+        status="current",
+    )
+
+    create_collection(
+        warehouse=warehouse,
+        title_ids_with_paths=[(title1.id, "zim"), (title2.id, "zim")],
+    )
+    dbsession.flush()
+    response = client.post(
+        "/v1/titles/merge",
+        json={"target": title1.name, "sources": [title2.name]},
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
