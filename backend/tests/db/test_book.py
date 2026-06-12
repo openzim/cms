@@ -16,6 +16,7 @@ from cms_backend.db.book import (
     remove_book_backup,
     revert_book,
     update_book,
+    update_book_issues,
 )
 from cms_backend.db.book import create_book as db_create_book
 from cms_backend.db.exceptions import RecordDoesNotExistError
@@ -715,3 +716,160 @@ def test_recover_deleted_book_with_no_backup(
 
     with pytest.raises(ValueError, match=r"Book does not have a backup."):
         recover_book(dbsession, book_id=book.id)
+
+
+@pytest.mark.parametrize(
+    "article_count,media_count,article_count_threshold,media_count_threshold,expected_issues",
+    [
+        # latest book article_count is 105 and media_count is 100
+        # define collection thresholds
+        pytest.param(
+            105,
+            100,
+            0.1,
+            0.1,
+            set(),  # pyright: ignore[reportUnknownArgumentType]
+            id="collection-thresholds-within-threshold",
+        ),
+        pytest.param(
+            130,
+            105,
+            0.1,
+            0.1,
+            {"article count"},
+            id="collection-thresholds-article-count-exceeds-threshold",
+        ),
+        pytest.param(
+            100,
+            115,
+            0.1,
+            0.1,
+            {"media count"},
+            id="collection-thresholds-media-count-exceeds-threshold",
+        ),
+        pytest.param(
+            130,
+            155,
+            0.1,
+            0.1,
+            {"media count", "article count"},
+            id="collection-thresholds-media-and-article-count-exceeds-threshold",
+        ),
+        pytest.param(
+            90,
+            80,
+            0.1,
+            0.1,
+            {"media count", "article count"},
+            id="collection-thresholds-media-and-article-count-below-threshold",
+        ),
+        # collection has no threshold, so, 100% change is only what triggers issues
+        pytest.param(
+            105,
+            100,
+            None,
+            None,
+            set(),  # pyright: ignore[reportUnknownArgumentType]
+            id="no-collection-thresholds-within-threshold",
+        ),
+        pytest.param(
+            211,
+            105,
+            None,
+            None,
+            {"article count"},
+            id="no-collection-thresholds-article-count-exceeds-threshold",
+        ),
+        pytest.param(
+            100,
+            201,
+            None,
+            None,
+            {"media count"},
+            id="no-collection-thresholds-media-count-exceeds-threshold",
+        ),
+        pytest.param(
+            211,
+            201,
+            None,
+            None,
+            {"media count", "article count"},
+            id="no-collection-thresholds-media-and-article-count-exceeds-threshold",
+        ),
+    ],
+)
+def test_update_book_issues_item_count_issues(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    article_count: int,
+    media_count: int,
+    article_count_threshold: float,
+    media_count_threshold: float,
+    expected_issues: set[str],
+):
+    """Test that update_book_issues correctly flags issues with book item count"""
+    warehouse = create_warehouse()
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    # create a collection that tolerates only 10% increase in media and article count
+    create_collection(
+        warehouse=warehouse,
+        title_ids_with_paths=[(title.id, "zim")],
+        media_count_change_threshold=media_count_threshold,
+        article_count_change_threshold=article_count_threshold,
+    )
+
+    # create the latest book with media_count of 100 and article count of 105
+    latest_book = create_book(
+        article_count=105,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        zim_metadata=content,
+        location_kind="prod",
+    )
+
+    create_book_location(
+        book=latest_book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    book = create_book(
+        article_count=article_count,
+        media_count=media_count,
+        flavour="maxi",
+        title_id=title.id,
+        zim_metadata=content,
+    )
+    dbsession.flush()
+    update_book_issues(dbsession, book)
+    assert set(book.issues) == expected_issues

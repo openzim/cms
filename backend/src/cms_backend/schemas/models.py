@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import AnyUrl, model_validator
+from pydantic import AnyUrl, Field, model_validator
 
 from cms_backend.api.routes.fields import Base64Str, LangCode, NotEmptyString
 from cms_backend.roles import RoleEnum
@@ -51,6 +51,8 @@ class CollectionUpdateSchema(BaseModel):
     download_base_url: AnyUrl | None = None
     view_base_url: AnyUrl | None = None
     comment: NotEmptyString | None = None
+    article_count_change_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    media_count_change_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):

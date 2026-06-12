@@ -218,6 +218,8 @@ def create_collection_full_schema(collection: Collection) -> CollectionFullSchem
         name=collection.name,
         download_base_url=collection.download_base_url,
         view_base_url=collection.view_base_url,
+        article_count_change_threshold=collection.article_count_change_threshold,
+        media_count_change_threshold=collection.media_count_change_threshold,
     )
 
 
@@ -232,6 +234,8 @@ def create_collection_history_entry(
         comment=comment,
         download_base_url=collection.download_base_url,
         view_base_url=collection.view_base_url,
+        article_count_change_threshold=collection.article_count_change_threshold,
+        media_count_change_threshold=collection.media_count_change_threshold,
     )
     history_entry.collection = collection
     history_entry.author_id = author_id
@@ -246,7 +250,9 @@ def create_collection(
     author_id: UUID,
     warehouse_name: str,
     download_base_url: str | None = None,
-    view_base_url: str | None,
+    view_base_url: str | None = None,
+    article_count_change_threshold: float | None = None,
+    media_count_change_threshold: float | None = None,
 ) -> Collection:
     warehouse = get_warehouse(session, warehouse_name)
     collection = Collection(
@@ -254,6 +260,8 @@ def create_collection(
         download_base_url=download_base_url,
         view_base_url=view_base_url,
         warehouse_id=warehouse.id,
+        article_count_change_threshold=article_count_change_threshold,
+        media_count_change_threshold=media_count_change_threshold,
     )
     session.add(collection)
     try:
@@ -315,6 +323,8 @@ def create_collection_history_schema(
         download_base_url=entry.download_base_url,
         view_base_url=entry.view_base_url,
         author=entry.author.display_name,
+        article_count_change_threshold=entry.article_count_change_threshold,
+        media_count_change_threshold=entry.media_count_change_threshold,
     )
 
 
@@ -388,6 +398,8 @@ def revert_collection(
             if entry.download_base_url
             else None,
             view_base_url=AnyUrl(entry.view_base_url) if entry.view_base_url else None,
+            article_count_change_threshold=entry.article_count_change_threshold,
+            media_count_change_threshold=entry.media_count_change_threshold,
         ),
     )
 

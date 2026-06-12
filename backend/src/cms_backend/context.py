@@ -101,3 +101,9 @@ class Context:
         default=os.getenv("BACKUP_DOWNLOAD_BASE_URL", "")
     )
     backup_view_base_url: str = field(default=os.getenv("BACKUP_VIEW_BASE_URL", ""))
+    media_count_change_threshold: float = field(
+        default=float(os.getenv("MEDIA_COUNT_CHANGE_THRESHOLD", "0.1"))
+    )
+    article_count_change_threshold: float = field(
+        default=float(os.getenv("ARTICLE_COUNT_CHANGE_THRESHOLD", "0.1"))
+    )
