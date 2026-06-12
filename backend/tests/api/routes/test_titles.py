@@ -70,7 +70,6 @@ def test_get_titles(
         "relation",
         "source",
         "license",
-        "flavours",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 

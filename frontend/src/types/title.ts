@@ -30,21 +30,22 @@ export interface TitleLight {
   license: string | null
   relation: string | null
   source: string | null
-  flavours: string[]
 }
 
 export interface Title extends TitleLight {
   events: string[]
   books: BookLight[]
   collections: TitleCollection[]
+  flavours: string[]
 }
 
-export interface TitleHistorySchema {
+export interface TitleHistorySchema extends TitleLight {
   id: string
   comment: string | null
   author: string
   collections: BaseTitleCollection[]
   created_at: string
+  flavours: string[]
 }
 
 export interface TitleCreate {

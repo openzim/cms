@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.db import Session
-from cms_backend.db.models import Book, Title
+from cms_backend.db.models import Book, Title, TitleFlavour
 from cms_backend.db.title import get_title_by_id
 
 
@@ -37,7 +37,19 @@ def update_title_flavour(session: OrmSession, title: Title) -> tuple[bool, str]:
             session.add(book)
 
     flavours = {book.flavour for book in books if book.flavour is not None}
-    title.flavours = list(flavours)
+    for title_flavour in title.flavours:
+        session.delete(title_flavour)
+
+    title.flavours.clear()
+    session.flush()
+
+    for flavour in flavours:
+        title_flavour = TitleFlavour(flavour=flavour)
+        if title.zimfarm_recipe:
+            title_flavour.recipe_id = title.zimfarm_recipe.id
+        title_flavour.title = title
+        session.add(title_flavour)
+
     session.add(title)
     session.flush()
 

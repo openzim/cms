@@ -23,9 +23,11 @@ from cms_backend.db.models import (
     CollectionTitle,
     Event,
     Title,
+    TitleFlavour,
     TitleHistory,
     Warehouse,
     ZimfarmNotification,
+    ZimfarmRecipe,
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
@@ -198,8 +200,12 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
         )
+        if flavours:
+            for flavour in flavours:
+                title_flavour = TitleFlavour(flavour=flavour)
+                db_title.flavours.append(title_flavour)
+
         history_entry = TitleHistory(
             name=name,
             title=title,
@@ -469,6 +475,33 @@ def create_event(
         return event
 
     return _create_event
+
+
+@pytest.fixture
+def create_zimfarm_recipe(
+    dbsession: OrmSession,
+) -> Callable[..., ZimfarmRecipe]:
+    def _create_zimfarm_recipe(
+        *, recipe_id: UUID, recipe_name: str, title_id: UUID | None = None
+    ):
+        recipe = ZimfarmRecipe(
+            id=recipe_id,
+            name=recipe_name,
+        )
+        recipe.title_id = title_id
+        dbsession.add(recipe)
+        dbsession.flush()
+
+        return recipe
+
+    return _create_zimfarm_recipe
+
+
+@pytest.fixture
+def zimfarm_recipe(
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe], faker: Faker
+) -> ZimfarmRecipe:
+    return create_zimfarm_recipe(recipe_id=faker.uuid4(), recipe_name=faker.name())
 
 
 @pytest.fixture()

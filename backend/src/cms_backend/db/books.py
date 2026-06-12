@@ -3,12 +3,19 @@ from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, case, or_, select
+from sqlalchemy import String, and_, case, func, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
-from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Title,
+    TitleFlavour,
+)
 from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlSchema, ZimUrlsSchema
 from cms_backend.schemas.orms import BookLightSchema, ListResult
@@ -36,6 +43,12 @@ def get_books(
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
+    flavours_subquery = (
+        select(func.array_agg(TitleFlavour.flavour))
+        .where(TitleFlavour.title_id == Book.title_id)
+        .scalar_subquery()
+    )
+
     stmt = select(
         Book.id,
         Book.title_id,
@@ -49,7 +62,7 @@ def get_books(
         Book.date,
         Book.flavour,
         Book.issues,
-        Title.flavours,
+        flavours_subquery.label("title_flavours"),
     ).join(Title, Book.title_id == Title.id, isouter=True)
 
     if book_id is not None:
