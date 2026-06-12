@@ -33,7 +33,6 @@ class TitleLightSchema(BaseModel):
     license: str | None
     relation: str | None
     source: str | None
-    flavours: list[str]
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -53,6 +52,7 @@ class TitleFullSchema(TitleLightSchema):
     events: list[str]
     books: list["BookLightSchema"]
     collections: list["TitleCollectionSchema"]
+    flavours: list[str]
 
 
 class TitleHistorySchema(TitleLightSchema):
@@ -65,6 +65,7 @@ class TitleHistorySchema(TitleLightSchema):
     author: str
     collections: list[BaseTitleCollectionSchema]
     created_at: datetime
+    flavours: list[str]
 
 
 class CollectionLightSchema(BaseModel):

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -135,6 +136,7 @@ def test_process_title_modifications_skips_deleted_and_to_delete_books(
     )
 
     dbsession.add_all([book1, book2, book3])
+    dbsession.flush()
 
     create_title_modified_event(
         dbsession,
@@ -142,16 +144,11 @@ def test_process_title_modifications_skips_deleted_and_to_delete_books(
         title_name="wikipedia_en_all",
         title_id=title.id,
     )
-    process_title_modifications(dbsession)
-
-    dbsession.refresh(book1)
-    assert book1.title_id is None
-
-    dbsession.refresh(book2)
-    assert book2.title_id is None
-
-    dbsession.refresh(book3)
-    assert book3.title_id == title.id
+    with patch(
+        "cms_backend.mill.process_title_modifications.process_book"
+    ) as mock_process_book:
+        process_title_modifications(dbsession)
+        mock_process_book.assert_called_once_with(dbsession, book3)
 
 
 def test_process_title_modifications_processes_matching_book(
@@ -188,6 +185,8 @@ def test_process_title_modifications_processes_matching_book(
         title_name="wikipedia_en_all",
         title_id=title.id,
     )
-    process_title_modifications(dbsession)
-    dbsession.refresh(book)
-    assert book.title_id == title.id
+    with patch(
+        "cms_backend.mill.process_title_modifications.process_book"
+    ) as mock_process_book:
+        process_title_modifications(dbsession)
+        mock_process_book.assert_called_once_with(dbsession, book)

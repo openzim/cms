@@ -21,10 +21,12 @@ from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
+from cms_backend.db.flavour import get_title_flavours
 from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleFlavour,
     TitleHistory,
 )
 from cms_backend.db.rules import apply_retention_rules, has_flavour_mismatch
@@ -48,6 +50,7 @@ from cms_backend.utils.datetime import getnow
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
     """Create a full schema of a title."""
+    title_flavours = get_title_flavours(title)
     return TitleFullSchema(
         id=title.id,
         name=title.name,
@@ -63,7 +66,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         license=title.license,
         relation=title.relation,
         source=title.source,
-        flavours=title.flavours,
+        flavours=title_flavours,
         books=[
             BookLightSchema(
                 id=book.id,
@@ -78,7 +81,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 date=book.date,
                 flavour=book.flavour,
                 issues=book.issues,
-                has_flavour_mismatch=has_flavour_mismatch(book.flavour, title.flavours),
+                has_flavour_mismatch=has_flavour_mismatch(book.flavour, title_flavours),
             )
             for book in sorted(
                 title.books,
@@ -122,7 +125,6 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         license=title.license,
         relation=title.relation,
         source=title.source,
-        flavours=title.flavours,
     )
 
 
@@ -130,7 +132,12 @@ def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | N
     """Get a title by ID"""
     return session.scalars(
         select(Title)
-        .options(selectinload(Title.books), selectinload(Title.collections))
+        .options(
+            selectinload(Title.books),
+            selectinload(Title.collections),
+            selectinload(Title.zimfarm_recipe),
+            selectinload(Title.flavours),
+        )
         .where(Title.id == title_id)
     ).one_or_none()
 
@@ -149,7 +156,12 @@ def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None
 
     return session.scalars(
         select(Title)
-        .options(selectinload(Title.books), selectinload(Title.collections))
+        .options(
+            selectinload(Title.books),
+            selectinload(Title.collections),
+            selectinload(Title.zimfarm_recipe),
+            selectinload(Title.flavours),
+        )
         .where(Title.name == name)
     ).one_or_none()
 
@@ -203,7 +215,6 @@ def get_titles(
             Title.license.label("title_license"),
             Title.relation.label("title_relation"),
             Title.source.label("title_source"),
-            Title.flavours.label("title_flavours"),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
@@ -247,7 +258,6 @@ def get_titles(
                 license=title_license,
                 relation=title_relation,
                 source=title_source,
-                flavours=title_flavours,
             )
             for (
                 title_id,
@@ -264,7 +274,6 @@ def get_titles(
                 title_license,
                 title_relation,
                 title_source,
-                title_flavours,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
@@ -290,7 +299,6 @@ def create_title(
     title.source = payload.source
     title.description = payload.description
     title.long_description = payload.long_description
-    title.flavours = [] if payload.flavours is None else payload.flavours
     title.events.append(f"{getnow()}: title created")
 
     if payload.collection_titles:
@@ -305,6 +313,11 @@ def create_title(
             collection_title.title = title
 
             session.add(collection_title)
+
+    if payload.flavours:
+        for flavour in payload.flavours:
+            title_flavour = TitleFlavour(flavour=flavour)
+            title.flavours.append(title_flavour)
 
     create_title_history_entry(
         session, title, author_id, comment="Create initial history"
@@ -347,7 +360,7 @@ def create_title_history_entry(
         source=title.source,
         maturity=title.maturity,
         archived=title.archived,
-        flavours=title.flavours,
+        flavours=get_title_flavours(title),
         collection_titles=[
             {
                 "collection_name": ct.collection.name,
@@ -393,7 +406,9 @@ def update_title(
         raise RecordDoesNotExistError("Title is not archived.")
 
     update_data = payload.model_dump(
-        exclude_unset=True, exclude={"collection_titles", "comment"}, mode="json"
+        exclude_unset=True,
+        exclude={"collection_titles", "comment", "flavours"},
+        mode="json",
     )
     name_changed = payload.name is not None and payload.name != title.name
 
@@ -434,6 +449,7 @@ def update_title(
             session.delete(tc)
 
         title.collections.clear()
+        session.flush()
 
         for entry in payload.collection_titles:
             collection = get_collection_by_name(
@@ -486,6 +502,21 @@ def update_title(
             book.events.append(
                 f"{getnow()}: locations updated due to title collection change"
             )
+
+    if payload.flavours is not None:
+        # Remove existing flavours
+        for title_flavour in title.flavours:
+            session.delete(title_flavour)
+
+        title.flavours.clear()
+        session.flush()
+
+        for flavour in payload.flavours:
+            title_flavour = TitleFlavour(flavour=flavour)
+            if title.zimfarm_recipe:
+                title_flavour.recipe_id = title.zimfarm_recipe.id
+            title_flavour.title = title
+            session.add(title_flavour)
 
     if name_changed:
         create_title_modified_event(

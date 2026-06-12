@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
+from cms_backend.db.flavour import get_title_flavours
 from cms_backend.db.models import (
     Account,
     Book,
@@ -196,6 +197,88 @@ def test_update_title_collection_titles(
 
     target_locations = [loc for loc in book.locations if loc.status == "target"]
     assert len(target_locations) == 2
+
+
+def test_update_title_flavours(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    account: Account,
+):
+    """Test updating a title's flavours"""
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test")
+    create_collection_title(title, collection, path="wikis")
+
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="old_path",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(flavours=["maxi", "mini"]),
+    )
+
+    dbsession.refresh(title)
+    assert len(title.flavours) == 2
+
+
+def test_delete_title_flavours(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    account: Account,
+):
+    """Test deleting a title's flavours"""
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+    assert len(title.flavours) == 2
+
+    create_collection_title(title, collection, path="wikis")
+
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="old_path",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(flavours=[]),
+    )
+
+    dbsession.refresh(title)
+    assert len(title.flavours) == 0
 
 
 def test_archive_title(
@@ -487,7 +570,7 @@ def test_revert_title(
     assert title.license == "CC-BY-SA 4.0"
     assert title.relation == "wikipedia_v2"
     assert title.source == "https://en.wikipedia.org/v2"
-    assert title.flavours == ["maxi"]
+    assert get_title_flavours(title) == ["maxi"]
     assert title.maturity == "unstable"
     assert len(title.collections) == 2
 
@@ -511,7 +594,7 @@ def test_revert_title(
     assert reverted_title.license == "CC-BY-SA 3.0"
     assert reverted_title.relation == "wikipedia_v1"
     assert reverted_title.source == "https://en.wikipedia.org/v1"
-    assert reverted_title.flavours == ["mini", "nopic"]
+    assert get_title_flavours(reverted_title) == ["mini", "nopic"]
     assert reverted_title.maturity == "stable"
     assert len(reverted_title.collections) == 1
 

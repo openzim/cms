@@ -8,7 +8,7 @@ implementation details.
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pycountry
 import pytest
@@ -24,6 +24,7 @@ from cms_backend.db.models import (
     Title,
     Warehouse,
     ZimfarmNotification,
+    ZimfarmRecipe,
 )
 from cms_backend.mill.processors.zimfarm_notification import process_notification
 
@@ -48,6 +49,8 @@ VALID_NOTIFICATION_CONTENT: dict[str, Any] = {
     "zimcheck_url": "https://www.example.com/zimcheck.json",
     "folder_name": "test_folder",
     "filename": "test.zim",
+    "recipe_id": str(uuid4()),
+    "recipe_name": "test_en_all",
 }
 
 
@@ -280,12 +283,18 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Set title metadata from book because title has no metadata set
         """
         # Create title that matches book name
         title = create_title(name="test_en_all")
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
         title.maturity = "unstable"
         dbsession.flush()
 
@@ -314,6 +323,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
         illustration_48x48_at_1: str,
     ):
         """
@@ -331,6 +341,11 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
             illustration_48x48_at_1=illustration_48x48_at_1,
         )
         title.maturity = "unstable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
         dbsession.flush()
 
         notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -355,6 +370,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Valid notification + matching unstable maturity title → book moves to staging.
@@ -362,6 +378,11 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         # Create title that matches book name
         title = create_title(name="test_en_all")
         title.maturity = "unstable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
         dbsession.flush()
 
         notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -398,6 +419,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Valid notification with empty folder_name + unstable maturity title → book
@@ -406,6 +428,11 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         # Create title that matches book name
         title = create_title(name="test_en_all")
         title.maturity = "unstable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
         dbsession.flush()
 
         content = VALID_NOTIFICATION_CONTENT.copy()
@@ -452,11 +479,17 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """Valid notification + stable title → book has collection warehouse targets."""
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -505,6 +538,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Valid notification with empty folder_name + stable title → book has collection
@@ -513,6 +547,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -562,6 +601,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
         illustration_48x48_at_1: str,
     ):
         """
@@ -581,6 +621,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             illustration_48x48_at_1=illustration_48x48_at_1,
         )
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -621,6 +666,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Test that book goes to staging because there is a flavour mismatch between
@@ -629,6 +675,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
 
         title = create_title(name="test_en_all", flavours=["maxi", "mini"])
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -669,6 +720,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Test that book goes to staging because it has an invalid language code
@@ -676,6 +728,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -718,6 +775,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Test that book goes to prod even though it's language code is invalid
@@ -726,6 +784,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -771,6 +834,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         """
         Test that book goes to staging because there it's language code is disallowed
@@ -779,6 +843,11 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -828,9 +897,15 @@ class TestValidNotificationOnArchivedTitle:
         create_title: Callable[..., Title],
         create_collection: Callable[..., Collection],
         create_warehouse: Callable[..., Warehouse],
+        create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     ):
         title = create_title(name="test_en_all", archived=True)
         title.maturity = "stable"
+        create_zimfarm_recipe(
+            recipe_id=VALID_NOTIFICATION_CONTENT["recipe_id"],
+            recipe_name=VALID_NOTIFICATION_CONTENT["recipe_name"],
+            title_id=title.id,
+        )
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -858,3 +933,89 @@ class TestValidNotificationOnArchivedTitle:
             "cannot add book to title because title is archived" in event
             for event in book.events
         )
+
+
+class TestValidNotificationWithRecipeIssues:
+    """Test valid notifications that result to recipe issues."""
+
+    def test_recipe_name_or_id_missing_from_zimfarm_notificaton(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+
+        title = create_title(name="test_en_all")
+        VALID_NOTIFICATION_CONTENT["recipe_name"] = ""
+
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        # book is not attached to any title and has recipe issue
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id is None
+        assert book.issues == ["recipe issue"]
+
+    def test_recipe_does_not_exist(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+    ):
+
+        title = create_title(name="test_en_all")
+
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
+        dbsession.flush()
+
+        process_notification(dbsession, notification)
+
+        assert notification.status == "processed"
+
+        # book is not attached to any title and has recipe issue
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id is None
+        assert book.issues == ["recipe issue"]
+        # new recipe is now created
+        recipe = dbsession.query(ZimfarmRecipe).filter_by(
+            id=UUID(VALID_NOTIFICATION_CONTENT["recipe_id"])
+        )
+        assert recipe is not None
