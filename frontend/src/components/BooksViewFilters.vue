@@ -4,17 +4,6 @@
       <v-row>
         <v-col cols="12" sm="6" md="3">
           <v-text-field
-            v-model="localFilters.id"
-            label="ID"
-            placeholder="Search by ID..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            @change="emitFilters"
-          />
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-text-field
             v-model="localFilters.name"
             label="Name"
             placeholder="Search by name..."
@@ -35,19 +24,6 @@
             hide-details
             clearable
             :loading="loadingFlavours"
-            @update:model-value="emitFilters"
-          />
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-select
-            v-model="localFilters.needs_attention"
-            label="Needs Attention"
-            :items="needsAttentionOptions"
-            placeholder="Select needs attention"
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
             @update:model-value="emitFilters"
           />
         </v-col>
@@ -85,10 +61,8 @@ import { computed, ref, watch } from 'vue'
 // Props
 interface Props {
   filters: {
-    id: string
     name: string
     flavour: string
-    needs_attention: string
     location_kind: string
   }
   locationKindOptions?: string[]
@@ -106,10 +80,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   filtersChanged: [
     filters: {
-      id: string
       name: string
       flavour: string
-      needs_attention: string
       location_kind: string
     },
   ]
@@ -118,10 +90,8 @@ const emit = defineEmits<{
 
 // Local filters state
 const localFilters = ref({
-  id: props.filters.id,
   name: props.filters.name,
   flavour: props.filters.flavour,
-  needs_attention: props.filters.needs_attention,
   location_kind: props.filters.location_kind,
 })
 
@@ -130,10 +100,8 @@ watch(
   () => props.filters,
   (newFilters) => {
     localFilters.value = {
-      id: newFilters.id,
       name: newFilters.name,
       flavour: newFilters.flavour,
-      needs_attention: newFilters.needs_attention,
       location_kind: newFilters.location_kind,
     }
   },
@@ -153,18 +121,10 @@ const formattedFlavourOptions = computed(() => {
   }))
 })
 
-const needsAttentionOptions = [
-  { title: 'All', value: 'all' },
-  { title: 'Yes', value: 'yes' },
-  { title: 'No', value: 'no' },
-]
-
 const hasActiveFilters = computed(() => {
   return (
-    props.filters.id.length > 0 ||
     props.filters.name.length > 0 ||
     props.filters.flavour.length > 0 ||
-    props.filters.needs_attention.length > 0 ||
     props.filters.location_kind.length > 0
   )
 })
@@ -172,10 +132,8 @@ const hasActiveFilters = computed(() => {
 // Emit filters when they change
 function emitFilters() {
   emit('filtersChanged', {
-    id: localFilters.value.id,
     name: localFilters.value.name,
     flavour: localFilters.value.flavour,
-    needs_attention: localFilters.value.needs_attention,
     location_kind: localFilters.value.location_kind,
   })
 }
