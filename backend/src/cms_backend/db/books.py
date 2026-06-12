@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, or_, select
+from sqlalchemy import String, and_, case, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
@@ -110,11 +110,12 @@ def get_books(
         )
 
     if has_backup:
-        stmt = (
-            stmt.join(BookLocation, Book.id == BookLocation.book_id, isouter=True)
+        backup_books = (
+            select(BookLocation.book_id)
             .where(BookLocation.status == "current", BookLocation.is_backup.is_(True))
             .distinct()
         )
+        stmt = stmt.where(Book.id.in_(backup_books))
 
     if needs_attention is True:
         order_clauses = [
@@ -128,9 +129,16 @@ def get_books(
     else:
         order_clauses = [
             Book.has_error,
-            Book.location_kind,
-            Book.needs_file_operation,
+            case(
+                (Book.location_kind == "quarantine", 0),
+                (Book.location_kind == "staging", 1),
+                (Book.location_kind == "prod", 2),
+                (Book.location_kind == "to_delete", 3),
+                (Book.location_kind == "deleted", 4),
+                else_=5,
+            ),
             Book.created_at.desc(),
+            Book.needs_file_operation,
             Book.id,
         ]
 

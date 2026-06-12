@@ -94,14 +94,9 @@ const errors = ref<string[]>([])
 const bookFilters = computed(() => {
   const query = router.currentRoute.value.query
   const derived = {
-    id: '',
     name: '',
     flavour: '',
-    needs_attention: 'no',
     location_kind: '',
-  }
-  if (query.id && typeof query.id === 'string') {
-    derived.id = query.id
   }
 
   if (query.name && typeof query.name === 'string') {
@@ -110,10 +105,6 @@ const bookFilters = computed(() => {
 
   if (query.flavour && typeof query.flavour === 'string') {
     derived.flavour = query.flavour
-  }
-
-  if (query.needs_attention && typeof query.needs_attention === 'string') {
-    derived.needs_attention = query.needs_attention
   }
 
   if (query.location_kind && typeof query.location_kind === 'string') {
@@ -146,21 +137,12 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
     books.value = []
   }
 
-  // Convert needs_attention filter to boolean or undefined
-  let needsAttention: boolean | undefined = undefined
-  if (bookFilters.value.needs_attention === 'yes') {
-    needsAttention = true
-  } else if (bookFilters.value.needs_attention === 'no') {
-    needsAttention = false
-  }
-  // 'all' or empty string maps to undefined
-
   // Fetch books with the selected filters
   await bookStore.fetchBooks(
     limit,
     skip,
-    needsAttention,
-    bookFilters.value.id || undefined,
+    undefined,
+    undefined,
     bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
     undefined, // flag not used in this view
     bookFilters.value.name || undefined,
@@ -197,20 +179,12 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
   // create query object from selected filters
   const query: Record<string, string | string[]> = {}
 
-  if (sourceFilters.id) {
-    query.id = sourceFilters.id
-  }
-
   if (sourceFilters.name) {
     query.name = sourceFilters.name
   }
 
   if (sourceFilters.flavour) {
     query.flavour = sourceFilters.flavour
-  }
-
-  if (sourceFilters.needs_attention) {
-    query.needs_attention = sourceFilters.needs_attention
   }
 
   if (sourceFilters.location_kind) {
@@ -224,7 +198,7 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
 }
 
 async function clearFilters() {
-  updateUrlFilters({ id: '', name: '', flavour: '', needs_attention: '', location_kind: '' })
+  updateUrlFilters({ name: '', flavour: '', location_kind: '' })
 }
 
 async function handleBookFiltersChange(newFilters: typeof bookFilters.value) {
@@ -239,7 +213,7 @@ async function fetchBackupCount() {
     const currentFilters = bookFilters.value
     backupCount.value = await bookStore.countBooks(
       undefined,
-      currentFilters.id || undefined,
+      undefined,
       currentFilters.location_kind ? [currentFilters.location_kind] : undefined,
       undefined,
       currentFilters.name || undefined,
@@ -258,7 +232,6 @@ function navigateToBackups() {
   const currentFilters = bookFilters.value
   const query: Record<string, string> = { needs_attention: 'all' }
 
-  if (currentFilters.id) query.id = currentFilters.id
   if (currentFilters.name) query.name = currentFilters.name
   if (currentFilters.flavour) query.flavour = currentFilters.flavour
   if (currentFilters.location_kind) query.location_kind = currentFilters.location_kind
