@@ -42,6 +42,8 @@
           :handle-restore-titles="handleRestoreTitles"
           :archiving-text="archivingText"
           :handle-archive-titles="handleArchiveTitles"
+          :merging-text="mergingText"
+          :handle-merge-titles="handleMergeTitles"
         />
       </template>
     </TitlesTable>
@@ -92,6 +94,14 @@
       @confirm="handleArchiveConfirm"
       @cancel="handleArchiveCancel"
     />
+    <!-- Merge Titles Dialog -->
+    <MergeTitlesDialog
+      v-model="showMergeDialog"
+      :selected-titles="selectedTitles"
+      :merging="mergingText !== null"
+      @confirm="handleMergeConfirm"
+      @cancel="handleMergeCancel"
+    />
   </template>
 
   <div v-else class="d-flex align-center justify-center" style="height: 60vh">
@@ -104,6 +114,7 @@
 <script setup lang="ts">
 import CreateTitleDialog from '@/components/CreateTitleDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import MergeTitlesDialog from '@/components/MergeTitlesDialog.vue'
 import TitlesFilter from '@/components/TitlesFilters.vue'
 import TitlesTable from '@/components/TitlesTable.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -151,6 +162,8 @@ const restoringText = ref<string | null>(null)
 const showRestoreCommentDialog = ref<boolean>(false)
 const archivingText = ref<string | null>(null)
 const showArchiveDialog = ref<boolean>(false)
+const mergingText = ref<string | null>(null)
+const showMergeDialog = ref<boolean>(false)
 
 // Stores
 const router = useRouter()
@@ -306,6 +319,36 @@ async function handleArchiveConfirm() {
 
 function handleArchiveCancel() {
   archivingText.value = null
+}
+
+async function handleMergeTitles() {
+  if (props.archived) {
+    return
+  }
+  showMergeDialog.value = true
+}
+
+async function handleMergeConfirm(target: string, sources: string[]) {
+  mergingText.value = 'Merging titles...'
+  const success = await titleStore.mergeTitles(target, sources)
+  if (success) {
+    notificationStore.showSuccess(
+      `${sources.length} title${sources.length !== 1 ? 's' : ''} merged into ${target}`,
+    )
+    selectedTitles.value = []
+    await loadData(paginator.value.limit, paginator.value.skip)
+  } else {
+    for (const error of titleStore.errors) {
+      notificationStore.showError(error)
+    }
+  }
+  mergingText.value = null
+  showMergeDialog.value = false
+}
+
+function handleMergeCancel() {
+  mergingText.value = null
+  showMergeDialog.value = false
 }
 
 async function handleFiltersChange(newFilters: typeof filters.value) {

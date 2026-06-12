@@ -184,6 +184,21 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const mergeTitles = async (target: string, sources: string[]) => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ target: string; sources: string[] }, null>('/merge', {
+        target: target,
+        sources: sources,
+      })
+      return true
+    } catch (_error) {
+      console.error('Failed to merge titles', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
   return {
     // State
     title,
@@ -202,5 +217,6 @@ export const useTitleStore = defineStore('title', () => {
     restoreTitle,
     archiveTitles,
     restoreTitles,
+    mergeTitles,
   }
 })

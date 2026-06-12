@@ -1,7 +1,7 @@
 <template>
   <v-btn
     v-if="canArchive"
-    color="primary"
+    :color="isDisabled ? undefined : 'primary'"
     variant="elevated"
     size="small"
     :loading="isArchiving"
