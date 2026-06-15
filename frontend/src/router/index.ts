@@ -56,7 +56,7 @@ const routes = [
     path: '/books/backups',
     name: 'backup-books',
     component: BackupBooksView,
-    meta: { title: 'CMS | Backup Books' },
+    meta: { title: 'CMS | Backup Books', parentNavigation: 'books' },
   },
   {
     path: '/titles',
@@ -68,7 +68,7 @@ const routes = [
     path: '/titles/archives',
     name: 'archived-titles',
     component: ArchivedTitlesView,
-    meta: { title: 'CMS | Archived Titles' },
+    meta: { title: 'CMS | Archived Titles', parentNavigation: 'titles' },
   },
   {
     path: '/title/:id',
@@ -76,6 +76,7 @@ const routes = [
     component: TitleView,
     props: true,
     meta: {
+      parentNavigation: 'titles',
       title: (to: RouteLocationNormalized) => `CMS | Title • ${to.params.id}`,
     },
   },
@@ -85,6 +86,7 @@ const routes = [
     component: TitleView,
     props: true,
     meta: {
+      parentNavigation: 'titles',
       title: (to: RouteLocationNormalized) => `CMS | Title • ${to.params.id}`,
     },
   },
@@ -94,6 +96,7 @@ const routes = [
     component: BookView,
     props: true,
     meta: {
+      parentNavigation: 'books',
       title: (to: RouteLocationNormalized) => `CMS | Book • ${to.params.id}`,
     },
   },
@@ -103,6 +106,7 @@ const routes = [
     component: BookView,
     props: true,
     meta: {
+      parentNavigation: 'books',
       title: (to: RouteLocationNormalized) => `CMS | Book • ${to.params.id}`,
     },
   },
@@ -121,7 +125,8 @@ const routes = [
     component: UserView,
     props: true,
     meta: {
-      title: (to: RouteLocationNormalized) => `Zimfarm | User • ${to.params.userId}`,
+      parentNavigation: 'users',
+      title: (to: RouteLocationNormalized) => `CMS | User • ${to.params.userId}`,
     },
   },
   {
@@ -130,14 +135,15 @@ const routes = [
     component: UserView,
     props: true,
     meta: {
-      title: (to: RouteLocationNormalized) => `Zimfarm | User • ${to.params.userId}`,
+      parentNavigation: 'users',
+      title: (to: RouteLocationNormalized) => `CMS | User • ${to.params.userId}`,
     },
   },
   {
     path: '/users',
-    name: 'users-list',
+    name: 'users',
     component: UsersView,
-    meta: { title: 'Zimfarm | Users' },
+    meta: { title: 'CMS | Users' },
   },
   {
     path: '/collections',
@@ -151,6 +157,7 @@ const routes = [
     component: CollectionView,
     props: true,
     meta: {
+      parentNavigation: 'collections',
       title: (to: RouteLocationNormalized) => `CMS | Collection • ${to.params.id}`,
     },
   },
@@ -160,6 +167,7 @@ const routes = [
     component: CollectionView,
     props: true,
     meta: {
+      parentNavigation: 'collections',
       title: (to: RouteLocationNormalized) => `CMS | Collection • ${to.params.id}`,
     },
   },
