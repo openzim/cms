@@ -15,7 +15,7 @@
     <v-spacer class="d-flex"></v-spacer>
 
     <!-- Navigation Links -->
-    <v-tabs class="d-none d-md-flex" color="white" slider-color="white">
+    <v-tabs class="d-none d-md-flex" color="white" slider-color="white" :model-value="activeTab">
       <v-tab
         v-for="item in visibleNavigationItems"
         :key="item.name"
@@ -63,6 +63,7 @@
         :disabled="item.disabled"
         :prepend-icon="item.icon"
         :to="{ name: item.name }"
+        :active="activeTab == item.name"
       >
         <v-list-item-title>{{ item.label }}</v-list-item-title>
       </v-list-item>
@@ -84,7 +85,9 @@ import type { AuthProviderType } from '@/types/auth'
 import UserButton from '@/components/UserButton.vue'
 import Loading from '@/components/Loading.vue'
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 // Props
 export interface NavigationItem {
   name: string
@@ -114,6 +117,19 @@ const drawer = ref(false)
 
 const visibleNavigationItems = computed(() => {
   return props.navigationItems.filter((item) => item.show)
+})
+
+const activeTab = computed(() => {
+  let currentRouteName = route.name as string
+  if (route.meta?.parentNavigation) {
+    currentRouteName = route.meta.parentNavigation as string
+  }
+
+  const isInNavigation = visibleNavigationItems.value.some(
+    (item) => item.show && item.name == currentRouteName,
+  )
+
+  return isInNavigation ? currentRouteName : undefined
 })
 </script>
 
