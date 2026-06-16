@@ -30,7 +30,6 @@ from cms_backend.db.models import (
     TitleHistory,
 )
 from cms_backend.db.rules import apply_retention_rules, has_flavour_mismatch
-from cms_backend.db.zimfarm_recipe import update_zimfarm_recipe
 from cms_backend.schemas.models import (
     FileLocation,
     TitleCreateSchema,
@@ -511,16 +510,17 @@ def update_title(
             )
 
     if payload.flavours is not None:
-        update_zimfarm_recipe(
-            session,
-            recipe=title.zimfarm_recipes[0],
-            flavours=payload.flavours,
-            title=title,
-            current_recipes={
-                zimfarm_recipe.id for zimfarm_recipe in title.zimfarm_recipes
-            },
-        )
-        create_event = False
+        pass
+        # update_zimfarm_recipe(
+        #     session,
+        #     recipe=title.zimfarm_recipes[0],
+        #     flavours=payload.flavours,
+        #     title=title,
+        #     current_recipes={
+        #         zimfarm_recipe.id for zimfarm_recipe in title.zimfarm_recipes
+        #     },
+        #     create_event=False,
+        # )
 
     if name_changed and create_event:
         create_title_modified_event(

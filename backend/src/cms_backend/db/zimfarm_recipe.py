@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.flavour import get_title_flavours
+from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import Title, TitleFlavour, ZimfarmRecipe
 
 
@@ -55,19 +55,23 @@ def update_zimfarm_recipe(
     flavours: list[str],
     title: Title,
     current_recipes: set[UUID],
+    create_event: bool = True,
 ):
     """Update a recipe to be associated with the title and flavours.
 
-    - Existing associations with the title and it's flavours to other recipes
+    - Existing associations with the title's flavours to other recipes
         are removed. These other recipe(s) must be in the list of current recipes.
-    - Old title flavours belonging to the title are deleted and new ones are created.
+    - Old title flavours belonging to the title are deleted and new ones are created
+        and attached to recipe.
     """
-    associated_recipes: set[UUID] = set()
-    for zimfarm_recipe in title.zimfarm_recipes:
-        associated_recipes.add(zimfarm_recipe.id)
 
-    for title_flavour in title.flavours:
-        if title_flavour.recipe_id:
+    associated_recipes: set[UUID] = set()
+    existing_flavours: set[str] = set()
+
+    for flavour in flavours:
+        title_flavour = get_title_flavour_or_none(session, title.id, flavour)
+        if title_flavour and title_flavour.recipe_id:
+            existing_flavours.add(flavour)
             associated_recipes.add(title_flavour.recipe_id)
 
     if associated_recipes != current_recipes:
@@ -75,8 +79,8 @@ def update_zimfarm_recipe(
             "Mismatch between current recipes and title/title flavour recipes"
         )
 
-    existing_flaovurs = get_title_flavours(title)
-    if set(existing_flaovurs) != set(flavours):
+    if set(existing_flavours) != set(flavours):
+        # Delete the old flavours and create new ones
         for title_flavour in list(title.flavours):
             session.delete(title_flavour)
 
@@ -90,13 +94,8 @@ def update_zimfarm_recipe(
             session.add(title_flavour)
 
     recipe.title = title
-
-    for zimfarm_recipe in title.zimfarm_recipes:
-        if zimfarm_recipe.title_id != recipe.title_id:
-            zimfarm_recipe.title = None
-            session.add(zimfarm_recipe)
-
     session.flush()
-    create_title_modified_event(
-        session, action="updated", title_name=title.name, title_id=title.id
-    )
+    if create_event:
+        create_title_modified_event(
+            session, action="updated", title_name=title.name, title_id=title.id
+        )
