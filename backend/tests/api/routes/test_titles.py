@@ -18,6 +18,7 @@ from cms_backend.db.models import (
     Event,
     Title,
     Warehouse,
+    ZimfarmRecipe,
 )
 from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
@@ -770,13 +771,14 @@ def test_get_title_history_entry(
 def test_revert_title_required_permissions(
     dbsession: OrmSession,
     client: TestClient,
+    zimfarm_recipe: ZimfarmRecipe,
     create_account: Callable[..., Account],
     create_title: Callable[..., Title],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
     """Test reverting a title with different roles"""
-    title = create_title(name="wikipedia_en_test")
+    title = create_title(name="wikipedia_en_test", zimfarm_recipe=zimfarm_recipe)
     account = create_account(permission=permission)
     access_token = generate_access_token(
         account_id=str(account.id), issue_time=getnow()

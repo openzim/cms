@@ -16,6 +16,7 @@ from cms_backend.db.models import (
     Event,
     Title,
     Warehouse,
+    ZimfarmRecipe,
 )
 from cms_backend.db.title import (
     archive_title,
@@ -201,6 +202,7 @@ def test_update_title_collection_titles(
 
 def test_update_title_flavours(
     dbsession: OrmSession,
+    zimfarm_recipe: ZimfarmRecipe,
     create_title: Callable[..., Title],
     create_book_location: Callable[..., BookLocation],
     create_book: Callable[..., Book],
@@ -210,7 +212,7 @@ def test_update_title_flavours(
 ):
     """Test updating a title's flavours"""
     collection = create_collection(name="wikipedia")
-    title = create_title(name="wikipedia_en_test")
+    title = create_title(name="wikipedia_en_test", zimfarm_recipe=zimfarm_recipe)
     create_collection_title(title, collection, path="wikis")
 
     book = create_book(
@@ -241,6 +243,7 @@ def test_update_title_flavours(
 
 def test_delete_title_flavours(
     dbsession: OrmSession,
+    zimfarm_recipe: ZimfarmRecipe,
     create_title: Callable[..., Title],
     create_book_location: Callable[..., BookLocation],
     create_book: Callable[..., Book],
@@ -250,7 +253,11 @@ def test_delete_title_flavours(
 ):
     """Test deleting a title's flavours"""
     collection = create_collection(name="wikipedia")
-    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+    title = create_title(
+        name="wikipedia_en_test",
+        flavours=["maxi", "mini"],
+        zimfarm_recipe=zimfarm_recipe,
+    )
     assert len(title.flavours) == 2
 
     create_collection_title(title, collection, path="wikis")
@@ -501,11 +508,12 @@ def test_revert_title(
     create_collection_title: Callable[..., CollectionTitle],
     account: Account,
     illustration_48x48_at_1: str,
+    zimfarm_recipe: ZimfarmRecipe,
 ):
     """Test reverting a title to a previous state"""
     collection1 = create_collection(name="wikipedia")
     create_collection(name="gutenberg")
-    title = create_title(name="wikipedia_en_test")
+    title = create_title(name="wikipedia_en_test", zimfarm_recipe=zimfarm_recipe)
     create_collection_title(title, collection1, path="wikis")
 
     # Create a history with full metadata

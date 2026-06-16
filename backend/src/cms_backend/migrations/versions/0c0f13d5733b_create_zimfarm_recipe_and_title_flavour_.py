@@ -35,12 +35,6 @@ def upgrade():
     )
     op.create_table(
         "title_flavour",
-        sa.Column(
-            "id",
-            sa.Uuid(),
-            server_default=sa.text("uuid_generate_v4()"),
-            nullable=False,
-        ),
         sa.Column("title_id", sa.Uuid(), nullable=False),
         sa.Column("flavour", sa.String(), nullable=False),
         sa.Column("recipe_id", sa.Uuid(), nullable=True),
@@ -56,16 +50,12 @@ def upgrade():
             name=op.f("fk_title_flavour_title_id_title"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_title_flavour")),
-        sa.UniqueConstraint(
-            "title_id", "flavour", name=op.f("uq_title_flavour_title_id")
-        ),
+        sa.PrimaryKeyConstraint("title_id", "flavour", name=op.f("pk_title_flavour")),
     )
     op.execute(
         """
-        INSERT INTO title_flavour (id, title_id, flavour, recipe_id)
+        INSERT INTO title_flavour (title_id, flavour, recipe_id)
         SELECT
-            uuid_generate_v4() as id,
             t.id as title_id,
             flavour as flavour,
             NULL as recipe_id

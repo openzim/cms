@@ -186,6 +186,7 @@ def create_title(
         relation: str | None = None,
         source: str | None = None,
         flavours: list[str] | None = None,
+        zimfarm_recipe: ZimfarmRecipe | None = None,
     ) -> Title:
         db_title = Title(
             name=name,
@@ -224,6 +225,9 @@ def create_title(
         )
         history_entry.author_id = account.id
         history_entry.title_ = db_title
+
+        if zimfarm_recipe:
+            db_title.zimfarm_recipes.append(zimfarm_recipe)
 
         dbsession.add(db_title)
         dbsession.flush()

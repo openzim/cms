@@ -13,7 +13,13 @@ from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import get_title_flavours
-from cms_backend.db.models import Book, BookHistory, ZimfarmNotification, ZimfarmRecipe
+from cms_backend.db.models import (
+    Book,
+    BookHistory,
+    Title,
+    ZimfarmNotification,
+    ZimfarmRecipe,
+)
 from cms_backend.db.rules import (
     apply_retention_rules,
     has_flavour_mismatch,
@@ -792,13 +798,13 @@ def remove_book_backup(
 def book_goes_to_staging(book: Book) -> bool:
     """Determine if a book goes to staging.
 
-    Assumes book already has an associated title. A book goes to `prod` if:
+    A book goes to `prod` if:
+    - it has a title
     - book title maturity is 'stable', and
     - book has no issues
     """
     if not book.title:
-        raise ValueError("Book must have a title.")
-
+        return True
     return book.title.maturity != "stable" or len(book.issues) != 0
 
 
@@ -935,8 +941,15 @@ def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
     return book
 
 
-def book_has_recipe_issue(book: Book, recipe: ZimfarmRecipe) -> bool:
+def book_has_recipe_issue(
+    book_flavour: str | None, book_title: Title, recipe: ZimfarmRecipe
+) -> bool:
     """Check if book has recipe issues."""
-    if book.name != recipe.name:
+    if recipe.title_id is None:
+        return True
+    if recipe.title_id != book_title.id:
+        return True
+    flavours = [title_flavour.flavour for title_flavour in recipe.flavours]
+    if has_flavour_mismatch(book_flavour, flavours):
         return True
     return False

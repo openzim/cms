@@ -267,7 +267,7 @@ class Title(Base):
         order_by="TitleHistory.created_at.desc()",
     )
 
-    zimfarm_recipe: Mapped[Optional["ZimfarmRecipe"]] = relationship(
+    zimfarm_recipes: Mapped[list["ZimfarmRecipe"]] = relationship(
         back_populates="title", init=False
     )
     flavours: Mapped[list["TitleFlavour"]] = relationship(
@@ -478,13 +478,10 @@ class Event(Base):
 
 class TitleFlavour(Base):
     __tablename__ = "title_flavour"
-    id: Mapped[UUID] = mapped_column(
-        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
-    )
     title_id: Mapped[UUID] = mapped_column(
-        ForeignKey("title.id", ondelete="CASCADE"), init=False
+        ForeignKey("title.id", ondelete="CASCADE"), init=False, primary_key=True
     )
-    flavour: Mapped[str]
+    flavour: Mapped[str] = mapped_column(primary_key=True)
     recipe_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("zimfarm_recipe.id", ondelete="SET NULL"), init=False
     )
@@ -492,7 +489,6 @@ class TitleFlavour(Base):
         init=False, back_populates="flavours"
     )
     title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
-    __table_args__ = (UniqueConstraint("title_id", "flavour"),)
 
 
 class ZimfarmRecipe(Base):
@@ -504,7 +500,7 @@ class ZimfarmRecipe(Base):
         ForeignKey("title.id", ondelete="SET NULL"), init=False
     )
     title: Mapped[Optional["Title"]] = relationship(
-        init=False, back_populates="zimfarm_recipe"
+        init=False, back_populates="zimfarm_recipes"
     )
     flavours: Mapped[list["TitleFlavour"]] = relationship(
         back_populates="recipe", init=False

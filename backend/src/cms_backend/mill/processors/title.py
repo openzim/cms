@@ -35,33 +35,41 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
     try:
         # Retrieve name from book.name directly
         if not book.name:
-            raise Exception("book name is missing or invalid")
+            raise ValueError("book name is missing or invalid")
 
         # Validate book.date is also present and valid
         if not book.date:
-            raise Exception("book date is missing or invalid")
+            raise ValueError("book date is missing or invalid")
 
-        if book.zimfarm_notification and not get_missing_keys(
+        if not book.zimfarm_notification:
+            raise ValueError("book is missing zimfarm notification")
+
+        missing_recipe_keys = get_missing_keys(
             book.zimfarm_notification.content, "recipe_id", "recipe_name"
-        ):
-            content = book.zimfarm_notification.content
-            recipe = get_zimfarm_recipe_by_id_or_none(session, content["recipe_id"])
-            if recipe is None:
-                recipe = create_zimfarm_recipe(
-                    session,
-                    recipe_id=content["recipe_id"],
-                    recipe_name=content["recipe_name"],
-                )
+        )
+        if missing_recipe_keys:
+            raise ValueError(
+                "book notification is missing recipe details: "
+                f"{','.join(missing_recipe_keys)}"
+            )
 
-            if book_has_recipe_issue(book, recipe):
-                book.issues = ["recipe issue"]
-            elif recipe.title_id != title.id:
-                book.issues = ["recipe issue"]
-            recipe.name = content["recipe_name"]
-        else:
+        content = book.zimfarm_notification.content
+        recipe = get_zimfarm_recipe_by_id_or_none(session, content["recipe_id"])
+        if recipe is None:
+            recipe = create_zimfarm_recipe(
+                session,
+                recipe_id=content["recipe_id"],
+                recipe_name=content["recipe_name"],
+            )
+        recipe.name = content["recipe_name"]
+
+        if book_has_recipe_issue(book.flavour, title, recipe):
             book.issues = ["recipe issue"]
-
-        if not book.issues:
+            book.events.append(
+                f"{getnow()}: cannot add book to title {title.id} "
+                "because of recipe issue"
+            )
+        else:
             title.books.append(book)
             book.events.append(f"{getnow()}: book added to title {title.id}")
             title.events.append(f"{getnow()}: book {book.id} added to title")

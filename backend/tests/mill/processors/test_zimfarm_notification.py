@@ -936,47 +936,6 @@ class TestValidNotificationOnArchivedTitle:
 
 
 class TestValidNotificationWithRecipeIssues:
-    """Test valid notifications that result to recipe issues."""
-
-    def test_recipe_name_or_id_missing_from_zimfarm_notificaton(
-        self,
-        dbsession: OrmSession,
-        warehouse: Warehouse,  # noqa: ARG002
-        create_zimfarm_notification: Callable[..., ZimfarmNotification],
-        create_title: Callable[..., Title],
-        create_collection: Callable[..., Collection],
-        create_warehouse: Callable[..., Warehouse],
-    ):
-
-        title = create_title(name="test_en_all")
-        VALID_NOTIFICATION_CONTENT["recipe_name"] = ""
-
-        title.maturity = "stable"
-
-        prod = create_warehouse(
-            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
-        )
-        collection = create_collection(warehouse=prod)
-
-        ct = CollectionTitle(path=Path("wikipedia"))
-        ct.title = title
-        ct.collection = collection
-        dbsession.add(ct)
-        dbsession.flush()
-
-        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
-        dbsession.flush()
-
-        process_notification(dbsession, notification)
-
-        assert notification.status == "processed"
-
-        # book is not attached to any title and has recipe issue
-        book = dbsession.query(Book).filter_by(id=notification.id).first()
-        assert book is not None
-        assert book.title_id is None
-        assert book.issues == ["recipe issue"]
-
     def test_recipe_does_not_exist(
         self,
         dbsession: OrmSession,

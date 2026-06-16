@@ -30,6 +30,7 @@ from cms_backend.db.models import (
     TitleHistory,
 )
 from cms_backend.db.rules import apply_retention_rules, has_flavour_mismatch
+from cms_backend.db.zimfarm_recipe import update_zimfarm_recipe
 from cms_backend.schemas.models import (
     FileLocation,
     TitleCreateSchema,
@@ -135,7 +136,7 @@ def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | N
         .options(
             selectinload(Title.books),
             selectinload(Title.collections),
-            selectinload(Title.zimfarm_recipe),
+            selectinload(Title.zimfarm_recipes),
             selectinload(Title.flavours),
         )
         .where(Title.id == title_id)
@@ -159,7 +160,7 @@ def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None
         .options(
             selectinload(Title.books),
             selectinload(Title.collections),
-            selectinload(Title.zimfarm_recipe),
+            selectinload(Title.zimfarm_recipes),
             selectinload(Title.flavours),
         )
         .where(Title.name == name)
@@ -280,7 +281,11 @@ def get_titles(
 
 
 def create_title(
-    session: OrmSession, *, author_id: UUID, payload: TitleCreateSchema
+    session: OrmSession,
+    *,
+    author_id: UUID,
+    payload: TitleCreateSchema,
+    create_event: bool = True,
 ) -> Title:
     """Create a new title"""
 
@@ -335,9 +340,10 @@ def create_title(
         logger.exception("Unknown exception encountered while creating title")
         raise
 
-    create_title_modified_event(
-        session, action="created", title_name=title.name, title_id=title.id
-    )
+    if create_event:
+        create_title_modified_event(
+            session, action="created", title_name=title.name, title_id=title.id
+        )
 
     return title
 
@@ -381,6 +387,7 @@ def update_title(
     title_identifier: str,
     author_id: UUID,
     payload: TitleUpdateSchema,
+    create_event: bool = True,
 ) -> Title:
     """Update a title's details
 
@@ -504,21 +511,18 @@ def update_title(
             )
 
     if payload.flavours is not None:
-        # Remove existing flavours
-        for title_flavour in title.flavours:
-            session.delete(title_flavour)
+        update_zimfarm_recipe(
+            session,
+            recipe=title.zimfarm_recipes[0],
+            flavours=payload.flavours,
+            title=title,
+            current_recipes={
+                zimfarm_recipe.id for zimfarm_recipe in title.zimfarm_recipes
+            },
+        )
+        create_event = False
 
-        title.flavours.clear()
-        session.flush()
-
-        for flavour in payload.flavours:
-            title_flavour = TitleFlavour(flavour=flavour)
-            if title.zimfarm_recipe:
-                title_flavour.recipe_id = title.zimfarm_recipe.id
-            title_flavour.title = title
-            session.add(title_flavour)
-
-    if name_changed:
+    if name_changed and create_event:
         create_title_modified_event(
             session, action="updated", title_name=title.name, title_id=title.id
         )
