@@ -15,6 +15,11 @@ export interface TitleCollection extends BaseTitleCollection {
   collection_id: string
 }
 
+export interface TitleFlavour {
+  flavour: string
+  recipe_id: string
+}
+
 export interface TitleLight {
   id: string
   name: string
@@ -36,7 +41,7 @@ export interface Title extends TitleLight {
   events: string[]
   books: BookLight[]
   collections: TitleCollection[]
-  flavours: string[]
+  flavours: TitleFlavour[]
 }
 
 export interface TitleHistorySchema extends TitleLight {
@@ -45,7 +50,6 @@ export interface TitleHistorySchema extends TitleLight {
   author: string
   collections: BaseTitleCollection[]
   created_at: string
-  flavours: string[]
 }
 
 export interface TitleCreate {
@@ -62,7 +66,6 @@ export interface TitleCreate {
   license?: string | null
   relation?: string | null
   source?: string | null
-  flavours?: string[] | null
 }
 
 export interface TitleUpdate {
@@ -79,6 +82,5 @@ export interface TitleUpdate {
   license?: string | null
   relation?: string | null
   source?: string | null
-  flavours?: string[] | null
   comment?: string
 }

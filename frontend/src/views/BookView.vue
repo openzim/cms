@@ -158,6 +158,19 @@
           <v-icon class="mr-2">mdi-pencil</v-icon>
           Edit
         </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="hasIssues && canFixIssues"
+          value="fix-issues"
+          :to="{
+            name: 'book-detail-tab',
+            params: { id: book.id, selectedTab: 'fix-issues' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-wrench</v-icon>
+          Fix Issues
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="currentTab">
@@ -473,6 +486,17 @@
             @revert="handleRevert"
           />
         </v-window-item>
+
+        <!-- Fix Issues Tab -->
+        <v-window-item value="fix-issues">
+          <FixIssuesForm
+            v-if="hasIssues && book && canFixIssues"
+            ref="fixIssuesFormRef"
+            :book="book"
+            @title-created="openCreateTitleDialog"
+            @recipe-configured="handleRecipeConfigured"
+          />
+        </v-window-item>
       </v-window>
     </div>
 
@@ -484,6 +508,8 @@
       v-model="addToTitleDialogOpen"
       :book-name="book.name"
       @title-selected="handleTitleSelected"
+      :alert-message="`This will update the tilte name to ${book.name}`"
+      confirm-button-text="Update Title"
     />
     <TitleFormDialog
       v-model="createTitleDialogOpen"
@@ -578,6 +604,7 @@ import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import EditBookForm from '@/components/EditBookForm.vue'
 import EventsList from '@/components/EventsList.vue'
+import FixIssuesForm from '@/components/FixIssuesForm.vue'
 import MoveBookDialog from '@/components/MoveBookDialog.vue'
 import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
 import TitleSelectDialog from '@/components/TitleSelectDialog.vue'
@@ -591,6 +618,7 @@ import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
 import { useBookHistoryStore } from '@/stores/bookHistory'
 import type { Book, ZimUrl } from '@/types/book'
+import { useRouter } from 'vue-router'
 import type { Title } from '@/types/title'
 import { formatDt, fromNow } from '@/utils/format'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -599,6 +627,8 @@ import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
 
 const { smAndDown } = useDisplay()
+
+const router = useRouter()
 
 const loadingStore = useLoadingStore()
 const bookStore = useBookStore()
@@ -627,6 +657,8 @@ const updateError = ref('')
 const flavours = ref<string[]>([])
 const loadingFlavours = ref(false)
 const loadingHistory = ref(false)
+
+const fixIssuesFormRef = ref<InstanceType<typeof FixIssuesForm> | null>(null)
 
 const showConfirmDialog = ref(false)
 const pendingComment = ref('')
@@ -780,6 +812,22 @@ const isDeletionDatePast = computed(() => {
   return new Date(book.value.deletion_date) < new Date()
 })
 
+const hasIssues = computed(() => {
+  if (!book.value?.issues) return false
+  return book.value.issues.length > 0
+})
+
+const canFixRecipeIssue = computed(() => {
+  if (!book.value?.issues) return false
+  return (
+    book.value.issues.some((issue: string) => issue == 'recipe issue') &&
+    authStore.hasPermission('title', 'update') &&
+    authStore.hasPermission('recipe', 'update')
+  )
+})
+
+const canFixIssues = computed(() => canFixRecipeIssue.value)
+
 const titleDataFromBook = computed<Title | null>(() => {
   if (!book.value) return null
 
@@ -803,10 +851,10 @@ const titleDataFromBook = computed<Title | null>(() => {
     license: (metadata.License as string | null | undefined) || null,
     relation: (metadata.Relation as string | null | undefined) || null,
     source: (metadata.Source as string | null | undefined) || null,
-    flavours: book.value.flavour ? [book.value.flavour] : [],
     events: [],
     books: [],
     collections: [],
+    flavours: [],
   }
 })
 
@@ -1013,8 +1061,15 @@ const handleTitleSelected = async (titleName: string) => {
   }
 }
 
-const handleTitleCreated = async () => {
+const handleTitleCreated = async (titleName: string) => {
   notificationStore.showSuccess('Title created successfully!')
+  await loadData(true, currentTab.value == 'history', currentTab.value == 'info')
+  if (currentTab.value == 'fix-issues') {
+    await fixIssuesFormRef.value?.handlePostTitleCreation(titleName)
+  }
+}
+
+const handleRecipeConfigured = async () => {
   await loadData(true, currentTab.value == 'history', currentTab.value == 'info')
 }
 
@@ -1134,6 +1189,21 @@ watch(
     book.value = null
     currentTab.value = 'info'
     await loadData(true)
+  },
+)
+
+watch(
+  () => hasIssues.value,
+  (newValue) => {
+    if (!newValue) {
+      router.push({
+        name: 'book-detail-tab',
+        params: {
+          id: book.value.id,
+          selectedTab: 'info',
+        },
+      })
+    }
   },
 )
 

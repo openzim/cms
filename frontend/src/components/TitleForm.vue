@@ -29,24 +29,6 @@
           </v-switch>
         </v-col>
       </v-row>
-      <v-row>
-        <v-col cols="12">
-          <v-combobox
-            v-model="formData.flavours"
-            label="Expected Flavours"
-            variant="outlined"
-            density="compact"
-            clearable
-            chips
-            multiple
-            closable-chips
-            hint="Press Enter to add a new flavour or select from available options"
-            persistent-hint
-            :items="availableFlavours"
-            :loading="loadingFlavours"
-          />
-        </v-col>
-      </v-row>
     </div>
 
     <v-divider class="my-6" />
@@ -424,7 +406,6 @@
 <script setup lang="ts">
 import ImageEditor from '@/components/ImageEditor.vue'
 import { useCollectionsStore } from '@/stores/collections'
-import { useBookStore } from '@/stores/book'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
 import type { Book } from '@/types/book'
 import { computed, ref, watch } from 'vue'
@@ -447,13 +428,10 @@ const emit = defineEmits<{
 }>()
 
 const collectionsStore = useCollectionsStore()
-const bookStore = useBookStore()
 
 const formRef = ref()
 const formValid = ref(false)
 const loadingCollections = ref(false)
-const availableFlavours = ref<string[]>([])
-const loadingFlavours = ref(false)
 
 const formData = ref<TitleUpdate>({
   name: '',
@@ -469,7 +447,6 @@ const formData = ref<TitleUpdate>({
   license: null,
   relation: null,
   source: null,
-  flavours: [],
 })
 
 const originalCollections = ref<BaseTitleCollection[]>([])
@@ -637,13 +614,6 @@ const hasChanges = computed(() => {
   const relationChanged = formData.value.relation !== props.title?.relation
   const sourceChanged = formData.value.source !== props.title?.source
 
-  // Check if flavours changed
-  const titleFlavours = props.title?.flavours || []
-  const formFlavours = formData.value.flavours || []
-  const flavoursChanged =
-    titleFlavours.length !== formFlavours.length ||
-    !titleFlavours.every((f) => formFlavours.includes(f))
-
   return (
     nameChanged ||
     maturityChanged ||
@@ -657,7 +627,6 @@ const hasChanges = computed(() => {
     licenseChanged ||
     relationChanged ||
     sourceChanged ||
-    flavoursChanged ||
     hasCollectionChanges.value
   )
 })
@@ -723,6 +692,10 @@ function addCollectionTitle() {
   const availableCollections = getAvailableCollections(newIndex)
   if (availableCollections.length === 1) {
     newCollectionTitle.collection_name = availableCollections[0]
+    const availablePaths = getAvailablePaths(availableCollections[0])
+    if (availablePaths.length > 0) {
+      newCollectionTitle.path = availablePaths[0]
+    }
   }
 }
 
@@ -731,8 +704,16 @@ function removeCollectionTitle(index: number) {
 }
 
 function handleCollectionChange(index: number) {
+  const collectionTitle = formData.value.collection_titles[index]
   // Reset path when collection changes
-  formData.value.collection_titles[index].path = ''
+  collectionTitle.path = ''
+
+  if (collectionTitle.collection_name) {
+    const availablePaths = getAvailablePaths(collectionTitle.collection_name)
+    if (availablePaths.length > 0) {
+      collectionTitle.path = availablePaths[0]
+    }
+  }
 }
 
 function resetFormToTitle(title: Title) {
@@ -756,7 +737,6 @@ function resetFormToTitle(title: Title) {
     license: title.license,
     relation: title.relation,
     source: title.source,
-    flavours: title.flavours ? [...title.flavours] : [],
   }
 
   originalCollections.value = collections.map((c) => ({ ...c }))
@@ -778,10 +758,21 @@ function resetForm() {
     license: null,
     relation: null,
     source: null,
-    flavours: [],
   }
   originalCollections.value = []
   formRef.value?.resetValidation()
+
+  if (collectionNames.value.length > 0) {
+    const firstCollectionName = collectionNames.value[0]
+    const availablePaths = getAvailablePaths(firstCollectionName)
+
+    if (availablePaths.length > 0) {
+      formData.value.collection_titles.push({
+        collection_name: firstCollectionName,
+        path: availablePaths[0],
+      })
+    }
+  }
 }
 
 async function fetchCollections() {
@@ -792,20 +783,6 @@ async function fetchCollections() {
     console.error('Failed to fetch collections', err)
   } finally {
     loadingCollections.value = false
-  }
-}
-
-async function fetchFlavours() {
-  loadingFlavours.value = true
-  try {
-    const flavours = await bookStore.fetchBookFlavours()
-    if (flavours) {
-      availableFlavours.value = flavours
-    }
-  } catch (err) {
-    console.error('Failed to fetch flavours', err)
-  } finally {
-    loadingFlavours.value = false
   }
 }
 
@@ -826,7 +803,6 @@ function getFormData(): TitleUpdate {
       license: formData.value.license,
       relation: formData.value.relation,
       source: formData.value.source,
-      flavours: formData.value.flavours || [],
     }
   }
   return { ...formData.value }
@@ -885,17 +861,6 @@ function getUpdatePayload(): Partial<TitleUpdate> {
     payload.source = formData.value.source
   }
 
-  // Check if flavours changed
-  const titleFlavours = props.title.flavours || []
-  const formFlavours = formData.value.flavours || []
-  const flavoursChanged =
-    titleFlavours.length !== formFlavours.length ||
-    !titleFlavours.every((f) => formFlavours.includes(f))
-
-  if (flavoursChanged) {
-    payload.flavours = formData.value.flavours
-  }
-
   if (hasCollectionChanges.value) {
     payload.collection_titles = formData.value.collection_titles
   }
@@ -906,7 +871,6 @@ function getUpdatePayload(): Partial<TitleUpdate> {
 // Expose methods and data for parent components
 defineExpose({
   fetchCollections,
-  fetchFlavours,
   resetForm,
   resetFormToTitle,
   getFormData,

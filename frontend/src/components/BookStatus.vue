@@ -50,7 +50,7 @@
     </v-chip>
 
     <!-- Issues indicator -->
-    <v-menu v-if="hasIssues" :close-on-content-click="false">
+    <v-menu v-if="hasIssues" :close-on-content-click="false" v-model="menuOpen">
       <template #activator="{ props: menuProps }">
         <v-chip
           v-bind="menuProps"
@@ -72,14 +72,34 @@
           </template>
           <v-list-item-title class="text-wrap">{{ warning }}</v-list-item-title>
         </v-list-item>
+        <v-divider v-if="canFixIssues" class="my-2" />
+        <v-list-item v-if="canFixRecipeIssue">
+          <v-btn
+            color="primary"
+            variant="elevated"
+            size="small"
+            block
+            :to="{
+              name: 'book-detail-tab',
+              params: { id: book.id, selectedTab: 'fix-issues' },
+            }"
+            @click="menuOpen = false"
+          >
+            <v-icon size="small" class="mr-1">mdi-wrench</v-icon>
+            Fix Recipe Issue
+          </v-btn>
+        </v-list-item>
       </v-list>
     </v-menu>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Book, BookLight } from '@/types/book'
+import { useAuthStore } from '@/stores/auth'
+
+const menuOpen = ref(false)
 
 const props = withDefaults(
   defineProps<{
@@ -90,6 +110,8 @@ const props = withDefaults(
     forceRow: false,
   },
 )
+
+const authStore = useAuthStore()
 
 const isErrored = computed(() => props.book.has_error)
 const isDeleted = computed(() => props.book.location_kind === 'deleted')
@@ -105,6 +127,15 @@ const isMovingFiles = computed(
 )
 const hasTitle = computed(() => props.book.title_id)
 const hasIssues = computed(() => props.book.issues && props.book.issues.length > 0)
+const canFixRecipeIssue = computed(
+  () =>
+    props.book.issues &&
+    props.book.issues.some((issue: string) => issue == 'recipe issue') &&
+    authStore.hasPermission('title', 'update') &&
+    authStore.hasPermission('recipe', 'update'),
+)
+
+const canFixIssues = computed(() => canFixRecipeIssue.value)
 
 const showLocationChip = computed(() => {
   // If the evaluated status is 'Errored' or 'Processing', we want to show the location chip
