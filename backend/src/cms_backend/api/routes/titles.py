@@ -12,11 +12,6 @@ from cms_backend.api.routes.dependencies import (
     get_current_account_or_none,
     require_permission,
 )
-from cms_backend.api.routes.fields import (
-    LimitFieldMax200,
-    NotEmptyString,
-    SkipField,
-)
 from cms_backend.api.routes.http_errors import ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -41,6 +36,11 @@ from cms_backend.db.title import restore_titles as db_restore_titles
 from cms_backend.db.title import revert_title as db_revert_title
 from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import (
+    LimitFieldMax200,
+    NotEmptyString,
+    SkipField,
+)
 from cms_backend.schemas.models import TitleCreateSchema, TitleUpdateSchema
 from cms_backend.schemas.orms import (
     TitleFullSchema,

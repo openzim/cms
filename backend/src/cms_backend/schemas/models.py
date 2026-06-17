@@ -5,9 +5,9 @@ from uuid import UUID
 
 from pydantic import AnyUrl, Field, model_validator
 
-from cms_backend.api.routes.fields import Base64Str, LangCode, NotEmptyString
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import Base64Str, LangCode, NotEmptyString
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
 
@@ -67,7 +67,6 @@ class BaseTitleCreateUpdateSchema(BaseModel):
     publisher: NotEmptyString | None = None
     language: LangCode | None = None
     illustration_48x48_at_1: Base64Str | None = None
-    flavours: list[str] | None = None
     archived: bool | None = None
 
     @model_validator(mode="after")

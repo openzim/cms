@@ -205,7 +205,10 @@ def create_title(
         if flavours:
             for flavour in flavours:
                 title_flavour = TitleFlavour(flavour=flavour)
-                db_title.flavours.append(title_flavour)
+                if zimfarm_recipe:
+                    title_flavour.recipe = zimfarm_recipe
+                title_flavour.title = db_title
+                dbsession.add(title_flavour)
 
         history_entry = TitleHistory(
             name=name,
@@ -220,7 +223,6 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
             comment="Initial history entry",
         )
         history_entry.author_id = account.id
@@ -484,13 +486,17 @@ def create_event(
 @pytest.fixture
 def create_zimfarm_recipe(
     dbsession: OrmSession,
+    faker: Faker,
 ) -> Callable[..., ZimfarmRecipe]:
     def _create_zimfarm_recipe(
-        *, recipe_id: UUID, recipe_name: str, title_id: UUID | None = None
+        *,
+        recipe_id: UUID | None = None,
+        recipe_name: str | None = None,
+        title_id: UUID | None = None,
     ):
         recipe = ZimfarmRecipe(
-            id=recipe_id,
-            name=recipe_name,
+            id=recipe_id or UUID(faker.uuid4()),
+            name=recipe_name or faker.company(),
         )
         recipe.title_id = title_id
         dbsession.add(recipe)

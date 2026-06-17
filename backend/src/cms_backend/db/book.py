@@ -101,6 +101,18 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         if location.status == "target"
     ]
 
+    if book.title:
+        recipe_id = next(
+            (
+                title_flavour.recipe_id
+                for title_flavour in book.title.flavours
+                if title_flavour.flavour == book.flavour
+            ),
+            None,
+        )
+    else:
+        recipe_id = None
+
     return BookFullSchema(
         id=book.id,
         title_id=book.title_id,
@@ -131,6 +143,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         has_backup=any(
             current_location.is_backup for current_location in current_locations
         ),
+        recipe_id=recipe_id,
     )
 
 
@@ -947,9 +960,10 @@ def book_has_recipe_issue(
     """Check if book has recipe issues."""
     if recipe.title_id is None:
         return True
-    if recipe.title_id != book_title.id:
+    if recipe.title_id != book_title.id and book_title.id not in [
+        tf.recipe_id for tf in book_title.flavours
+    ]:
         return True
-    flavours = [title_flavour.flavour for title_flavour in recipe.flavours]
-    if has_flavour_mismatch(book_flavour, flavours):
+    if has_flavour_mismatch(book_flavour, [tf.flavour for tf in recipe.flavours]):
         return True
     return False

@@ -243,6 +243,9 @@ class Title(Base):
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
+    flavours_: Mapped[list[str]] = mapped_column(
+        default_factory=list, server_default="{}"
+    )
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
@@ -305,9 +308,6 @@ class TitleHistory(Base):
     source: Mapped[str | None] = mapped_column(default=None)
     maturity: Mapped[str] = mapped_column(default="unstable")
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
-    flavours: Mapped[list[str]] = mapped_column(
-        default_factory=list, server_default="{}"
-    )
     collection_titles: Mapped[list[dict[str, Any]]] = mapped_column(
         default_factory=list, server_default="{}"
     )
@@ -482,10 +482,10 @@ class TitleFlavour(Base):
         ForeignKey("title.id", ondelete="CASCADE"), init=False, primary_key=True
     )
     flavour: Mapped[str] = mapped_column(primary_key=True)
-    recipe_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("zimfarm_recipe.id", ondelete="SET NULL"), init=False
+    recipe_id: Mapped[UUID] = mapped_column(
+        ForeignKey("zimfarm_recipe.id", ondelete="CASCADE"), init=False
     )
-    recipe: Mapped[Optional["ZimfarmRecipe"]] = relationship(
+    recipe: Mapped["ZimfarmRecipe"] = relationship(
         init=False, back_populates="flavours"
     )
     title: Mapped["Title"] = relationship(back_populates="flavours", init=False)

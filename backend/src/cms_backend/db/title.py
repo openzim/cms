@@ -21,12 +21,11 @@ from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
-from cms_backend.db.flavour import get_title_flavours
+from cms_backend.db.flavour import create_title_flavour_schema, get_title_flavours
 from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
-    TitleFlavour,
     TitleHistory,
 )
 from cms_backend.db.rules import apply_retention_rules, has_flavour_mismatch
@@ -66,7 +65,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         license=title.license,
         relation=title.relation,
         source=title.source,
-        flavours=title_flavours,
+        flavours=[create_title_flavour_schema(tf) for tf in title.flavours],
         books=[
             BookLightSchema(
                 id=book.id,
@@ -318,11 +317,6 @@ def create_title(
 
             session.add(collection_title)
 
-    if payload.flavours:
-        for flavour in payload.flavours:
-            title_flavour = TitleFlavour(flavour=flavour)
-            title.flavours.append(title_flavour)
-
     create_title_history_entry(
         session, title, author_id, comment="Create initial history"
     )
@@ -365,7 +359,6 @@ def create_title_history_entry(
         source=title.source,
         maturity=title.maturity,
         archived=title.archived,
-        flavours=get_title_flavours(title),
         collection_titles=[
             {
                 "collection_name": ct.collection.name,
@@ -509,19 +502,6 @@ def update_title(
                 f"{getnow()}: locations updated due to title collection change"
             )
 
-    if payload.flavours is not None:
-        pass
-        # update_zimfarm_recipe(
-        #     session,
-        #     recipe=title.zimfarm_recipes[0],
-        #     flavours=payload.flavours,
-        #     title=title,
-        #     current_recipes={
-        #         zimfarm_recipe.id for zimfarm_recipe in title.zimfarm_recipes
-        #     },
-        #     create_event=False,
-        # )
-
     if name_changed and create_event:
         create_title_modified_event(
             session, action="updated", title_name=title.name, title_id=title.id
@@ -649,7 +629,6 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         license=entry.license,
         relation=entry.relation,
         source=entry.source,
-        flavours=entry.flavours,
         comment=entry.comment,
         collections=[
             BaseTitleCollectionSchema(
@@ -742,7 +721,6 @@ def revert_title(
             publisher=entry.publisher,
             language=entry.language,
             illustration_48x48_at_1=entry.illustration_48x48_at_1,
-            flavours=entry.flavours,
         ),
     )
     return title

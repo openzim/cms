@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
-from cms_backend.db.flavour import get_title_flavours
 from cms_backend.db.models import (
     Account,
     Book,
@@ -198,94 +197,6 @@ def test_update_title_collection_titles(
 
     target_locations = [loc for loc in book.locations if loc.status == "target"]
     assert len(target_locations) == 2
-
-
-def test_update_title_flavours(
-    dbsession: OrmSession,
-    zimfarm_recipe: ZimfarmRecipe,
-    create_title: Callable[..., Title],
-    create_book_location: Callable[..., BookLocation],
-    create_book: Callable[..., Book],
-    create_collection: Callable[..., Collection],
-    create_collection_title: Callable[..., CollectionTitle],
-    account: Account,
-):
-    """Test updating a title's flavours"""
-    collection = create_collection(name="wikipedia")
-    title = create_title(name="wikipedia_en_test", zimfarm_recipe=zimfarm_recipe)
-    create_collection_title(title, collection, path="wikis")
-
-    book = create_book(
-        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
-    )
-    book.location_kind = "prod"
-    title.books.append(book)
-
-    create_book_location(
-        book=book,
-        warehouse_id=collection.warehouse_id,
-        path="old_path",
-        filename="test.zim",
-        status="current",
-    )
-    dbsession.flush()
-
-    update_title(
-        dbsession,
-        title_identifier=str(title.id),
-        author_id=account.id,
-        payload=TitleUpdateSchema(flavours=["maxi", "mini"]),
-    )
-
-    dbsession.refresh(title)
-    assert len(title.flavours) == 2
-
-
-def test_delete_title_flavours(
-    dbsession: OrmSession,
-    zimfarm_recipe: ZimfarmRecipe,
-    create_title: Callable[..., Title],
-    create_book_location: Callable[..., BookLocation],
-    create_book: Callable[..., Book],
-    create_collection: Callable[..., Collection],
-    create_collection_title: Callable[..., CollectionTitle],
-    account: Account,
-):
-    """Test deleting a title's flavours"""
-    collection = create_collection(name="wikipedia")
-    title = create_title(
-        name="wikipedia_en_test",
-        flavours=["maxi", "mini"],
-        zimfarm_recipe=zimfarm_recipe,
-    )
-    assert len(title.flavours) == 2
-
-    create_collection_title(title, collection, path="wikis")
-
-    book = create_book(
-        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
-    )
-    book.location_kind = "prod"
-    title.books.append(book)
-
-    create_book_location(
-        book=book,
-        warehouse_id=collection.warehouse_id,
-        path="old_path",
-        filename="test.zim",
-        status="current",
-    )
-    dbsession.flush()
-
-    update_title(
-        dbsession,
-        title_identifier=str(title.id),
-        author_id=account.id,
-        payload=TitleUpdateSchema(flavours=[]),
-    )
-
-    dbsession.refresh(title)
-    assert len(title.flavours) == 0
 
 
 def test_archive_title(
@@ -532,7 +443,6 @@ def test_revert_title(
             license="CC-BY-SA 3.0",
             relation="wikipedia_v1",
             source="https://en.wikipedia.org/v1",
-            flavours=["mini", "nopic"],
             maturity="stable",
             comment="First version",
         ),
@@ -558,7 +468,6 @@ def test_revert_title(
             license="CC-BY-SA 4.0",
             relation="wikipedia_v2",
             source="https://en.wikipedia.org/v2",
-            flavours=["maxi"],
             maturity="unstable",
             collection_titles=[
                 BaseTitleCollectionSchema(collection_name="wikipedia", path="wikis"),
@@ -578,7 +487,6 @@ def test_revert_title(
     assert title.license == "CC-BY-SA 4.0"
     assert title.relation == "wikipedia_v2"
     assert title.source == "https://en.wikipedia.org/v2"
-    assert get_title_flavours(title) == ["maxi"]
     assert title.maturity == "unstable"
     assert len(title.collections) == 2
 
@@ -602,7 +510,6 @@ def test_revert_title(
     assert reverted_title.license == "CC-BY-SA 3.0"
     assert reverted_title.relation == "wikipedia_v1"
     assert reverted_title.source == "https://en.wikipedia.org/v1"
-    assert get_title_flavours(reverted_title) == ["mini", "nopic"]
     assert reverted_title.maturity == "stable"
     assert len(reverted_title.collections) == 1
 
@@ -629,6 +536,7 @@ def test_merge_titles_target_in_sources(
 
 def test_merge_titles_fail_because_one_source_book_needs_processing(
     dbsession: OrmSession,
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_warehouse: Callable[..., Warehouse],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -655,6 +563,7 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
         ),
     }
 
+    recipe1 = create_zimfarm_recipe()
     title1 = create_title(
         name="test_en_all",
         flavours=["maxi", "mini"],
@@ -664,6 +573,7 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe1,
     )
     book1 = create_book(zim_metadata=content, location_kind="staging")
     book1.title = title1
@@ -679,6 +589,7 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
     content2 = content.copy()
     content2["Name"] = "test_eng_all"
     content2["Date"] = "2025-02-02"
+    recipe2 = create_zimfarm_recipe()
     title2 = create_title(
         name="test_eng_all",
         flavours=["maxi", "mini"],
@@ -688,6 +599,7 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe2,
     )
     book2 = create_book(zim_metadata=content2, location_kind="staging")
     book2.title = title2
@@ -712,6 +624,7 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
 
 def test_merge_titles_success(
     dbsession: OrmSession,
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_warehouse: Callable[..., Warehouse],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -738,6 +651,7 @@ def test_merge_titles_success(
         ),
     }
 
+    recipe1 = create_zimfarm_recipe()
     title1 = create_title(
         name="test_en_all",
         flavours=["maxi", "mini"],
@@ -747,6 +661,7 @@ def test_merge_titles_success(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe1,
     )
     book1 = create_book(zim_metadata=content, location_kind="staging")
     book1.title = title1
@@ -761,6 +676,7 @@ def test_merge_titles_success(
     content2 = content.copy()
     content2["Name"] = "test_eng_all"
     content2["Date"] = "2025-02-02"
+    recipe2 = create_zimfarm_recipe()
     title2 = create_title(
         name="test_eng_all",
         flavours=["maxi", "mini"],
@@ -770,6 +686,7 @@ def test_merge_titles_success(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe2,
     )
     book2 = create_book(zim_metadata=content2, location_kind="staging")
     book2.title = title2

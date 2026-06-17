@@ -3,8 +3,11 @@ from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
 
-from cms_backend.api.routes.fields import NotEmptyString
+from pydantic import computed_field
+
+from cms_backend.context import Context
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import NotEmptyString
 
 T = TypeVar("T")
 
@@ -44,6 +47,11 @@ class TitleCollectionSchema(BaseTitleCollectionSchema):
     collection_id: UUID
 
 
+class TitleFlavourSchema(BaseModel):
+    flavour: str
+    recipe_id: UUID
+
+
 class TitleFullSchema(TitleLightSchema):
     """
     Schema for reading a title model with all fields including books
@@ -52,7 +60,7 @@ class TitleFullSchema(TitleLightSchema):
     events: list[str]
     books: list["BookLightSchema"]
     collections: list["TitleCollectionSchema"]
-    flavours: list[str]
+    flavours: list[TitleFlavourSchema]
 
 
 class TitleHistorySchema(TitleLightSchema):
@@ -65,7 +73,6 @@ class TitleHistorySchema(TitleLightSchema):
     author: str
     collections: list[BaseTitleCollectionSchema]
     created_at: datetime
-    flavours: list[str]
 
 
 class CollectionLightSchema(BaseModel):
@@ -147,6 +154,7 @@ class BookFullSchema(BookLightSchema):
     target_locations: list[BookLocationSchema]
     title_archived: bool
     has_backup: bool
+    recipe_id: UUID | None
 
 
 class BookHistorySchema(BaseModel):
@@ -211,3 +219,19 @@ class EventLightSchema(BaseModel):
     id: UUID
     created_at: datetime
     topic: str
+
+
+class ZimfarmRecipeLightSchema(BaseModel):
+    id: UUID
+    name: str
+
+
+class ZimfarmRecipeFullSchema(ZimfarmRecipeLightSchema):
+    title_id: UUID | None
+    title_name: str | None
+    flavours: list[TitleFlavourSchema]
+
+    @computed_field
+    @property
+    def link(self) -> str:
+        return f"{Context.zimfarm_api_url}/recipes/{self.name}"
