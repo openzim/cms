@@ -1195,7 +1195,7 @@ watch(
 watch(
   () => hasIssues.value,
   (newValue) => {
-    if (!newValue) {
+    if (!newValue && book.value) {
       router.push({
         name: 'book-detail-tab',
         params: {
