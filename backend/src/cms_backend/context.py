@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import re
 from dataclasses import field
 from datetime import timedelta
 from pathlib import Path
@@ -41,6 +42,12 @@ def _validate_language_codes(language_codes: list[str]) -> list[str]:
         if pycountry.languages.get(alpha_3=code) is None:  # pyright: ignore[reportUnknownMemberType]
             raise ValueError(f"Code '{code}' is not a valid ISO 639-3 code.")
     return language_codes
+
+
+def _validate_regex(regex: str | None) -> re.Pattern[str] | None:
+    if regex is None:
+        return None
+    return re.compile(regex)
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -112,4 +119,12 @@ class Context:
     )
     zim_description_max_length: int = field(
         default=int(os.getenv("ZIM_DESCRIPTION_MAX_LENGTH", "80"))
+    )
+    requests_timeout: int = field(
+        default=int(parse_timespan(os.getenv("REQUESTS_TIMEOUT", default="30s")))
+    )
+    # Regex of scrapers to ignore when running checks for zimcheck quality
+    # e.g mwoflliner*|sotoki*
+    zimcheck_scrapers_whitelist_regex: ClassVar[re.Pattern[str] | None] = (
+        _validate_regex(os.getenv("ZIMCHECK_SCRAPERS_WHITELIST_REGEX"))
     )

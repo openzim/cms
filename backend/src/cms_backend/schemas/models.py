@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal, Self
@@ -16,7 +17,10 @@ from cms_backend.context import Context
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
-from cms_backend.utils.zim import ZIM_TITLE_NAME_REGEX
+
+ZIM_TITLE_NAME_REGEX = re.compile(
+    r"^[a-z0-9\-\.]+?_[a-z]{2}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$"
+)
 
 
 class ZimUrlSchema(BaseModel):
@@ -119,3 +123,12 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
 class BookUpdateSchema(BaseModel):
     comment: NotEmptyString | None = None
     flavour: NotEmptyString | None = None
+
+
+class ZimcheckSummarySchema(BaseModel):
+    zimcheck_version: str | None = None
+    status: bool | None = None
+    checks: list[str] | None = None
+    error_count: int | None = None
+    warning_count: int | None = None
+    retcode: int | None = None

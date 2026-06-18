@@ -20,7 +20,12 @@ from cms_backend.db.rules import (
     has_flavour_mismatch,
     title_is_missing_mandatory_metadata,
 )
-from cms_backend.schemas.models import BookUpdateSchema, FileLocation
+from cms_backend.schemas.models import (
+    ZIM_TITLE_NAME_REGEX,
+    BookUpdateSchema,
+    FileLocation,
+    ZimcheckSummarySchema,
+)
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookHistorySchema,
@@ -28,7 +33,12 @@ from cms_backend.schemas.orms import (
     ListResult,
 )
 from cms_backend.utils.datetime import getnow
-from cms_backend.utils.zim import ZIM_TITLE_NAME_REGEX, get_missing_metadata_keys
+from cms_backend.utils.requests import query_api
+from cms_backend.utils.zim import (
+    get_missing_keys,
+    get_missing_metadata_keys,
+    parse_zimcheck_result,
+)
 
 
 def get_book_or_none(
@@ -590,7 +600,13 @@ def book_has_bad_metadata(book: Book, *, update_events: bool = False) -> bool:
     return False
 
 
-def update_book_issues(session: OrmSession, book: Book, *, update_events: bool = False):
+def update_book_issues(
+    session: OrmSession,
+    book: Book,
+    *,
+    update_events: bool = False,
+    raise_exceptions: bool = False,
+):
     """
     Update book issues based on it's associated title and optionally update book events.
 
@@ -696,9 +712,80 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
                 f"{getnow()}: book article count exceeds collection median threshold "
                 f"by {article_count_diff * 100}%"
             )
+
+    if not check_zimcheck_quality(
+        book, raise_exceptions=raise_exceptions, update_events=update_events
+    ):
+        issues.append("zimcheck error")
+
     book.issues = issues
     session.add(book)
     session.flush()
+
+
+def check_zimcheck_quality(
+    book: Book, *, update_events: bool = False, raise_exceptions: bool = False
+) -> bool:
+    """Run checks for zimcheck quality if scraper is not whitelisted.
+
+    If book is missing zimcheck summary, results will be downloaded from URL and set.
+    Returns true if it is impossible to run checks or there are no errors.
+    """
+    # Determine whether we need to fetch zimcheck results or not
+    missing_summary_keys = get_missing_keys(
+        book.zimcheck_summary,
+        "zimcheck_version",
+        "status",
+        "checks",
+        "error_count",
+        "warning_count",
+        "retcode",
+    )
+    zimcheck_summary: ZimcheckSummarySchema
+    if missing_summary_keys:
+        if not book.zimcheck_result_url:
+            if update_events:
+                book.events.append(f"{getnow()}: book has no zimcheck url")
+
+            return False
+
+        zimcheck_response = query_api(book.zimcheck_result_url)
+        if zimcheck_response.success:
+            zimcheck_summary = parse_zimcheck_result(zimcheck_response.json)
+            book.zimcheck_summary = zimcheck_summary.model_dump(mode="json")
+        else:
+            if update_events:
+                book.events.append(
+                    f"{getnow()}: unable to retrieve zimcheck results "
+                    f"from {book.zimcheck_result_url}"
+                )
+            message = (
+                "Unable to retrieve zimcheck results from "
+                f"{book.zimcheck_result_url}: {zimcheck_response.json}"
+            )
+            logger.debug(message)
+            if raise_exceptions:
+                raise ValueError(message)
+            return False
+    else:
+        zimcheck_summary = ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
+
+    scraper = book.zim_metadata.get("Scraper", "")
+    if Context.zimcheck_scrapers_whitelist_regex is not None and re.search(
+        Context.zimcheck_scrapers_whitelist_regex, scraper
+    ):
+        if update_events:
+            book.events.append(f"{getnow()}: book is whitelisted for zimcheck quality")
+        return True
+
+    if zimcheck_summary.error_count is not None and zimcheck_summary.error_count > 0:
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book has {zimcheck_summary.error_count} error(s) in "
+                "zimcheck"
+            )
+        return False
+    return True
 
 
 def backup_book(
@@ -853,7 +940,7 @@ def process_book(
     session: OrmSession,
     book: Book,
     *,
-    update_events: bool = False,
+    is_new: bool = False,
 ) -> Book:
     """Process a book as if it just arrived.
 
@@ -892,7 +979,7 @@ def process_book(
         )
         return book
 
-    update_book_issues(session, book, update_events=update_events)
+    update_book_issues(session, book, update_events=is_new, raise_exceptions=is_new)
     goes_to_staging = book_goes_to_staging(book)
     book.location_kind = "staging" if goes_to_staging else "prod"
     target_locations = (
