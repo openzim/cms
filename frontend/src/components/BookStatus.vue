@@ -72,23 +72,25 @@
           </template>
           <v-list-item-title class="text-wrap">{{ warning }}</v-list-item-title>
         </v-list-item>
-        <v-divider v-if="canFixIssues" class="my-2" />
-        <v-list-item v-if="canFixRecipeIssue">
-          <v-btn
-            color="primary"
-            variant="elevated"
-            size="small"
-            block
-            :to="{
-              name: 'book-detail-tab',
-              params: { id: book.id, selectedTab: 'fix-issues' },
-            }"
-            @click="menuOpen = false"
-          >
-            <v-icon size="small" class="mr-1">mdi-wrench</v-icon>
-            Fix Recipe Issue
-          </v-btn>
-        </v-list-item>
+        <div v-if="canFixIssues">
+          <v-divider class="my-2" />
+          <v-list-item v-if="canFixRecipeIssue">
+            <v-btn
+              color="primary"
+              variant="elevated"
+              size="small"
+              block
+              :to="{
+                name: 'book-detail-tab',
+                params: { id: book.id, selectedTab: 'fix-issues' },
+              }"
+              @click="menuOpen = false"
+            >
+              <v-icon size="small" class="mr-1">mdi-wrench</v-icon>
+              Fix Recipe Issue
+            </v-btn>
+          </v-list-item>
+        </div>
       </v-list>
     </v-menu>
   </div>

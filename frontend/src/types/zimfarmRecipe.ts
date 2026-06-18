@@ -15,5 +15,5 @@ export interface ZimfarmRecipe extends ZimfarmRecipeLight {
 export interface ZimfarmRecipeUpdate {
   title_name: string
   flavours: string[]
-  current_recipes: string[]
+  old_recipes: string[]
 }

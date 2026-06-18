@@ -111,7 +111,12 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
             None,
         )
     else:
-        recipe_id = None
+        recipe_id = (
+            UUID(book.zimfarm_notification.content["recipe_id"])
+            if book.zimfarm_notification
+            and book.zimfarm_notification.content.get("recipe_id")
+            else None
+        )
 
     return BookFullSchema(
         id=book.id,
