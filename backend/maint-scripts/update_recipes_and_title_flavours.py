@@ -23,12 +23,14 @@ from typing import Any
 from uuid import UUID
 
 import requests  # pyright: ignore[reportMissingModuleSource]
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from cms_backend import logger
 from cms_backend.db import Session
 from cms_backend.db.flavour import get_title_flavour_or_none
-from cms_backend.db.models import TitleFlavour, ZimfarmRecipe
+from cms_backend.db.models import Book, TitleFlavour, ZimfarmRecipe
 from cms_backend.db.title import get_title_by_name_or_none
 from cms_backend.db.zimfarm_recipe import get_zimfarm_recipe_by_id_or_none
 from cms_backend.utils.zim import get_missing_keys
@@ -96,7 +98,9 @@ def process_task(
 ):
     response = query_api(f"{zimfarm_api_url}/tasks/{task['id']}")
     if not response.success:
-        logger.error(f"Unable to fetch task {task['id']} from {zimfarm_api_url}")
+        logger.error(
+            f"Unable to fetch task {task['id']} from {zimfarm_api_url}: {response.json}"
+        )
         return
 
     for filename in response.json.get("files", {}):
@@ -117,9 +121,11 @@ def process_task(
             continue
 
         flavour = metadata.get("Flavour")
-        if not flavour:
+        if flavour is None:
             logger.debug(f"Task {task['id']} has no flavour")
             continue
+
+        flavour = flavour[1:] if flavour.startswith("_") else flavour
 
         tf = get_title_flavour_or_none(session, title.id, flavour)
         if tf:
@@ -138,6 +144,19 @@ def process_task(
             session.add(tf)
             session.flush()
             logger.info(f"Created title flavour '{flavour}' for title '{title.name}'")
+
+        # update books notifications whose flavour matches
+        books = session.scalars(
+            select(Book).where(Book.flavour == flavour, Book.title_id == title.id)
+        ).all()
+        for book in books:
+            if book.zimfarm_notification and get_missing_keys(
+                book.zimfarm_notification.content, "recipe_id", "recipe_name"
+            ):
+                zimfarm_notification = book.zimfarm_notification
+                zimfarm_notification.content["recipe_id"] = str(recipe.id)
+                zimfarm_notification.content["recipe_name"] = recipe.name
+                flag_modified(zimfarm_notification, "content")
 
 
 def process_recipe(session: OrmSession, zf_recipe: ZimfarmRecipe, zimfarm_api_url: str):

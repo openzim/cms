@@ -3,14 +3,14 @@
     <v-card-text class="pa-0">
       <div v-if="loading" class="text-center pa-8">
         <v-progress-circular indeterminate size="64" />
-        <div class="mt-4 text-body-1">Loading recipe information...</div>
+        <div class="mt-2 text-body-1">Loading recipe information...</div>
       </div>
 
       <div v-if="!loading && !props.book.recipe_id && !recipeData">
         <!-- No Recipe Associated -->
-        <v-card variant="elevated" class="mb-4">
-          <v-card-text>
-            <p class="text-body-2 mb-4">
+        <v-card variant="elevated" class="mb-2">
+          <v-card-text class="pa-3">
+            <p class="text-body-2 mb-2">
               Browse and select the Zimfarm recipe that you want to use for this book's
               configuration.
             </p>
@@ -27,8 +27,8 @@
       </div>
 
       <div v-else-if="!loading && recipeData">
-        <v-alert type="info" variant="tonal" class="mb-4">
-          <div class="d-flex justify-space-between align-center mb-2">
+        <v-alert type="info" variant="tonal" class="mb-2">
+          <div class="d-flex justify-space-between align-center mb-1">
             <div class="font-weight-bold">Current Recipe Configuration</div>
             <v-btn
               v-if="!props.book.recipe_id"
@@ -69,12 +69,13 @@
               <span v-else class="ml-2">
                 <v-chip
                   v-for="tf in recipeData.flavours"
-                  :key="tf.flavour"
+                  :key="tf.flavour || 'empty'"
                   size="small"
                   color="primary"
                   variant="outlined"
+                  class="mr-2"
                 >
-                  {{ tf.flavour }}
+                  {{ tf.flavour == '' ? 'Empty' : tf.flavour }}
                 </v-chip>
               </span>
             </div>
@@ -82,10 +83,10 @@
         </v-alert>
 
         <!-- Action Buttons -->
-        <v-card variant="outlined" class="mb-4">
-          <v-card-title class="text-h6">Choose Action</v-card-title>
-          <v-card-text>
-            <v-radio-group v-model="actionMode" class="mb-2">
+        <v-card variant="outlined" class="mb-1">
+          <v-card-title class="text-h6 py-1">Choose Action</v-card-title>
+          <v-card-text class="pt-0 pb-2">
+            <v-radio-group v-model="actionMode" class="mb-0">
               <v-radio label="Create New Title" value="create-title" color="primary" />
               <v-radio label="Modify Existing Title" value="configure-title" color="primary" />
             </v-radio-group>
@@ -93,10 +94,10 @@
         </v-card>
 
         <!-- Create Title Action -->
-        <v-card v-if="actionMode === 'create-title'" variant="outlined" class="mb-4">
-          <v-card-title>Create New Title</v-card-title>
-          <v-card-text>
-            <p class="text-body-2 mb-4">A new title will be created based on the book metadata</p>
+        <v-card v-if="actionMode === 'create-title'" variant="outlined" class="mb-2">
+          <v-card-title class="py-1">Create New Title</v-card-title>
+          <v-card-text class="pt-0 pb-2">
+            <p class="text-body-2 mb-2">A new title will be created based on the book metadata</p>
             <v-btn color="primary" variant="elevated" @click="handleCreateTitle">
               <v-icon class="mr-2">mdi-plus-circle</v-icon>
               Create Title
@@ -104,12 +105,12 @@
           </v-card-text>
         </v-card>
 
-        <v-card v-if="actionMode === 'configure-title'" variant="outlined" class="mb-4">
-          <v-card-title>Modify existing Title</v-card-title>
-          <v-card-text>
+        <v-card v-if="actionMode === 'configure-title'" variant="outlined" class="mb-2">
+          <v-card-title class="py-1">Modify existing Title</v-card-title>
+          <v-card-text class="pt-0 pb-2">
             <!-- Select Title -->
-            <div class="mb-4">
-              <div class="d-flex align-center mb-2">
+            <div class="mb-1">
+              <div class="d-flex align-center mb-1">
                 <span class="text-subtitle-1 font-weight-bold">Select Title</span>
                 <v-btn
                   size="small"
@@ -132,7 +133,7 @@
               />
             </div>
 
-            <div class="mb-4">
+            <div class="mb-2">
               <span class="text-subtitle-1 font-weight-bold">New Flavours</span>
               <v-combobox
                 v-model="selectedFlavours"
@@ -143,20 +144,20 @@
                 clearable
                 chips
                 closable-chips
-                class="mt-2"
+                class="mt-1"
                 hint="Press Enter to add a new flavour or select from available options"
                 persistent-hint
                 :items="availableFlavourOptions"
               >
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :title="item.title === '' ? '(None)' : item.title" />
+                  <v-list-item v-bind="props" :title="item.title === '' ? 'Empty' : item.title" />
                 </template>
               </v-combobox>
             </div>
 
             <!-- Conflict Warnings -->
-            <v-alert v-if="flavourConflicts.length > 0" type="warning" variant="tonal" class="mb-4">
-              <div class="font-weight-bold mb-2">Configuration Conflicts</div>
+            <v-alert v-if="flavourConflicts.length > 0" type="warning" variant="tonal" class="mb-2">
+              <div class="font-weight-bold mb-1">Configuration Conflicts</div>
               <div class="text-body-2 mb-1">
                 <v-icon size="small" class="mr-1">mdi-alert</v-icon>
                 The following flavours are already associated with other recipes:
@@ -180,8 +181,8 @@
               </ul>
             </v-alert>
 
-            <v-alert v-if="suggestions.length > 0" type="info" variant="tonal" class="mb-4">
-              <div class="font-weight-bold mb-2">Suggestions</div>
+            <v-alert v-if="suggestions.length > 0" type="info" variant="tonal" class="mb-2">
+              <div class="font-weight-bold mb-1">Suggestions</div>
               <ul class="ml-6">
                 <li v-for="(suggestion, index) in suggestions" :key="index">
                   <strong>{{ suggestion }}</strong>
@@ -189,14 +190,14 @@
               </ul>
             </v-alert>
 
-            <v-alert v-if="consequences.length > 0" type="warning" variant="tonal" class="mb-4">
-              <div class="font-weight-bold mb-2">Consequences</div>
+            <v-alert v-if="consequences.length > 0" type="warning" variant="tonal" class="mb-2">
+              <div class="font-weight-bold mb-1">Consequences</div>
               <ul class="ml-6">
                 <li v-for="(consequence, index) in consequences" :key="index">
                   <strong>{{ consequence }}</strong>
                 </li>
               </ul>
-              <v-divider class="my-2"></v-divider>
+              <v-divider class="my-1"></v-divider>
               <div class="font-weight-bold">Final Flavours</div>
               <div class="d-flex flex-wrap ga-2">
                 <v-chip
