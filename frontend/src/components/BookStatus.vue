@@ -135,7 +135,9 @@ const canFixRecipeIssue = computed(
     authStore.hasPermission('recipe', 'update'),
 )
 
-const canFixIssues = computed(() => canFixRecipeIssue.value)
+const canFixIssues = computed(
+  () => canFixRecipeIssue.value && !props.book.needs_file_operation && !props.book.needs_processing,
+)
 
 const showLocationChip = computed(() => {
   // If the evaluated status is 'Errored' or 'Processing', we want to show the location chip

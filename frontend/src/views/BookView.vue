@@ -826,7 +826,14 @@ const canFixRecipeIssue = computed(() => {
   )
 })
 
-const canFixIssues = computed(() => canFixRecipeIssue.value)
+const canFixIssues = computed(
+  () =>
+    !!book.value &&
+    canFixRecipeIssue.value &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing &&
+    !book.value.has_error,
+)
 
 const titleDataFromBook = computed<Title | null>(() => {
   if (!book.value) return null
