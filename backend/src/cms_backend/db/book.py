@@ -958,9 +958,9 @@ def book_has_recipe_issue(
     book_flavour: str | None, book_title: Title, recipe: ZimfarmRecipe
 ) -> bool:
     """Check if book has recipe issues."""
-    if recipe.title_id is None:
+    if recipe.title is None:
         return True
-    if recipe.title_id != book_title.id and book_title.id not in [
+    if recipe.title.id != book_title.id and book_title.id not in [
         tf.recipe_id for tf in book_title.flavours
     ]:
         return True

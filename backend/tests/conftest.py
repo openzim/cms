@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import generate_password_hash
 
@@ -227,12 +228,15 @@ def create_title(
         )
         history_entry.author_id = account.id
         history_entry.title_ = db_title
-
-        if zimfarm_recipe:
-            db_title.zimfarm_recipes.append(zimfarm_recipe)
-
         dbsession.add(db_title)
         dbsession.flush()
+
+        if zimfarm_recipe:
+            zimfarm_recipe.title = db_title
+            dbsession.add(zimfarm_recipe)
+
+        dbsession.flush()
+
         return db_title
 
     return _create_title
@@ -498,7 +502,10 @@ def create_zimfarm_recipe(
             id=recipe_id or UUID(faker.uuid4()),
             name=recipe_name or faker.company(),
         )
-        recipe.title_id = title_id
+        if title_id:
+            recipe.title = dbsession.scalars(
+                select(Title).where(Title.id == title_id)
+            ).one()
         dbsession.add(recipe)
         dbsession.flush()
 

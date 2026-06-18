@@ -38,7 +38,7 @@ class ZimfarmRecipesGetSchema(BaseModel):
 class RecipeUpdateSchema(BaseModel):
     title_name: NotEmptyString
     flavours: list[str]
-    current_recipes: set[UUID]
+    old_recipes: set[UUID]
 
 
 @router.get("")
@@ -95,7 +95,7 @@ def update_zimfarm_recipe(
         recipe=recipe,
         flavours=request.flavours,
         title=title,
-        current_recipes=request.current_recipes,
+        old_recipes=request.old_recipes,
     )
 
     return JSONResponse(

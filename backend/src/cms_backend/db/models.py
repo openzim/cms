@@ -11,7 +11,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
-    UniqueConstraint,
     false,
     func,
     text,
@@ -268,7 +267,7 @@ class Title(Base):
     )
 
     zimfarm_recipes: Mapped[list["ZimfarmRecipe"]] = relationship(
-        back_populates="title", init=False
+        back_populates="title", init=False, default_factory=list
     )
     flavours: Mapped[list["TitleFlavour"]] = relationship(
         back_populates="title",
@@ -496,11 +495,10 @@ class ZimfarmRecipe(Base):
     title_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("title.id", ondelete="SET NULL"), init=False
     )
+
     title: Mapped[Optional["Title"]] = relationship(
         init=False, back_populates="zimfarm_recipes"
     )
     flavours: Mapped[list["TitleFlavour"]] = relationship(
         back_populates="recipe", init=False
     )
-
-    __table_args__ = (UniqueConstraint("title_id"),)

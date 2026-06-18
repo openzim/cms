@@ -10,6 +10,7 @@ from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import Book, Title, TitleFlavour, ZimfarmRecipe
+from cms_backend.db.title import get_title_by_id
 from cms_backend.schemas.orms import (
     ListResult,
     TitleFlavourSchema,
@@ -69,7 +70,7 @@ def create_zimfarm_recipe_schema(
             TitleFlavourSchema(flavour=tf.flavour, recipe_id=tf.recipe_id)
             for tf in zimfarm_recipe.flavours
         ],
-        title_id=zimfarm_recipe.title_id,
+        title_id=zimfarm_recipe.title.id if zimfarm_recipe.title else None,
         title_name=zimfarm_recipe.title.name if zimfarm_recipe.title else None,
     )
 
@@ -86,7 +87,9 @@ def create_zimfarm_recipe(
         id=UUID(recipe_id),
         name=recipe_name,
     )
-    zimfarm_recipe.title_id = title_id
+    if title_id is not None:
+        title = get_title_by_id(session, title_id=title_id)
+        zimfarm_recipe.title = title
     session.add(zimfarm_recipe)
     session.flush()
     return zimfarm_recipe
@@ -98,52 +101,51 @@ def update_zimfarm_recipe(
     recipe: ZimfarmRecipe,
     flavours: list[str],
     title: Title,
-    current_recipes: set[UUID],
+    old_recipes: set[UUID],
     create_event: bool = True,
 ):
     """Update a recipe to be associated with the title and flavours.
 
     - Existing associations with the title's flavours to other recipes
-        are removed. These other recipe(s) must be in the list of current recipes.
+        are removed. These other recipe(s) must be in the list of old recipes.
     - Old title flavours belonging to the title are deleted and new ones are created
         and attached to recipe.
     - Books with a matching title name have recipe issues removed
     """
 
     associated_recipes: set[UUID] = set()
-    existing_flavours: set[str] = set()
 
     for flavour in flavours:
         title_flavour = get_title_flavour_or_none(session, title.id, flavour)
         if title_flavour:
             associated_recipes.add(title_flavour.recipe_id)
 
-            if title_flavour.recipe_id == recipe.id:
-                existing_flavours.add(flavour)
-
-    if associated_recipes != current_recipes:
-        raise ValueError("Mismatch between current recipes and title flavour recipes")
-
-    if set(existing_flavours) != set(flavours):
-        # Delete the old flavours and create new ones
-        for title_flavour in list(title.flavours):
-            session.delete(title_flavour)
-
-        title.flavours.clear()
-        session.flush()
-
-        for flavour in flavours:
+            if title_flavour.recipe_id != recipe.id:
+                title_flavour.recipe = recipe
+        else:
             title_flavour = TitleFlavour(flavour=flavour)
             title_flavour.recipe = recipe
             title_flavour.title = title
             session.add(title_flavour)
 
-    # Disassoicate the title from any of the recipes and directly associate with recipe
-    session.execute(
-        update(ZimfarmRecipe)
-        .where(ZimfarmRecipe.id.in_(current_recipes))
-        .values({"title_id": None})
+    if associated_recipes != old_recipes:
+        raise ValueError("Mismatch between old recipes and title flavour recipes ")
+
+    # Clear title id from recipes with no remaining flavours
+    recipes_with_flavours: set[UUID] = set(
+        session.scalars(
+            select(TitleFlavour.recipe_id).where(TitleFlavour.title_id == title.id)
+        )
     )
+    all_title_recipes: set[UUID] = {recipe.id for recipe in title.zimfarm_recipes}
+    recipes_to_clear = all_title_recipes - recipes_with_flavours
+    if recipes_to_clear:
+        session.execute(
+            update(ZimfarmRecipe)
+            .where(ZimfarmRecipe.id.in_(recipes_to_clear))
+            .values({"title_id": None})
+        )
+
     recipe.title = title
 
     session.flush()

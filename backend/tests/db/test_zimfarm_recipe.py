@@ -38,7 +38,8 @@ def test_create_zimfarm_recipe(dbsession: OrmSession, title: Title, faker: Faker
     recipe = create_zimfarm_recipe(
         dbsession, recipe_id=faker.uuid4(), recipe_name=faker.name(), title_id=title.id
     )
-    assert recipe.title_id == title.id
+    assert recipe.title is not None
+    assert recipe.title.id == title.id
 
 
 def test_update_zimfarm_recipe_mismatch_in_recipes(
@@ -54,7 +55,7 @@ def test_update_zimfarm_recipe_mismatch_in_recipes(
             recipe=recipe,
             flavours=["nopic"],
             title=title,
-            current_recipes={uuid4()},
+            old_recipes={uuid4()},
         )
 
 
@@ -70,7 +71,7 @@ def test_update_zimfarm_recipe_update_existing_title_flavours(
         recipe=recipe,
         flavours=["maxi", "nopic", "mini"],
         title=title,
-        current_recipes={recipe.id},
+        old_recipes={recipe.id},
     )
 
     assert (
@@ -84,7 +85,7 @@ def test_update_zimfarm_recipe_update_existing_title_flavours(
     )
 
 
-def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
+def test_update_zimfarm_recipe_dissociate_recipes_from_flavours_and_title_associations(
     dbsession: OrmSession,
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
@@ -115,7 +116,7 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
         recipe=recipe2,
         flavours=["maxi", "nopic", "mini"],
         title=title,
-        current_recipes={recipe1.id, recipe2.id},
+        old_recipes={recipe1.id, recipe2.id},
     )
 
     # all three flavours now belong to recipe2
@@ -134,11 +135,12 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
         == 3
     )
 
-    # recipe1 is no loner tied to title
     dbsession.refresh(recipe1)
-    assert recipe1.title_id is None
+    # recipe1 is dissociated from title because it has no flavour tied to the title
+    assert recipe1.title is None
     dbsession.refresh(recipe2)
-    assert recipe2.title_id == title.id
+    assert recipe2.title is not None
+    assert recipe2.title.id == title.id
 
 
 def test_update_zimfarm_recipe_remove_book_recipe_issues(
@@ -158,7 +160,67 @@ def test_update_zimfarm_recipe_remove_book_recipe_issues(
         recipe=recipe,
         flavours=["maxi", "nopic", "mini"],
         title=title,
-        current_recipes={recipe.id},
+        old_recipes={recipe.id},
     )
     dbsession.refresh(book)
     assert len(book.issues) == 0
+
+
+def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
+    dbsession: OrmSession,
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
+    create_title: Callable[..., Title],
+):
+    recipe1 = create_zimfarm_recipe()
+    title = create_title(zimfarm_recipe=recipe1)
+    # "mini", "maxi" and "nopic" flavours belong to recipe1
+    mini = TitleFlavour(flavour="mini")
+    mini.title = title
+    mini.recipe = recipe1
+
+    maxi = TitleFlavour(flavour="maxi")
+    maxi.title = title
+    maxi.recipe = recipe1
+
+    nopic = TitleFlavour(flavour="nopic")
+    nopic.title = title
+    nopic.recipe = recipe1
+
+    dbsession.add_all([maxi, mini, nopic])
+
+    # recipe2 just arrives (with mini now produced by it)
+    recipe2 = create_zimfarm_recipe()
+    dbsession.flush()
+
+    update_zimfarm_recipe(
+        dbsession,
+        recipe=recipe2,
+        flavours=["mini"],
+        title=title,
+        old_recipes={recipe1.id},
+    )
+
+    # recipe1 still has maxi and nopic
+    assert (
+        count_from_stmt(
+            dbsession,
+            select(TitleFlavour).where(TitleFlavour.recipe_id == recipe1.id),
+        )
+        == 2
+    )
+
+    # recipe 2 has mini
+    assert (
+        count_from_stmt(
+            dbsession,
+            select(TitleFlavour).where(TitleFlavour.recipe_id == recipe2.id),
+        )
+        == 1
+    )
+
+    dbsession.refresh(recipe1)
+    assert recipe1.title is not None
+    assert recipe1.title.id is title.id
+    dbsession.refresh(recipe2)
+    assert recipe2.title is not None
+    assert recipe2.title.id == title.id
