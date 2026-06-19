@@ -52,6 +52,14 @@ const navigationItems = computed<NavigationItem[]>(() => [
     show: true,
   },
   {
+    name: 'recipes',
+    label: 'Recipes',
+    route: 'recipes',
+    icon: 'mdi-book-open-variant',
+    disabled: false,
+    show: true,
+  },
+  {
     name: 'collections',
     label: 'Collections',
     route: 'collections',

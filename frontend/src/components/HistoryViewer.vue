@@ -59,7 +59,7 @@
                 </v-list-item-subtitle>
               </v-list-item-content>
 
-              <template v-slot:append>
+              <template v-if="enableRevert" v-slot:append>
                 <v-btn
                   icon="mdi-restore"
                   variant="text"
@@ -201,9 +201,10 @@ export interface HistoryConfig<T extends HistoryItem> {
   emptyStateText?: string
   loadingDiff?: boolean
   loadingDiffText?: string
+  enableRevert?: boolean
   fetchHistoryEntry: (entityId: string, historyId: string) => Promise<T | null>
-  revertToHistory: (entityId: string, historyId: string, comment?: string) => Promise<boolean>
-  getHistoryErrors: () => string[]
+  revertToHistory?: (entityId: string, historyId: string, comment?: string) => Promise<boolean>
+  getHistoryErrors?: () => string[]
   computeDiff: (
     item1: T,
     item2: T,
@@ -213,7 +214,9 @@ export interface HistoryConfig<T extends HistoryItem> {
     | undefined
 }
 
-const props = defineProps<HistoryConfig<T>>()
+const props = withDefaults(defineProps<HistoryConfig<T>>(), {
+  enableRevert: true,
+})
 
 const emit = defineEmits<{
   load: [{ limit: number; skip: number }]
@@ -387,6 +390,12 @@ const handleRevertConfirm = async () => {
     return
   }
 
+  if (!props.revertToHistory) {
+    notificationStore.showError('Revert is not available')
+    isReverting.value = false
+    return
+  }
+
   isReverting.value = true
   const comment = revertComment.value.trim() || undefined
   const success = await props.revertToHistory(props.entityId, selectedHistoryItem.value.id, comment)
@@ -402,7 +411,7 @@ const handleRevertConfirm = async () => {
     selectedItems.value.clear()
     emit('revert')
   } else {
-    const errors = props.getHistoryErrors()
+    const errors = props.getHistoryErrors?.() ?? []
     for (const error of errors) {
       notificationStore.showError(error)
     }

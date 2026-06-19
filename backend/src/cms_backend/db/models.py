@@ -502,3 +502,36 @@ class ZimfarmRecipe(Base):
     flavours: Mapped[list["TitleFlavour"]] = relationship(
         back_populates="recipe", init=False
     )
+    history_entries: Mapped[list["ZimfarmRecipeHistory"]] = relationship(
+        back_populates="zimfarm_recipe",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
+        # return the history entries in descending order of created_at
+        order_by="ZimfarmRecipeHistory.created_at.desc()",
+    )
+
+
+class ZimfarmRecipeHistory(Base):
+    __tablename__ = "zimfarm_recipe_history"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_name: Mapped[str]
+    title_id: Mapped[UUID]
+    comment: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    zimfarm_recipe_id: Mapped[UUID] = mapped_column(
+        ForeignKey("zimfarm_recipe.id", ondelete="CASCADE"), init=False
+    )
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
+    flavours: Mapped[list[str]] = mapped_column(
+        server_default="{}", default_factory=list
+    )
+    author: Mapped["Account"] = relationship(init=False)
+    zimfarm_recipe: Mapped["ZimfarmRecipe"] = relationship(
+        back_populates="history_entries", init=False
+    )

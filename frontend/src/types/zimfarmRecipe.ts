@@ -17,3 +17,13 @@ export interface ZimfarmRecipeUpdate {
   flavours: string[]
   old_recipes: string[]
 }
+
+export interface ZimfarmRecipeHistory {
+  id: string
+  title_name: string
+  title_id: string
+  comment: string | null
+  created_at: string
+  author: string
+  flavours: string[]
+}

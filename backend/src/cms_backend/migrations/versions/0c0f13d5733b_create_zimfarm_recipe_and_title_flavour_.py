@@ -51,6 +51,41 @@ def upgrade():
         ),
         sa.PrimaryKeyConstraint("title_id", "flavour", name=op.f("pk_title_flavour")),
     )
+    op.create_table(
+        "zimfarm_recipe_history",
+        sa.Column(
+            "id",
+            sa.Uuid(),
+            server_default=sa.text("uuid_generate_v4()"),
+            nullable=False,
+        ),
+        sa.Column("title_name", sa.String(), nullable=False),
+        sa.Column("title_id", sa.Uuid(), nullable=False),
+        sa.Column("comment", sa.String(), nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+        ),
+        sa.Column("zimfarm_recipe_id", sa.Uuid(), nullable=False),
+        sa.Column("author_id", sa.Uuid(), nullable=False),
+        sa.Column(
+            "flavours",
+            postgresql.ARRAY(sa.String()),
+            server_default="{}",
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["author_id"],
+            ["account.id"],
+            name=op.f("fk_zimfarm_recipe_history_author_id_account"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["zimfarm_recipe_id"],
+            ["zimfarm_recipe.id"],
+            name=op.f("fk_zimfarm_recipe_history_zimfarm_recipe_id_zimfarm_recipe"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_zimfarm_recipe_history")),
+    )
     op.drop_column("title_history", "flavours")
     op.drop_column("title", "flavours")
     # ### end Alembic commands ###
@@ -78,6 +113,7 @@ def downgrade():
             nullable=False,
         ),
     )
+    op.drop_table("zimfarm_recipe_history")
     op.drop_table("title_flavour")
     op.drop_table("zimfarm_recipe")
     # ### end Alembic commands ###
