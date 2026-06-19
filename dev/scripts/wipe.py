@@ -20,6 +20,7 @@ from cms_backend.db.models import (
     Title,
     Warehouse,
     ZimfarmNotification,
+    ZimfarmRecipe,
 )
 
 
@@ -69,6 +70,12 @@ def wipe_database(session: OrmSession):
     # 5. Title
     count = session.execute(delete(Title).where(Title.name.like(DEV_PREFIX))).rowcount
     print(f"  - Deleted {count} Title records")
+
+    # 6. Recipe
+    count = session.execute(
+        delete(ZimfarmRecipe).where(ZimfarmRecipe.name.like(DEV_PREFIX))
+    ).rowcount
+    print(f"  - Deleted {count} ZimfarmRecipe records")
 
     # 7. Collection (depends on Warehouse)
     count = session.execute(

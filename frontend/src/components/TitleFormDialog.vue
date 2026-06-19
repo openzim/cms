@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  created: []
+  created: [titleName: string]
   updated: [updatedTitle: { id: string; name: string }]
 }>()
 
@@ -70,7 +70,6 @@ const isOpen = computed({
 watch(isOpen, async (newValue) => {
   if (newValue) {
     await titleFormRef.value?.fetchCollections()
-    await titleFormRef.value?.fetchFlavours()
   }
 })
 
@@ -87,7 +86,7 @@ async function handleSubmit() {
       notificationStore.showErrors(titleStore.errors)
       return
     }
-    emit('created')
+    emit('created', formData.name)
     titleFormRef.value.resetForm()
     isOpen.value = false
   } catch (err) {

@@ -107,3 +107,6 @@ class Context:
     article_count_change_threshold: float = field(
         default=float(os.getenv("ARTICLE_COUNT_CHANGE_THRESHOLD", "0.1"))
     )
+    zimfarm_api_url: str = field(
+        default=os.getenv("ZIMFARM_API_URL", "https://api.farm.openzim.org/v2")
+    )

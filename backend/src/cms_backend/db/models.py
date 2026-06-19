@@ -242,9 +242,6 @@ class Title(Base):
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
-    flavours: Mapped[list[str]] = mapped_column(
-        default_factory=list, server_default="{}"
-    )
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
@@ -267,6 +264,17 @@ class Title(Base):
         default_factory=list,
         # return the history entries in descending order of created_at
         order_by="TitleHistory.created_at.desc()",
+    )
+
+    zimfarm_recipes: Mapped[list["ZimfarmRecipe"]] = relationship(
+        back_populates="title", init=False, default_factory=list
+    )
+    flavours: Mapped[list["TitleFlavour"]] = relationship(
+        back_populates="title",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
     )
 
 
@@ -296,9 +304,6 @@ class TitleHistory(Base):
     source: Mapped[str | None] = mapped_column(default=None)
     maturity: Mapped[str] = mapped_column(default="unstable")
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
-    flavours: Mapped[list[str]] = mapped_column(
-        default_factory=list, server_default="{}"
-    )
     collection_titles: Mapped[list[dict[str, Any]]] = mapped_column(
         default_factory=list, server_default="{}"
     )
@@ -465,3 +470,68 @@ class Event(Base):
     created_at: Mapped[datetime]
     topic: Mapped[str]
     payload: Mapped[dict[str, Any]]
+
+
+class TitleFlavour(Base):
+    __tablename__ = "title_flavour"
+    title_id: Mapped[UUID] = mapped_column(
+        ForeignKey("title.id", ondelete="CASCADE"), init=False, primary_key=True
+    )
+    flavour: Mapped[str] = mapped_column(primary_key=True)
+    recipe_id: Mapped[UUID] = mapped_column(
+        ForeignKey("zimfarm_recipe.id", ondelete="CASCADE"), init=False
+    )
+    recipe: Mapped["ZimfarmRecipe"] = relationship(
+        init=False, back_populates="flavours"
+    )
+    title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
+
+
+class ZimfarmRecipe(Base):
+    __tablename__ = "zimfarm_recipe"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    name: Mapped[str]
+
+    title_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("title.id", ondelete="SET NULL"), init=False
+    )
+
+    title: Mapped[Optional["Title"]] = relationship(
+        init=False, back_populates="zimfarm_recipes"
+    )
+    flavours: Mapped[list["TitleFlavour"]] = relationship(
+        back_populates="recipe", init=False
+    )
+    history_entries: Mapped[list["ZimfarmRecipeHistory"]] = relationship(
+        back_populates="zimfarm_recipe",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
+        # return the history entries in descending order of created_at
+        order_by="ZimfarmRecipeHistory.created_at.desc()",
+    )
+
+
+class ZimfarmRecipeHistory(Base):
+    __tablename__ = "zimfarm_recipe_history"
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_name: Mapped[str | None]
+    title_id: Mapped[UUID | None]
+    comment: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    zimfarm_recipe_id: Mapped[UUID] = mapped_column(
+        ForeignKey("zimfarm_recipe.id", ondelete="CASCADE"), init=False
+    )
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
+    flavours: Mapped[list[str]] = mapped_column(
+        server_default="{}", default_factory=list
+    )
+    author: Mapped["Account"] = relationship(init=False)
+    zimfarm_recipe: Mapped["ZimfarmRecipe"] = relationship(
+        back_populates="history_entries", init=False
+    )

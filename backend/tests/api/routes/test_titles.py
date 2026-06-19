@@ -18,6 +18,7 @@ from cms_backend.db.models import (
     Event,
     Title,
     Warehouse,
+    ZimfarmRecipe,
 )
 from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
@@ -70,7 +71,6 @@ def test_get_titles(
         "relation",
         "source",
         "license",
-        "flavours",
     }
     assert data["items"][0]["name"] == "wikipedia_fr_all"
 
@@ -771,13 +771,14 @@ def test_get_title_history_entry(
 def test_revert_title_required_permissions(
     dbsession: OrmSession,
     client: TestClient,
+    zimfarm_recipe: ZimfarmRecipe,
     create_account: Callable[..., Account],
     create_title: Callable[..., Title],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
     """Test reverting a title with different roles"""
-    title = create_title(name="wikipedia_en_test")
+    title = create_title(name="wikipedia_en_test", zimfarm_recipe=zimfarm_recipe)
     account = create_account(permission=permission)
     access_token = generate_access_token(
         account_id=str(account.id), issue_time=getnow()
@@ -818,6 +819,7 @@ def test_merge_titles_required_permissions(
     create_collection: Callable[..., Collection],
     monkeypatch: pytest.MonkeyPatch,
     create_title: Callable[..., Title],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
@@ -845,6 +847,7 @@ def test_merge_titles_required_permissions(
         ),
     }
 
+    recipe1 = create_zimfarm_recipe()
     title1 = create_title(
         name="test_en_all",
         flavours=["maxi", "mini"],
@@ -854,6 +857,7 @@ def test_merge_titles_required_permissions(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe1,
     )
     book1 = create_book(zim_metadata=content, location_kind="staging")
     book1.title = title1
@@ -868,6 +872,7 @@ def test_merge_titles_required_permissions(
     content2 = content.copy()
     content2["Name"] = "test_eng_all"
     content2["Date"] = "2025-02-02"
+    recipe2 = create_zimfarm_recipe()
     title2 = create_title(
         name="test_eng_all",
         flavours=["maxi", "mini"],
@@ -877,6 +882,7 @@ def test_merge_titles_required_permissions(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe2,
     )
     book2 = create_book(zim_metadata=content2, location_kind="staging")
     book2.title = title2

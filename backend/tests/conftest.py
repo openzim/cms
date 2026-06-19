@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import generate_password_hash
 
@@ -23,9 +24,12 @@ from cms_backend.db.models import (
     CollectionTitle,
     Event,
     Title,
+    TitleFlavour,
     TitleHistory,
     Warehouse,
     ZimfarmNotification,
+    ZimfarmRecipe,
+    ZimfarmRecipeHistory,
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
@@ -184,6 +188,7 @@ def create_title(
         relation: str | None = None,
         source: str | None = None,
         flavours: list[str] | None = None,
+        zimfarm_recipe: ZimfarmRecipe | None = None,
     ) -> Title:
         db_title = Title(
             name=name,
@@ -198,8 +203,15 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
         )
+        if flavours:
+            for flavour in flavours:
+                title_flavour = TitleFlavour(flavour=flavour)
+                if zimfarm_recipe:
+                    title_flavour.recipe = zimfarm_recipe
+                title_flavour.title = db_title
+                dbsession.add(title_flavour)
+
         history_entry = TitleHistory(
             name=name,
             title=title,
@@ -213,14 +225,19 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
             comment="Initial history entry",
         )
         history_entry.author_id = account.id
         history_entry.title_ = db_title
-
         dbsession.add(db_title)
         dbsession.flush()
+
+        if zimfarm_recipe:
+            zimfarm_recipe.title = db_title
+            dbsession.add(zimfarm_recipe)
+
+        dbsession.flush()
+
         return db_title
 
     return _create_title
@@ -469,6 +486,52 @@ def create_event(
         return event
 
     return _create_event
+
+
+@pytest.fixture
+def create_zimfarm_recipe(
+    dbsession: OrmSession,
+    faker: Faker,
+    account: Account,
+) -> Callable[..., ZimfarmRecipe]:
+    def _create_zimfarm_recipe(
+        *,
+        recipe_id: UUID | None = None,
+        recipe_name: str | None = None,
+        title_id: UUID | None = None,
+    ):
+        recipe = ZimfarmRecipe(
+            id=recipe_id or UUID(faker.uuid4()),
+            name=recipe_name or faker.company(),
+        )
+        if title_id:
+            recipe.title = dbsession.scalars(
+                select(Title).where(Title.id == title_id)
+            ).one()
+
+        history = ZimfarmRecipeHistory(
+            title_id=title_id,
+            title_name=recipe.title.name if recipe.title else None,
+            comment=None,
+            flavours=[tf.flavour for tf in recipe.flavours],
+            created_at=getnow(),
+        )
+        history.author_id = account.id
+        history.zimfarm_recipe = recipe
+        dbsession.add(history)
+        dbsession.add(recipe)
+        dbsession.flush()
+
+        return recipe
+
+    return _create_zimfarm_recipe
+
+
+@pytest.fixture
+def zimfarm_recipe(
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe], faker: Faker
+) -> ZimfarmRecipe:
+    return create_zimfarm_recipe(recipe_id=faker.uuid4(), recipe_name=faker.name())
 
 
 @pytest.fixture()

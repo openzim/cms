@@ -24,6 +24,9 @@ from cms_backend.api.routes.warehouse import router as warehouse_router
 from cms_backend.api.routes.zimfarm_notifications import (
     router as zimfarm_notification_router,
 )
+from cms_backend.api.routes.zimfarm_recipes import (
+    router as zimfarm_recipe_router,
+)
 from cms_backend.context import Context
 from cms_backend.db.exceptions import (
     RecordAlreadyExistsError,
@@ -69,6 +72,7 @@ def create_app(*, debug: bool = True):
     main_router = APIRouter(prefix="/v1")
     main_router.include_router(router=config_router)
     main_router.include_router(router=zimfarm_notification_router)
+    main_router.include_router(router=zimfarm_recipe_router)
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)
     main_router.include_router(router=books_router)

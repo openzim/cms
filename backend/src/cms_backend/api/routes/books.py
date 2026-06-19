@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
-from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db.book import backup_book as db_backup_book
@@ -28,6 +27,7 @@ from cms_backend.db.books import get_books as db_get_books
 from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.models import (
     BookLanguagesSchema,
     BookUpdateSchema,

@@ -135,14 +135,14 @@
                   <v-col cols="12" md="9">
                     <div v-if="title.flavours && title.flavours.length > 0">
                       <v-chip
-                        v-for="flavour in title.flavours"
-                        :key="flavour"
+                        v-for="tf in title.flavours"
+                        :key="tf.flavour"
                         size="small"
                         variant="outlined"
                         color="primary"
                         class="mr-2 mb-1"
                       >
-                        {{ flavour }}
+                        {{ tf.flavour }}
                       </v-chip>
                     </div>
                     <span v-else class="text-grey">No flavours set</span>
@@ -766,7 +766,6 @@ onMounted(async () => {
 
   if (props.selectedTab === 'edit' && title.value) {
     await titleFormRef.value?.fetchCollections()
-    await titleFormRef.value?.fetchFlavours()
     await loadLatestBook()
     titleFormRef.value?.resetFormToTitle(title.value)
   }
@@ -787,7 +786,6 @@ watch(
 
     if (newTab === 'edit' && title.value) {
       await titleFormRef.value?.fetchCollections()
-      await titleFormRef.value?.fetchFlavours()
       await loadLatestBook()
       titleFormRef.value?.resetFormToTitle(title.value)
     }

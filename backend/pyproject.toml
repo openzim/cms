@@ -27,6 +27,7 @@ dependencies = [
     "Werkzeug == 3.1.5",
     "xxhash == 3.7.0",
     "pycountry == 26.2.16",
+    "requests == 2.34.2",
 ]
 dynamic = ["version"]
 

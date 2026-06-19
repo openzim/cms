@@ -12,7 +12,14 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
+from cms_backend.db.flavour import get_title_flavours
+from cms_backend.db.models import (
+    Book,
+    BookHistory,
+    Title,
+    ZimfarmNotification,
+    ZimfarmRecipe,
+)
 from cms_backend.db.rules import (
     apply_retention_rules,
     has_flavour_mismatch,
@@ -94,6 +101,23 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         if location.status == "target"
     ]
 
+    if book.title:
+        recipe_id = next(
+            (
+                title_flavour.recipe_id
+                for title_flavour in book.title.flavours
+                if title_flavour.flavour == book.flavour
+            ),
+            None,
+        )
+    else:
+        recipe_id = (
+            UUID(book.zimfarm_notification.content["recipe_id"])
+            if book.zimfarm_notification
+            and book.zimfarm_notification.content.get("recipe_id")
+            else None
+        )
+
     return BookFullSchema(
         id=book.id,
         title_id=book.title_id,
@@ -116,12 +140,15 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         current_locations=current_locations,
         target_locations=target_locations,
         title_archived=book.title.archived if book.title else False,
-        has_flavour_mismatch=has_flavour_mismatch(book.flavour, book.title.flavours)
+        has_flavour_mismatch=has_flavour_mismatch(
+            book.flavour, get_title_flavours(book.title)
+        )
         if book.title
         else False,
         has_backup=any(
             current_location.is_backup for current_location in current_locations
         ),
+        recipe_id=recipe_id,
     )
 
 
@@ -282,13 +309,13 @@ def move_book(
     if not book.title:
         raise ValueError(f"Book {book_id} has no associated title.")
 
-    if destination == "prod" and has_flavour_mismatch(
-        book.flavour, book.title.flavours
-    ):
-        raise ValueError(
-            f"Book flavour '{book.flavour}' is not in title expected flavours "
-            f"{book.title.flavours}"
-        )
+    if destination == "prod":
+        title_flavours = get_title_flavours(book.title)
+        if has_flavour_mismatch(book.flavour, title_flavours):
+            raise ValueError(
+                f"Book flavour '{book.flavour}' is not in title expected flavours "
+                f"{title_flavours}"
+            )
 
     existing_filename = current_location.filename
 
@@ -589,7 +616,7 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
                 f"{','.join(different_metadata_keys)}"
             )
 
-    if has_flavour_mismatch(book.flavour, book.title.flavours):
+    if has_flavour_mismatch(book.flavour, get_title_flavours(book.title)):
         issues.append("flavour mismatch")
         if update_events:
             book.events.append(
@@ -789,13 +816,13 @@ def remove_book_backup(
 def book_goes_to_staging(book: Book) -> bool:
     """Determine if a book goes to staging.
 
-    Assumes book already has an associated title. A book goes to `prod` if:
+    A book goes to `prod` if:
+    - it has a title
     - book title maturity is 'stable', and
     - book has no issues
     """
     if not book.title:
-        raise ValueError("Book must have a title.")
-
+        return True
     return book.title.maturity != "stable" or len(book.issues) != 0
 
 
@@ -930,3 +957,18 @@ def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
     session.flush()
 
     return book
+
+
+def book_has_recipe_issue(
+    book_flavour: str | None, book_title: Title, recipe: ZimfarmRecipe
+) -> bool:
+    """Check if book has recipe issues."""
+    if recipe.title is None:
+        return True
+    if recipe.title.id != book_title.id and book_title.id not in [
+        tf.recipe_id for tf in book_title.flavours
+    ]:
+        return True
+    if has_flavour_mismatch(book_flavour, [tf.flavour for tf in recipe.flavours]):
+        return True
+    return False

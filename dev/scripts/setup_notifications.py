@@ -54,6 +54,8 @@ NOTIFICATIONS_CONFIG = [
         },
         "folder_name": "wikipedia",
         "filename": "dev_wikipedia_en_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
+        "recipe_name": "dev_wikipedia_en_all",
     },
     {
         "article_count": 500,
@@ -72,6 +74,8 @@ NOTIFICATIONS_CONFIG = [
         },
         "folder_name": "wiktionary",
         "filename": "dev_wiktionary_fr_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
+        "recipe_name": "dev_wiktionary_fr_all",
     },
     {
         "article_count": 1500,
@@ -90,6 +94,8 @@ NOTIFICATIONS_CONFIG = [
         },
         "folder_name": "",
         "filename": "dev_wiktionary_en_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
+        "recipe_name": "dev_wiktionary_en_all",
     },
 ]
 

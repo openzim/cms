@@ -23,6 +23,7 @@ from cms_backend.db.models import (
     CollectionTitle,
     Title,
     Warehouse,
+    ZimfarmRecipe,
 )
 from cms_backend.utils.datetime import getnow
 
@@ -626,6 +627,7 @@ def test_move_book_staging_to_prod(
     dbsession: OrmSession,
     warehouse: Warehouse,
     create_book: Callable[..., Book],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
     create_collection: Callable[..., Collection],
     create_collection_title: Callable[..., CollectionTitle],
@@ -633,7 +635,10 @@ def test_move_book_staging_to_prod(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test moving a book from staging to prod"""
-    title = create_title(name="test_en_all", flavours=["mini", "maxi"])
+    recipe = create_zimfarm_recipe()
+    title = create_title(
+        name="test_en_all", flavours=["mini", "maxi"], zimfarm_recipe=recipe
+    )
     collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path("zim"))
 
@@ -670,6 +675,7 @@ def test_move_book_with_different_flavor_from_title_to_prod(
     dbsession: OrmSession,
     warehouse: Warehouse,
     create_book: Callable[..., Book],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
     create_collection: Callable[..., Collection],
     create_collection_title: Callable[..., CollectionTitle],
@@ -677,7 +683,10 @@ def test_move_book_with_different_flavor_from_title_to_prod(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Test moving a book with different flavor from it's title from staging to prod"""
-    title = create_title(name="test_en_all", flavours=["mini", "maxi"])
+    recipe = create_zimfarm_recipe()
+    title = create_title(
+        name="test_en_all", flavours=["mini", "maxi"], zimfarm_recipe=recipe
+    )
     collection = create_collection(warehouse=warehouse)
     create_collection_title(title=title, collection=collection, path=Path("zim"))
 

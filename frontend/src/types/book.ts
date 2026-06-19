@@ -26,7 +26,7 @@ export interface BookLight {
   deletion_date?: string
   name?: string
   date?: string
-  flavour?: string
+  flavour: string | null
   has_flavour_mismatch: boolean
 }
 
@@ -41,6 +41,7 @@ export interface Book extends BookLight {
   target_locations: BookLocation[]
   title_archived: boolean
   has_backup: boolean
+  recipe_id: string | null
 }
 
 export interface ZimUrl {

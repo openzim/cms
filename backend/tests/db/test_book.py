@@ -28,6 +28,7 @@ from cms_backend.db.models import (
     Title,
     Warehouse,
     ZimfarmNotification,
+    ZimfarmRecipe,
 )
 from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookUpdateSchema
@@ -291,6 +292,7 @@ def test_revert_book(
 def test_update_book_flavour_mismatch_issues(
     dbsession: OrmSession,
     account: Account,
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
 ):
@@ -313,6 +315,7 @@ def test_update_book_flavour_mismatch_issues(
         ),
     }
 
+    recipe = create_zimfarm_recipe()
     title = create_title(
         name="test_en_all",
         flavours=["maxi", "mini"],
@@ -322,6 +325,7 @@ def test_update_book_flavour_mismatch_issues(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe,
     )
     book = create_book(zim_metadata=content)
     book.title = title
@@ -801,6 +805,7 @@ def test_recover_deleted_book_with_no_backup(
 def test_update_book_issues_item_count_issues(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
     create_collection: Callable[..., Collection],
     create_book_location: Callable[..., BookLocation],
@@ -827,6 +832,7 @@ def test_update_book_issues_item_count_issues(
             "BJRU5ErkJggg=="
         ),
     }
+    recipe = create_zimfarm_recipe()
     title = create_title(
         name="test_en_all",
         flavours=["maxi", "mini"],
@@ -836,6 +842,7 @@ def test_update_book_issues_item_count_issues(
         description=content["Description"],
         language=content["Language"],
         illustration_48x48_at_1=content["Illustration_48x48@1"],
+        zimfarm_recipe=recipe,
     )
     # create a collection that tolerates only 10% increase in media and article count
     create_collection(

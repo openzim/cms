@@ -11,6 +11,8 @@ import ArchivedTitlesView from '@/views/ArchivedTitlesView.vue'
 import BackupBooksView from '@/views/BackupBooksView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
+import RecipesView from '@/views/RecipesView.vue'
+import RecipeView from '@/views/RecipeView.vue'
 import TitleView from '@/views/TitleView.vue'
 import BookView from '@/views/BookView.vue'
 import BooksView from '@/views/BooksView.vue'
@@ -45,6 +47,32 @@ const routes = [
     name: 'inbox',
     component: InboxView,
     meta: { title: 'CMS | Inbox' },
+  },
+  {
+    path: '/recipes',
+    name: 'recipes',
+    component: RecipesView,
+    meta: { title: 'CMS | Recipes' },
+  },
+  {
+    path: '/recipe/:id',
+    name: 'recipe-detail',
+    component: RecipeView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Recipe • ${to.params.id}`,
+      parentNavigation: 'recipes',
+    },
+  },
+  {
+    path: '/recipe/:id/:selectedTab',
+    name: 'recipe-detail-tab',
+    component: RecipeView,
+    props: true,
+    meta: {
+      title: (to: RouteLocationNormalized) => `CMS | Recipe • ${to.params.id}`,
+      parentNavigation: 'recipes',
+    },
   },
   {
     path: '/books',

@@ -30,6 +30,8 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
                 "zimcheck_url",
                 "folder_name",
                 "filename",
+                "recipe_id",
+                "recipe_name",
             ]
             if key not in notification.content
         ]

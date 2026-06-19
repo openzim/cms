@@ -2,7 +2,7 @@
   <v-dialog v-model="dialogModel" max-width="800" persistent>
     <v-card>
       <v-card-title class="d-flex justify-space-between align-center">
-        <span class="text-h5">Select Title</span>
+        <span class="text-h5">{{ dialogTitle }}</span>
         <v-btn icon="mdi-close" variant="text" @click="closeDialog" />
       </v-card-title>
 
@@ -23,14 +23,14 @@
             :disabled="!selectedTitleData"
             @click="confirmSelection"
           >
-            Update Title Name
+            {{ confirmButtonText }}
           </v-btn>
         </div>
-        <v-alert v-if="selectedTitleData" type="info" variant="tonal" class="mt-4">
-          <div class="font-weight-bold mb-1">Selected Title</div>
-          <div>{{ selectedTitleData.name }}</div>
+        <v-alert v-if="selectedTitleData && alertMessage" type="info" variant="tonal" class="mt-4">
           <div class="mt-2 text-caption">
-            This will update the title name to: <strong>{{ bookName }}</strong>
+            <div class="font-weight-bold mb-1">Selected Title</div>
+            <div>{{ selectedTitleData.name }}</div>
+            {{ alertMessage }}
           </div>
         </v-alert>
 
@@ -52,11 +52,11 @@
           @row-clicked="handleRowClick"
         />
 
-        <v-alert v-if="selectedTitleData" type="info" variant="tonal" class="mt-4">
-          <div class="font-weight-bold mb-1">Selected Title</div>
-          <div>{{ selectedTitleData.name }}</div>
+        <v-alert v-if="selectedTitleData && alertMessage" type="info" variant="tonal" class="mt-4">
           <div class="mt-2 text-caption">
-            This will update the title name to: <strong>{{ bookName }}</strong>
+            <div class="font-weight-bold mb-1">Selected Title</div>
+            <div>{{ selectedTitleData.name }}</div>
+            {{ alertMessage }}
           </div>
         </v-alert>
       </v-card-text>
@@ -72,7 +72,7 @@
           :disabled="!selectedTitleData"
           @click="confirmSelection"
         >
-          Update Title Name
+          {{ confirmButtonText }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -88,14 +88,22 @@ import { useTitleStore } from '@/stores/title'
 import { useCollectionsStore } from '@/stores/collections'
 import type { TitleLight } from '@/types/title'
 import type { Paginator } from '@/types/base'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 interface Props {
   modelValue: boolean
-  bookName: string
+  bookName?: string
+  dialogTitle?: string
+  confirmButtonText?: string
+  alertMessage?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  bookName: '',
+  dialogTitle: 'Select Title',
+  confirmButtonText: 'Update Title',
+  alertMessage: '',
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -213,12 +221,6 @@ function confirmSelection() {
   }
 }
 
-onMounted(async () => {
-  await collectionsStore.fetchCollections(20)
-  loading.value = false
-})
-
-// Watch for dialog open to load and reset state
 watch(dialogModel, async (newValue) => {
   if (newValue) {
     selectedTitle.value = []
@@ -226,7 +228,8 @@ watch(dialogModel, async (newValue) => {
       name: '',
       collection_name: '',
     }
-    await loadData(paginator.value.limit, 0)
+    await collectionsStore.fetchCollections(20)
+    loading.value = false
   }
 })
 </script>
