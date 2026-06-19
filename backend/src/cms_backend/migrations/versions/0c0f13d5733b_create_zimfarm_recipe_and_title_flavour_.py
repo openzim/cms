@@ -59,8 +59,8 @@ def upgrade():
             server_default=sa.text("uuid_generate_v4()"),
             nullable=False,
         ),
-        sa.Column("title_name", sa.String(), nullable=False),
-        sa.Column("title_id", sa.Uuid(), nullable=False),
+        sa.Column("title_name", sa.String(), nullable=True),
+        sa.Column("title_id", sa.Uuid(), nullable=True),
         sa.Column("comment", sa.String(), nullable=True),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False

@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, Title, TitleFlavour, ZimfarmRecipe
+from cms_backend.db.models import Account, Book, Title, TitleFlavour, ZimfarmRecipe
 from cms_backend.db.zimfarm_recipe import (
     create_zimfarm_recipe,
     get_zimfarm_recipe,
     get_zimfarm_recipe_by_id_or_none,
+    get_zimfarm_recipe_history,
+    get_zimfarm_recipe_history_entry_or_none,
     update_zimfarm_recipe,
 )
 
@@ -46,6 +48,7 @@ def test_update_zimfarm_recipe_mismatch_in_recipes(
     dbsession: OrmSession,
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
+    account: Account,
 ):
     recipe = create_zimfarm_recipe()
     title = create_title(flavours=["maxi", "mini"], zimfarm_recipe=recipe)
@@ -56,6 +59,7 @@ def test_update_zimfarm_recipe_mismatch_in_recipes(
             flavours=["nopic"],
             title=title,
             old_recipes={uuid4()},
+            author=account,
         )
 
 
@@ -63,6 +67,7 @@ def test_update_zimfarm_recipe_update_existing_title_flavours(
     dbsession: OrmSession,
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
+    account: Account,
 ):
     recipe = create_zimfarm_recipe()
     title = create_title(flavours=["maxi", "mini"], zimfarm_recipe=recipe)
@@ -72,6 +77,7 @@ def test_update_zimfarm_recipe_update_existing_title_flavours(
         flavours=["maxi", "nopic", "mini"],
         title=title,
         old_recipes={recipe.id},
+        author=account,
     )
 
     assert (
@@ -89,6 +95,7 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours_and_title_associ
     dbsession: OrmSession,
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
+    account: Account,
 ):
     recipe1 = create_zimfarm_recipe()
     title = create_title(zimfarm_recipe=recipe1)
@@ -117,6 +124,7 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours_and_title_associ
         flavours=["maxi", "nopic", "mini"],
         title=title,
         old_recipes={recipe1.id, recipe2.id},
+        author=account,
     )
 
     # all three flavours now belong to recipe2
@@ -148,6 +156,7 @@ def test_update_zimfarm_recipe_remove_book_recipe_issues(
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
+    account: Account,
 ):
     recipe = create_zimfarm_recipe()
     title = create_title(flavours=["maxi", "mini"], zimfarm_recipe=recipe)
@@ -161,6 +170,7 @@ def test_update_zimfarm_recipe_remove_book_recipe_issues(
         flavours=["maxi", "nopic", "mini"],
         title=title,
         old_recipes={recipe.id},
+        author=account,
     )
     dbsession.refresh(book)
     assert len(book.issues) == 0
@@ -170,6 +180,7 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
     dbsession: OrmSession,
     create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
     create_title: Callable[..., Title],
+    account: Account,
 ):
     recipe1 = create_zimfarm_recipe()
     title = create_title(zimfarm_recipe=recipe1)
@@ -198,6 +209,7 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
         flavours=["mini"],
         title=title,
         old_recipes={recipe1.id},
+        author=account,
     )
 
     # recipe1 still has maxi and nopic
@@ -224,3 +236,79 @@ def test_update_zimfarm_recipe_dissociate_recipes_from_flavours(
     dbsession.refresh(recipe2)
     assert recipe2.title is not None
     assert recipe2.title.id == title.id
+
+
+@pytest.mark.parametrize(
+    "skip, limit, expected_count",
+    [
+        pytest.param(0, 3, 3, id="first-page"),
+        pytest.param(3, 3, 3, id="second-page"),
+        pytest.param(6, 2, 0, id="page-num-too-high-no-results"),
+        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
+        pytest.param(0, 10, 6, id="first-page-with-high-limit"),
+    ],
+)
+def test_get_zimfarm_recipe_history(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
+    account: Account,
+    skip: int,
+    limit: int,
+    expected_count: int,
+):
+    """Test retrieving zimfarm recipe history with pagination"""
+    title = create_title(name="wikipedia_en_test")
+    recipe = create_zimfarm_recipe(title_id=title.id)
+    for flavour in ["mini", "maxi", "nopic", "", "novid"]:
+        update_zimfarm_recipe(
+            dbsession,
+            recipe=recipe,
+            author=account,
+            flavours=[flavour],
+            title=title,
+            old_recipes=set(),
+            create_event=False,
+        )
+
+    results = get_zimfarm_recipe_history(
+        dbsession,
+        recipe_identifier=recipe.name,
+        skip=skip,
+        limit=limit,
+    )
+    assert results.nb_records == 6
+    assert len(results.records) <= limit
+    assert len(results.records) == expected_count
+
+
+def test_get_zimfarm_recipe_history_entry_or_none(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_zimfarm_recipe: Callable[..., ZimfarmRecipe],
+    account: Account,
+):
+    """Test retrieving a specific title history entry"""
+    title = create_title(name="wikipedia_en_test")
+    recipe = create_zimfarm_recipe(title_id=title.id)
+    recipe = update_zimfarm_recipe(
+        dbsession,
+        recipe=recipe,
+        author=account,
+        flavours=["maxi"],
+        title=title,
+        old_recipes=set(),
+        create_event=False,
+    )
+    assert len(recipe.history_entries) == 2
+
+    history_result = get_zimfarm_recipe_history(
+        dbsession, recipe_identifier=str(recipe.id), skip=1, limit=1
+    )
+    history_id = history_result.records[0].id
+
+    history_entry = get_zimfarm_recipe_history_entry_or_none(
+        dbsession, recipe_identifier=str(recipe.id), history_id=history_id
+    )
+    assert history_entry is not None
+    assert history_entry.flavours == []

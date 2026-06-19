@@ -518,8 +518,8 @@ class ZimfarmRecipeHistory(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    title_name: Mapped[str]
-    title_id: Mapped[UUID]
+    title_name: Mapped[str | None]
+    title_id: Mapped[UUID | None]
     comment: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()

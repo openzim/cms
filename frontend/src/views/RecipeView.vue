@@ -95,7 +95,7 @@
               </v-col>
               <v-col cols="12" md="9">
                 <router-link
-                  :to="{ name: 'title', params: { id: recipe.title_name } }"
+                  :to="{ name: 'title-detail', params: { id: recipe.title_name } }"
                   class="text-decoration-none text-primary font-weight-medium"
                 >
                   View Title

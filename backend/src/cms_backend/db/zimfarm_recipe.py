@@ -6,18 +6,28 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from cms_backend.db import count_from_stmt
+from cms_backend.db.account import get_account_by_username_or_none
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import get_title_flavour_or_none
-from cms_backend.db.models import Book, Title, TitleFlavour, ZimfarmRecipe
+from cms_backend.db.models import (
+    Account,
+    Book,
+    Title,
+    TitleFlavour,
+    ZimfarmRecipe,
+    ZimfarmRecipeHistory,
+)
 from cms_backend.db.title import get_title_by_id
 from cms_backend.schemas.orms import (
     ListResult,
     TitleFlavourSchema,
     ZimfarmRecipeFullSchema,
+    ZimfarmRecipeHistorySchema,
     ZimfarmRecipeLightSchema,
 )
 from cms_backend.utils import is_valid_uuid
+from cms_backend.utils.datetime import getnow
 
 
 def get_zimfarm_recipe_by_id_or_none(
@@ -92,6 +102,14 @@ def create_zimfarm_recipe(
         zimfarm_recipe.title = title
     session.add(zimfarm_recipe)
     session.flush()
+    maint_scripts = get_account_by_username_or_none(session, username="maint-scripts")
+    if maint_scripts:
+        create_zimfarm_recipe_history_entry(
+            session,
+            zimfarm_recipe,
+            maint_scripts.id,
+            comment="Initial history created by maint-scripts",
+        )
     return zimfarm_recipe
 
 
@@ -103,7 +121,8 @@ def update_zimfarm_recipe(
     title: Title,
     old_recipes: set[UUID],
     create_event: bool = True,
-):
+    author: Account,
+) -> ZimfarmRecipe:
     """Update a recipe to be associated with the title and flavours.
 
     - Existing associations with the title's flavours to other recipes
@@ -148,6 +167,16 @@ def update_zimfarm_recipe(
 
     recipe.title = title
 
+    # Create history entries for all the recipes that have been affected
+    for associated_recipe_id in associated_recipes:
+        associated_recipe = get_zimfarm_recipe(session, str(associated_recipe_id))
+        create_zimfarm_recipe_history_entry(
+            session, associated_recipe, author.id, comment=None
+        )
+
+    if recipe.id not in associated_recipes:
+        create_zimfarm_recipe_history_entry(session, recipe, author.id, comment=None)
+
     session.flush()
 
     if create_event:
@@ -169,6 +198,7 @@ def update_zimfarm_recipe(
         create_title_modified_event(
             session, action="updated", title_name=title.name, title_id=title.id
         )
+    return recipe
 
 
 def get_zimfarm_recipes(
@@ -200,4 +230,82 @@ def get_zimfarm_recipes(
                 stmt.offset(skip).limit(limit)
             ).all()
         ],
+    )
+
+
+def create_zimfarm_recipe_history_entry(
+    session: OrmSession,
+    recipe: ZimfarmRecipe,
+    author_id: UUID,
+    comment: str | None = None,
+) -> ZimfarmRecipeHistory:
+    history_entry = ZimfarmRecipeHistory(
+        title_name=recipe.title.name if recipe.title else None,
+        title_id=recipe.title_id,
+        comment=comment,
+        created_at=getnow(),
+        flavours=[tf.flavour for tf in recipe.flavours],
+    )
+    history_entry.zimfarm_recipe = recipe
+    history_entry.author_id = author_id
+    session.add(history_entry)
+    return history_entry
+
+
+def create_zimfarm_recipe_history_schema(entry: ZimfarmRecipeHistory):
+    return ZimfarmRecipeHistorySchema(
+        id=entry.id,
+        title_id=entry.title_id,
+        title_name=entry.title_name,
+        flavours=entry.flavours,
+        created_at=entry.created_at,
+        author=entry.author.display_name,
+        comment=entry.comment,
+    )
+
+
+def get_zimfarm_recipe_history(
+    session: OrmSession, *, recipe_identifier: str, skip: int, limit: int
+) -> ListResult[ZimfarmRecipeHistorySchema]:
+    """Get a zimfarm recipe's history"""
+    recipe = get_zimfarm_recipe(session, recipe_identifier)
+    stmt = (
+        select(ZimfarmRecipeHistory)
+        .where(ZimfarmRecipeHistory.zimfarm_recipe_id == recipe.id)
+        .options(selectinload(ZimfarmRecipeHistory.author))
+        .order_by(ZimfarmRecipeHistory.created_at.desc())
+    )
+    return ListResult[ZimfarmRecipeHistorySchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            create_zimfarm_recipe_history_schema(entry)
+            for entry in session.scalars(stmt.offset(skip).limit(limit)).all()
+        ],
+    )
+
+
+def get_zimfarm_recipe_history_entry_or_none(
+    session: OrmSession, *, recipe_identifier: str, history_id: UUID
+) -> ZimfarmRecipeHistory | None:
+    """Get a zimfarm recipe's history entry or None if it does not exist"""
+    recipe = get_zimfarm_recipe(session, recipe_identifier)
+    return session.scalars(
+        select(ZimfarmRecipeHistory).where(
+            ZimfarmRecipeHistory.id == history_id,
+            ZimfarmRecipeHistory.zimfarm_recipe_id == recipe.id,
+        )
+    ).one_or_none()
+
+
+def get_zimfarm_recipe_history_entry(
+    session: OrmSession, *, recipe_identifier: str, history_id: UUID
+) -> ZimfarmRecipeHistory:
+    """Get a zimfarm recipe's history entry"""
+    if history_entry := get_zimfarm_recipe_history_entry_or_none(
+        session, recipe_identifier=recipe_identifier, history_id=history_id
+    ):
+        return history_entry
+    raise RecordDoesNotExistError(
+        f"Recipe '{recipe_identifier}' does not have a history entry with id "
+        f"{history_id}"
     )

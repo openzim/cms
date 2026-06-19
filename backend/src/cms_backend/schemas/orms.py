@@ -235,3 +235,13 @@ class ZimfarmRecipeFullSchema(ZimfarmRecipeLightSchema):
     @property
     def link(self) -> str:
         return f"{Context.zimfarm_api_url}/recipes/{self.name}"
+
+
+class ZimfarmRecipeHistorySchema(BaseModel):
+    id: UUID
+    title_id: UUID | None
+    title_name: str | None
+    flavours: list[str]
+    comment: str | None
+    author: str
+    created_at: datetime

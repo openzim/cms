@@ -6,25 +6,35 @@ from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import require_permission
+from cms_backend.api.routes.dependencies import get_current_account, require_permission
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
+from cms_backend.db.models import Account
 from cms_backend.db.title import get_title
 from cms_backend.db.zimfarm_recipe import (
+    create_zimfarm_recipe_history_schema,
     create_zimfarm_recipe_schema,
 )
 from cms_backend.db.zimfarm_recipe import (
     get_zimfarm_recipe as db_get_zimfarm_recipe,
 )
 from cms_backend.db.zimfarm_recipe import (
-    get_zimfarm_recipes as db_get_zimfarm_recipes,
+    get_zimfarm_recipe_history as db_get_zimfarm_recipe_history,
 )
+from cms_backend.db.zimfarm_recipe import (
+    get_zimfarm_recipe_history_entry as db_get_zimfarm_recipe_history_entry,
+)
+from cms_backend.db.zimfarm_recipe import get_zimfarm_recipes as db_get_zimfarm_recipes
 from cms_backend.db.zimfarm_recipe import (
     update_zimfarm_recipe as db_update_zimfarm_recipe,
 )
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
-from cms_backend.schemas.orms import ZimfarmRecipeFullSchema, ZimfarmRecipeLightSchema
+from cms_backend.schemas.orms import (
+    ZimfarmRecipeFullSchema,
+    ZimfarmRecipeHistorySchema,
+    ZimfarmRecipeLightSchema,
+)
 
 router = APIRouter(prefix="/recipes", tags=["zimfarm-recipes"])
 
@@ -87,6 +97,7 @@ def update_zimfarm_recipe(
     recipe_identifier: Annotated[NotEmptyString, Path()],
     request: RecipeUpdateSchema,
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ):
     title = get_title(session, request.title_name)
     recipe = db_get_zimfarm_recipe(session, recipe_identifier)
@@ -96,9 +107,49 @@ def update_zimfarm_recipe(
         flavours=request.flavours,
         title=title,
         old_recipes=request.old_recipes,
+        author=current_account,
     )
 
     return JSONResponse(
         content={"message": f"recipe '{recipe_identifier}' has been updated"},
         status_code=HTTPStatus.OK,
     )
+
+
+@router.get(
+    "/{recipe_identifier}/history",
+    dependencies=[Depends(require_permission(namespace="recipe", name="update"))],
+)
+def get_title_history(
+    recipe_identifier: Annotated[NotEmptyString, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+    skip: Annotated[SkipField, Query()] = 0,
+    limit: Annotated[LimitFieldMax200, Query()] = 200,
+) -> ListResponse[ZimfarmRecipeHistorySchema]:
+    results = db_get_zimfarm_recipe_history(
+        session, recipe_identifier=recipe_identifier, skip=skip, limit=limit
+    )
+    return ListResponse(
+        items=results.records,
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=skip,
+            limit=limit,
+            page_size=len(results.records),
+        ),
+    )
+
+
+@router.get(
+    "/{recipe_identifier}/history/{history_id}",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_zimfarm_recipe_history_entry(
+    recipe_identifier: Annotated[NotEmptyString, Path()],
+    history_id: Annotated[UUID, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+) -> ZimfarmRecipeHistorySchema:
+    history_entry = db_get_zimfarm_recipe_history_entry(
+        session, recipe_identifier=recipe_identifier, history_id=history_id
+    )
+    return create_zimfarm_recipe_history_schema(history_entry)

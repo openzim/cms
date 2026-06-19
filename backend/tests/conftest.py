@@ -29,6 +29,7 @@ from cms_backend.db.models import (
     Warehouse,
     ZimfarmNotification,
     ZimfarmRecipe,
+    ZimfarmRecipeHistory,
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
@@ -491,6 +492,7 @@ def create_event(
 def create_zimfarm_recipe(
     dbsession: OrmSession,
     faker: Faker,
+    account: Account,
 ) -> Callable[..., ZimfarmRecipe]:
     def _create_zimfarm_recipe(
         *,
@@ -506,6 +508,17 @@ def create_zimfarm_recipe(
             recipe.title = dbsession.scalars(
                 select(Title).where(Title.id == title_id)
             ).one()
+
+        history = ZimfarmRecipeHistory(
+            title_id=title_id,
+            title_name=recipe.title.name if recipe.title else None,
+            comment=None,
+            flavours=[tf.flavour for tf in recipe.flavours],
+            created_at=getnow(),
+        )
+        history.author_id = account.id
+        history.zimfarm_recipe = recipe
+        dbsession.add(history)
         dbsession.add(recipe)
         dbsession.flush()
 

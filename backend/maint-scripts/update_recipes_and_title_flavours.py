@@ -14,6 +14,8 @@ It
 
 Environment variables required:
 - ZIMFARM_API_URL: URL of Zimfarm API to fetch recipes and tasks from
+- USERNAME: the username of the account that will create history entries for recipes.
+            Defaults to 'maint-scrpts'
 """
 
 import os
@@ -29,10 +31,15 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from cms_backend import logger
 from cms_backend.db import Session
+from cms_backend.db.account import get_account_by_username
 from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import Book, TitleFlavour, ZimfarmRecipe
 from cms_backend.db.title import get_title_by_name_or_none
-from cms_backend.db.zimfarm_recipe import get_zimfarm_recipe_by_id_or_none
+from cms_backend.db.zimfarm_recipe import (
+    create_zimfarm_recipe,
+    create_zimfarm_recipe_history_entry,
+    get_zimfarm_recipe_by_id_or_none,
+)
 from cms_backend.utils.zim import get_missing_keys
 
 
@@ -95,6 +102,7 @@ def process_task(
     task: dict[str, Any],
     recipe: ZimfarmRecipe,
     zimfarm_api_url: str,
+    author_id: UUID,
 ):
     response = query_api(f"{zimfarm_api_url}/tasks/{task['id']}")
     if not response.success:
@@ -120,6 +128,8 @@ def process_task(
             )
             continue
 
+        recipe.title = title
+
         flavour = metadata.get("Flavour")
         if flavour is None:
             logger.debug(f"Task {task['id']} has no flavour")
@@ -144,6 +154,12 @@ def process_task(
             session.add(tf)
             session.flush()
             logger.info(f"Created title flavour '{flavour}' for title '{title.name}'")
+            create_zimfarm_recipe_history_entry(
+                session,
+                recipe,
+                author_id=author_id,
+                comment=f"Added '{flavour}' for title '{title.name}'",
+            )
 
         # update books notifications whose flavour matches
         books = session.scalars(
@@ -159,7 +175,9 @@ def process_task(
                 flag_modified(zimfarm_notification, "content")
 
 
-def process_recipe(session: OrmSession, zf_recipe: ZimfarmRecipe, zimfarm_api_url: str):
+def process_recipe(
+    session: OrmSession, zf_recipe: ZimfarmRecipe, zimfarm_api_url: str, author_id: UUID
+):
     skip = 0
     limit = 50
     while True:
@@ -190,11 +208,14 @@ def process_recipe(session: OrmSession, zf_recipe: ZimfarmRecipe, zimfarm_api_ur
                     task=task,
                     recipe=zf_recipe,
                     zimfarm_api_url=zimfarm_api_url,
+                    author_id=author_id,
                 )
         skip += limit
 
 
-def populate_recipes_from_zimfarm(session: OrmSession, zimfarm_api_url: str):
+def populate_recipes_from_zimfarm(
+    session: OrmSession, zimfarm_api_url: str, author_id: UUID
+):
     """Fetch recipes from zimfarm and attach CMS titles/title flavours to recipes."""
     skip = 0
     limit = 50
@@ -216,11 +237,11 @@ def populate_recipes_from_zimfarm(session: OrmSession, zimfarm_api_url: str):
         for recipe in recipes:
             zf_recipe = get_zimfarm_recipe_by_id_or_none(session, UUID(recipe["id"]))
             if zf_recipe is None:
-                zf_recipe = ZimfarmRecipe(id=UUID(recipe["id"]), name=recipe["name"])
-                session.add(zf_recipe)
-                session.flush()
+                zf_recipe = create_zimfarm_recipe(
+                    session, recipe_id=recipe["id"], recipe_name=recipe["name"]
+                )
                 logger.info(f"Created zimfarm recipe '{zf_recipe.name}'")
-            process_recipe(session, zf_recipe, zimfarm_api_url)
+            process_recipe(session, zf_recipe, zimfarm_api_url, author_id=author_id)
         skip += limit
 
 
@@ -228,7 +249,10 @@ def main():
 
     zimfarm_api_url = os.getenv("ZIMFARM_API_URL", "https://api.farm.openzim.org/v2")
     with Session.begin() as session:
-        populate_recipes_from_zimfarm(session, zimfarm_api_url)
+        author = get_account_by_username(
+            session, username=os.getenv("USERNAME", default="maint-scripts")
+        )
+        populate_recipes_from_zimfarm(session, zimfarm_api_url, author_id=author.id)
 
 
 if __name__ == "__main__":
