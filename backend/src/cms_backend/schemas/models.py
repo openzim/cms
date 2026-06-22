@@ -1,11 +1,18 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import AnyUrl, Field, model_validator
+from pydantic import AfterValidator, AnyUrl, Field, model_validator
 
-from cms_backend.api.routes.fields import Base64Str, LangCode, NotEmptyString
+from cms_backend.api.routes.fields import (
+    Base64Str,
+    GraphemeLength,
+    LangCode,
+    NotEmptyString,
+    ZimFlavour,
+)
+from cms_backend.context import Context
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
@@ -61,13 +68,25 @@ class BaseTitleCreateUpdateSchema(BaseModel):
     license: NotEmptyString | None = None
     relation: NotEmptyString | None = None
     source: NotEmptyString | None = None
-    title: NotEmptyString | None = None
+    title: (
+        Annotated[
+            NotEmptyString,
+            AfterValidator(GraphemeLength(max=Context.zim_title_max_length)),
+        ]
+        | None
+    ) = None
     creator: NotEmptyString | None = None
-    description: NotEmptyString | None = None
+    description: (
+        Annotated[
+            NotEmptyString,
+            AfterValidator(GraphemeLength(max=Context.zim_description_max_length)),
+        ]
+        | None
+    ) = None
     publisher: NotEmptyString | None = None
     language: LangCode | None = None
     illustration_48x48_at_1: Base64Str | None = None
-    flavours: list[str] | None = None
+    flavours: list[ZimFlavour] | None = None
     archived: bool | None = None
 
     @model_validator(mode="after")

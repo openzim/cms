@@ -1,4 +1,5 @@
 import datetime
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db.book import (
     backup_book,
+    book_has_bad_metadata,
     get_book_history,
     get_book_history_entry_or_none,
     get_differing_metadata_keys,
@@ -873,3 +875,57 @@ def test_update_book_issues_item_count_issues(
     dbsession.flush()
     update_book_issues(dbsession, book)
     assert set(book.issues) == expected_issues
+
+
+@pytest.mark.parametrize(
+    "title,description,flavour,event_regex,expected",
+    [
+        pytest.param(
+            "é" * 31,
+            "é" * 40,
+            "",
+            r"book Title metadata is \d+ characters long",
+            True,
+            id="title-too-long",
+        ),
+        pytest.param(
+            "é" * 30,
+            "é" * 90,
+            "",
+            r"book Description metadata is \d+ characters long",
+            True,
+            id="description-too-long",
+        ),
+        pytest.param(
+            "é" * 30,
+            "é" * 80,
+            "_maxi",
+            "book Flavour metadata contains non-alphabetic characters",
+            True,
+            id="invalid-flavour",
+        ),
+        pytest.param(
+            "é" * 30,
+            "é" * 80,
+            "maxi",
+            "",
+            False,
+            id="all-good",
+        ),
+    ],
+)
+def test_book_has_bad_metadata(
+    create_book: Callable[..., Book],
+    title: str,
+    description: str,
+    flavour: str | None,
+    event_regex: str,
+    *,
+    expected: bool,
+):
+    book = create_book(
+        zim_metadata={"Title": title, "Description": description, "Flavour": flavour}
+    )
+    assert book_has_bad_metadata(book, update_events=True) is expected
+    if expected:
+        assert any(re.search(event_regex, event) for event in book.events)

@@ -107,3 +107,9 @@ class Context:
     article_count_change_threshold: float = field(
         default=float(os.getenv("ARTICLE_COUNT_CHANGE_THRESHOLD", "0.1"))
     )
+    zim_title_max_length: int = field(
+        default=int(os.getenv("ZIM_TITLE_MAX_LENGTH", "30"))
+    )
+    zim_description_max_length: int = field(
+        default=int(os.getenv("ZIM_DESCRIPTION_MAX_LENGTH", "80"))
+    )

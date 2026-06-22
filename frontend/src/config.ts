@@ -13,6 +13,8 @@ export interface Config {
   LOGIN_MODES: Array<string>
   MEDIA_COUNT_CHANGE_THRESHOLD: number | undefined
   ARTICLE_COUNT_CHANGE_THRESHOLD: number | undefined
+  ZIM_TITLE_MAX_LENGTH: number | undefined
+  ZIM_DESCRIPTION_MAX_LENGTH: number | undefined
 }
 
 export const ConfigService = {
