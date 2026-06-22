@@ -16,6 +16,7 @@ from cms_backend.context import Context
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
+from cms_backend.utils.zim import ZIM_TITLE_NAME_REGEX
 
 
 class ZimUrlSchema(BaseModel):
@@ -105,12 +106,12 @@ class BaseTitleCreateUpdateSchema(BaseModel):
 
 
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):
-    name: NotEmptyString
+    name: NotEmptyString = Field(pattern=ZIM_TITLE_NAME_REGEX)
     maturity: Literal["unstable", "stable"] = "unstable"
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
-    name: NotEmptyString | None = None
+    name: NotEmptyString | None = Field(pattern=ZIM_TITLE_NAME_REGEX, default=None)
     maturity: Literal["unstable", "stable"] | None = None
     comment: NotEmptyString | None = None
 

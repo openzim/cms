@@ -1,4 +1,9 @@
+import re
 from typing import Any
+
+ZIM_TITLE_NAME_REGEX = re.compile(
+    r"^[a-z0-9\-\.]+?_[a-z]{2}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$"
+)
 
 
 def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:

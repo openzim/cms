@@ -878,12 +878,13 @@ def test_update_book_issues_item_count_issues(
 
 
 @pytest.mark.parametrize(
-    "title,description,flavour,event_regex,expected",
+    "title,description,flavour,name,event_regex,expected",
     [
         pytest.param(
             "é" * 31,
             "é" * 40,
             "",
+            "test_en_all",
             r"book Title metadata is \d+ characters long",
             True,
             id="title-too-long",
@@ -892,6 +893,7 @@ def test_update_book_issues_item_count_issues(
             "é" * 30,
             "é" * 90,
             "",
+            "test_en_all",
             r"book Description metadata is \d+ characters long",
             True,
             id="description-too-long",
@@ -900,6 +902,7 @@ def test_update_book_issues_item_count_issues(
             "é" * 30,
             "é" * 80,
             "_maxi",
+            "test_en_all",
             "book Flavour metadata contains non-alphabetic characters",
             True,
             id="invalid-flavour",
@@ -908,6 +911,7 @@ def test_update_book_issues_item_count_issues(
             "é" * 30,
             "é" * 80,
             "maxi",
+            "test_en_all",
             "",
             False,
             id="all-good",
@@ -919,12 +923,18 @@ def test_book_has_bad_metadata(
     title: str,
     description: str,
     flavour: str | None,
+    name: str,
     event_regex: str,
     *,
     expected: bool,
 ):
     book = create_book(
-        zim_metadata={"Title": title, "Description": description, "Flavour": flavour}
+        zim_metadata={
+            "Name": name,
+            "Title": title,
+            "Description": description,
+            "Flavour": flavour,
+        }
     )
     assert book_has_bad_metadata(book, update_events=True) is expected
     if expected:

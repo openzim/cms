@@ -127,18 +127,18 @@ def test_update_title_name(
         dbsession,
         title_identifier=str(title.id),
         author_id=account.id,
-        payload=TitleUpdateSchema(name="wikipedia_en"),
+        payload=TitleUpdateSchema(name="wikipedia_en_all"),
     )
 
     dbsession.refresh(title)
-    assert title.name == "wikipedia_en"
+    assert title.name == "wikipedia_en_all"
 
     events = dbsession.scalars(
         select(Event).where(Event.topic == "title_modified")
     ).all()
     assert len(events) == 1
     assert events[0].payload["action"] == "updated"
-    assert events[0].payload["name"] == "wikipedia_en"
+    assert events[0].payload["name"] == "wikipedia_en_all"
     assert events[0].payload["id"] == str(title.id)
 
 

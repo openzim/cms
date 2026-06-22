@@ -78,14 +78,14 @@
             :rules="[rules.title]"
             clearable
             :color="
-              titleOverLimit || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
+              titleInvalid || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
             "
             :base-color="
-              titleOverLimit || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
+              titleInvalid || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
             "
           >
             <template #counter> {{ titleGraphemeCount }}/{{ titleMaxLength }} </template>
-            <template v-if="titleOverLimit" #append-inner>
+            <template v-if="titleInvalid" #append-inner>
               <v-icon color="warning" icon="mdi-alert-circle" />
             </template>
           </v-text-field>
@@ -473,6 +473,8 @@ interface Props {
   latestBook?: Book | null
 }
 
+const TITLE_NAME_PATTERN = '^[a-z0-9\-\.]+?_[a-z]{2}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$'
+
 const props = withDefaults(defineProps<Props>(), {
   title: null,
   inDialog: false,
@@ -712,7 +714,12 @@ const descriptionGraphemeCount = computed(() => {
   if (!formData.value.description) return 0
   return formData.value.description.split(byGrapheme).length
 })
-const titleOverLimit = computed(() => titleGraphemeCount.value > titleMaxLength)
+const titleInvalid = computed(() => {
+  if (!formData.value.title) return true
+  const isValid = rules.title(formData.value.title)
+  if (typeof isValid === 'string') return false
+  return isValid
+})
 const descriptionOverLimit = computed(() => descriptionGraphemeCount.value > descriptionMaxLength)
 const languageInvalid = computed(() => {
   const value = formData.value.language
@@ -734,6 +741,10 @@ const rules = {
     if (!value) return true
     if (titleGraphemeCount.value > titleMaxLength) {
       return `Maximum length is ${titleMaxLength} characters.`
+    }
+    const regex = new RegExp(TITLE_NAME_PATTERN)
+    if (!regex.test(value)) {
+      return `Value does not meet pattern: ${TITLE_NAME_PATTERN}`
     }
     return true
   },
