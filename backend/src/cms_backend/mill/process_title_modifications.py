@@ -27,17 +27,20 @@ def process_title_modifications(session: OrmSession):
                 f"{','.join(missing_keys)}"
             )
             delete_event(session, event_id=event.id)
+            session.commit()
             continue
 
         title = get_title_by_id_or_none(session, title_id=UUID(event.payload["id"]))
         if not title:
             logger.warning(f"Title with ID {event.payload['id']} does not exist.")
             delete_event(session, event_id=event.id)
+            session.commit()
             continue
 
         if title.archived:
             logger.warning(f"Title {title.id} is archived.")
             delete_event(session, event_id=event.id)
+            session.commit()
             continue
 
         title_name = event.payload["name"]
@@ -55,6 +58,7 @@ def process_title_modifications(session: OrmSession):
         if not books_without_title:
             logger.info(f"No books without title matching title '{title_name}'")
             delete_event(session, event_id=event.id)
+            session.commit()
             continue
 
         logger.info(
@@ -62,13 +66,13 @@ def process_title_modifications(session: OrmSession):
         )
 
         for book in books_without_title:
-            with session.begin_nested():
-                try:
-                    process_book(session, book)
-                except Exception:
-                    logger.exception("error while processing book")
-                else:
-                    delete_event(session, event.id)
-                    nb_events_processed += 1
+            try:
+                process_book(session, book)
+            except Exception:
+                logger.exception("error while processing book")
+            else:
+                delete_event(session, event.id)
+                nb_events_processed += 1
+            session.commit()
 
     logger.info(f"Done processing {nb_events_processed} title modification events.")
