@@ -58,7 +58,7 @@ def main():
         for task_config in tasks:
             if task_config.should_run(now):
                 try:
-                    with Session.begin() as session:
+                    with Session() as session:
                         logger.debug(f"Executing task: {task_config.task_name}")
                         task_config.execute(session)
                 except Exception:

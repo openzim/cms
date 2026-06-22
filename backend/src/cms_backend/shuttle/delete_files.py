@@ -19,22 +19,22 @@ def delete_files(session: OrmSession):
     nb_zim_files_deleted = 0
 
     while True:
-        with session.begin_nested():
-            book = get_next_book_to_delete(session, now)
-            if not book:
-                break
+        book = get_next_book_to_delete(session, now)
+        if not book:
+            break
 
-            try:
-                logger.info(f"Deleting files for book {book.id}")
-                delete_book_files(session, book)
-                nb_zim_files_deleted += 1
-            except Exception as exc:
-                book.events.append(
-                    f"{getnow()}: error encountered while deleting files\n{exc}"
-                )
-                logger.exception(f"Failed to delete files for book {book.id}")
-                book.needs_file_operation = False
-                book.has_error = True
+        try:
+            logger.info(f"Deleting files for book {book.id}")
+            delete_book_files(session, book)
+            nb_zim_files_deleted += 1
+        except Exception as exc:
+            book.events.append(
+                f"{getnow()}: error encountered while deleting files\n{exc}"
+            )
+            logger.exception(f"Failed to delete files for book {book.id}")
+            book.needs_file_operation = False
+            book.has_error = True
+        session.commit()
 
     if nb_zim_files_deleted:
         logger.info(f"Done deleting {nb_zim_files_deleted} ZIM files")

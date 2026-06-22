@@ -12,21 +12,21 @@ from cms_backend.utils.datetime import getnow
 def move_files(session: OrmSession):
     nb_zim_files_moved = 0
     while True:
-        with session.begin_nested():
-            book = get_next_book_to_move_files_or_none(session)
-            if not book:
-                break
+        book = get_next_book_to_move_files_or_none(session)
+        if not book:
+            break
 
-            try:
-                logger.info(f"Moving ZIM file(s) of book {book.id}")
-                move_book_files(session, book)
-                nb_zim_files_moved += 1
-            except Exception as exc:
-                book.events.append(
-                    f"{getnow()}: error encountered while moving file\n{exc}"
-                )
-                logger.exception(f"Failed to move file for {book.id}")
-                book.has_error = True
+        try:
+            logger.info(f"Moving ZIM file(s) of book {book.id}")
+            move_book_files(session, book)
+            nb_zim_files_moved += 1
+        except Exception as exc:
+            book.events.append(
+                f"{getnow()}: error encountered while moving file\n{exc}"
+            )
+            logger.exception(f"Failed to move file for {book.id}")
+            book.has_error = True
+        session.commit()
 
     if nb_zim_files_moved:
         logger.info(f"Done moving {nb_zim_files_moved} ZIM files")

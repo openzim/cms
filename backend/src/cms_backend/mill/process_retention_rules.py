@@ -13,14 +13,14 @@ def process_retention_rules(session: OrmSession):
     titles = session.scalars(select(Title)).all()
 
     for title in titles:
-        with session.begin_nested():
-            try:
-                apply_retention_rules(session, title)
-            except Exception:
-                logger.exception(
-                    f"Error while applying retention rules to title {title.id}"
-                )
-            else:
-                nb_titles_processed += 1
+        try:
+            apply_retention_rules(session, title)
+        except Exception:
+            logger.exception(
+                f"Error while applying retention rules to title {title.id}"
+            )
+        else:
+            nb_titles_processed += 1
+            session.commit()
 
     logger.info(f"Done applying retention rules to {nb_titles_processed} titles.")

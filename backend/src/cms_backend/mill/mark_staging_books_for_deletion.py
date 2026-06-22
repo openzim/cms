@@ -26,17 +26,17 @@ def mark_staging_books_for_deletion(session: OrmSession):
             break
 
         for book in results.records:
-            with session.begin_nested():
-                try:
-                    delete_book(
-                        session,
-                        book_id=book.id,
-                        deletion_delay=MillContext.staging_books_deletion_grace_period,
-                    )
-                except Exception:
-                    logger.exception(f"error while marking book {book.id} for deletion")
-                else:
-                    nb_books_marked += 1
+            try:
+                delete_book(
+                    session,
+                    book_id=book.id,
+                    deletion_delay=MillContext.staging_books_deletion_grace_period,
+                )
+            except Exception:
+                logger.exception(f"error while marking book {book.id} for deletion")
+            else:
+                session.commit()
+                nb_books_marked += 1
         skip += limit
 
     logger.info(f"Done marking {nb_books_marked} staging book(s) for deletion")
