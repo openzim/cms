@@ -796,6 +796,9 @@ def book_goes_to_staging(book: Book) -> bool:
     if not book.title:
         raise ValueError("Book must have a title.")
 
+    if book.location_kind == "prod":
+        return False
+
     return book.title.maturity != "stable" or len(book.issues) != 0
 
 
