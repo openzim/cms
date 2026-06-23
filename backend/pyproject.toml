@@ -37,6 +37,9 @@ api = [
     "PyJWT == 2.11.0",
     "cryptography == 46.0.4",
 ]
+shuttle = [
+    "kiwixstorage == 0.10.1",
+]
 scripts = [
     "invoke == 2.2.0",
 ]
@@ -54,6 +57,7 @@ test = [
     "Faker==37.3.0",
     "python-dateutil==2.9.0.post0",
     "cms_backend[api]",
+    "cms_backend[shuttle]",
 ]
 maint-scripts = [
     "libzim == 3.8.0",
@@ -65,6 +69,7 @@ dev = [
     "cms_backend[test]",
     "cms_backend[qa]",
     "cms_backend[maint-scripts]",
+    "cms_backend[shuttle]",
 ]
 
 [project.urls]

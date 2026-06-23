@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y curl && \
 # Install Python dependencies first (since they change more rarely than src code)
 COPY pyproject.toml README.md /app/
 COPY src/cms_backend/__about__.py /app/src/cms_backend/__about__.py
-RUN pip install --no-cache-dir /app
+RUN pip install --no-cache-dir '/app[shuttle]'
 
 COPY src /app/src
 
-RUN pip install --no-cache-dir /app \
+RUN pip install --no-cache-dir '/app[shuttle]' \
     && rm -rf /app/src \
     && rm /app/pyproject.toml \
     && rm /app/README.md

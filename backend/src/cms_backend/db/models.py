@@ -157,6 +157,10 @@ class Book(Base):
         default_factory=dict, server_default="{}"
     )
 
+    zimcheck_s3_deleted: Mapped[bool] = mapped_column(
+        default=False, server_default=false()
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, onupdate=getnow, server_default=func.now()
     )
@@ -212,6 +216,12 @@ Index(
     "idx_book_needs_file_operation",
     Book.needs_file_operation,
     postgresql_where=text("needs_file_operation = TRUE"),
+)
+
+Index(
+    "idx_book_zimcheck_s3_deleted",
+    Book.zimcheck_s3_deleted,
+    postgresql_where=text("zimcheck_s3_deleted = FALSE"),
 )
 
 Index(
