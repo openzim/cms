@@ -10,9 +10,9 @@ from cms_backend.utils.datetime import getnow
 def mark_staging_books_for_deletion(session: OrmSession):
     logger.info("Marking staging books that have exceeded lifespan for deletion")
     nb_books_marked = 0
+    skip = 0
+    limit = 50
     while True:
-        skip = 0
-        limit = 50
         results = get_books(
             session,
             needs_file_operation=False,
