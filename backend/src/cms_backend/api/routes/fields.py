@@ -1,7 +1,9 @@
 import base64
+from dataclasses import dataclass
 from typing import Annotated, Any
 
 import pycountry
+import regex
 from pydantic import (
     AfterValidator,
     Field,
@@ -9,6 +11,27 @@ from pydantic import (
     ValidatorFunctionWrapHandler,
     WrapValidator,
 )
+
+
+@dataclass(frozen=True)
+class GraphemeLength:
+    min: int | None = None
+    max: int | None = None
+
+    def __call__(self, v: str, info: ValidationInfo) -> str:
+        context = info.context
+        if context and context.get("skip_validation"):
+            return v
+        n = len(regex.findall(r"\X", v))
+        if self.min is not None and n < self.min:
+            raise ValueError(
+                f"String should have at least {self.min} grapheme clusters (got {n})"
+            )
+        if self.max is not None and n > self.max:
+            raise ValueError(
+                f"String should have at most {self.max} grapheme clusters (got {n})"
+            )
+        return v
 
 
 def no_null_char(value: str) -> str:
@@ -83,8 +106,25 @@ def validate_comma_separated_lang_code(
     return value
 
 
+def validate_zim_flavour(value: str, info: ValidationInfo):
+    if not value:
+        return value
+    context = info.context
+    if context and context.get("skip_validation"):
+        return value
+    if not value.isalpha():
+        raise ValueError("Flavour '{value}' must only contain alphabetic characters.")
+    return value
+
+
 LangCode = Annotated[
     str,
     WrapValidator(skip_validation),
     AfterValidator(validate_comma_separated_lang_code),
+]
+
+ZimFlavour = Annotated[
+    NotEmptyString,
+    WrapValidator(skip_validation),
+    AfterValidator(validate_zim_flavour),
 ]

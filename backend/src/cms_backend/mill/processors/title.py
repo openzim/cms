@@ -1,9 +1,7 @@
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
-from cms_backend.db.book import (
-    process_book,
-)
+from cms_backend.db.book import process_book
 from cms_backend.db.models import Book, Title
 from cms_backend.db.rules import (
     apply_retention_rules,
@@ -11,6 +9,21 @@ from cms_backend.db.rules import (
 )
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename
+
+
+def update_title_metadata_from_book(title: Title, book: Book):
+    """Update a title's metadata from book"""
+
+    title.title = book.zim_metadata["Title"]
+    title.creator = book.zim_metadata["Creator"]
+    title.publisher = book.zim_metadata["Publisher"]
+    title.description = book.zim_metadata["Description"]
+    title.language = book.zim_metadata["Language"]
+    title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
+    title.long_description = book.zim_metadata.get("LongDescription")
+    title.license = book.zim_metadata.get("License")
+    title.relation = book.zim_metadata.get("Relation")
+    title.source = book.zim_metadata.get("Source")
 
 
 def add_book_to_title(session: OrmSession, book: Book, title: Title):
@@ -43,16 +56,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         )
 
         if title_is_missing_mandatory_metadata(title):
-            title.title = book.zim_metadata["Title"]
-            title.creator = book.zim_metadata["Creator"]
-            title.publisher = book.zim_metadata["Publisher"]
-            title.description = book.zim_metadata["Description"]
-            title.language = book.zim_metadata["Language"]
-            title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
-            title.long_description = book.zim_metadata.get("LongDescription")
-            title.license = book.zim_metadata.get("License")
-            title.relation = book.zim_metadata.get("Relation")
-            title.source = book.zim_metadata.get("Source")
+            update_title_metadata_from_book(title, book)
 
         process_book(session, book, update_events=True)
         if book.location_kind == "prod":

@@ -44,6 +44,7 @@
             persistent-hint
             :items="availableFlavours"
             :loading="loadingFlavours"
+            :rules="[rules.flavours]"
           />
         </v-col>
       </v-row>
@@ -74,10 +75,20 @@
             label="Title"
             variant="outlined"
             density="comfortable"
+            :rules="[rules.title]"
             clearable
-            :color="!inDialog && isFieldDifferent('title') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('title') ? 'warning' : undefined"
-          />
+            :color="
+              titleOverLimit || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
+            "
+            :base-color="
+              titleOverLimit || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
+            "
+          >
+            <template #counter> {{ titleGraphemeCount }}/{{ titleMaxLength }} </template>
+            <template v-if="titleOverLimit" #append-inner>
+              <v-icon color="warning" icon="mdi-alert-circle" />
+            </template>
+          </v-text-field>
           <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -163,9 +174,17 @@
             density="comfortable"
             :rules="[rules.langCode]"
             clearable
-            :color="!inDialog && isFieldDifferent('language') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('language') ? 'warning' : undefined"
-          />
+            :color="
+              languageInvalid || (!inDialog && isFieldDifferent('language')) ? 'warning' : undefined
+            "
+            :base-color="
+              languageInvalid || (!inDialog && isFieldDifferent('language')) ? 'warning' : undefined
+            "
+          >
+            <template v-if="languageInvalid" #append-inner>
+              <v-icon color="warning" icon="mdi-alert-circle" />
+            </template>
+          </v-text-field>
           <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -280,11 +299,27 @@
             label="Description"
             variant="outlined"
             density="comfortable"
+            :rules="[rules.description]"
             rows="3"
             clearable
-            :color="!inDialog && isFieldDifferent('description') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('description') ? 'warning' : undefined"
-          />
+            :color="
+              descriptionOverLimit || (!inDialog && isFieldDifferent('description'))
+                ? 'warning'
+                : undefined
+            "
+            :base-color="
+              descriptionOverLimit || (!inDialog && isFieldDifferent('description'))
+                ? 'warning'
+                : undefined
+            "
+          >
+            <template #counter>
+              {{ descriptionGraphemeCount }}/{{ descriptionMaxLength }}
+            </template>
+            <template v-if="descriptionOverLimit" #append-inner>
+              <v-icon color="warning" icon="mdi-alert-circle" />
+            </template>
+          </v-textarea>
           <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -427,7 +462,10 @@ import { useCollectionsStore } from '@/stores/collections'
 import { useBookStore } from '@/stores/book'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
 import type { Book } from '@/types/book'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
+import { byGrapheme } from 'split-by-grapheme'
+import constants from '@/constants'
+import type { Config } from '@/config'
 
 interface Props {
   title?: Title | null
@@ -446,6 +484,7 @@ const emit = defineEmits<{
   'update:hasChanges': [value: boolean]
 }>()
 
+const config = inject<Config>(constants.config)!
 const collectionsStore = useCollectionsStore()
 const bookStore = useBookStore()
 
@@ -662,6 +701,26 @@ const hasChanges = computed(() => {
   )
 })
 
+const titleMaxLength = config.ZIM_TITLE_MAX_LENGTH ?? 30
+const descriptionMaxLength = config.ZIM_DESCRIPTION_MAX_LENGTH ?? 80
+
+const titleGraphemeCount = computed(() => {
+  if (!formData.value.title) return 0
+  return formData.value.title.split(byGrapheme).length
+})
+const descriptionGraphemeCount = computed(() => {
+  if (!formData.value.description) return 0
+  return formData.value.description.split(byGrapheme).length
+})
+const titleOverLimit = computed(() => titleGraphemeCount.value > titleMaxLength)
+const descriptionOverLimit = computed(() => descriptionGraphemeCount.value > descriptionMaxLength)
+const languageInvalid = computed(() => {
+  const value = formData.value.language
+  if (!value) return false
+  const parts = value.split(',')
+  return !parts.every((part) => part.trim().length === 3)
+})
+
 const rules = {
   required: (value: string) => !!value || 'This field is required',
   langCode: (value: string) => {
@@ -670,6 +729,29 @@ const rules = {
     return parts.every((part) => part.trim().length === 3)
       ? true
       : 'Language code(s) must be 3 characters long'
+  },
+  title: (value: string) => {
+    if (!value) return true
+    if (titleGraphemeCount.value > titleMaxLength) {
+      return `Maximum length is ${titleMaxLength} characters.`
+    }
+    return true
+  },
+  description: (value: string) => {
+    if (!value) return true
+    if (descriptionGraphemeCount.value > descriptionMaxLength) {
+      return `Maximum length is ${descriptionMaxLength} characters.`
+    }
+    return true
+  },
+  flavours: (value: string | string[]) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) return true
+    const flavours = Array.isArray(value) ? value : [value]
+    const invalid = flavours.filter((f) => f && !/^[a-zA-Z]+$/.test(f))
+    if (invalid.length > 0) {
+      return `Flavours must contain only alphabetic characters. Invalid: ${invalid.join(', ')}`
+    }
+    return true
   },
 }
 

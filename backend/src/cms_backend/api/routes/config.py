@@ -15,6 +15,8 @@ def get_config() -> JSONResponse:
         content={
             "MEDIA_COUNT_CHANGE_THRESHOLD": Context.media_count_change_threshold,
             "ARTICLE_COUNT_CHANGE_THRESHOLD": Context.article_count_change_threshold,
+            "ZIM_TITLE_MAX_LENGTH": Context.zim_title_max_length,
+            "ZIM_DESCRIPTION_MAX_LENGTH": Context.zim_description_max_length,
         },
         status_code=HTTPStatus.OK,
     )

@@ -3,6 +3,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 import pycountry
+import regex
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -548,6 +549,39 @@ def revert_book(
     return book
 
 
+def book_has_bad_metadata(book: Book, *, update_events: bool = False) -> bool:
+    """Determine if a book has bad metadata.
+
+    Assumes book has all mandatory metadata
+    """
+    title_length = len(regex.findall(r"\X", book.zim_metadata["Title"]))
+
+    if title_length > Context.zim_title_max_length:
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book Title metadata is {title_length} characters long"
+            )
+        return True
+
+    description_length = len(regex.findall(r"\X", book.zim_metadata["Description"]))
+    if description_length > Context.zim_description_max_length:
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book Description metadata is {description_length} "
+                "characters long"
+            )
+        return True
+    flavour = book.zim_metadata.get("Flavour")
+    if flavour and not flavour.isalpha():
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book Flavour metadata contains non-alphabetic characters"
+            )
+
+        return True
+    return False
+
+
 def update_book_issues(session: OrmSession, book: Book, *, update_events: bool = False):
     """
     Update book issues based on it's associated title and optionally update book events.
@@ -596,6 +630,9 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
                 f"{getnow()}: book flavour is not in list of title flavours"
             )
 
+    if book_has_bad_metadata(book, update_events=update_events):
+        issues.append("bad metadata")
+
     # Get the latest prod book that isn't the current book
     latest_book = session.scalars(
         select(Book)
@@ -635,20 +672,22 @@ def update_book_issues(session: OrmSession, book: Book, *, update_events: bool =
 
     if media_count_diff > collection_media_count_change_threshold:
         issues.append("media count")
-        book.events.append(
-            f"{getnow()}: book media count exceeds collection median threshold by "
-            f"{media_count_diff * 100}%"
-        )
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book media count exceeds collection median threshold by "
+                f"{media_count_diff * 100}%"
+            )
 
     article_count_diff = (
         abs(book.article_count - latest_book.article_count)
     ) / latest_book.article_count
     if article_count_diff > collection_article_count_change_threshold:
         issues.append("article count")
-        book.events.append(
-            f"{getnow()}: book article count exceeds collection median threshold by "
-            f"{article_count_diff * 100}%"
-        )
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book article count exceeds collection median threshold "
+                f"by {article_count_diff * 100}%"
+            )
     book.issues = issues
     session.add(book)
     session.flush()
