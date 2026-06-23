@@ -1,4 +1,5 @@
 import datetime
+import re
 from typing import Any, Literal
 from uuid import UUID
 
@@ -27,7 +28,7 @@ from cms_backend.schemas.orms import (
     ListResult,
 )
 from cms_backend.utils.datetime import getnow
-from cms_backend.utils.zim import get_missing_metadata_keys
+from cms_backend.utils.zim import ZIM_TITLE_NAME_REGEX, get_missing_metadata_keys
 
 
 def get_book_or_none(
@@ -554,6 +555,13 @@ def book_has_bad_metadata(book: Book, *, update_events: bool = False) -> bool:
 
     Assumes book has all mandatory metadata
     """
+    name = book.zim_metadata["Name"]
+    if not re.match(ZIM_TITLE_NAME_REGEX, name):
+        if update_events:
+            book.events.append(
+                f"{getnow()}: book Name metadata contains unwanted characters"
+            )
+        return True
     title_length = len(regex.findall(r"\X", book.zim_metadata["Title"]))
 
     if title_length > Context.zim_title_max_length:

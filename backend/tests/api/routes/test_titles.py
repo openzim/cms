@@ -456,7 +456,7 @@ def test_update_title(
 
     update_data = {
         "maturity": "stable",
-        "name": "wikipedia_en",
+        "name": "wikipedia_en_all",
     }
 
     response = client.patch(
@@ -468,7 +468,7 @@ def test_update_title(
     data = response.json()
 
     assert data["id"] == str(title.id)
-    assert data["name"] == "wikipedia_en"
+    assert data["name"] == "wikipedia_en_all"
     assert data["maturity"] == "stable"
 
     events = dbsession.scalars(
@@ -476,7 +476,7 @@ def test_update_title(
     ).all()
     assert len(events) == 1
     assert events[0].payload["action"] == "updated"
-    assert events[0].payload["name"] == "wikipedia_en"
+    assert events[0].payload["name"] == "wikipedia_en_all"
     assert events[0].payload["id"] == str(title.id)
 
 

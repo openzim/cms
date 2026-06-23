@@ -49,7 +49,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         # Compute target filename once for this book
         book.filename = compute_target_filename(
             session,
-            name=book.name,
+            name=title.name,
             flavour=book.flavour,
             date=book.date,
             book_id=book.id,
