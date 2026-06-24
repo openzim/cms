@@ -75,6 +75,22 @@
       </div>
 
       <v-alert
+        v-if="hasPendingOperations"
+        type="info"
+        variant="tonal"
+        class="my-2"
+        icon="mdi-progress-clock"
+      >
+        <div>
+          <div class="font-weight-bold mb-1">Pending Operations</div>
+          <div>
+            This book has operations in progress. Please wait for them to complete before starting
+            new actions.
+          </div>
+        </div>
+      </v-alert>
+
+      <v-alert
         v-if="book.has_flavour_mismatch"
         type="warning"
         variant="tonal"
@@ -667,6 +683,11 @@ const locationHeaders = [
   { title: 'Filename', value: 'filename', sortable: false },
 ]
 
+const hasPendingOperations = computed(() => {
+  if (!book.value) return false
+  return book.value.needs_processing || book.value.needs_file_operation
+})
+
 const canEditBook = computed(() => {
   if (!book.value) return false
   return (
@@ -718,13 +739,10 @@ const canRecoverBook = computed(() => {
   return (
     authStore.hasPermission('book', 'update') &&
     !book.value.needs_processing &&
+    !book.value.needs_file_operation &&
     !book.value.title_archived &&
-    ((book.value.needs_file_operation &&
-      book.value.location_kind === 'to_delete' &&
-      hasFutureDeletionDate) ||
-      (!book.value.needs_file_operation &&
-        book.value.location_kind === 'deleted' &&
-        book.value.has_backup))
+    ((book.value.location_kind === 'to_delete' && hasFutureDeletionDate) ||
+      (book.value.location_kind === 'deleted' && book.value.has_backup))
   )
 })
 
