@@ -13,6 +13,7 @@ from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.shuttle.context import Context as ShuttleContext
 from cms_backend.shuttle.delete_files import delete_files
+from cms_backend.shuttle.delete_zimcheck_s3_results import delete_zimcheck_s3_results
 from cms_backend.shuttle.move_files import move_files
 from cms_backend.utils.database import upgrade_db_schema
 from cms_backend.utils.datetime import getnow
@@ -26,6 +27,10 @@ tasks: list[TaskConfig] = [
     ),
     TaskConfig(
         func=delete_files,
+        interval=ShuttleContext.delete_files_interval,
+    ),
+    TaskConfig(
+        func=delete_zimcheck_s3_results,
         interval=ShuttleContext.delete_files_interval,
     ),
 ]

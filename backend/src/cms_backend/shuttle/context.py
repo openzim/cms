@@ -44,3 +44,6 @@ class Context:
     )
 
     local_warehouse_paths: ClassVar[dict[UUID, Path]] = _parse_local_warehouse_paths()
+    zimcheck_results_s3_bucket_uri: str = os.getenv(
+        "ZIMCHECK_RESULTS_S3_BUCKET_URI", default=""
+    )
