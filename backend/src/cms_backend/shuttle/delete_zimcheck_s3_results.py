@@ -27,7 +27,7 @@ def get_kiwix_storage_client(upload_uri: urllib.parse.ParseResult):
         rebuild_uri(upload_uri, scheme=get_url_scheme(upload_uri)).geturl()
     )
     if not s3.check_credentials(  # pyright: ignore[reportUnknownMemberType]
-        delete=True
+        list_buckets=True, delete=True
     ):
         raise AuthenticationError("check_credentials failed")
 
