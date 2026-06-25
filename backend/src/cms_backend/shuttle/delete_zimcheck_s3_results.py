@@ -1,5 +1,6 @@
 import pathlib
 import urllib.parse
+from uuid import UUID
 
 from kiwixstorage import (  # pyright: ignore[reportMissingTypeStubs]
     AuthenticationError,
@@ -57,8 +58,7 @@ def delete_zimcheck_s3_results(session: OrmSession):
     logger.info("Deleting zimcheck results from S3")
     nb_deleted, nb_failed = 0, 0
 
-    skip = 0
-    limit = 50
+    omit_book_ids: list[UUID] = []
     while True:
         books = session.scalars(
             select(Book)
@@ -66,9 +66,9 @@ def delete_zimcheck_s3_results(session: OrmSession):
                 Book.zimcheck_result_url.is_not(None),
                 Book.zimcheck_s3_deleted.is_(False),
                 Book.location_kind.in_(["prod", "deleted"]),
+                Book.id.not_in(omit_book_ids),
             )
-            .offset(skip)
-            .limit(limit)
+            .limit(50)
             .order_by(Book.created_at)
         ).all()
 
@@ -79,6 +79,7 @@ def delete_zimcheck_s3_results(session: OrmSession):
             break
 
         for book in books:
+            omit_book_ids.append(book.id)
             try:
                 s3.delete_object(
                     book.zimcheck_result_url.split("/")[-1],  # pyright: ignore[reportOptionalMemberAccess]
@@ -93,7 +94,6 @@ def delete_zimcheck_s3_results(session: OrmSession):
                 session.add(book)
                 session.commit()
                 nb_deleted += 1
-        skip += limit
 
     logger.info(f"Done deleting zimcheck files from S3: {nb_deleted=}, {nb_failed=}")
 
