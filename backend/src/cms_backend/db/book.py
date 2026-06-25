@@ -561,102 +561,71 @@ def revert_book(
     return book
 
 
-def book_has_bad_metadata(book: Book, *, update_events: bool = False) -> bool:
-    """Determine if a book has bad metadata.
-
-    Assumes book has all mandatory metadata
-    """
+def get_book_metadata_issues(book: Book) -> list[str]:
+    issues: list[str] = []
     name = book.zim_metadata["Name"]
+
     if not re.match(ZIM_TITLE_NAME_REGEX, name):
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book Name metadata contains unwanted characters"
-            )
-        return True
+        issues.append(f"book Name metadata ({name}) does not meet naming conventions")
+
     title_length = len(regex.findall(r"\X", book.zim_metadata["Title"]))
 
     if title_length > Context.zim_title_max_length:
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book Title metadata is {title_length} characters long"
-            )
-        return True
+        issues.append(
+            f"book Title metadata is {title_length} characters long, "
+            f"maximum length: {Context.zim_title_max_length}"
+        )
 
     description_length = len(regex.findall(r"\X", book.zim_metadata["Description"]))
     if description_length > Context.zim_description_max_length:
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book Description metadata is {description_length} "
-                "characters long"
-            )
-        return True
+        issues.append(
+            f"book Description metadata is {description_length} characters long, "
+            f"maximum length: {Context.zim_description_max_length}"
+        )
     flavour = book.zim_metadata.get("Flavour")
     if flavour and not flavour.isalpha():
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book Flavour metadata contains non-alphabetic characters"
-            )
+        issues.append(
+            f"book Flavour metadata ({flavour}) contains non-alphabetic characters"
+        )
 
-        return True
-    return False
+    return issues
 
 
-def update_book_issues(
-    session: OrmSession,
-    book: Book,
-    *,
-    update_events: bool = False,
-    raise_exceptions: bool = False,
-):
+def get_book_issues(
+    session: OrmSession, book: Book, *, raise_exceptions: bool = False
+) -> dict[str, list[str]]:
     """
-    Update book issues based on it's associated title and optionally update book events.
+    Compute book issues based on it's associated title
 
-    A book's issues will not be updated if:
-    - it has no associated title
-    - it is missing mandatory metadata keys
-    - it's associated title is missing mandatory metadata
-    - it's location kind is to_delete or deleted
+    Makes the same assumptions as the update_book_issues function
     """
-    if (
-        not book.title
-        or get_missing_metadata_keys(book.zim_metadata)
-        or title_is_missing_mandatory_metadata(book.title)
-        or book.location_kind in ["deleted", "to_delete"]
-    ):
-        return
-
-    issues: list[str] = []
-
+    issues: dict[str, list[str]] = {}
     unknown_languages: list[str] = []
     for language_code in book.zim_metadata["Language"].split(","):
         if pycountry.languages.get(alpha_3=language_code) is None:  # pyright: ignore[reportUnknownMemberType]
             unknown_languages.append(language_code)
 
     if unknown_languages:
-        issues.append("invalid language code")
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book has unknown language code(s) {unknown_languages}"
-            )
+        issues["invalid language code"] = [
+            f"book has unknown language code(s) {','.join(unknown_languages)}"
+        ]
 
     different_metadata_keys = get_differing_metadata_keys(book)
     if different_metadata_keys:
-        issues.append("metadata mismatch")
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book metadata is different from title metadata: "
-                f"{','.join(different_metadata_keys)}"
-            )
+        issues["metadata mismatch"] = [
+            "book metadata is different from title metadata: "
+            f"{','.join(different_metadata_keys)}"
+        ]
 
-    if has_flavour_mismatch(book.flavour, book.title.flavours):
-        issues.append("flavour mismatch")
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book flavour is not in list of title flavours"
-            )
+    if has_flavour_mismatch(book.flavour, book.title.flavours):  # pyright: ignore[reportOptionalMemberAccess]
+        issues["flavour mismatch"] = [
+            f"book flavour {book.flavour} is not in list of "
+            f"title flavours: {','.join(book.title.flavours)}"  # pyright: ignore[reportOptionalMemberAccess]
+        ]
 
-    if book_has_bad_metadata(book, update_events=update_events):
-        issues.append("bad metadata")
+    metadata_issues = get_book_metadata_issues(book)
+    if metadata_issues:
+        issues["bad metadata"] = metadata_issues
 
     # Get the latest prod book that isn't the current book
     latest_book = session.scalars(
@@ -677,7 +646,7 @@ def update_book_issues(
             Context.media_count_change_threshold
             if tc.collection.media_count_change_threshold is None
             else tc.collection.media_count_change_threshold
-            for tc in book.title.collections
+            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
         ],
         default=Context.media_count_change_threshold,
     )
@@ -686,7 +655,7 @@ def update_book_issues(
             Context.article_count_change_threshold
             if tc.collection.article_count_change_threshold is None
             else tc.collection.article_count_change_threshold
-            for tc in book.title.collections
+            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
         ],
         default=Context.article_count_change_threshold,
     )
@@ -696,42 +665,95 @@ def update_book_issues(
     ) / latest_book.media_count
 
     if media_count_diff > collection_media_count_change_threshold:
-        issues.append("media count")
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book media count exceeds collection median threshold by "
-                f"{media_count_diff * 100}%"
-            )
+        issues["media count"] = [
+            f"book media count ({book.media_count}) exceeds latest book "
+            f"(id={latest_book.id}) media count ({latest_book.media_count}) "
+            f"by {media_count_diff * 100}%"
+        ]
 
     article_count_diff = (
         abs(book.article_count - latest_book.article_count)
     ) / latest_book.article_count
     if article_count_diff > collection_article_count_change_threshold:
-        issues.append("article count")
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book article count exceeds collection median threshold "
-                f"by {article_count_diff * 100}%"
-            )
+        issues["article count"] = [
+            f"book article count ({book.article_count}) exceeds latest book "
+            f"(id={latest_book.id}) article count ({latest_book.article_count}) "
+            f"by {article_count_diff * 100}%"
+        ]
 
-    if not check_zimcheck_quality(
-        book, raise_exceptions=raise_exceptions, update_events=update_events
+    zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=raise_exceptions)
+    if zimcheck_errors:
+        issues["zimcheck error"] = zimcheck_errors
+
+    return issues
+
+
+def can_compute_book_issues(book: Book) -> bool:
+    """Deterimine if a book's issues can be computed.
+
+    A book's issues cannot be computed if:
+    - it has no associated title
+    - it is missing mandatory metadata keys
+    - it's associated title is missing mandatory metadata
+    - it's location kind is to_delete or deleted
+    """
+    if (
+        not book.title
+        or get_missing_metadata_keys(book.zim_metadata)
+        or title_is_missing_mandatory_metadata(book.title)
+        or book.location_kind in ["deleted", "to_delete"]
     ):
-        issues.append("zimcheck error")
+        return False
+    return True
 
+
+def book_is_whitelisted_from_zimcheck(book: Book) -> bool:
+    scraper = book.zim_metadata.get("Scraper", "")
+    if Context.zimcheck_scrapers_whitelist_regex is not None and re.search(
+        Context.zimcheck_scrapers_whitelist_regex, scraper
+    ):
+        return True
+    return False
+
+
+def update_book_issues(
+    session: OrmSession,
+    book: Book,
+    *,
+    update_events: bool = False,
+    raise_exceptions: bool = False,
+):
+    """
+    Update book issues based on it's associated title and optionally update book events.
+
+    Book's issues will be updated it it meets the requirements of the
+    can_compute_book_issues function
+    """
+
+    if not can_compute_book_issues(book):
+        return
+
+    issues = list(
+        get_book_issues(session, book, raise_exceptions=raise_exceptions).keys()
+    )
     book.issues = issues
+    if update_events and book_is_whitelisted_from_zimcheck(book):
+        book.events.append(f"{getnow()}: book is whitelisted for zimcheck quality")
+    if update_events and issues:
+        book.events.append(
+            f"{getnow()}: book has the following issues: {','.join(issues)}"
+        )
+
     session.add(book)
     session.flush()
 
 
-def check_zimcheck_quality(
-    book: Book, *, update_events: bool = False, raise_exceptions: bool = False
-) -> bool:
+def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[str]:
     """Run checks for zimcheck quality if scraper is not whitelisted.
 
     If book is missing zimcheck summary, results will be downloaded from URL and set.
-    Returns true if it is impossible to run checks or there are no errors.
     """
+    issues: list[str] = []
     # Determine whether we need to fetch zimcheck results or not
     missing_summary_keys = get_missing_keys(
         book.zimcheck_summary,
@@ -745,21 +767,17 @@ def check_zimcheck_quality(
     zimcheck_summary: ZimcheckSummarySchema
     if missing_summary_keys:
         if not book.zimcheck_result_url:
-            if update_events:
-                book.events.append(f"{getnow()}: book has no zimcheck url")
-
-            return False
+            issues.append("book has no zimcheck url")
+            return issues
 
         zimcheck_response = query_api(book.zimcheck_result_url)
         if zimcheck_response.success:
             zimcheck_summary = parse_zimcheck_result(zimcheck_response.json)
             book.zimcheck_summary = zimcheck_summary.model_dump(mode="json")
         else:
-            if update_events:
-                book.events.append(
-                    f"{getnow()}: unable to retrieve zimcheck results "
-                    f"from {book.zimcheck_result_url}"
-                )
+            issues.append(
+                f"unable to retrieve zimcheck results from {book.zimcheck_result_url}"
+            )
             message = (
                 "Unable to retrieve zimcheck results from "
                 f"{book.zimcheck_result_url}: {zimcheck_response.json}"
@@ -767,26 +785,18 @@ def check_zimcheck_quality(
             logger.debug(message)
             if raise_exceptions:
                 raise ValueError(message)
-            return False
+            return issues
     else:
         zimcheck_summary = ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
 
-    scraper = book.zim_metadata.get("Scraper", "")
-    if Context.zimcheck_scrapers_whitelist_regex is not None and re.search(
-        Context.zimcheck_scrapers_whitelist_regex, scraper
-    ):
-        if update_events:
-            book.events.append(f"{getnow()}: book is whitelisted for zimcheck quality")
-        return True
+    if book_is_whitelisted_from_zimcheck(book):
+        return []
 
     if zimcheck_summary.error_count is not None and zimcheck_summary.error_count > 0:
-        if update_events:
-            book.events.append(
-                f"{getnow()}: book has {zimcheck_summary.error_count} error(s) in "
-                "zimcheck"
-            )
-        return False
-    return True
+        issues.append(
+            f"{getnow()}: book has {zimcheck_summary.error_count} error(s) in zimcheck"
+        )
+    return issues
 
 
 def backup_book(

@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db.book import (
     backup_book,
-    book_has_bad_metadata,
-    check_zimcheck_quality,
     get_book_history,
     get_book_history_entry_or_none,
+    get_book_metadata_issues,
     get_differing_metadata_keys,
+    get_zimcheck_errors,
     recover_book,
     remove_book_backup,
     revert_book,
@@ -292,9 +292,9 @@ def test_revert_book(
     assert reverted_book.flavour == "mini"
 
 
-@patch("cms_backend.db.book.check_zimcheck_quality")
+@patch("cms_backend.db.book.get_zimcheck_errors")
 def test_update_book_flavour_mismatch_issues(
-    mock_check_zimcheck_quaity: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
     dbsession: OrmSession,
     account: Account,
     create_title: Callable[..., Title],
@@ -304,7 +304,7 @@ def test_update_book_flavour_mismatch_issues(
     Test that book with  a flavour mismatch between it and it's title has
     it's issues reset when it's flavour is updated to the same as the title
     """
-    mock_check_zimcheck_quaity.return_value = True
+    mock_get_zimcheck_errors.return_value = []
     content = {
         "Name": "test_en_all",
         "Title": "Test Article",
@@ -805,9 +805,9 @@ def test_recover_deleted_book_with_no_backup(
         ),
     ],
 )
-@patch("cms_backend.db.book.check_zimcheck_quality")
+@patch("cms_backend.db.book.get_zimcheck_errors")
 def test_update_book_issues_item_count_issues(
-    mock_check_zimcheck_quaity: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -821,7 +821,7 @@ def test_update_book_issues_item_count_issues(
     expected_issues: set[str],
 ):
     """Test that update_book_issues correctly flags issues with book item count"""
-    mock_check_zimcheck_quaity.return_value = True
+    mock_get_zimcheck_errors.return_value = []
     warehouse = create_warehouse()
     content = {
         "Name": "test_en_all",
@@ -911,7 +911,7 @@ def test_update_book_issues_item_count_issues(
             "é" * 80,
             "_maxi",
             "test_en_all",
-            "book Flavour metadata contains non-alphabetic characters",
+            "book Flavour metadata .* contains non-alphabetic characters",
             True,
             id="invalid-flavour",
         ),
@@ -944,9 +944,10 @@ def test_book_has_bad_metadata(
             "Flavour": flavour,
         }
     )
-    assert book_has_bad_metadata(book, update_events=True) is expected
+    issues = get_book_metadata_issues(book)
+    assert bool(issues) is expected
     if expected:
-        assert any(re.search(event_regex, event) for event in book.events)
+        assert any(re.search(event_regex, issue) for issue in issues)
 
 
 @pytest.mark.parametrize(
@@ -956,7 +957,7 @@ def test_book_has_bad_metadata(
         (False, False),
     ],
 )
-def test_check_zimcheck_quality_ignore_scraper(
+def test_get_zimcheck_errors_ignore_scraper(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     monkeypatch: pytest.MonkeyPatch,
@@ -982,4 +983,8 @@ def test_check_zimcheck_quality_ignore_scraper(
             "cms_backend.context.Context.zimcheck_scrapers_whitelist_regex",
             re.compile(r"mwoffliner.*|sotoki"),
         )
-    assert check_zimcheck_quality(book) is passes_quality_check
+    errors = get_zimcheck_errors(book)
+    if passes_quality_check:
+        assert len(errors) == 0
+    else:
+        assert len(errors) > 0

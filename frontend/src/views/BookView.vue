@@ -174,6 +174,18 @@
           <v-icon class="mr-2">mdi-pencil</v-icon>
           Edit
         </v-tab>
+
+        <v-tab
+          base-color="primary"
+          value="issues"
+          :to="{
+            name: 'book-detail-tab',
+            params: { id: book.id, selectedTab: 'issues' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-alert-circle</v-icon>
+          Issues
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="currentTab">
@@ -476,6 +488,11 @@
           </div>
         </v-window-item>
 
+        <!-- Issues Tab -->
+        <v-window-item value="issues">
+          <BookIssues :issues="issues" :loading="loadingIssues" :book="book" :title="title" />
+        </v-window-item>
+
         <!-- History Tab -->
         <v-window-item value="history">
           <BookHistory
@@ -600,6 +617,7 @@ import TitleSelectDialog from '@/components/TitleSelectDialog.vue'
 import TitleFormDialog from '@/components/TitleFormDialog.vue'
 import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import BookHistory from '@/components/BookHistory.vue'
+import BookIssues from '@/components/BookIssues.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
@@ -643,6 +661,8 @@ const updateError = ref('')
 const flavours = ref<string[]>([])
 const loadingFlavours = ref(false)
 const loadingHistory = ref(false)
+const loadingIssues = ref(false)
+const issues = ref<Record<string, string[]> | null>(null)
 
 const showConfirmDialog = ref(false)
 const pendingComment = ref('')
@@ -851,6 +871,7 @@ const loadData = async (
   forceReload: boolean = false,
   fetchHistory: boolean = false,
   fetchZimUrls: boolean = false,
+  fetchIssues: boolean = false,
 ) => {
   loadingStore.startLoading('Fetching book...')
 
@@ -880,6 +901,22 @@ const loadData = async (
   if (fetchZimUrls && book.value) {
     loadZimUrls()
   }
+
+  if (fetchIssues) {
+    await loadIssues()
+  }
+}
+
+const loadIssues = async () => {
+  loadingIssues.value = true
+  if (!book.value) return
+  const data = await bookStore.fetchBookIssues(book.value.id)
+  if (data) {
+    issues.value = data
+  } else {
+    notificationStore.showErrors(bookStore.errors)
+  }
+  loadingIssues.value = false
 }
 
 const loadZimUrls = async () => {
@@ -900,7 +937,7 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
-  await loadData(true, props.selectedTab === 'history', true)
+  await loadData(true, props.selectedTab === 'history', true, props.selectedTab === 'issues')
 })
 
 const copyToClipboard = async (text: string) => {
@@ -1133,7 +1170,12 @@ watch(
   async (newTab) => {
     currentTab.value = newTab
 
-    await loadData(newTab != 'history', newTab === 'history', newTab === 'info')
+    await loadData(
+      ['info', 'edit'].includes(newTab),
+      newTab === 'history',
+      newTab === 'info',
+      newTab === 'issues',
+    )
 
     if (newTab === 'edit' && book.value && flavours.value.length == 0) {
       loadingFlavours.value = true

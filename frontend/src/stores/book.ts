@@ -265,6 +265,19 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const fetchBookIssues = async (bookId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      errors.value = []
+      const response = await service.get<null, Record<string, string[]>>(`/${bookId}/issues`)
+      return response
+    } catch (_error) {
+      console.error('Failed to load book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -285,5 +298,6 @@ export const useBookStore = defineStore('book', () => {
     updateBook,
     backupBook,
     countBooks,
+    fetchBookIssues,
   }
 })

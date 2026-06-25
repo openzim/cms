@@ -50,7 +50,7 @@
     </v-chip>
 
     <!-- Issues indicator -->
-    <v-menu v-if="hasIssues" :close-on-content-click="false">
+    <v-menu v-if="hasIssues" :close-on-content-click="false" v-model="menuOpen">
       <template #activator="{ props: menuProps }">
         <v-chip
           v-bind="menuProps"
@@ -65,21 +65,46 @@
         </v-chip>
       </template>
 
-      <v-list class="pa-2">
-        <v-list-item v-for="(warning, index) in book.issues" :key="index">
+      <v-list class="pa-2 pt-0" density="compact">
+        <v-list-item
+          v-for="(warning, index) in book.issues"
+          :key="index"
+          class="py-0"
+          style="min-height: unset"
+        >
           <template #prepend>
             <span class="mr-2">•</span>
           </template>
           <v-list-item-title class="text-wrap">{{ warning }}</v-list-item-title>
         </v-list-item>
+
+        <div>
+          <v-divider class="my-0" />
+          <v-btn
+            color="primary"
+            variant="elevated"
+            size="small"
+            block
+            :to="{
+              name: 'book-detail-tab',
+              params: { id: book.id, selectedTab: 'issues' },
+            }"
+            @click="menuOpen = false"
+          >
+            <v-icon size="small" class="mr-1">mdi-alert-circle</v-icon>
+            View Issues
+          </v-btn>
+        </div>
       </v-list>
     </v-menu>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Book, BookLight } from '@/types/book'
+
+const menuOpen = ref(false)
 
 const props = withDefaults(
   defineProps<{

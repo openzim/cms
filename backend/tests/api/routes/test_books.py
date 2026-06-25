@@ -696,3 +696,78 @@ def test_remove_book_backup_required_permissions(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
+
+
+def test_get_book_issues(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+):
+    warehouse = create_warehouse()
+    content = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": (
+            "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAOklEQVR4nO3OwQkAIAwA"
+            "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
+            "BJRU5ErkJggg=="
+        ),
+    }
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title=content["Title"],
+        creator=content["Creator"],
+        publisher=content["Publisher"],
+        description=content["Description"],
+        language=content["Language"],
+        illustration_48x48_at_1=content["Illustration_48x48@1"],
+    )
+    # create a collection that tolerates only 10% increase in media and article count
+    create_collection(
+        warehouse=warehouse,
+        title_ids_with_paths=[(title.id, "zim")],
+        media_count_change_threshold=0.1,
+        article_count_change_threshold=0.1,
+    )
+
+    # create the latest book with media_count of 100 and article count of 105
+    latest_book = create_book(
+        article_count=105,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        zim_metadata=content,
+        location_kind="prod",
+    )
+
+    create_book_location(
+        book=latest_book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    book = create_book(
+        article_count=100,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        zim_metadata=content,
+    )
+    dbsession.flush()
+
+    response = client.get(
+        f"/v1/books/{book.id}/issues",
+    )
+    assert response.status_code == HTTPStatus.OK
