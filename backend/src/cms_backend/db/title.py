@@ -67,6 +67,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         books=[
             BookLightSchema(
                 id=book.id,
+                title_name=book.title.name,  # pyright: ignore[reportOptionalMemberAccess]
                 title_id=book.title_id,
                 needs_processing=book.needs_processing,
                 has_error=book.has_error,

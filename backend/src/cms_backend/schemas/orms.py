@@ -122,6 +122,7 @@ class BookLightSchema(BaseModel):
 
     id: UUID
     title_id: UUID | None
+    title_name: str | None
     location_kind: str  # 'quarantine', 'staging', or 'prod'
     needs_processing: bool
     has_error: bool
