@@ -12,7 +12,8 @@
       </template>
       <template v-else>
         You are about to <strong>archive</strong> title <code>{{ name }}</code
-        >. This will hide it from the main title list but preserve all data.
+        >. This will delete title books, hide title from the main title list but preserve title
+        configuration data in archive.
       </template>
     </div>
 
@@ -66,7 +67,7 @@
             {{
               isArchived
                 ? `You are about to restore title '${name}'. This will make it available again for normal use.`
-                : `You are about to archive title '${name}'. This will hide it from the main title list but preserve all data.`
+                : `You are about to archive title '${name}'. This will delete title books, hide title from the main title list but preserve title configuration data in archive.`
             }}
           </p>
         </div>
