@@ -11,9 +11,9 @@
       class="overflow-y-auto events-list-container striped-list"
       style="max-height: 400px"
     >
-      <v-list-item v-for="(event, index) in parsedEvents" :key="index" class="px-3 py-1">
+      <v-list-item v-for="(event, index) in events" :key="index" class="px-3 py-1">
         <v-list-item-title class="text-body-2 text-wrap">
-          {{ event.timestamp }}: {{ event.message }}
+          {{ event }}
         </v-list-item-title>
       </v-list-item>
     </v-list>
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, watch } from 'vue'
+import { nextTick, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 
 interface Props {
@@ -34,29 +34,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const notificationStore = useNotificationStore()
-
-interface ParsedEvent {
-  timestamp: string
-  message: string
-}
-
-const parsedEvents = computed((): ParsedEvent[] => {
-  return props.events.map((event) => {
-    // Events are typically formatted as: "TIMESTAMP: message"
-    const colonIndex = event.indexOf(':')
-    if (colonIndex !== -1) {
-      return {
-        timestamp: event.substring(0, colonIndex).trim(),
-        message: event.substring(colonIndex + 1).trim(),
-      }
-    }
-    // If no colon found, treat entire string as message
-    return {
-      timestamp: '',
-      message: event,
-    }
-  })
-})
 
 const scrollEventsToBottom = () => {
   const eventsList = document.querySelectorAll('.events-list-container')
