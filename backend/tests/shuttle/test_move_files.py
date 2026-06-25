@@ -129,6 +129,7 @@ def test_move_book_files_copy_operation(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -136,6 +137,7 @@ def test_move_book_files_copy_operation(
         move_book_files(dbsession, book)
 
         assert mock_copy.call_count == 2
+        assert mock_move.call_count == 2
         assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
@@ -174,6 +176,7 @@ def test_move_book_files_move_operation(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -182,6 +185,7 @@ def test_move_book_files_move_operation(
 
         # Should have copied once and unlinked once
         assert mock_copy.call_count == 1
+        assert mock_move.call_count == 1
         assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
@@ -224,6 +228,7 @@ def test_move_book_files_delete_operation(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
 
@@ -232,6 +237,7 @@ def test_move_book_files_delete_operation(
 
         # Should have copied once and deleted two extra locations
         assert mock_copy.call_count == 1
+        assert mock_move.call_count == 1
         assert mock_unlink.call_count == 2
 
     assert book.needs_processing is False
@@ -277,6 +283,7 @@ def test_move_book_files_identical_source_and_target_paths(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -285,6 +292,7 @@ def test_move_book_files_identical_source_and_target_paths(
 
         # Should only copy once (to "new_path") because "same_path" is identical
         assert mock_copy.call_count == 1
+        assert mock_move.call_count == 1
         # Should NOT unlink "same_path" because it's in the target paths
         assert mock_unlink.call_count == 0
 
@@ -324,6 +332,7 @@ def test_move_book_files_updates_book_locations(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         stack.enter_context(patch("shutil.copy"))
+        stack.enter_context(patch("shutil.move"))
         stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -385,6 +394,7 @@ def test_move_book_files_does_not_delete_backup_locations(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -396,6 +406,7 @@ def test_move_book_files_does_not_delete_backup_locations(
 
         # Should have copied once and deleted once
         assert mock_copy.call_count == 1
+        assert mock_move.call_count == 1
         assert mock_unlink.call_count == 1
 
     assert book.needs_processing is False
@@ -456,6 +467,7 @@ def test_backup_book_files_does_not_delete_existing_current_locations(
             patch("cms_backend.shuttle.move_files.ShuttleContext")
         )
         mock_copy = stack.enter_context(patch("shutil.copy"))
+        mock_move = stack.enter_context(patch("shutil.move"))
         mock_unlink = stack.enter_context(patch("pathlib.Path.unlink"))
         stack.enter_context(patch("pathlib.Path.mkdir"))
 
@@ -466,6 +478,7 @@ def test_backup_book_files_does_not_delete_existing_current_locations(
         move_book_files(dbsession, book)
 
         assert mock_copy.call_count == 1
+        assert mock_move.call_count == 1
         assert mock_unlink.call_count == 0
 
     assert book.needs_processing is False

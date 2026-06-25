@@ -111,7 +111,11 @@ def move_book_files(session: OrmSession, book: Book):
             ShuttleContext.local_warehouse_paths
         )
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(source_path, target_path)
+        # First copy the file to temporary location before moving. This avoids creating
+        # partially complete ZIM files: https://github.com/openzim/cms/issues/368
+        tmp_path = target_path.with_suffix(target_path.suffix + ".tmp")
+        shutil.copy(source_path, tmp_path)
+        shutil.move(tmp_path, target_path)
         logger.debug(f"Copied book {book.id} from {source_path} to {target_path}")
         book.events.append(
             f"{getnow()}: copied book from {source_location.full_str} to "
