@@ -113,7 +113,7 @@ interface Props {
   errors?: string[]
   loadingText?: string
   filters?: {
-    id: string
+    name: string
     location_kind: string
     flag: string
   }
@@ -128,7 +128,7 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   errors: () => [],
   loadingText: 'Fetching books...',
-  filters: () => ({ id: '', location_kind: '', flag: '' }),
+  filters: () => ({ name: '', location_kind: '', flag: '' }),
   isServerSide: true,
   showUrls: false,
   loadingUrls: false,

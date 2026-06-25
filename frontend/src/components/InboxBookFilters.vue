@@ -4,9 +4,9 @@
       <v-row>
         <v-col cols="12" sm="6" md="3">
           <v-text-field
-            v-model="localFilters.id"
-            label="ID"
-            placeholder="Search by ID..."
+            v-model="localFilters.name"
+            label="Name"
+            placeholder="Search by name..."
             variant="outlined"
             density="compact"
             hide-details
@@ -60,7 +60,7 @@ import { computed, ref, watch } from 'vue'
 // Props
 interface Props {
   filters: {
-    id: string
+    name: string
     location_kind: string
     flag: string
   }
@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   filtersChanged: [
     filters: {
-      id: string
+      name: string
       location_kind: string
       flag: string
     },
@@ -85,7 +85,7 @@ const emit = defineEmits<{
 
 // Local filters state
 const localFilters = ref({
-  id: props.filters.id,
+  name: props.filters.name,
   location_kind: props.filters.location_kind,
   flag: props.filters.flag,
 })
@@ -95,7 +95,7 @@ watch(
   () => props.filters,
   (newFilters) => {
     localFilters.value = {
-      id: newFilters.id,
+      name: newFilters.name,
       location_kind: newFilters.location_kind,
       flag: newFilters.flag,
     }
@@ -118,7 +118,7 @@ const flagOptions = [
 
 const hasActiveFilters = computed(() => {
   return (
-    props.filters.id.length > 0 ||
+    props.filters.name.length > 0 ||
     props.filters.location_kind.length > 0 ||
     props.filters.flag?.length > 0
   )
@@ -127,7 +127,7 @@ const hasActiveFilters = computed(() => {
 // Emit filters when they change
 function emitFilters() {
   emit('filtersChanged', {
-    id: localFilters.value.id,
+    name: localFilters.value.name,
     location_kind: localFilters.value.location_kind,
     flag: localFilters.value.flag,
   })

@@ -154,11 +154,11 @@ const bookFilters = computed(() => {
   const query = router.currentRoute.value.query
   const derived = {
     location_kind: '',
-    id: '',
+    name: '',
     flag: '',
   }
-  if (query.id && typeof query.id === 'string') {
-    derived.id = query.id
+  if (query.name && typeof query.name === 'string') {
+    derived.name = query.name
   }
 
   if (query.location_kind && typeof query.location_kind === 'string') {
@@ -237,10 +237,10 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         limit,
         skip,
         true,
-        bookFilters.value.id || undefined,
+        undefined, // id not used in inbox
         bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
         bookFilters.value.flag || undefined,
-        undefined, // name not used in inbox
+        bookFilters.value.name || undefined,
         undefined, // flavour not used in inbox
       )
       books.value = bookStore.books
@@ -315,6 +315,10 @@ function updateUrlFilters(
     query.tab = currentTab.value
   }
 
+  if ('name' in sourceFilters && sourceFilters.name) {
+    query.name = sourceFilters.name
+  }
+
   if ('id' in sourceFilters && sourceFilters.id) {
     query.id = sourceFilters.id
   }
@@ -340,7 +344,7 @@ function updateUrlFilters(
 async function clearFilters() {
   switch (currentTab.value) {
     case 'books':
-      updateUrlFilters({ id: '', location_kind: '', flag: '' })
+      updateUrlFilters({ name: '', location_kind: '', flag: '' })
       break
     case 'zimfarm_notifications':
       updateUrlFilters({ id: '' })
