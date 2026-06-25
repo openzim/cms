@@ -5,9 +5,13 @@ and title association, verifying observable final states rather than
 implementation details.
 """
 
+import re
 from collections.abc import Callable
+from copy import deepcopy
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pycountry
@@ -26,6 +30,7 @@ from cms_backend.db.models import (
     ZimfarmNotification,
 )
 from cms_backend.mill.processors.zimfarm_notification import process_notification
+from cms_backend.utils.requests import Response
 
 VALID_NOTIFICATION_CONTENT: dict[str, Any] = {
     "article_count": 1000,
@@ -308,8 +313,10 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         assert title.description == book.zim_metadata["Description"]
         assert title.language == book.zim_metadata["Language"]
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_preserve_title_metadata(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -319,6 +326,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         """
         Preserve existing title metadata even though book has different metadata
         """
+        mock_check_zimcheck_quaity.return_value = True
         # Create title that matches book name with all metadata matching with book
         # except for language
         title = create_title(
@@ -349,8 +357,10 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         dbsession.refresh(title)
         assert title.language != book.zim_metadata["Language"]
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -359,6 +369,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         """
         Valid notification + matching unstable maturity title → book moves to staging.
         """
+        mock_check_zimcheck_quaity.return_value = True
         # Create title that matches book name
         title = create_title(name="test_en_all")
         title.maturity = "unstable"
@@ -392,13 +403,16 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging_with_empty_folder_name(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
         create_title: Callable[..., Title],
     ):
+        mock_check_zimcheck_quaity.return_value = True
         """
         Valid notification with empty folder_name + unstable maturity title → book
         moves to staging.
@@ -444,8 +458,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
     Stable maturity titles have their books moved directly to production collections.
     """
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_collection_warehouses(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -454,6 +470,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_warehouse: Callable[..., Warehouse],
     ):
         """Valid notification + stable title → book has collection warehouse targets."""
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
@@ -497,8 +514,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_collection_warehouses_with_empty_folder_name(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -510,6 +529,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Valid notification with empty folder_name + stable title → book has collection
         warehouse targets.
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
@@ -554,8 +574,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging_due_to_diffrent_metadata_from_title(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -568,6 +590,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to staging because there is a metadata mismatch between
         it and it's title
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         # Create title that matches book name with all metadata matching with book
         # except for language
@@ -613,8 +636,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging_due_to_diffrent_flavour_from_title(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -626,6 +651,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to staging because there is a flavour mismatch between
         it and it's title
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all", flavours=["maxi", "mini"])
         title.maturity = "stable"
@@ -661,8 +687,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging_due_to_invalid_language(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -673,6 +701,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         """
         Test that book goes to staging because it has an invalid language code
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
@@ -709,8 +738,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_prod_due_to_invalid_language_code_being_supported(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         monkeypatch: MonkeyPatch,
@@ -723,6 +754,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to prod even though it's language code is invalid
         but supported
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
@@ -762,8 +794,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_moves_book_to_staging_due_to_valid_language_code_being_disallowed(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         monkeypatch: MonkeyPatch,
@@ -776,6 +810,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to staging because there it's language code is disallowed
         even though it's valid
         """
+        mock_check_zimcheck_quaity.return_value = True
 
         title = create_title(name="test_en_all")
         title.maturity = "stable"
@@ -812,6 +847,114 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.location_kind == "staging"
         assert len(book.issues) == 1
         assert set(book.issues) == {"invalid language code"}
+        assert book.has_error is False
+        assert book.needs_file_operation is True
+        assert book.needs_processing is False
+
+    def test_moves_book_to_staging_due_to_zimcheck_errors(
+        self,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+        monkeypatch: MonkeyPatch,
+    ):
+        """
+        Test that book goes to staging because there is a metadata mismatch between
+        it and it's title
+        """
+        monkeypatch.setattr(
+            "cms_backend.context.Context.zimcheck_scrapers_whitelist_regex",
+            re.compile(r"sotoki"),
+        )
+
+        title = create_title(
+            name=VALID_NOTIFICATION_CONTENT["metadata"]["Name"],
+            title=VALID_NOTIFICATION_CONTENT["metadata"]["Title"],
+            creator=VALID_NOTIFICATION_CONTENT["metadata"]["Creator"],
+            publisher=VALID_NOTIFICATION_CONTENT["metadata"]["Publisher"],
+            description=VALID_NOTIFICATION_CONTENT["metadata"]["Description"],
+            language=VALID_NOTIFICATION_CONTENT["metadata"]["Language"],
+            illustration_48x48_at_1=VALID_NOTIFICATION_CONTENT["metadata"][
+                "Illustration_48x48@1"
+            ],
+        )
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        content = deepcopy(VALID_NOTIFICATION_CONTENT)
+        content["metadata"]["Scraper"] = "mwoffliner"
+        content["folder_name"] = ""
+        content["zimcheck_url"] = "https://www.example.com"
+
+        notification = create_zimfarm_notification(content=content)
+        dbsession.flush()
+
+        with patch(
+            "cms_backend.db.book.query_api",
+            return_value=Response(
+                status_code=HTTPStatus.OK,
+                success=True,
+                json={
+                    "result": {
+                        "zimcheck_version": "3.6.0",
+                        "checks": [
+                            "checksum",
+                            "integrity",
+                            "empty",
+                            "metadata",
+                            "favicon",
+                            "main_page",
+                            "redundant",
+                            "url_internal",
+                            "url_external",
+                            "url_empty",
+                            "redirect",
+                        ],
+                        "status": False,
+                        "logs": [
+                            {
+                                "check": "url_internal",
+                                "level": "ERROR",
+                                "message": (
+                                    "The following links:\n- "
+                                    "../links/rss.xml\n(100r.co/links/rss.xml) were "
+                                    "not found in article 100r.co/site/2018.html"
+                                ),
+                                "links": ["../links/rss.xml"],
+                                "normalized_link": "100r.co/links/rss.xml",
+                                "path": "100r.co/site/2018.html",
+                            }
+                        ],
+                    },
+                    "log": None,
+                    "retcode": 1,
+                },
+            ),
+        ) as mock_query_api:
+            process_notification(dbsession, notification)
+            mock_query_api.assert_called_once()
+
+        assert notification.status == "processed"
+
+        book = dbsession.query(Book).filter_by(id=notification.id).first()
+        assert book is not None
+        assert book.title_id == title.id
+        assert book.location_kind == "staging"
+        assert len(book.issues) == 1
+        assert set(book.issues) == {"zimcheck error"}
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False

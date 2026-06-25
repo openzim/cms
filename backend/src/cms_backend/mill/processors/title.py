@@ -58,7 +58,7 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
         if title_is_missing_mandatory_metadata(title):
             update_title_metadata_from_book(title, book)
 
-        process_book(session, book, update_events=True)
+        process_book(session, book, is_new=True)
         if book.location_kind == "prod":
             apply_retention_rules(session, title)
 

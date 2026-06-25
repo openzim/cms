@@ -153,6 +153,10 @@ class Book(Base):
         back_populates="book"
     )
 
+    zimcheck_summary: Mapped[dict[str, Any]] = mapped_column(
+        default_factory=dict, server_default="{}"
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, onupdate=getnow, server_default=func.now()
     )

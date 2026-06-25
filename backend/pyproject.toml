@@ -27,6 +27,7 @@ dependencies = [
     "Werkzeug == 3.1.5",
     "xxhash == 3.7.0",
     "pycountry == 26.2.16",
+    "requests == 2.34.2",
 ]
 dynamic = ["version"]
 
@@ -41,7 +42,7 @@ scripts = [
 ]
 qa = [
     "ruff==0.15.12",
-    "pyright==1.1.409",
+    "pyright==1.1.400",
     "types-humanfriendly == 10.0.0"
 ]
 test = [

@@ -2,6 +2,7 @@ import datetime
 import re
 from collections.abc import Callable
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -11,6 +12,7 @@ from cms_backend.context import Context
 from cms_backend.db.book import (
     backup_book,
     book_has_bad_metadata,
+    check_zimcheck_quality,
     get_book_history,
     get_book_history_entry_or_none,
     get_differing_metadata_keys,
@@ -290,7 +292,9 @@ def test_revert_book(
     assert reverted_book.flavour == "mini"
 
 
+@patch("cms_backend.db.book.check_zimcheck_quality")
 def test_update_book_flavour_mismatch_issues(
+    mock_check_zimcheck_quaity: MagicMock,
     dbsession: OrmSession,
     account: Account,
     create_title: Callable[..., Title],
@@ -300,6 +304,7 @@ def test_update_book_flavour_mismatch_issues(
     Test that book with  a flavour mismatch between it and it's title has
     it's issues reset when it's flavour is updated to the same as the title
     """
+    mock_check_zimcheck_quaity.return_value = True
     content = {
         "Name": "test_en_all",
         "Title": "Test Article",
@@ -800,7 +805,9 @@ def test_recover_deleted_book_with_no_backup(
         ),
     ],
 )
+@patch("cms_backend.db.book.check_zimcheck_quality")
 def test_update_book_issues_item_count_issues(
+    mock_check_zimcheck_quaity: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -814,6 +821,7 @@ def test_update_book_issues_item_count_issues(
     expected_issues: set[str],
 ):
     """Test that update_book_issues correctly flags issues with book item count"""
+    mock_check_zimcheck_quaity.return_value = True
     warehouse = create_warehouse()
     content = {
         "Name": "test_en_all",
@@ -939,3 +947,39 @@ def test_book_has_bad_metadata(
     assert book_has_bad_metadata(book, update_events=True) is expected
     if expected:
         assert any(re.search(event_regex, event) for event in book.events)
+
+
+@pytest.mark.parametrize(
+    "ignore_scraper,passes_quality_check",
+    [
+        (True, True),
+        (False, False),
+    ],
+)
+def test_check_zimcheck_quality_ignore_scraper(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    ignore_scraper: bool,
+    passes_quality_check: bool,
+):
+    """Test conditional scraper ignore with zimcheck errors"""
+    book = create_book()
+    book.zim_metadata["Scraper"] = "mwoffliner 1.75"
+    book.zimcheck_summary = {
+        "zimcheck_version": "1.0.0",
+        "status": False,
+        "checks": ["internal_urls"],
+        "error_count": 1,
+        "warning_count": 1,
+        "retcode": 1,
+    }
+    dbsession.add(book)
+    dbsession.flush()
+    if ignore_scraper:
+        monkeypatch.setattr(
+            "cms_backend.context.Context.zimcheck_scrapers_whitelist_regex",
+            re.compile(r"mwoffliner.*|sotoki"),
+        )
+    assert check_zimcheck_quality(book) is passes_quality_check
