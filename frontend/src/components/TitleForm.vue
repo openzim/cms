@@ -8,10 +8,16 @@
           <v-text-field
             v-model="formData.name"
             label="Title Name"
-            :rules="[rules.required]"
+            :rules="[rules.required, rules.name]"
             variant="outlined"
             density="comfortable"
-          />
+            :color="nameInvalid ? 'warning' : undefined"
+            :base-color="nameInvalid ? 'warning' : undefined"
+          >
+            <template v-if="nameInvalid" #append-inner>
+              <v-icon color="warning" icon="mdi-alert-circle" />
+            </template>
+          </v-text-field>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
           <v-switch
@@ -715,11 +721,20 @@ const descriptionGraphemeCount = computed(() => {
   return formData.value.description.split(byGrapheme).length
 })
 const titleInvalid = computed(() => {
-  if (!formData.value.title) return true
+  if (!formData.value.title) return false
   const isValid = rules.title(formData.value.title)
-  if (typeof isValid === 'string') return false
-  return isValid
+  if (typeof isValid === 'string') return true
+  return !isValid
 })
+
+const nameInvalid = computed(() => {
+  if (!formData.value.name) return false
+  const isValid = rules.name(formData.value.name)
+  console.log('nameisinvalid', isValid)
+  if (typeof isValid === 'string') return true
+  return !isValid
+})
+
 const descriptionOverLimit = computed(() => descriptionGraphemeCount.value > descriptionMaxLength)
 const languageInvalid = computed(() => {
   const value = formData.value.language
@@ -742,6 +757,10 @@ const rules = {
     if (titleGraphemeCount.value > titleMaxLength) {
       return `Maximum length is ${titleMaxLength} characters.`
     }
+    return true
+  },
+  name: (value: string) => {
+    if (!value) return true
     const regex = new RegExp(TITLE_NAME_PATTERN)
     if (!regex.test(value)) {
       return `Value does not meet pattern: ${TITLE_NAME_PATTERN}`
