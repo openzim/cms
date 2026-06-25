@@ -39,6 +39,7 @@ def get_books(
     stmt = select(
         Book.id,
         Book.title_id,
+        Title.name,
         Book.needs_processing,
         Book.has_error,
         Book.needs_file_operation,
@@ -148,6 +149,7 @@ def get_books(
             BookLightSchema(
                 id=book_id_result,
                 title_id=book_title_id,
+                title_name=book_title_name,
                 needs_processing=needs_processing,
                 has_error=has_error,
                 needs_file_operation=needs_file_operation,
@@ -165,6 +167,7 @@ def get_books(
             for (
                 book_id_result,
                 book_title_id,
+                book_title_name,
                 needs_processing,
                 has_error,
                 needs_file_operation,

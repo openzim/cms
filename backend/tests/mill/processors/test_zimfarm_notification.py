@@ -279,8 +279,10 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
     Unstable maturity titles should have their books moved to staging.
     """
 
+    @patch("cms_backend.db.book.check_zimcheck_quality")
     def test_set_missing_title_metadata_from_book(
         self,
+        mock_check_zimcheck_quaity: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -289,6 +291,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         """
         Set title metadata from book because title has no metadata set
         """
+        mock_check_zimcheck_quaity.return_value = True
         # Create title that matches book name
         title = create_title(name="test_en_all")
         title.maturity = "unstable"

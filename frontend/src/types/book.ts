@@ -17,6 +17,7 @@ export interface BookLocation {
 export interface BookLight {
   id: string
   title_id?: string
+  title_name?: string
   needs_processing: boolean
   has_error: boolean
   needs_file_operation: boolean

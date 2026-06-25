@@ -194,14 +194,14 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Title Id</div>
+                    <div class="text-subtitle-2">Title</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <router-link
                       v-if="book.title_id"
                       :to="{ name: 'title-detail', params: { id: book.title_id } }"
                     >
-                      {{ book.title_id }}
+                      {{ book.title_name ? book.title_name : book.title_id }}
                     </router-link>
                     <span v-else class="text-grey">None</span>
                   </v-col>

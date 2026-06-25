@@ -109,6 +109,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
     return BookFullSchema(
         id=book.id,
         title_id=book.title_id,
+        title_name=book.title.name if book.title else None,
         needs_processing=book.needs_processing,
         has_error=book.has_error,
         needs_file_operation=book.needs_file_operation,
