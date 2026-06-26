@@ -14,6 +14,15 @@ export interface BookLocation {
   is_backup: boolean
 }
 
+export interface ZimcheckSummary {
+  zimcheck_version: string | null
+  status: boolean | null
+  checks: string[] | null
+  error_count: number | null
+  warning_count: number | null
+  retcode: number | null
+}
+
 export interface BookLight {
   id: string
   title_id?: string
@@ -42,6 +51,9 @@ export interface Book extends BookLight {
   target_locations: BookLocation[]
   title_archived: boolean
   has_backup: boolean
+  zimcheck_result_url: string | null
+  zimcheck_s3_deleted: boolean
+  zimcheck_summary: ZimcheckSummary | null
 }
 
 export interface ZimUrl {

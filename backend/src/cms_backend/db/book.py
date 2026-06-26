@@ -24,13 +24,13 @@ from cms_backend.schemas.models import (
     ZIM_TITLE_NAME_REGEX,
     BookUpdateSchema,
     FileLocation,
-    ZimcheckSummarySchema,
 )
 from cms_backend.schemas.orms import (
     BookFullSchema,
     BookHistorySchema,
     BookLocationSchema,
     ListResult,
+    ZimcheckSummarySchema,
 )
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.requests import query_api
@@ -135,6 +135,10 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         has_backup=any(
             current_location.is_backup for current_location in current_locations
         ),
+        zimcheck_s3_deleted=book.zimcheck_s3_deleted,
+        zimcheck_summary=ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
+        if book.zimcheck_summary
+        else None,
     )
 
 

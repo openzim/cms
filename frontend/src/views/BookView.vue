@@ -372,15 +372,17 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">
-                      ZIM Metadata
+                    <div
+                      class="text-subtitle-2 d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
+                    >
+                      <span> ZIM Metadata </span>
                       <v-btn
                         size="small"
                         variant="outlined"
-                        class="ml-2"
+                        class="align-self-start"
                         @click="copyToClipboard(JSON.stringify(book.zim_metadata, null, 2))"
                       >
-                        <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
+                        <v-icon size="small">mdi-content-copy</v-icon>
                         Copy
                       </v-btn>
                     </div>
@@ -393,25 +395,114 @@
                 </v-row>
                 <v-divider class="my-2"></v-divider>
 
-                <v-row no-gutters class="py-2">
+                <!-- Zimcheck Summary -->
+                <v-row v-if="book.zimcheck_summary" no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">
-                      Zimcheck Result
+                    <div
+                      class="text-subtitle-2 d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
+                    >
+                      <span> Zimcheck Summary </span>
                       <v-btn
                         size="small"
                         variant="outlined"
-                        class="ml-2"
-                        @click="copyToClipboard(JSON.stringify(book.zimcheck_result, null, 2))"
+                        class="align-self-start"
+                        @click="copyToClipboard(JSON.stringify(book.zimcheck_summary, null, 2))"
                       >
-                        <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
+                        <v-icon size="small">mdi-content-copy</v-icon>
                         Copy
                       </v-btn>
                     </div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <div class="overflow-y-auto overflow-x-auto" style="max-height: 400px">
-                      <pre>{{ JSON.stringify(book.zimcheck_result, null, 2) }}</pre>
+                    <div class="d-flex flex-wrap ga-2">
+                      <v-chip v-if="book.zimcheck_summary.zimcheck_version" size="small" label>
+                        <v-icon start size="small">mdi-tag</v-icon>
+                        v{{ book.zimcheck_summary.zimcheck_version }}
+                      </v-chip>
+                      <v-chip
+                        v-if="book.zimcheck_summary.status !== null"
+                        size="small"
+                        :color="book.zimcheck_summary.status ? 'success' : 'error'"
+                        label
+                      >
+                        <v-icon start size="small">
+                          {{
+                            book.zimcheck_summary.status ? 'mdi-check-circle' : 'mdi-alert-circle'
+                          }}
+                        </v-icon>
+                        {{ book.zimcheck_summary.status ? 'Passed' : 'Failed' }}
+                      </v-chip>
+                      <v-chip
+                        v-if="book.zimcheck_summary.error_count !== null"
+                        size="small"
+                        color="error"
+                        label
+                      >
+                        <v-icon start size="small">mdi-alert-octagon</v-icon>
+                        {{ book.zimcheck_summary.error_count }} error{{
+                          book.zimcheck_summary.error_count !== 1 ? 's' : ''
+                        }}
+                      </v-chip>
+                      <v-chip
+                        v-if="book.zimcheck_summary.warning_count !== null"
+                        size="small"
+                        color="warning"
+                        label
+                      >
+                        <v-icon start size="small">mdi-alert</v-icon>
+                        {{ book.zimcheck_summary.warning_count }} warning{{
+                          book.zimcheck_summary.warning_count !== 1 ? 's' : ''
+                        }}
+                      </v-chip>
+                      <v-chip v-if="book.zimcheck_summary.retcode !== null" size="small" label>
+                        Retcode: {{ book.zimcheck_summary.retcode }}
+                      </v-chip>
                     </div>
+                    <div
+                      v-if="book.zimcheck_summary.checks && book.zimcheck_summary.checks.length > 0"
+                      class="mt-2"
+                    >
+                      <div class="text-caption text-medium-emphasis mb-1">Checks:</div>
+                      <div class="d-flex flex-wrap ga-1">
+                        <v-chip
+                          v-for="check in book.zimcheck_summary.checks"
+                          :key="check"
+                          size="x-small"
+                          variant="tonal"
+                        >
+                          {{ check }}
+                        </v-chip>
+                      </div>
+                    </div>
+                  </v-col>
+                </v-row>
+
+                <!-- Zimcheck Results File -->
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Zimcheck Results File</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <template v-if="book.zimcheck_result_url && !book.zimcheck_s3_deleted">
+                      <v-btn
+                        :href="book.zimcheck_result_url"
+                        target="_blank"
+                        size="small"
+                        variant="outlined"
+                        prepend-icon="mdi-download"
+                      >
+                        Download
+                      </v-btn>
+                    </template>
+                    <template v-else-if="book.zimcheck_s3_deleted">
+                      <span class="text-grey">
+                        <v-icon size="small" class="mr-1">mdi-delete</v-icon>
+                        Zimcheck results file has been deleted
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-grey">No results file available</span>
+                    </template>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
