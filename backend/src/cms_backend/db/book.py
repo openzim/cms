@@ -726,7 +726,7 @@ def update_book_issues(
     *,
     update_events: bool = False,
     raise_exceptions: bool = False,
-):
+) -> dict[str, list[str]]:
     """
     Update book issues based on it's associated title and optionally update book events.
 
@@ -735,21 +735,21 @@ def update_book_issues(
     """
 
     if not can_compute_book_issues(book):
-        return
+        return {}
 
-    issues = list(
-        get_book_issues(session, book, raise_exceptions=raise_exceptions).keys()
-    )
-    book.issues = issues
+    issues = get_book_issues(session, book, raise_exceptions=raise_exceptions)
+    issue_keys = list(issues.keys())
+    book.issues = issue_keys
     if update_events and book_is_whitelisted_from_zimcheck(book):
         book.events.append(f"{getnow()}: book is whitelisted for zimcheck quality")
-    if update_events and issues:
+    if update_events and issue_keys:
         book.events.append(
-            f"{getnow()}: book has the following issues: {','.join(issues)}"
+            f"{getnow()}: book has the following issues: {','.join(issue_keys)}"
         )
 
     session.add(book)
     session.flush()
+    return issues
 
 
 def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[str]:
