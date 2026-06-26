@@ -33,6 +33,7 @@ def get_books(
     updated_before: datetime.datetime | None = None,
     updated_after: datetime.datetime | None = None,
     created_before: datetime.datetime | None = None,
+    omit_book_ids: list[UUID] | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -88,6 +89,9 @@ def get_books(
 
     if created_before is not None:
         stmt = stmt.where(Book.created_at < created_before)
+
+    if omit_book_ids is not None:
+        stmt.where(Book.id.not_in(omit_book_ids))
 
     if needs_attention is True:
         stmt = stmt.where(
