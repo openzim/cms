@@ -44,6 +44,7 @@ from cms_backend.schemas.orms import (
 )
 from cms_backend.utils import is_valid_uuid
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import compute_illustration_hash
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
@@ -64,6 +65,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         relation=title.relation,
         source=title.source,
         flavours=title.flavours,
+        illustration_48x48_at_1_hash=title.illustration_48x48_at_1_hash,
         books=[
             BookLightSchema(
                 id=book.id,
@@ -124,6 +126,7 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         relation=title.relation,
         source=title.source,
         flavours=title.flavours,
+        illustration_48x48_at_1_hash=title.illustration_48x48_at_1_hash,
     )
 
 
@@ -205,6 +208,9 @@ def get_titles(
             Title.relation.label("title_relation"),
             Title.source.label("title_source"),
             Title.flavours.label("title_flavours"),
+            Title.illustration_48x48_at_1_hash.label(
+                "title_illustration_48x48_at_1_hash"
+            ),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
@@ -249,6 +255,7 @@ def get_titles(
                 relation=title_relation,
                 source=title_source,
                 flavours=title_flavours,
+                illustration_48x48_at_1_hash=title_illustration_48x48_at_1_hash,
             )
             for (
                 title_id,
@@ -266,6 +273,7 @@ def get_titles(
                 title_relation,
                 title_source,
                 title_flavours,
+                title_illustration_48x48_at_1_hash,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
@@ -286,6 +294,10 @@ def create_title(
     title.publisher = payload.publisher
     title.language = payload.language
     title.illustration_48x48_at_1 = payload.illustration_48x48_at_1
+    if payload.illustration_48x48_at_1:
+        title.illustration_48x48_at_1_hash = compute_illustration_hash(
+            payload.illustration_48x48_at_1
+        )
     title.license = payload.license
     title.relation = payload.relation
     title.source = payload.source
@@ -342,6 +354,7 @@ def create_title_history_entry(
         description=title.description,
         language=title.language,
         illustration_48x48_at_1=title.illustration_48x48_at_1,
+        illustration_48x48_at_1_hash=title.illustration_48x48_at_1_hash,
         long_description=title.long_description,
         license=title.license,
         relation=title.relation,
@@ -410,6 +423,14 @@ def update_title(
             raise RecordAlreadyExistsError(
                 f"Title with name '{payload.name}' already exists"
             ) from exc
+
+    if "illustration_48x48_at_1" in payload.model_fields_set:
+        if payload.illustration_48x48_at_1:
+            title.illustration_48x48_at_1_hash = compute_illustration_hash(
+                payload.illustration_48x48_at_1
+            )
+        else:
+            title.illustration_48x48_at_1_hash = None
 
     # Determine if collection titles changed
     collection_titles_changed = False
@@ -617,6 +638,7 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         source=entry.source,
         flavours=entry.flavours,
         comment=entry.comment,
+        illustration_48x48_at_1_hash=entry.illustration_48x48_at_1_hash,
         collections=[
             BaseTitleCollectionSchema(
                 collection_name=collection["collection_name"], path=collection["path"]

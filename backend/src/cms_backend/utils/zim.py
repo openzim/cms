@@ -1,9 +1,17 @@
+import base64
+import io
 import re
 from typing import Any
+
+import imagehash
+from PIL import Image, ImageFile
 
 from cms_backend import logger
 from cms_backend.context import parse_bool
 from cms_backend.schemas.models import ZimcheckSummarySchema
+
+# https://github.com/python-pillow/Pillow/issues/1510#issuecomment-151458026
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:
@@ -139,3 +147,14 @@ def parse_zimcheck_result(zimcheck: dict[str, Any]) -> ZimcheckSummarySchema:
         except Exception:
             logger.exception("encountered error while parsing zimcheck logs")
     return ZimcheckSummarySchema()
+
+
+def compute_illustration_hash(image_base64: str) -> str:
+    try:
+        image_bytes = base64.b64decode(image_base64, validate=True)
+    except Exception as exc:
+        raise ValueError("Illustration is not a valid base64 string") from exc
+
+    image = Image.open(io.BytesIO(image_bytes))
+    image.load()
+    return str(imagehash.phash(image))

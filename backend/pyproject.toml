@@ -28,6 +28,8 @@ dependencies = [
     "xxhash == 3.7.0",
     "pycountry == 26.2.16",
     "requests == 2.34.2",
+    "ImageHash == 4.3.2",
+    "pillow == 12.2.0",
 ]
 dynamic = ["version"]
 

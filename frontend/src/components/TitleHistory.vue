@@ -65,18 +65,34 @@ const computeTitleDiff = (
   item2: HistoryItem & TitleHistorySchema,
 ): EnhancedDiff[] | undefined => {
   // Extract the subset from both items (excluding id, author, comment, created_at)
-  const { id, author, comment, created_at, ...subset1 } = item1
-  const { id: _id, author: _author, comment: _comment, created_at: _created_at, ...subset2 } = item2
+  const { id, author, comment, created_at, illustration_48x48_at_1_hash, ...subset1 } = item1
+  const {
+    id: _id,
+    author: _author,
+    comment: _comment,
+    created_at: _created_at,
+    illustration_48x48_at_1_hash: _hash,
+    ...subset2
+  } = item2
 
   // Suppress unused variable warnings for destructured variables
   void id
   void author
   void comment
   void created_at
+  void illustration_48x48_at_1_hash
   void _id
   void _author
   void _comment
   void _created_at
+  void _hash
+
+  const hash1 = item1.illustration_48x48_at_1_hash
+  const hash2 = item2.illustration_48x48_at_1_hash
+  if (hash1 != null && hash2 != null && hash1 === hash2) {
+    subset1.illustration_48x48_at_1 = null
+    subset2.illustration_48x48_at_1 = null
+  }
 
   const differences = diff(subset1, subset2)
 

@@ -730,7 +730,6 @@ const titleInvalid = computed(() => {
 const nameInvalid = computed(() => {
   if (!formData.value.name) return false
   const isValid = rules.name(formData.value.name)
-  console.log('nameisinvalid', isValid)
   if (typeof isValid === 'string') return true
   return !isValid
 })

@@ -97,6 +97,15 @@ const metadataDifferences = computed(() => {
     'Illustration_48x48@1': props.title.illustration_48x48_at_1,
   }
 
+  if (
+    props.book.illustration_48x48_at_1_hash != null &&
+    props.title.illustration_48x48_at_1_hash != null &&
+    props.book.illustration_48x48_at_1_hash === props.title.illustration_48x48_at_1_hash
+  ) {
+    bookMetadata['Illustration_48x48@1'] = null
+    titleMetadata['Illustration_48x48@1'] = null
+  }
+
   const differences = diff(bookMetadata, titleMetadata)
   if (!differences) return undefined
 

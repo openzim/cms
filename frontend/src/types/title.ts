@@ -26,6 +26,7 @@ export interface TitleLight {
   description: string | null
   language: string | null
   illustration_48x48_at_1: string | null
+  illustration_48x48_at_1_hash: string | null
   long_description: string | null
   license: string | null
   relation: string | null
@@ -45,6 +46,8 @@ export interface TitleHistorySchema {
   author: string
   collections: BaseTitleCollection[]
   created_at: string
+  illustration_48x48_at_1: string | null
+  illustration_48x48_at_1_hash: string | null
 }
 
 export interface TitleCreate {

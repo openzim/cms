@@ -29,6 +29,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import compute_illustration_hash
 
 
 @pytest.fixture
@@ -137,6 +138,10 @@ def create_book(
             flavour=flavour,
             zimfarm_notification=zimfarm_notification,
         )
+        if zim_metadata.get("Illustration_48x48@1"):
+            book.illustration_48x48_at_1_hash = compute_illustration_hash(
+                zim_metadata["Illustration_48x48@1"]
+            )
         book.title_id = title_id
         book.location_kind = location_kind
         if updated_at:
@@ -200,6 +205,10 @@ def create_title(
             source=source,
             flavours=flavours if flavours is not None else [],
         )
+        if illustration_48x48_at_1:
+            db_title.illustration_48x48_at_1_hash = compute_illustration_hash(
+                illustration_48x48_at_1
+            )
         history_entry = TitleHistory(
             name=name,
             title=title,
@@ -209,6 +218,7 @@ def create_title(
             description=description,
             language=language,
             illustration_48x48_at_1=illustration_48x48_at_1,
+            illustration_48x48_at_1_hash=db_title.illustration_48x48_at_1_hash,
             long_description=long_description,
             license=license,
             relation=relation,

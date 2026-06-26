@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
 
+from pydantic import computed_field
+
 from cms_backend.api.routes.fields import NotEmptyString
 from cms_backend.schemas import BaseModel
 
@@ -29,6 +31,7 @@ class TitleLightSchema(BaseModel):
     description: str | None
     language: str | None
     illustration_48x48_at_1: str | None
+    illustration_48x48_at_1_hash: str | None
     long_description: str | None
     license: str | None
     relation: str | None
@@ -147,6 +150,12 @@ class BookFullSchema(BookLightSchema):
     target_locations: list[BookLocationSchema]
     title_archived: bool
     has_backup: bool
+    illustration_48x48_at_1_hash: str | None
+
+    @computed_field
+    @property
+    def illustration_48x48_at_1(self) -> str | None:
+        return self.zim_metadata.get("Illustration_48x48@1")
 
 
 class BookHistorySchema(BaseModel):

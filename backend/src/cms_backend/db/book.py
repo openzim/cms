@@ -35,6 +35,7 @@ from cms_backend.schemas.orms import (
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.requests import query_api
 from cms_backend.utils.zim import (
+    compute_illustration_hash,
     get_missing_keys,
     get_missing_metadata_keys,
     parse_zimcheck_result,
@@ -135,6 +136,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         has_backup=any(
             current_location.is_backup for current_location in current_locations
         ),
+        illustration_48x48_at_1_hash=book.illustration_48x48_at_1_hash,
     )
 
 
@@ -170,6 +172,10 @@ def create_book(
         flavour=flavour,
         zimfarm_notification=zimfarm_notification,
     )
+    if book.zim_metadata.get("Illustration_48x48@1"):
+        book.illustration_48x48_at_1_hash = compute_illustration_hash(
+            book.zim_metadata["Illustration_48x48@1"]
+        )
     session.add(book)
     zimfarm_notification.events.append(
         f"{getnow()}: notification transformed into book"
@@ -423,7 +429,7 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         "Publisher": book.zim_metadata["Publisher"],
         "Description": book.zim_metadata["Description"],
         "Language": book.zim_metadata["Language"],
-        "Illustration_48x48@1": book.zim_metadata["Illustration_48x48@1"],
+        "Illustration_48x48@1": book.illustration_48x48_at_1_hash,
     }
 
     title_metadata = {
@@ -432,7 +438,7 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         "Publisher": book.title.publisher,
         "Description": book.title.description,
         "Language": book.title.language,
-        "Illustration_48x48@1": book.title.illustration_48x48_at_1,
+        "Illustration_48x48@1": book.title.illustration_48x48_at_1_hash,
     }
 
     return [key for key in book_metadata if book_metadata[key] != title_metadata[key]]

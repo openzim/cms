@@ -153,6 +153,8 @@ class Book(Base):
         back_populates="book"
     )
 
+    illustration_48x48_at_1_hash: Mapped[str | None] = mapped_column(default=None)
+
     zimcheck_summary: Mapped[dict[str, Any]] = mapped_column(
         default_factory=dict, server_default="{}"
     )
@@ -249,6 +251,7 @@ class Title(Base):
     description: Mapped[str | None] = mapped_column(default=None)
     language: Mapped[str | None] = mapped_column(default=None)
     illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1_hash: Mapped[str | None] = mapped_column(default=None)
     long_description: Mapped[str | None] = mapped_column(default=None)
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)
@@ -304,6 +307,7 @@ class TitleHistory(Base):
     description: Mapped[str | None] = mapped_column(default=None)
     language: Mapped[str | None] = mapped_column(default=None)
     illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1_hash: Mapped[str | None] = mapped_column(default=None)
     long_description: Mapped[str | None] = mapped_column(default=None)
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)

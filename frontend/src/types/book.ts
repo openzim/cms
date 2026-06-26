@@ -42,6 +42,8 @@ export interface Book extends BookLight {
   target_locations: BookLocation[]
   title_archived: boolean
   has_backup: boolean
+  illustration_48x48_at_1: string | null
+  illustration_48x48_at_1_hash: string | null
 }
 
 export interface ZimUrl {

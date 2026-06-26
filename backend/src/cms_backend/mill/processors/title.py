@@ -24,6 +24,7 @@ def update_title_metadata_from_book(title: Title, book: Book):
     title.license = book.zim_metadata.get("License")
     title.relation = book.zim_metadata.get("Relation")
     title.source = book.zim_metadata.get("Source")
+    title.illustration_48x48_at_1_hash = book.illustration_48x48_at_1_hash
 
 
 def add_book_to_title(session: OrmSession, book: Book, title: Title):
