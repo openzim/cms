@@ -3,8 +3,8 @@
     <v-progress-circular indeterminate size="20" width="2" />
     <span v-if="!compact" class="ml-2 text-grey">Loading URLs...</span>
   </div>
-  <div v-else-if="urls && urls.length > 0">
-    <v-tooltip v-for="url in urls" :key="`${url.kind}-${url.collection}`" location="bottom">
+  <div v-else-if="displayUrls.length > 0">
+    <v-tooltip v-for="url in displayUrls" :key="`${url.kind}-${url.collection}`" location="bottom">
       <template #activator="{ props: tooltipProps }">
         <v-btn
           v-bind="tooltipProps"
@@ -27,9 +27,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ZimUrl } from '@/types/book'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     urls?: ZimUrl[]
     loading?: boolean
@@ -42,5 +43,9 @@ withDefaults(
     compact: false,
     emptyText: 'No URLs available',
   },
+)
+
+const displayUrls = computed(
+  () => props.urls?.filter((url) => url.kind === 'view' || url.kind === 'download') ?? [],
 )
 </script>
