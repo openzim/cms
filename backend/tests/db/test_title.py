@@ -29,6 +29,7 @@ from cms_backend.db.title import (
 )
 from cms_backend.schemas.models import TitleUpdateSchema
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
+from cms_backend.utils.zim import normalize_illustration
 
 
 def test_get_title_by_name_or_none(
@@ -309,7 +310,9 @@ def test_update_title_metadata(
     assert updated_title.language == "eng"
     assert updated_title.description == "A free encyclopedia"
     assert updated_title.long_description == "Wikipedia is a free online encyclopedia."
-    assert updated_title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert updated_title.illustration_48x48_at_1 == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert updated_title.license == "CC-BY-SA"
     assert updated_title.relation == "wikipedia"
     assert updated_title.source == "https://en.wikipedia.org"
@@ -507,7 +510,9 @@ def test_revert_title(
     assert reverted_title.language == "eng"
     assert reverted_title.description == "Description V1"
     assert reverted_title.long_description == "Long description V1"
-    assert reverted_title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert reverted_title.illustration_48x48_at_1 == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert reverted_title.license == "CC-BY-SA 3.0"
     assert reverted_title.relation == "wikipedia_v1"
     assert reverted_title.source == "https://en.wikipedia.org/v1"

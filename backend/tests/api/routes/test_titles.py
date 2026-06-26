@@ -23,6 +23,7 @@ from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import TitleUpdateSchema
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import normalize_illustration
 
 
 def test_get_titles_empty(client: TestClient):
@@ -145,7 +146,9 @@ def test_create_title_required_fields_only(
     assert data["publisher"] == "Kiwix"
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert data["illustration_48x48_at_1"] == normalize_illustration(
+        illustration_48x48_at_1
+    )
 
     # Verify the title was created in the database
     title = dbsession.get(Title, data["id"])
@@ -210,7 +213,9 @@ def test_create_title_all_fields(
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
     assert data["long_description"] == "Wikipedia is a free online encyclopedia."
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert data["illustration_48x48_at_1"] == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert data["license"] == "CC-BY-SA"
     assert data["relation"] == "wikipedia"
     assert data["source"] == "https://en.wikipedia.org"
@@ -225,7 +230,9 @@ def test_create_title_all_fields(
     assert title.language == "eng"
     assert title.description == "A free encyclopedia"
     assert title.long_description == "Wikipedia is a free online encyclopedia."
-    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert title.illustration_48x48_at_1 == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert title.license == "CC-BY-SA"
     assert title.relation == "wikipedia"
     assert title.source == "https://en.wikipedia.org"
@@ -541,7 +548,9 @@ def test_update_title_metadata(
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
     assert data["long_description"] == "Wikipedia is a free online encyclopedia."
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert data["illustration_48x48_at_1"] == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert data["license"] == "CC-BY-SA"
     assert data["relation"] == "wikipedia"
     assert data["source"] == "https://en.wikipedia.org"
@@ -554,7 +563,9 @@ def test_update_title_metadata(
     assert title.language == "eng"
     assert title.description == "A free encyclopedia"
     assert title.long_description == "Wikipedia is a free online encyclopedia."
-    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert title.illustration_48x48_at_1 == normalize_illustration(
+        illustration_48x48_at_1
+    )
     assert title.license == "CC-BY-SA"
     assert title.relation == "wikipedia"
     assert title.source == "https://en.wikipedia.org"

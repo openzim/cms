@@ -44,6 +44,7 @@ from cms_backend.schemas.orms import (
 )
 from cms_backend.utils import is_valid_uuid
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.zim import normalize_illustration
 
 
 def create_title_full_schema(title: Title) -> TitleFullSchema:
@@ -285,7 +286,11 @@ def create_title(
     title.creator = payload.creator
     title.publisher = payload.publisher
     title.language = payload.language
-    title.illustration_48x48_at_1 = payload.illustration_48x48_at_1
+    title.illustration_48x48_at_1 = (
+        normalize_illustration(payload.illustration_48x48_at_1)
+        if payload.illustration_48x48_at_1
+        else None
+    )
     title.license = payload.license
     title.relation = payload.relation
     title.source = payload.source
@@ -396,6 +401,10 @@ def update_title(
     update_data = payload.model_dump(
         exclude_unset=True, exclude={"collection_titles", "comment"}, mode="json"
     )
+    if update_data.get("illustration_48x48_at_1"):
+        update_data["illustration_48x48_at_1"] = normalize_illustration(
+            update_data["illustration_48x48_at_1"]
+        )
     name_changed = payload.name is not None and payload.name != title.name
 
     if update_data:

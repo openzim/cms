@@ -37,6 +37,7 @@ from cms_backend.utils.requests import query_api
 from cms_backend.utils.zim import (
     get_missing_keys,
     get_missing_metadata_keys,
+    normalize_illustration,
     parse_zimcheck_result,
 )
 
@@ -160,6 +161,11 @@ def create_book(
     name = zim_metadata.get("Name")
     date = zim_metadata.get("Date")
     flavour = zim_metadata.get("Flavour") or None
+
+    if zim_metadata.get("Illustration_48x48@1"):
+        zim_metadata["Illustration_48x48@1"] = normalize_illustration(
+            zim_metadata["Illustration_48x48@1"]
+        )
 
     book = Book(
         id=book_id,
