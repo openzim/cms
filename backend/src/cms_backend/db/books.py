@@ -197,6 +197,8 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
     stmt = (
         select(
             Book.id.label("book_id"),
+            Book.zimcheck_s3_deleted.label("book_zimcheck_s3_deleted"),
+            Book.zimcheck_result_url.label("book_zimcheck_result_url"),
             Book.location_kind.label("book_location_kind"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
@@ -271,6 +273,14 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
                     collection=row.collection_name,
                 )
             )
+        if not row.book_zimcheck_s3_deleted and row.book_zimcheck_result_url:
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="zimcheck",
+                    url=AnyUrl(row.book_zimcheck_result_url),
+                    collection=row.collection_name,
+                )
+            )
 
     return result
 
@@ -282,6 +292,8 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
     stmt = (
         select(
             Book.id.label("book_id"),
+            Book.zimcheck_s3_deleted.label("book_zimcheck_s3_deleted"),
+            Book.zimcheck_result_url.label("book_zimcheck_result_url"),
             Book.location_kind.label("book_location_kind"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
@@ -337,6 +349,14 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 collection="staging",
             )
         )
+        if not row.book_zimcheck_s3_deleted and row.book_zimcheck_result_url:
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="zimcheck",
+                    url=AnyUrl(row.book_zimcheck_result_url),
+                    collection="staging",
+                )
+            )
 
     return result
 
@@ -348,6 +368,8 @@ def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSche
     stmt = (
         select(
             Book.id.label("book_id"),
+            Book.zimcheck_s3_deleted.label("book_zimcheck_s3_deleted"),
+            Book.zimcheck_result_url.label("book_zimcheck_result_url"),
             Book.location_kind.label("book_location_kind"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
@@ -404,6 +426,15 @@ def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSche
                     url=AnyUrl(
                         f"{Context.backup_view_base_url}{filename_without_suffix}"
                     ),
+                    collection="backup",
+                )
+            )
+
+        if not row.book_zimcheck_s3_deleted and row.book_zimcheck_result_url:
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="zimcheck",
+                    url=AnyUrl(row.book_zimcheck_result_url),
                     collection="backup",
                 )
             )

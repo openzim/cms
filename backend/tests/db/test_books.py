@@ -347,6 +347,7 @@ def test_get_zim_urls(
         zim_metadata={"Name": title.name},
         flavour="all",
         date="2023-01-01",
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
     )
     book.title = title
     book.location_kind = "prod"
@@ -365,7 +366,7 @@ def test_get_zim_urls(
     result = get_zim_urls(dbsession, zim_ids=[book.id])
 
     assert book.id in result.urls
-    assert len(result.urls[book.id]) == 2
+    assert len(result.urls[book.id]) == 3
 
     download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
     assert download_url is not None
@@ -376,6 +377,11 @@ def test_get_zim_urls(
     assert view_url is not None
     assert str(view_url.url) == "https://browse.library.kiwix.org/viewer#test_en_all"
     assert view_url.collection == collection.name
+
+    zimcheck_url = next((u for u in result.urls[book.id] if u.kind == "zimcheck"), None)
+    assert zimcheck_url is not None
+    assert str(zimcheck_url.url) == book.zimcheck_result_url
+    assert zimcheck_url.collection == collection.name
 
 
 def test_get_book_languages(
@@ -482,11 +488,70 @@ def test_get_zim_urls_book_in_staging(
 
     book = create_book(
         zim_metadata={"Name": title.name},
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
         flavour="all",
         date="2023-01-01",
     )
     book.title = title
     book.location_kind = "staging"
+    title.books.append(book)
+
+    create_book_location(
+        book=book,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    result = get_zim_urls(dbsession, zim_ids=[book.id])
+    assert book.id in result.urls
+    assert len(result.urls[book.id]) == 3
+
+    download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
+    assert download_url is not None
+    assert str(download_url.url) == "https://download.staging.acme.org/test_en_all.zim"
+    assert download_url.collection == "staging"
+
+    view_url = next((u for u in result.urls[book.id] if u.kind == "view"), None)
+    assert view_url is not None
+    assert str(view_url.url) == "https://library.staging.acme.org/viewer#test_en_all"
+    assert view_url.collection == "staging"
+
+    zimcheck_url = next((u for u in result.urls[book.id] if u.kind == "zimcheck"), None)
+    assert zimcheck_url is not None
+    assert str(zimcheck_url.url) == book.zimcheck_result_url
+
+
+def test_get_zim_urls_book_in_staging_omit_zimcheck_url(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+    warehouse: Warehouse,  # noqa: ARG001
+):
+    """Test zimcheck URLs are omitted when zimcheck results are deleted"""
+    warehouse_prod = create_warehouse()
+    title = create_title(name="test_en_all")
+    collection = create_collection(warehouse=warehouse_prod)
+
+    subpath = Path("wikipedia")
+    create_collection_title(title=title, collection=collection, path=subpath)
+
+    book = create_book(
+        zim_metadata={"Name": title.name},
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
+        flavour="all",
+        date="2023-01-01",
+    )
+    book.title = title
+    book.location_kind = "staging"
+    book.zimcheck_s3_deleted = True
     title.books.append(book)
 
     create_book_location(
@@ -512,6 +577,8 @@ def test_get_zim_urls_book_in_staging(
     assert view_url is not None
     assert str(view_url.url) == "https://library.staging.acme.org/viewer#test_en_all"
     assert view_url.collection == "staging"
+    zimcheck_url = next((u for u in result.urls[book.id] if u.kind == "zimcheck"), None)
+    assert zimcheck_url is None
 
 
 def test_get_zim_urls_multiple_staging_books(
