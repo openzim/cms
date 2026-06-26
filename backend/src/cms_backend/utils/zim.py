@@ -154,7 +154,7 @@ def normalize_illustration(image_base64: str):
     # Save image without any metadata
     buffer = io.BytesIO()
     new_img = Image.new(image.mode, image.size)
-    new_img.putdata(image.get_flattened_data())
+    new_img.putdata(image.get_flattened_data())  # pyright: ignore[reportUnknownMemberType]
     new_img.save(buffer, format="PNG")
     buffer.seek(0)
     return base64.b64encode(buffer.getvalue()).decode()
