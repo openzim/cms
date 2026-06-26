@@ -136,6 +136,15 @@ class BookLightSchema(BaseModel):
     has_flavour_mismatch: bool
 
 
+class ZimcheckSummarySchema(BaseModel):
+    zimcheck_version: str | None = None
+    status: bool | None = None
+    checks: list[str] | None = None
+    error_count: int | None = None
+    warning_count: int | None = None
+    retcode: int | None = None
+
+
 class BookFullSchema(BookLightSchema):
     article_count: int
     media_count: int
@@ -147,6 +156,8 @@ class BookFullSchema(BookLightSchema):
     target_locations: list[BookLocationSchema]
     title_archived: bool
     has_backup: bool
+    zimcheck_summary: ZimcheckSummarySchema | None
+    zimcheck_s3_deleted: bool
 
 
 class BookHistorySchema(BaseModel):

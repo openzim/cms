@@ -123,12 +123,3 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
 class BookUpdateSchema(BaseModel):
     comment: NotEmptyString | None = None
     flavour: NotEmptyString | None = None
-
-
-class ZimcheckSummarySchema(BaseModel):
-    zimcheck_version: str | None = None
-    status: bool | None = None
-    checks: list[str] | None = None
-    error_count: int | None = None
-    warning_count: int | None = None
-    retcode: int | None = None

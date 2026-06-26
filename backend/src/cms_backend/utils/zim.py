@@ -3,7 +3,7 @@ from typing import Any
 
 from cms_backend import logger
 from cms_backend.context import parse_bool
-from cms_backend.schemas.models import ZimcheckSummarySchema
+from cms_backend.schemas.orms import ZimcheckSummarySchema
 
 
 def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:
