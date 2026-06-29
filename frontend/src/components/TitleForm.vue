@@ -278,12 +278,17 @@
               Different from latest book which has:
             </div>
             <div class="d-flex align-center justify-space-between mb-2">
-              <v-img
-                :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
-                width="48"
-                height="48"
-                class="rounded border"
-              />
+              <div class="d-flex flex-column flex-grow-1">
+                <v-img
+                  :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
+                  width="48"
+                  height="48"
+                  class="rounded border w-100"
+                />
+                <span class="text-caption text-grey-darken-1 mt-1">
+                  {{ bookIllustrationSize }}
+                </span>
+              </div>
               <v-btn
                 size="small"
                 variant="outlined"
@@ -472,6 +477,7 @@ import { computed, inject, ref, watch } from 'vue'
 import { byGrapheme } from 'split-by-grapheme'
 import constants from '@/constants'
 import type { Config } from '@/config'
+import { base64ByteSize } from '@/utils/format'
 
 interface Props {
   title?: Title | null
@@ -629,6 +635,12 @@ const getImageDataUrl = (base64String: string | undefined): string | undefined =
   }
   return `data:image/png;base64,${base64String}`
 }
+
+const bookIllustrationSize = computed(() => {
+  const illustration = bookMetadata.value?.illustration_48x48_at_1
+  if (!illustration) return ''
+  return `${base64ByteSize(illustration)} bytes`
+})
 
 const collectionNames = computed(() => {
   return collectionsStore.collections.map((collection) => collection.name)
