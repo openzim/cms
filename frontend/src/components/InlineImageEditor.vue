@@ -187,9 +187,16 @@
       </div>
     </v-sheet>
 
-    <!-- Description -->
-    <div v-if="description" class="text-caption text-grey mt-2">
-      {{ description }}
+    <!-- Description & File Size -->
+    <div
+      v-if="description || (showPreview && fileSizeText)"
+      class="d-flex align-center justify-space-between mt-2"
+    >
+      <span v-if="description" class="text-caption text-grey">{{ description }}</span>
+      <span v-else />
+      <span v-if="showPreview && fileSizeText" class="text-caption text-grey-darken-1">{{
+        fileSizeText
+      }}</span>
     </div>
 
     <!-- Error Message -->
@@ -213,6 +220,7 @@
 import { ref, computed, watch } from 'vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
+import { base64ByteSize } from '@/utils/format'
 
 interface Props {
   modelValue?: string | null
@@ -259,6 +267,11 @@ const dimensionsText = computed(() => {
     return `${imageDimensions.value.width} × ${imageDimensions.value.height} px`
   }
   return ''
+})
+
+const fileSizeText = computed(() => {
+  if (!internalImageData.value) return ''
+  return `${base64ByteSize(internalImageData.value)} bytes`
 })
 
 const detectMimeTypeFromDataUrl = (dataUrl: string): string => {
