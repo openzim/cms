@@ -13,7 +13,6 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.db import gen_dbsession
 from cms_backend.db.book import backup_book as db_backup_book
 from cms_backend.db.book import (
-    can_compute_book_issues,
     create_book_full_schema,
     create_book_history_schema,
 )
@@ -21,12 +20,12 @@ from cms_backend.db.book import delete_book as db_delete_book
 from cms_backend.db.book import get_book as db_get_book
 from cms_backend.db.book import get_book_history as db_get_book_history
 from cms_backend.db.book import get_book_history_entry as db_get_book_history_entry
-from cms_backend.db.book import get_book_issues as db_get_book_issues
 from cms_backend.db.book import move_book as db_move_book
 from cms_backend.db.book import recover_book as db_recover_book
 from cms_backend.db.book import remove_book_backup as db_remove_book_backup
 from cms_backend.db.book import revert_book as db_revert_book
 from cms_backend.db.book import update_book as db_update_book
+from cms_backend.db.book import update_book_issues as db_update_book_issues
 from cms_backend.db.books import get_book_flavours as db_get_book_flavours
 from cms_backend.db.books import get_book_languages as db_get_book_languages
 from cms_backend.db.books import get_books as db_get_books
@@ -216,19 +215,17 @@ def backup_book(
     return create_book_full_schema(db_backup_book(session, book_id=book_id))
 
 
-@router.get("/{book_id}/issues")
+@router.get(
+    "/{book_id}/issues",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
 def get_book_issues(
     book_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
     book = db_get_book(session, book_id)
-    if not can_compute_book_issues(book):
-        issues = {}
-    else:
-        issues = db_get_book_issues(session, book)
-
     return JSONResponse(
-        content=issues,
+        content=db_update_book_issues(session, book),
         status_code=HTTPStatus.OK,
     )
 

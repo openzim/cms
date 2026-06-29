@@ -698,15 +698,29 @@ def test_remove_book_backup_required_permissions(
     assert response.status_code == expected_status_code
 
 
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
 def test_get_book_issues(
     client: TestClient,
     dbsession: OrmSession,
+    create_account: Callable[..., Account],
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     create_collection: Callable[..., Collection],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
 ):
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
     warehouse = create_warehouse()
     content = {
         "Name": "test_en_all",
@@ -769,5 +783,6 @@ def test_get_book_issues(
 
     response = client.get(
         f"/v1/books/{book.id}/issues",
+        headers={"Authorization": f"Bearer {access_token}"},
     )
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == expected_status_code

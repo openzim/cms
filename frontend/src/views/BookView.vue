@@ -177,6 +177,7 @@
 
         <v-tab
           base-color="primary"
+          v-if="canViewBookIssues"
           value="issues"
           :to="{
             name: 'book-detail-tab',
@@ -806,6 +807,10 @@ const canEditBook = computed(() => {
     !book.value.title_archived &&
     book.value.location_kind != 'deleted'
   )
+})
+
+const canViewBookIssues = computed(() => {
+  return authStore.hasPermission('book', 'update')
 })
 
 const canMoveBook = computed(() => {

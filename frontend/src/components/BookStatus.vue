@@ -78,7 +78,7 @@
           <v-list-item-title class="text-wrap">{{ warning }}</v-list-item-title>
         </v-list-item>
 
-        <div>
+        <div v-if="canViewBookIssues">
           <v-divider class="my-0" />
           <v-btn
             color="primary"
@@ -103,6 +103,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Book, BookLight } from '@/types/book'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+const canViewBookIssues = computed(() => {
+  return authStore.hasPermission('book', 'update')
+})
 
 const menuOpen = ref(false)
 
