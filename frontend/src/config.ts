@@ -11,8 +11,10 @@ export interface Config {
   MATOMO_TRACKER_FILE_NAME: string
   OAUTH_BASE_URL: string
   LOGIN_MODES: Array<string>
-  MEDIA_COUNT_CHANGE_THRESHOLD: number | undefined
-  ARTICLE_COUNT_CHANGE_THRESHOLD: number | undefined
+  MEDIA_COUNT_INCREASE_THRESHOLD: number | undefined
+  MEDIA_COUNT_DECREASE_THRESHOLD: number | undefined
+  ARTICLE_COUNT_INCREASE_THRESHOLD: number | undefined
+  ARTICLE_COUNT_DECREASE_THRESHOLD: number | undefined
   ZIM_TITLE_MAX_LENGTH: number | undefined
   ZIM_DESCRIPTION_MAX_LENGTH: number | undefined
 }

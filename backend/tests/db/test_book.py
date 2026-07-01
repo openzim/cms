@@ -851,8 +851,10 @@ def test_update_book_issues_item_count_issues(
     create_collection(
         warehouse=warehouse,
         title_ids_with_paths=[(title.id, "zim")],
-        media_count_change_threshold=media_count_threshold,
-        article_count_change_threshold=article_count_threshold,
+        media_count_increase_threshold=media_count_threshold,
+        article_count_increase_threshold=article_count_threshold,
+        media_count_decrease_threshold=media_count_threshold,
+        article_count_decrease_threshold=article_count_threshold,
     )
 
     # create the latest book with media_count of 100 and article count of 105

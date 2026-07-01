@@ -330,8 +330,10 @@ def create_collection(
         download_base_url: str = "https://download.kiwix.org/zim/",
         view_base_url: str = "https://browse.library.kiwix.org/viewer#",
         title_ids_with_paths: list[tuple[UUID, str]] | None = None,
-        media_count_change_threshold: float | None = None,
-        article_count_change_threshold: float | None = None,
+        media_count_increase_threshold: float | None = None,
+        article_count_increase_threshold: float | None = None,
+        media_count_decrease_threshold: float | None = None,
+        article_count_decrease_threshold: float | None = None,
     ) -> Collection:
         if warehouse is None:
             warehouse = create_warehouse()
@@ -341,8 +343,10 @@ def create_collection(
             warehouse_id=warehouse.id,
             download_base_url=download_base_url,
             view_base_url=view_base_url,
-            media_count_change_threshold=media_count_change_threshold,
-            article_count_change_threshold=article_count_change_threshold,
+            article_count_increase_threshold=article_count_increase_threshold,
+            article_count_decrease_threshold=article_count_decrease_threshold,
+            media_count_increase_threshold=media_count_increase_threshold,
+            media_count_decrease_threshold=media_count_decrease_threshold,
         )
 
         # Add title associations if provided

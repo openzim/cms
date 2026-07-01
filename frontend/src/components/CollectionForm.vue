@@ -51,8 +51,8 @@
     />
 
     <v-text-field
-      v-model="formData.article_count_change_threshold"
-      label="Article Count Change Threshold (Optional)"
+      v-model="formData.article_count_increase_threshold"
+      label="Article Count Increase Threshold (Optional)"
       type="number"
       min="0"
       max="1.0"
@@ -63,8 +63,32 @@
     />
 
     <v-text-field
-      v-model="formData.media_count_change_threshold"
-      label="Media Count Change Threshold (Optional)"
+      v-model="formData.article_count_decrease_threshold"
+      label="Article Count Decrease Threshold (Optional)"
+      type="number"
+      min="0"
+      max="1.0"
+      density="comfortable"
+      variant="outlined"
+      placeholder="0.1"
+      :step="0.1"
+    />
+
+    <v-text-field
+      v-model="formData.media_count_increase_threshold"
+      label="Media Count Increase Threshold (Optional)"
+      type="number"
+      density="comfortable"
+      variant="outlined"
+      placeholder="0.1"
+      min="0"
+      max="1.0"
+      :step="0.1"
+    />
+
+    <v-text-field
+      v-model="formData.media_count_decrease_threshold"
+      label="Media Count Decrease Threshold (Optional)"
       type="number"
       density="comfortable"
       variant="outlined"
@@ -114,15 +138,23 @@ interface FormData {
   warehouse_name?: string
   download_base_url?: string
   view_base_url?: string
-  article_count_change_threshold?: number
-  media_count_change_threshold?: number
+  article_count_increase_threshold?: number
+  article_count_decrease_threshold?: number
+  media_count_increase_threshold?: number
+  media_count_decrease_threshold?: number
 }
 
-const defaultArticleCountChangeThreshold = computed(() =>
-  config ? config.ARTICLE_COUNT_CHANGE_THRESHOLD : undefined,
+const defaultArticleCountIncreaseThreshold = computed(() =>
+  config ? config.ARTICLE_COUNT_INCREASE_THRESHOLD : undefined,
 )
-const defaultMediaCountChangeThreshold = computed(() =>
-  config ? config.MEDIA_COUNT_CHANGE_THRESHOLD : undefined,
+const defaultArticleCountDecreaseThreshold = computed(() =>
+  config ? config.ARTICLE_COUNT_DECREASE_THRESHOLD : undefined,
+)
+const defaultMediaCountIncreaseThreshold = computed(() =>
+  config ? config.MEDIA_COUNT_INCREASE_THRESHOLD : undefined,
+)
+const defaultMediaCountDecreaseThreshold = computed(() =>
+  config ? config.MEDIA_COUNT_DECREASE_THRESHOLD : undefined,
 )
 
 const formData = ref<FormData>({
@@ -130,8 +162,10 @@ const formData = ref<FormData>({
   warehouse_name: '',
   download_base_url: '',
   view_base_url: '',
-  article_count_change_threshold: defaultArticleCountChangeThreshold.value,
-  media_count_change_threshold: defaultMediaCountChangeThreshold.value,
+  article_count_increase_threshold: defaultArticleCountIncreaseThreshold.value,
+  article_count_decrease_threshold: defaultArticleCountDecreaseThreshold.value,
+  media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
+  media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
 })
 
 const isEditMode = computed(() => props.collection !== null)
@@ -145,16 +179,30 @@ const hasChanges = computed(() => {
   const viewUrlChanged =
     (formData.value.view_base_url || '') !== (props.collection.view_base_url || '')
 
-  const articleCountChanged =
-    (formData.value.article_count_change_threshold || null) !=
-    (props.collection.article_count_change_threshold || null)
+  const articleCountIncreaseChanged =
+    (formData.value.article_count_increase_threshold || null) !=
+    (props.collection.article_count_increase_threshold || null)
 
-  const mediaCountChanged =
-    (formData.value.media_count_change_threshold || null) !=
-    (props.collection.media_count_change_threshold || null)
+  const articleCountDecreaseChanged =
+    (formData.value.article_count_decrease_threshold || null) !=
+    (props.collection.article_count_decrease_threshold || null)
+
+  const mediaCountIncreaseChanged =
+    (formData.value.media_count_increase_threshold || null) !=
+    (props.collection.media_count_increase_threshold || null)
+
+  const mediaCountDecreaseChanged =
+    (formData.value.media_count_decrease_threshold || null) !=
+    (props.collection.media_count_decrease_threshold || null)
 
   return (
-    nameChanged || downloadUrlChanged || viewUrlChanged || articleCountChanged || mediaCountChanged
+    nameChanged ||
+    downloadUrlChanged ||
+    viewUrlChanged ||
+    articleCountIncreaseChanged ||
+    articleCountDecreaseChanged ||
+    mediaCountIncreaseChanged ||
+    mediaCountDecreaseChanged
   )
 })
 
@@ -222,8 +270,10 @@ function resetFormToCollection(collection: Collection) {
     warehouse_name: collection.warehouse,
     download_base_url: collection.download_base_url || '',
     view_base_url: collection.view_base_url || '',
-    article_count_change_threshold: collection.article_count_change_threshold || undefined,
-    media_count_change_threshold: collection.media_count_change_threshold || undefined,
+    article_count_increase_threshold: collection.article_count_increase_threshold || undefined,
+    article_count_decrease_threshold: collection.article_count_decrease_threshold || undefined,
+    media_count_increase_threshold: collection.media_count_increase_threshold || undefined,
+    media_count_decrease_threshold: collection.media_count_decrease_threshold || undefined,
   }
   formRef.value?.resetValidation()
 }
@@ -237,8 +287,10 @@ function resetForm() {
       warehouse_name: warehouseStore.warehouses.length > 0 ? warehouseStore.warehouses[0] : '',
       download_base_url: '',
       view_base_url: '',
-      article_count_change_threshold: defaultArticleCountChangeThreshold.value,
-      media_count_change_threshold: defaultMediaCountChangeThreshold.value,
+      article_count_increase_threshold: defaultArticleCountIncreaseThreshold.value,
+      article_count_decrease_threshold: defaultArticleCountDecreaseThreshold.value,
+      media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
+      media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
     }
     formRef.value?.resetValidation()
   }
@@ -265,16 +317,34 @@ function getUpdatePayload(): Partial<CollectionUpdate> | null {
     updatePayload.view_base_url = currentViewUrl || null
   }
 
-  const currentArticleCountThreshold = formData.value.article_count_change_threshold || null
-  const originalArticleCountThreshold = props.collection.article_count_change_threshold || null
-  if (currentArticleCountThreshold != originalArticleCountThreshold) {
-    updatePayload.article_count_change_threshold = currentArticleCountThreshold
+  const currentArticleCountIncreaseThreshold =
+    formData.value.article_count_increase_threshold || null
+  const originalArticleCountIncreaseThreshold =
+    props.collection.article_count_increase_threshold || null
+  if (currentArticleCountIncreaseThreshold != originalArticleCountIncreaseThreshold) {
+    updatePayload.article_count_increase_threshold = currentArticleCountIncreaseThreshold
   }
 
-  const currentMediaCountThreshold = formData.value.media_count_change_threshold || null
-  const originalMediaCountThreshold = props.collection.media_count_change_threshold || null
-  if (currentMediaCountThreshold != originalMediaCountThreshold) {
-    updatePayload.media_count_change_threshold = currentMediaCountThreshold
+  const currentArticleCountDecreaseThreshold =
+    formData.value.article_count_decrease_threshold || null
+  const originalArticleCountDecreaseThreshold =
+    props.collection.article_count_decrease_threshold || null
+  if (currentArticleCountDecreaseThreshold != originalArticleCountDecreaseThreshold) {
+    updatePayload.article_count_decrease_threshold = currentArticleCountDecreaseThreshold
+  }
+
+  const currentMediaCountIncreaseThreshold = formData.value.media_count_increase_threshold || null
+  const originalMediaCountIncreaseThreshold =
+    props.collection.media_count_increase_threshold || null
+  if (currentMediaCountIncreaseThreshold != originalMediaCountIncreaseThreshold) {
+    updatePayload.media_count_increase_threshold = currentMediaCountIncreaseThreshold
+  }
+
+  const currentMediaCountDecreaseThreshold = formData.value.media_count_decrease_threshold || null
+  const originalMediaCountDecreaseThreshold =
+    props.collection.media_count_decrease_threshold || null
+  if (currentMediaCountDecreaseThreshold != originalMediaCountDecreaseThreshold) {
+    updatePayload.media_count_decrease_threshold = currentMediaCountDecreaseThreshold
   }
 
   return updatePayload

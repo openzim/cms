@@ -82,8 +82,10 @@ class CollectionCreateSchema(BaseModel):
     warehouse_name: NotEmptyString = Field(min_length=3)
     download_base_url: AnyUrl | None = None
     view_base_url: AnyUrl | None = None
-    article_count_change_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
-    media_count_change_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    article_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    media_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    article_count_decrease_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    media_count_decrease_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
 
 
 @router.post(
@@ -112,8 +114,10 @@ def create_collection(
                 if request.view_base_url is not None
                 else None
             ),
-            article_count_change_threshold=request.article_count_change_threshold,
-            media_count_change_threshold=request.media_count_change_threshold,
+            article_count_increase_threshold=request.article_count_increase_threshold,
+            article_count_decrease_threshold=request.article_count_decrease_threshold,
+            media_count_increase_threshold=request.media_count_increase_threshold,
+            media_count_decrease_threshold=request.media_count_decrease_threshold,
         )
     )
 

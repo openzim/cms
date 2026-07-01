@@ -110,11 +110,11 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Article Count Change Threshold</div>
+                <div class="text-subtitle-2">Article Count Increase Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
-                <span v-if="collection.article_count_change_threshold">{{
-                  collection.article_count_change_threshold
+                <span v-if="collection.article_count_increase_threshold">{{
+                  collection.article_count_increase_threshold
                 }}</span>
                 <span v-else class="text-grey">Not set</span>
               </v-col>
@@ -123,11 +123,37 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Media Count Change Threshold</div>
+                <div class="text-subtitle-2">Article Count Decrease Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
-                <span v-if="collection.media_count_change_threshold">{{
-                  collection.media_count_change_threshold
+                <span v-if="collection.article_count_decrease_threshold">{{
+                  collection.article_count_decrease_threshold
+                }}</span>
+                <span v-else class="text-grey">Not set</span>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Media Count Increase Threshold</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <span v-if="collection.media_count_increase_threshold">{{
+                  collection.media_count_increase_threshold
+                }}</span>
+                <span v-else class="text-grey">Not set</span>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Media Count Decrease Threshold</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <span v-if="collection.media_count_decrease_threshold">{{
+                  collection.media_count_decrease_threshold
                 }}</span>
                 <span v-else class="text-grey">Not set</span>
               </v-col>

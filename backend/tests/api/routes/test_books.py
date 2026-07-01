@@ -750,8 +750,10 @@ def test_get_book_issues(
     create_collection(
         warehouse=warehouse,
         title_ids_with_paths=[(title.id, "zim")],
-        media_count_change_threshold=0.1,
-        article_count_change_threshold=0.1,
+        media_count_increase_threshold=0.1,
+        article_count_increase_threshold=0.1,
+        media_count_decrease_threshold=0.1,
+        article_count_decrease_threshold=0.1,
     )
 
     # create the latest book with media_count of 100 and article count of 105

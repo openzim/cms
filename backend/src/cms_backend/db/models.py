@@ -329,8 +329,10 @@ class Collection(Base):
     warehouse_id: Mapped[UUID] = mapped_column(ForeignKey("warehouse.id"))
     download_base_url: Mapped[str | None] = mapped_column(default=None)
     view_base_url: Mapped[str | None] = mapped_column(default=None)
-    article_count_change_threshold: Mapped[float | None] = mapped_column(default=None)
-    media_count_change_threshold: Mapped[float | None] = mapped_column(default=None)
+    article_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
+    media_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
+    article_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
+    media_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
 
     titles: Mapped[list["CollectionTitle"]] = relationship(
         back_populates="collection",
@@ -369,8 +371,10 @@ class CollectionHistory(Base):
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )
-    article_count_change_threshold: Mapped[float | None] = mapped_column(default=None)
-    media_count_change_threshold: Mapped[float | None] = mapped_column(default=None)
+    article_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
+    media_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
+    article_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
+    media_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
 
     collection: Mapped["Collection"] = relationship(
         back_populates="history_entries", init=False
