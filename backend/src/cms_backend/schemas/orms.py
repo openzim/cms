@@ -135,6 +135,7 @@ class BookLightSchema(BaseModel):
     date: str | None
     flavour: str | None
     issues: list[str]
+    offliner: str | None
     has_flavour_mismatch: bool
 
 

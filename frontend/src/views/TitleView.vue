@@ -284,15 +284,24 @@
                     <div class="text-subtitle-2">Books</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <BookTable
-                      v-if="title.books.length > 0"
-                      :headers="bookHeaders"
-                      :books="sortedBooks"
-                      :is-server-side="false"
-                      :show-urls="true"
-                      :zim-urls="zimUrls"
-                      :loading-urls="loadingUrls"
-                    />
+                    <v-row v-if="title.books.length > 0">
+                      <v-col
+                        v-for="book in sortedBooks"
+                        :key="book.id"
+                        cols="12"
+                        sm="12"
+                        md="6"
+                        lg="4"
+                        xl="3"
+                      >
+                        <BookCard
+                          :book="book"
+                          :show-urls="true"
+                          :zim-urls="zimUrls"
+                          :loading-urls="loadingUrls"
+                        />
+                      </v-col>
+                    </v-row>
                     <span v-else class="text-grey">No books</span>
                   </v-col>
                 </v-row>
@@ -432,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-import BookTable from '@/components/BookTable.vue'
+import BookCard from '@/components/BookCard.vue'
 import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import TitleForm from '@/components/TitleForm.vue'
@@ -513,15 +522,6 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   selectedTab: 'details',
 })
-
-const bookHeaders = [
-  { title: 'Name', value: 'name', sortable: false },
-  { title: 'Flavour', value: 'flavour', sortable: false },
-  { title: 'Status', value: 'status', sortable: false },
-  { title: 'Date', value: 'date', sortable: false },
-  { title: 'Deletion Date', value: 'deletion_date', sortable: false },
-  { title: 'URLs', value: 'urls', sortable: false },
-]
 
 const canEditTitle = computed(
   () => authStore.hasPermission('title', 'update') && title.value && !title.value.archived,

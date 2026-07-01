@@ -80,6 +80,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 flavour=book.flavour,
                 issues=book.issues,
                 has_flavour_mismatch=has_flavour_mismatch(book.flavour, title.flavours),
+                offliner=book.zim_metadata.get("Scraper"),
             )
             for book in sorted(
                 title.books,
