@@ -2,7 +2,7 @@
   <v-card flat class="mb-4">
     <v-card-text>
       <v-row>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="6" md="4">
           <v-text-field
             v-model="localFilters.name"
             label="Name"
@@ -13,7 +13,7 @@
             @change="emitFilters"
           />
         </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="6" md="4">
           <v-select
             v-model="localFilters.flavour"
             label="Flavour"
@@ -27,7 +27,7 @@
             @update:model-value="emitFilters"
           />
         </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="6" md="4">
           <v-select
             v-model="localFilters.location_kind"
             label="Location"

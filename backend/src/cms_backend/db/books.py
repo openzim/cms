@@ -1,4 +1,3 @@
-import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -10,30 +9,19 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
 from cms_backend.db.rules import has_flavour_mismatch
-from cms_backend.schemas.models import BookLanguagesSchema, ZimUrlSchema, ZimUrlsSchema
+from cms_backend.schemas.models import (
+    BookLanguagesSchema,
+    GetBooksSchema,
+    ZimUrlSchema,
+    ZimUrlsSchema,
+)
 from cms_backend.schemas.orms import BookLightSchema, ListResult
 from cms_backend.utils.filename import construct_download_url
 
 
 def get_books(
     session: OrmSession,
-    *,
-    skip: int,
-    limit: int,
-    book_id: str | None = None,
-    name: str | None = None,
-    flavour: str | None = None,
-    has_title: bool | None = None,
-    needs_processing: bool | None = None,
-    has_error: bool | None = None,
-    needs_file_operation: bool | None = None,
-    location_kinds: list[str] | None = None,
-    needs_attention: bool | None = None,
-    has_backup: bool | None = None,
-    updated_before: datetime.datetime | None = None,
-    updated_after: datetime.datetime | None = None,
-    created_before: datetime.datetime | None = None,
-    omit_book_ids: list[UUID] | None = None,
+    params: GetBooksSchema,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
@@ -52,48 +40,58 @@ def get_books(
         Book.flavour,
         Book.issues,
         Title.flavours,
+        Book.zim_metadata["Scraper"].astext.label("scraper"),
     ).join(Title, Book.title_id == Title.id, isouter=True)
 
-    if book_id is not None:
-        stmt = stmt.where(Book.id.cast(String).ilike(f"%{book_id}%"))
+    if params.id is not None:
+        stmt = stmt.where(Book.id.cast(String).ilike(f"%{params.id}%"))
 
-    if name is not None:
-        stmt = stmt.where(Book.name.ilike(f"%{name}%"))
+    if params.name is not None:
+        stmt = stmt.where(Book.name.ilike(f"%{params.name}%"))
 
-    if flavour is not None:
-        stmt = stmt.where(Book.flavour == flavour)
+    if params.flavour is not None:
+        stmt = stmt.where(Book.flavour == params.flavour)
 
-    if has_title is not None:
-        if has_title:
+    if params.has_title is not None:
+        if params.has_title:
             stmt = stmt.where(Book.title_id.is_not(None))
         else:
             stmt = stmt.where(Book.title_id.is_(None))
 
-    if needs_processing is not None:
-        stmt = stmt.where(Book.needs_processing == needs_processing)
+    if params.needs_processing is not None:
+        stmt = stmt.where(Book.needs_processing == params.needs_processing)
 
-    if has_error is not None:
-        stmt = stmt.where(Book.has_error == has_error)
+    if params.has_error is not None:
+        stmt = stmt.where(Book.has_error == params.has_error)
 
-    if needs_file_operation is not None:
-        stmt = stmt.where(Book.needs_file_operation == needs_file_operation)
+    if params.needs_file_operation is not None:
+        stmt = stmt.where(Book.needs_file_operation == params.needs_file_operation)
 
-    if location_kinds is not None:
-        stmt = stmt.where(Book.location_kind.in_(location_kinds))
+    if params.location_kinds is not None:
+        stmt = stmt.where(Book.location_kind.in_(params.location_kinds))
 
-    if updated_before is not None:
-        stmt = stmt.where(Book.updated_at < updated_before)
+    if params.updated_before is not None:
+        stmt = stmt.where(Book.updated_at < params.updated_before)
 
-    if updated_after is not None:
-        stmt = stmt.where(Book.updated_at > updated_after)
+    if params.updated_after is not None:
+        stmt = stmt.where(Book.updated_at > params.updated_after)
 
-    if created_before is not None:
-        stmt = stmt.where(Book.created_at < created_before)
+    if params.created_before is not None:
+        stmt = stmt.where(Book.created_at < params.created_before)
 
-    if omit_book_ids is not None:
-        stmt.where(Book.id.not_in(omit_book_ids))
+    if params.omit_book_ids is not None:
+        stmt = stmt.where(Book.id.not_in(params.omit_book_ids))
 
-    if needs_attention is True:
+    if params.scraper is not None:
+        stmt = stmt.where(
+            Book.zim_metadata.has_key("Scraper"),
+            Book.zim_metadata["Scraper"].astext.ilike(f"%{params.scraper}%"),
+        )
+
+    if params.issue is not None:
+        stmt = stmt.where(Book.issues.contains([params.issue]))
+
+    if params.needs_attention is True:
         stmt = stmt.where(
             or_(
                 Book.location_kind.in_(["quarantine", "staging"]),
@@ -103,7 +101,7 @@ def get_books(
                 Book.has_error.is_(True),
             )
         )
-    elif needs_attention is False:
+    elif params.needs_attention is False:
         stmt = stmt.where(
             and_(
                 Book.location_kind.not_in(["quarantine", "staging", "deleted"]),
@@ -114,7 +112,7 @@ def get_books(
             )
         )
 
-    if has_backup:
+    if params.has_backup:
         backup_books = (
             select(BookLocation.book_id)
             .where(BookLocation.status == "current", BookLocation.is_backup.is_(True))
@@ -122,7 +120,7 @@ def get_books(
         )
         stmt = stmt.where(Book.id.in_(backup_books))
 
-    if needs_attention is True:
+    if params.needs_attention is True:
         order_clauses = [
             Book.has_error,
             Book.location_kind.in_(["staging", "to_delete"]).desc(),
@@ -167,6 +165,7 @@ def get_books(
                 has_flavour_mismatch=has_flavour_mismatch(flavour, title_flavours)
                 if title_flavours is not None
                 else False,
+                scraper=scraper,
             )
             for (
                 book_id_result,
@@ -183,8 +182,9 @@ def get_books(
                 flavour,
                 book_issues,
                 title_flavours,
+                scraper,
             ) in session.execute(
-                stmt.offset(skip).limit(limit).order_by(*order_clauses)
+                stmt.offset(params.skip).limit(params.limit).order_by(*order_clauses)
             ).all()
         ],
     )

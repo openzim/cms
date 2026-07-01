@@ -1,3 +1,4 @@
+import datetime
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +11,9 @@ from cms_backend.api.routes.fields import (
     Base64Str,
     GraphemeLength,
     LangCode,
+    LimitFieldMax200,
     NotEmptyString,
+    SkipField,
     ZimFlavour,
 )
 from cms_backend.context import Context
@@ -33,6 +36,27 @@ class ZimUrlSchema(BaseModel):
 
 class ZimUrlsSchema(BaseModel):
     urls: dict[UUID, list[ZimUrlSchema]]
+
+
+class GetBooksSchema(BaseModel):
+    skip: SkipField = 0
+    limit: LimitFieldMax200 = 20
+    id: NotEmptyString | None = None
+    name: NotEmptyString | None = None
+    flavour: NotEmptyString | None = None
+    has_title: bool | None = None
+    needs_processing: bool | None = None
+    has_error: bool | None = None
+    needs_file_operation: bool | None = None
+    location_kinds: list[NotEmptyString] | None = None
+    needs_attention: bool | None = None
+    has_backup: bool | None = None
+    updated_before: datetime.datetime | None = None
+    updated_after: datetime.datetime | None = None
+    created_before: datetime.datetime | None = None
+    omit_book_ids: list[UUID] | None = None
+    scraper: NotEmptyString | None = None
+    issue: NotEmptyString | None = None
 
 
 class BookLanguagesSchema(BaseModel):

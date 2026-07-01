@@ -50,7 +50,7 @@
     </v-chip>
 
     <!-- Issues indicator -->
-    <v-menu v-if="hasIssues" :close-on-content-click="false" v-model="menuOpen">
+    <v-menu v-if="hasIssues && !hideIssues" :close-on-content-click="false" v-model="menuOpen">
       <template #activator="{ props: menuProps }">
         <v-chip
           v-bind="menuProps"
@@ -117,9 +117,11 @@ const props = withDefaults(
   defineProps<{
     book: Book | BookLight
     forceRow?: boolean
+    hideIssues?: boolean
   }>(),
   {
     forceRow: false,
+    hideIssues: false,
   },
 )
 

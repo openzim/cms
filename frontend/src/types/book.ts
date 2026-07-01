@@ -33,6 +33,7 @@ export interface BookLight {
   location_kind: LocationKind
   created_at: string
   issues: string[]
+  scraper: string | null
   deletion_date?: string
   name?: string
   date?: string

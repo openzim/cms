@@ -30,6 +30,7 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="bookFilters"
+    :force-mobile="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
   />
@@ -100,6 +101,8 @@ const headers = computed(() => {
         { title: 'Name', value: 'name' },
         { title: 'Flavour', value: 'flavour' },
         { title: 'Status', value: 'status' },
+        { title: 'Issues', value: 'issues' },
+        { title: 'Scraper', value: 'scraper' },
         { title: 'Date', value: 'date' },
         { title: 'Deletion Date', value: 'deletion_date' },
       ]
@@ -156,6 +159,8 @@ const bookFilters = computed(() => {
     location_kind: '',
     name: '',
     flag: '',
+    scraper: '',
+    issue: '',
   }
   if (query.name && typeof query.name === 'string') {
     derived.name = query.name
@@ -167,6 +172,14 @@ const bookFilters = computed(() => {
 
   if (query.flag && typeof query.flag === 'string') {
     derived.flag = query.flag
+  }
+
+  if (query.scraper && typeof query.scraper === 'string') {
+    derived.scraper = query.scraper
+  }
+
+  if (query.issue && typeof query.issue === 'string') {
+    derived.issue = query.issue
   }
 
   return derived
@@ -242,6 +255,9 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         bookFilters.value.flag || undefined,
         bookFilters.value.name || undefined,
         undefined, // flavour not used in inbox
+        undefined, // has_backup not used in inbox
+        bookFilters.value.scraper || undefined,
+        bookFilters.value.issue || undefined,
       )
       books.value = bookStore.books
       errors.value = bookStore.errors
@@ -335,6 +351,14 @@ function updateUrlFilters(
     query.topic = sourceFilters.topic
   }
 
+  if ('scraper' in sourceFilters && sourceFilters.scraper) {
+    query.scraper = sourceFilters.scraper
+  }
+
+  if ('issue' in sourceFilters && sourceFilters.issue) {
+    query.issue = sourceFilters.issue
+  }
+
   router.push({
     name: route.name,
     query: Object.keys(query).length > 0 ? query : undefined,
@@ -344,7 +368,7 @@ function updateUrlFilters(
 async function clearFilters() {
   switch (currentTab.value) {
     case 'books':
-      updateUrlFilters({ name: '', location_kind: '', flag: '' })
+      updateUrlFilters({ name: '', location_kind: '', flag: '', scraper: '', issue: '' })
       break
     case 'zimfarm_notifications':
       updateUrlFilters({ id: '' })

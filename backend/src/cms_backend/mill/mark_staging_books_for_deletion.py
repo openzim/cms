@@ -6,6 +6,7 @@ from cms_backend import logger
 from cms_backend.db.book import delete_book
 from cms_backend.db.books import get_books
 from cms_backend.mill.context import Context as MillContext
+from cms_backend.schemas.models import GetBooksSchema
 from cms_backend.utils.datetime import getnow
 
 
@@ -16,13 +17,15 @@ def mark_staging_books_for_deletion(session: OrmSession):
     while True:
         results = get_books(
             session,
-            needs_file_operation=False,
-            needs_processing=False,
-            created_before=getnow() - MillContext.staging_books_lifespan,
-            skip=0,
-            limit=50,
-            location_kinds=["staging"],
-            omit_book_ids=omit_book_ids,
+            GetBooksSchema(
+                needs_file_operation=False,
+                needs_processing=False,
+                created_before=getnow() - MillContext.staging_books_lifespan,
+                skip=0,
+                limit=50,
+                location_kinds=["staging"],
+                omit_book_ids=omit_book_ids,
+            ),
         )
         if not results.records:
             break

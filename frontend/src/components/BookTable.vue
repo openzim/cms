@@ -10,8 +10,8 @@
         :items-per-page="isServerSide ? props.paginator.limit : -1"
         :items-length="isServerSide ? paginator.count : undefined"
         :items-per-page-options="isServerSide ? limits : undefined"
-        :mobile="smAndDown"
-        :density="smAndDown ? 'compact' : 'comfortable'"
+        :mobile="isMobile"
+        :density="isMobile ? 'compact' : 'comfortable'"
         class="elevation-1 book-table"
         item-value="id"
         hover
@@ -61,11 +61,38 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <BookStatus :book="item" />
+          <div :class="forceMobile ? 'd-flex justify-end' : undefined">
+            <BookStatus
+              :book="item"
+              :force-row="forceMobile"
+              :hide-issues="headersContainIssuesColumn"
+            />
+          </div>
         </template>
 
         <template #[`item.deletion_date`]="{ item }">
           {{ item.deletion_date ? formatDt(item.deletion_date, 'ff') : '-' }}
+        </template>
+
+        <template #[`item.issues`]="{ item }">
+          <div v-if="item.issues && item.issues.length" :class="forceMobile ? 'my-0' : 'my-1'">
+            <v-chip
+              v-for="(issue, idx) in item.issues"
+              :key="idx"
+              size="x-small"
+              class="mr-1"
+              color="red"
+              variant="outlined"
+            >
+              {{ issue }}
+            </v-chip>
+          </div>
+          <span v-else class="text-grey">-</span>
+        </template>
+
+        <template #[`item.scraper`]="{ item }">
+          <span v-if="item.scraper">{{ item.scraper }}</span>
+          <span v-else class="text-grey">-</span>
         </template>
 
         <template #[`item.urls`]="{ item }">
@@ -121,6 +148,7 @@ interface Props {
   showUrls?: boolean
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
+  forceMobile?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -132,6 +160,7 @@ const props = withDefaults(defineProps<Props>(), {
   isServerSide: true,
   showUrls: false,
   loadingUrls: false,
+  forceMobile: false,
 })
 
 // Define emits
@@ -140,9 +169,15 @@ const emit = defineEmits<{
   loadData: [limit: number, skip: number]
 }>()
 
+const isMobile = computed(() => props.forceMobile || smAndDown.value)
+
 const computedHeaders = computed(() => {
   return props.headers
 })
+
+const headersContainIssuesColumn = computed(() =>
+  computedHeaders.value.some((header) => header.value == 'issues'),
+)
 
 const limits = [10, 20, 50, 100]
 
