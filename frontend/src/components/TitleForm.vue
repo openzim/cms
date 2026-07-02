@@ -485,7 +485,8 @@ interface Props {
   latestBook?: Book | null
 }
 
-const TITLE_NAME_PATTERN = '^[a-z0-9\-\.]+?_[a-z]{2}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$'
+/* If you change this, also update ZIM_TITLE_NAME_REGEX in backend/src/cms_backend/schemas/models.py for consistency */
+const TITLE_NAME_PATTERN = '^[a-z0-9\-\.]+?_[a-z]{2,3}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$'
 
 const props = withDefaults(defineProps<Props>(), {
   title: null,
