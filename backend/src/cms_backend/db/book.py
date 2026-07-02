@@ -638,7 +638,7 @@ def get_book_article_count_issues(*, book: Book, latest_book: Book) -> list[str]
             f"book article count ({book.article_count}) {direction} latest book "
             f"(id={latest_book.id}) article count ({latest_book.article_count}) "
             f"by {article_count_diff * 100}%; "
-            f"change threshold={collection_article_count_change_threshold * 100}%"
+            f"alert threshold={collection_article_count_change_threshold * 100}%"
         ]
     return []
 
@@ -686,7 +686,7 @@ def get_book_media_count_issues(*, book: Book, latest_book: Book) -> list[str]:
             f"book media count ({book.media_count}) {direction} latest book "
             f"(id={latest_book.id}) media count ({latest_book.media_count}) "
             f"by {media_count_diff * 100}%; "
-            f"change threshold={collection_media_count_change_threshold}%"
+            f"alert threshold={collection_media_count_change_threshold * 100}%"
         ]
     return []
 
