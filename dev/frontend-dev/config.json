@@ -1,5 +1,6 @@
 {
   "CMS_API": "http://localhost:37601/v1",
+  "ZIMFARM_API": "http://localhost:8000/v2",
   "OAUTH_BASE_URL": "https://ory.login-staging.kiwix.org",
   "LOGIN_MODES": ["local", "oauth"]
 }

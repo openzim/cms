@@ -44,21 +44,22 @@
       size="x-small"
       :color="locationColor"
       variant="flat"
-      class="align-self-start mb-1 mr-1"
+      :class="forceRow ? 'align-self-center mb-0 mr-1' : 'align-self-start mb-1 mr-1'"
     >
       {{ locationLabel }}
     </v-chip>
 
     <!-- Issues indicator -->
-    <v-menu v-if="hasIssues" :close-on-content-click="false" v-model="menuOpen">
+    <v-menu v-if="hasIssues && !hideIssues" :close-on-content-click="false" v-model="menuOpen">
       <template #activator="{ props: menuProps }">
         <v-chip
           v-bind="menuProps"
           size="x-small"
           color="warning"
           variant="flat"
-          :class="forceRow ? 'mb-0 mr-2' : 'mb-1 mb-md-0 mr-md-2'"
-          class="align-self-start"
+          :class="
+            forceRow ? 'align-self-center mb-0 mr-2' : 'align-self-start mb-1 mb-md-0 mr-md-2'
+          "
         >
           <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
           {{ book.issues.length }}
@@ -117,9 +118,11 @@ const props = withDefaults(
   defineProps<{
     book: Book | BookLight
     forceRow?: boolean
+    hideIssues?: boolean
   }>(),
   {
     forceRow: false,
+    hideIssues: false,
   },
 )
 

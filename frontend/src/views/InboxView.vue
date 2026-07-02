@@ -6,6 +6,7 @@
     v-if="currentTab == 'books'"
     :filters="bookFilters"
     :location-kind-options="['quarantine', 'staging']"
+    :offliner-options="offlinerOptions"
     @filters-changed="handleBookFiltersChange"
     @clear-filters="clearFilters"
   />
@@ -30,6 +31,7 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="bookFilters"
+    :force-mobile="true"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
   />
@@ -68,6 +70,7 @@ import EventFilters from '@/components/EventFilters.vue'
 import EventTable from '@/components/EventTable.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useBookStore } from '@/stores/book'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useZimfarmNotificationStore } from '@/stores/zimfarmNotification'
 import { useEventStore } from '@/stores/event'
 import type { BookLight } from '@/types/book'
@@ -81,6 +84,7 @@ const router = useRouter()
 const route = useRoute()
 
 const bookStore = useBookStore()
+const zimfarmOfflinerStore = useZimfarmOfflinerStore()
 const zimfarmNotificationStore = useZimfarmNotificationStore()
 const eventStore = useEventStore()
 const loadingStore = useLoadingStore()
@@ -100,6 +104,8 @@ const headers = computed(() => {
         { title: 'Name', value: 'name' },
         { title: 'Flavour', value: 'flavour' },
         { title: 'Status', value: 'status' },
+        { title: 'Issues', value: 'issues' },
+        { title: 'Offliner', value: 'offliner' },
         { title: 'Date', value: 'date' },
         { title: 'Deletion Date', value: 'deletion_date' },
       ]
@@ -148,6 +154,7 @@ const paginator = ref<Paginator>({
   limit: defaultLimit.value,
   count: 0,
 })
+const offlinerOptions = ref<string[]>([])
 const errors = ref<string[]>([])
 
 const bookFilters = computed(() => {
@@ -156,6 +163,8 @@ const bookFilters = computed(() => {
     location_kind: '',
     name: '',
     flag: '',
+    offliner: '',
+    issue: '',
   }
   if (query.name && typeof query.name === 'string') {
     derived.name = query.name
@@ -167,6 +176,14 @@ const bookFilters = computed(() => {
 
   if (query.flag && typeof query.flag === 'string') {
     derived.flag = query.flag
+  }
+
+  if (query.offliner && typeof query.offliner === 'string') {
+    derived.offliner = query.offliner
+  }
+
+  if (query.issue && typeof query.issue === 'string') {
+    derived.issue = query.issue
   }
 
   return derived
@@ -242,6 +259,9 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         bookFilters.value.flag || undefined,
         bookFilters.value.name || undefined,
         undefined, // flavour not used in inbox
+        undefined, // has_backup not used in inbox
+        bookFilters.value.offliner || undefined,
+        bookFilters.value.issue || undefined,
       )
       books.value = bookStore.books
       errors.value = bookStore.errors
@@ -335,6 +355,14 @@ function updateUrlFilters(
     query.topic = sourceFilters.topic
   }
 
+  if ('offliner' in sourceFilters && sourceFilters.offliner) {
+    query.offliner = sourceFilters.offliner
+  }
+
+  if ('issue' in sourceFilters && sourceFilters.issue) {
+    query.issue = sourceFilters.issue
+  }
+
   router.push({
     name: route.name,
     query: Object.keys(query).length > 0 ? query : undefined,
@@ -344,7 +372,7 @@ function updateUrlFilters(
 async function clearFilters() {
   switch (currentTab.value) {
     case 'books':
-      updateUrlFilters({ name: '', location_kind: '', flag: '' })
+      updateUrlFilters({ name: '', location_kind: '', flag: '', offliner: '', issue: '' })
       break
     case 'zimfarm_notifications':
       updateUrlFilters({ id: '' })
@@ -385,6 +413,11 @@ watch(
 )
 
 onMounted(async () => {
+  const fetchedOffliners = await zimfarmOfflinerStore.fetchOffliners()
+  if (fetchedOffliners) {
+    offlinerOptions.value = fetchedOffliners
+  }
+
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, currentTab.value, true)
   }, 60000)

@@ -1,4 +1,3 @@
-import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
 from uuid import UUID
@@ -35,6 +34,7 @@ from cms_backend.schemas import BaseModel
 from cms_backend.schemas.models import (
     BookLanguagesSchema,
     BookUpdateSchema,
+    GetBooksSchema,
     ZimUrlsSchema,
 )
 from cms_backend.schemas.orms import (
@@ -50,51 +50,18 @@ class BookMoveSchema(BaseModel):
     destination: Literal["prod", "staging"]
 
 
-class BooksGetSchema(BaseModel):
-    skip: SkipField = 0
-    limit: LimitFieldMax200 = 20
-    id: NotEmptyString | None = None
-    has_title: bool | None = None
-    needs_processing: bool | None = None
-    has_error: bool | None = None
-    needs_file_operation: bool | None = None
-    location_kinds: list[NotEmptyString] | None = None
-    needs_attention: bool | None = None
-    has_backup: bool | None = None
-    updated_before: datetime.datetime | None = None
-    updated_after: datetime.datetime | None = None
-    name: NotEmptyString | None = None
-    flavour: NotEmptyString | None = None
-
-
 class RevertBookSchema(BaseModel):
     comment: NotEmptyString | None = None
 
 
 @router.get("")
 def get_books(
-    params: Annotated[BooksGetSchema, Query()],
+    params: Annotated[GetBooksSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ListResponse[BookLightSchema]:
     """Get a list of books"""
 
-    results = db_get_books(
-        session,
-        skip=params.skip,
-        limit=params.limit,
-        book_id=params.id,
-        has_title=params.has_title,
-        needs_processing=params.needs_processing,
-        has_error=params.has_error,
-        needs_file_operation=params.needs_file_operation,
-        location_kinds=params.location_kinds,
-        needs_attention=params.needs_attention,
-        updated_before=params.updated_before,
-        updated_after=params.updated_after,
-        name=params.name,
-        flavour=params.flavour,
-        has_backup=params.has_backup,
-    )
+    results = db_get_books(session, params=params)
 
     return ListResponse[BookLightSchema](
         meta=calculate_pagination_metadata(

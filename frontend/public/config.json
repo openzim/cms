@@ -1,5 +1,6 @@
 {
   "CMS_API": "https://api.cms.openzim.org/v1",
+  "ZIMFARM_API": "https://api.farm.openzim.org/v2",
   "MATOMO_ENABLED": false,
   "MATOMO_HOST": "https://stats.kiwix.org",
   "MATOMO_SITE_ID": 12,
