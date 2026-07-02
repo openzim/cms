@@ -595,6 +595,102 @@ def get_book_metadata_issues(book: Book) -> list[str]:
     return issues
 
 
+def get_book_article_count_issues(*, book: Book, latest_book: Book) -> list[str]:
+
+    if book.article_count == latest_book.article_count:
+        return []
+    elif book.article_count > latest_book.article_count:
+        collection_article_count_change_threshold = min(
+            [
+                Context.article_count_increase_threshold
+                if tc.collection.article_count_increase_threshold is None
+                else tc.collection.article_count_increase_threshold
+                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+            ],
+            default=Context.article_count_increase_threshold,
+        )
+    else:
+        collection_article_count_change_threshold = min(
+            [
+                Context.article_count_decrease_threshold
+                if tc.collection.article_count_decrease_threshold is None
+                else tc.collection.article_count_decrease_threshold
+                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+            ],
+            default=Context.article_count_decrease_threshold,
+        )
+
+    try:
+        article_count_diff = (
+            abs(book.article_count - latest_book.article_count)
+        ) / latest_book.article_count
+    except ZeroDivisionError:
+        # At this point, latest book had an article count of zero whereas book does not
+        article_count_diff = 1.0
+
+    if article_count_diff > collection_article_count_change_threshold:
+        direction = (
+            "increases over"
+            if book.article_count > latest_book.article_count
+            else "decreases from"
+        )
+        return [
+            f"book article count ({book.article_count}) {direction} latest book "
+            f"(id={latest_book.id}) article count ({latest_book.article_count}) "
+            f"by {article_count_diff * 100}%; "
+            f"change threshold={collection_article_count_change_threshold * 100}%"
+        ]
+    return []
+
+
+def get_book_media_count_issues(*, book: Book, latest_book: Book) -> list[str]:
+
+    if book.media_count == latest_book.media_count:
+        return []
+    elif book.media_count > latest_book.media_count:
+        collection_media_count_change_threshold = min(
+            [
+                Context.media_count_increase_threshold
+                if tc.collection.media_count_increase_threshold is None
+                else tc.collection.media_count_increase_threshold
+                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+            ],
+            default=Context.media_count_increase_threshold,
+        )
+    else:
+        collection_media_count_change_threshold = min(
+            [
+                Context.media_count_decrease_threshold
+                if tc.collection.media_count_decrease_threshold is None
+                else tc.collection.media_count_decrease_threshold
+                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+            ],
+            default=Context.media_count_decrease_threshold,
+        )
+
+    try:
+        media_count_diff = (
+            abs(book.media_count - latest_book.media_count)
+        ) / latest_book.media_count
+    except ZeroDivisionError:
+        # At this point, latest book had a media count of zero whereas book does not
+        media_count_diff = 1.0
+
+    if media_count_diff > collection_media_count_change_threshold:
+        direction = (
+            "increases over"
+            if book.media_count > latest_book.media_count
+            else "decreases from"
+        )
+        return [
+            f"book media count ({book.media_count}) {direction} latest book "
+            f"(id={latest_book.id}) media count ({latest_book.media_count}) "
+            f"by {media_count_diff * 100}%; "
+            f"change threshold={collection_media_count_change_threshold}%"
+        ]
+    return []
+
+
 def get_book_issues(
     session: OrmSession, book: Book, *, raise_exceptions: bool = False
 ) -> dict[str, list[str]]:
@@ -645,45 +741,15 @@ def get_book_issues(
     if latest_book is None:
         latest_book = book
 
-    collection_media_count_change_threshold = min(
-        [
-            Context.media_count_change_threshold
-            if tc.collection.media_count_change_threshold is None
-            else tc.collection.media_count_change_threshold
-            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-        ],
-        default=Context.media_count_change_threshold,
+    article_count_issues = get_book_article_count_issues(
+        book=book, latest_book=latest_book
     )
-    collection_article_count_change_threshold = min(
-        [
-            Context.article_count_change_threshold
-            if tc.collection.article_count_change_threshold is None
-            else tc.collection.article_count_change_threshold
-            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-        ],
-        default=Context.article_count_change_threshold,
-    )
+    if article_count_issues:
+        issues["article count"] = article_count_issues
 
-    media_count_diff = (
-        abs(book.media_count - latest_book.media_count)
-    ) / latest_book.media_count
-
-    if media_count_diff > collection_media_count_change_threshold:
-        issues["media count"] = [
-            f"book media count ({book.media_count}) exceeds latest book "
-            f"(id={latest_book.id}) media count ({latest_book.media_count}) "
-            f"by {media_count_diff * 100}%"
-        ]
-
-    article_count_diff = (
-        abs(book.article_count - latest_book.article_count)
-    ) / latest_book.article_count
-    if article_count_diff > collection_article_count_change_threshold:
-        issues["article count"] = [
-            f"book article count ({book.article_count}) exceeds latest book "
-            f"(id={latest_book.id}) article count ({latest_book.article_count}) "
-            f"by {article_count_diff * 100}%"
-        ]
+    media_count_issues = get_book_media_count_issues(book=book, latest_book=latest_book)
+    if media_count_issues:
+        issues["media count"] = media_count_issues
 
     zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=raise_exceptions)
     if zimcheck_errors:

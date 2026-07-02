@@ -76,8 +76,10 @@ export const useCollectionsStore = defineStore('collection', () => {
     warehouse_name: string
     download_base_url?: string
     view_base_url?: string
-    article_count_change_threshold?: number
-    media_count_change_threshold?: number
+    article_count_increase_threshold?: number
+    article_count_decrease_threshold?: number
+    media_count_increase_threshold?: number
+    media_count_decrease_threshold?: number
   }) => {
     const service = await authStore.getApiService('collections')
     try {
@@ -87,8 +89,10 @@ export const useCollectionsStore = defineStore('collection', () => {
           warehouse_name: string
           download_base_url?: string
           view_base_url?: string
-          article_count_change_threshold?: number
-          media_count_change_threshold?: number
+          article_count_increase_threshold?: number
+          article_count_decrease_threshold?: number
+          media_count_increase_threshold?: number
+          media_count_decrease_threshold?: number
         },
         Collection
       >('', payload)

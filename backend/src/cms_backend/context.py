@@ -108,11 +108,17 @@ class Context:
         default=os.getenv("BACKUP_DOWNLOAD_BASE_URL", "")
     )
     backup_view_base_url: str = field(default=os.getenv("BACKUP_VIEW_BASE_URL", ""))
-    media_count_change_threshold: float = field(
-        default=float(os.getenv("MEDIA_COUNT_CHANGE_THRESHOLD", "0.1"))
+    media_count_increase_threshold: float = field(
+        default=float(os.getenv("MEDIA_COUNT_INCREASE_THRESHOLD", "0.2"))
     )
-    article_count_change_threshold: float = field(
-        default=float(os.getenv("ARTICLE_COUNT_CHANGE_THRESHOLD", "0.1"))
+    article_count_increase_threshold: float = field(
+        default=float(os.getenv("ARTICLE_COUNT_INCREASE_THRESHOLD", "0.2"))
+    )
+    media_count_decrease_threshold: float = field(
+        default=float(os.getenv("MEDIA_COUNT_DECREASE_THRESHOLD", "0.1"))
+    )
+    article_count_decrease_threshold: float = field(
+        default=float(os.getenv("ARTICLE_COUNT_DECREASE_THRESHOLD", "0.1"))
     )
     zim_title_max_length: int = field(
         default=int(os.getenv("ZIM_TITLE_MAX_LENGTH", "30"))
