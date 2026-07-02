@@ -133,7 +133,7 @@ class BookLightSchema(BaseModel):
     date: str | None
     flavour: str | None
     issues: list[str]
-    scraper: str | None
+    offliner: str | None
     has_flavour_mismatch: bool
 
 

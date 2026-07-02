@@ -139,7 +139,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         zimcheck_summary=ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
         if book.zimcheck_summary
         else None,
-        scraper=book.zim_metadata.get("Scraper"),
+        offliner=book.zim_metadata.get("Scraper"),
     )
 
 

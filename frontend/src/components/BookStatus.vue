@@ -44,7 +44,7 @@
       size="x-small"
       :color="locationColor"
       variant="flat"
-      class="align-self-start mb-1 mr-1"
+      :class="forceRow ? 'align-self-center mb-0 mr-1' : 'align-self-start mb-1 mr-1'"
     >
       {{ locationLabel }}
     </v-chip>
@@ -57,8 +57,9 @@
           size="x-small"
           color="warning"
           variant="flat"
-          :class="forceRow ? 'mb-0 mr-2' : 'mb-1 mb-md-0 mr-md-2'"
-          class="align-self-start"
+          :class="
+            forceRow ? 'align-self-center mb-0 mr-2' : 'align-self-start mb-1 mb-md-0 mr-md-2'
+          "
         >
           <v-icon size="x-small" class="mr-1">mdi-alert</v-icon>
           {{ book.issues.length }}

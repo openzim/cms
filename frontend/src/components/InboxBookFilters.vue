@@ -40,14 +40,16 @@
           />
         </v-col>
         <v-col cols="12" sm="6" md="4">
-          <v-text-field
-            v-model="localFilters.scraper"
-            label="Scraper"
-            placeholder="Search by scraper..."
+          <v-select
+            v-model="localFilters.offliner"
+            label="Offliner"
+            :items="formattedOfflinerOptions"
+            placeholder="Select offliner"
             variant="outlined"
             density="compact"
             hide-details
-            @change="emitFilters"
+            clearable
+            @update:model-value="emitFilters"
           />
         </v-col>
         <v-col cols="12" sm="6" md="4">
@@ -87,14 +89,16 @@ interface Props {
     name: string
     location_kind: string
     flag: string
-    scraper: string
+    offliner: string
     issue: string
   }
   locationKindOptions?: string[]
+  offlinerOptions?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   locationKindOptions: () => [],
+  offlinerOptions: () => [],
 })
 
 // Define emits
@@ -104,7 +108,7 @@ const emit = defineEmits<{
       name: string
       location_kind: string
       flag: string
-      scraper: string
+      offliner: string
       issue: string
     },
   ]
@@ -116,7 +120,7 @@ const localFilters = ref({
   name: props.filters.name,
   location_kind: props.filters.location_kind,
   flag: props.filters.flag,
-  scraper: props.filters.scraper,
+  offliner: props.filters.offliner,
   issue: props.filters.issue,
 })
 
@@ -128,7 +132,7 @@ watch(
       name: newFilters.name,
       location_kind: newFilters.location_kind,
       flag: newFilters.flag,
-      scraper: newFilters.scraper,
+      offliner: newFilters.offliner,
       issue: newFilters.issue,
     }
   },
@@ -137,6 +141,13 @@ watch(
 const formattedLocationKindOptions = computed(() => {
   return props.locationKindOptions.map((option) => ({
     title: option.charAt(0).toUpperCase() + option.slice(1),
+    value: option,
+  }))
+})
+
+const formattedOfflinerOptions = computed(() => {
+  return props.offlinerOptions.map((option) => ({
+    title: option,
     value: option,
   }))
 })
@@ -162,7 +173,7 @@ const hasActiveFilters = computed(() => {
     props.filters.name.length > 0 ||
     props.filters.location_kind.length > 0 ||
     props.filters.flag?.length > 0 ||
-    props.filters.scraper.length > 0 ||
+    props.filters.offliner.length > 0 ||
     props.filters.issue?.length > 0
   )
 })
@@ -173,7 +184,7 @@ function emitFilters() {
     name: localFilters.value.name,
     location_kind: localFilters.value.location_kind,
     flag: localFilters.value.flag,
-    scraper: localFilters.value.scraper,
+    offliner: localFilters.value.offliner,
     issue: localFilters.value.issue,
   })
 }

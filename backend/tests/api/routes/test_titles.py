@@ -395,7 +395,7 @@ def test_get_title_by_id_with_books(
         "deletion_date",
         "issues",
         "has_flavour_mismatch",
-        "scraper",
+        "offliner",
     }
     assert data["books"][0]["title_id"] == str(title.id)
     assert data["books"][1]["title_id"] == str(title.id)

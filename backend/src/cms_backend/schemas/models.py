@@ -55,7 +55,7 @@ class GetBooksSchema(BaseModel):
     updated_after: datetime.datetime | None = None
     created_before: datetime.datetime | None = None
     omit_book_ids: list[UUID] | None = None
-    scraper: NotEmptyString | None = None
+    offliner: NotEmptyString | None = None
     issue: NotEmptyString | None = None
 
 

@@ -12,7 +12,7 @@
         :items-per-page-options="isServerSide ? limits : undefined"
         :mobile="isMobile"
         :density="isMobile ? 'compact' : 'comfortable'"
-        class="elevation-1 book-table"
+        :class="['elevation-1', 'book-table', { 'force-cards': forceMobile }]"
         item-value="id"
         hover
         @update:options="isServerSide ? onUpdateOptions($event) : undefined"
@@ -44,14 +44,6 @@
           <div>
             <span v-if="item.flavour">{{ item.flavour }}</span>
             <span v-else class="text-grey"></span>
-            <v-tooltip v-if="item.has_flavour_mismatch" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
-                  mdi-alert
-                </v-icon>
-              </template>
-              <span>Book flavour does not match title flavour</span>
-            </v-tooltip>
           </div>
         </template>
 
@@ -61,7 +53,7 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <div :class="forceMobile ? 'd-flex justify-end' : undefined">
+          <div class="card-status-wrap" :class="forceMobile ? 'd-flex justify-end' : undefined">
             <BookStatus
               :book="item"
               :force-row="forceMobile"
@@ -75,17 +67,38 @@
         </template>
 
         <template #[`item.issues`]="{ item }">
-          <div v-if="item.issues && item.issues.length" :class="forceMobile ? 'my-0' : 'my-1'">
+          <div
+            v-if="item.issues && item.issues.length"
+            class="card-issues-wrap d-flex flex-column align-end"
+            :class="forceMobile ? 'my-0' : 'my-1'"
+          >
             <v-chip
               v-for="(issue, idx) in item.issues"
               :key="idx"
               size="x-small"
-              class="mr-1"
+              class="mb-1"
               color="red"
               variant="outlined"
             >
-              {{ issue }}
+              <span class="text-truncate d-block">{{ issue }}</span>
             </v-chip>
+            <div v-if="canViewBookIssues">
+              <v-divider class="my-0" />
+              <v-btn
+                variant="outlined"
+                size="x-small"
+                color="primary"
+                block
+                rounded
+                :to="{
+                  name: 'book-detail-tab',
+                  params: { id: item.id, selectedTab: 'issues' },
+                }"
+              >
+                <v-icon size="small" class="mr-1">mdi-alert-circle</v-icon>
+                View Issues
+              </v-btn>
+            </div>
           </div>
           <span v-else class="text-grey">-</span>
         </template>
@@ -124,10 +137,12 @@ import { formatDt } from '@/utils/format'
 import type { BookLight, ZimUrl } from '@/types/book'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
+import { useAuthStore } from '@/stores/auth'
 import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const { smAndDown } = useDisplay()
 
@@ -175,6 +190,10 @@ const computedHeaders = computed(() => {
   return props.headers
 })
 
+const canViewBookIssues = computed(() => {
+  return authStore.hasPermission('book', 'update')
+})
+
 const headersContainIssuesColumn = computed(() =>
   computedHeaders.value.some((header) => header.value == 'issues'),
 )
@@ -211,5 +230,42 @@ function handleRowClick(event: Event, { item }: { item: BookLight }) {
 <style scoped>
 .book-table :deep(tbody tr) {
   cursor: pointer;
+}
+
+.book-table.force-cards :deep(tbody) {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile) {
+  font-size: 0.8125rem !important;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile:hover) {
+  background-color: rgba(var(--v-border-color), var(--v-hover-opacity)) !important;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile > td::after) {
+  content: none !important;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile > td) {
+  min-height: 24px;
+  padding: 0 6px !important;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile > td:has(.card-issues-wrap)) {
+  height: auto;
+  white-space: normal;
+  overflow: visible;
+}
+
+.book-table.force-cards :deep(.v-data-table__tr--mobile > td:has(.card-status-wrap)) {
+  height: auto;
+  overflow: visible;
 }
 </style>

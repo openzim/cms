@@ -40,7 +40,6 @@ def get_books(
         Book.flavour,
         Book.issues,
         Title.flavours,
-        Book.zim_metadata["Scraper"].astext.label("scraper"),
     ).join(Title, Book.title_id == Title.id, isouter=True)
 
     if params.id is not None:
@@ -82,10 +81,10 @@ def get_books(
     if params.omit_book_ids is not None:
         stmt = stmt.where(Book.id.not_in(params.omit_book_ids))
 
-    if params.scraper is not None:
+    if params.offliner is not None:
         stmt = stmt.where(
             Book.zim_metadata.has_key("Scraper"),
-            Book.zim_metadata["Scraper"].astext.ilike(f"%{params.scraper}%"),
+            Book.zim_metadata["Scraper"].astext.ilike(f"%{params.offliner}%"),
         )
 
     if params.issue is not None:
@@ -165,7 +164,7 @@ def get_books(
                 has_flavour_mismatch=has_flavour_mismatch(flavour, title_flavours)
                 if title_flavours is not None
                 else False,
-                scraper=scraper,
+                offliner=params.offliner or "Unknown",
             )
             for (
                 book_id_result,
@@ -182,7 +181,6 @@ def get_books(
                 flavour,
                 book_issues,
                 title_flavours,
-                scraper,
             ) in session.execute(
                 stmt.offset(params.skip).limit(params.limit).order_by(*order_clauses)
             ).all()

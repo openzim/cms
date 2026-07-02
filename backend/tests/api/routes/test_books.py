@@ -277,11 +277,11 @@ def test_get_books_filter_by_id(
     assert response_doc["items"][0]["id"] == str(book1.id)
 
 
-def test_get_books_filter_by_scraper(
+def test_get_books_filter_by_offliner(
     client: TestClient,
     create_book: Callable[..., Book],
 ):
-    """Test get books endpoint passes scraper filter to database layer"""
+    """Test get books endpoint passes offliner filter to database layer"""
 
     book1 = create_book(
         _id=UUID("12345678-1234-5678-1234-567812345678"),
@@ -292,8 +292,8 @@ def test_get_books_filter_by_scraper(
         zim_metadata={"test": "book2", "Scraper": "sotoki 1.14"},
     )
 
-    # Test that scraper parameter is passed through and filters correctly
-    response = client.get("/v1/books?scraper=mwoffliner")
+    # Test that offliner parameter is passed through and filters correctly
+    response = client.get("/v1/books?offliner=mwoffliner")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
