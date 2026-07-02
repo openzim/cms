@@ -111,7 +111,7 @@ services:
     environment:
       DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
-      LOCAL_WAREHOUSE_PATHS: "11111111-1111-1111-1111-111111111111:/warehouses/dev_hidden,22222222-2222-2222-2222-222222222222:/warehouses/dev_prod,33333333-3333-3333-3333-333333333333:/warehouses/dev_client1,44444444-4444-4444-4444-444444444444:/warehouses/dev_backup"
+      LOCAL_WAREHOUSE_PATHS: "11111111-1111-1111-1111-111111111111:/warehouses/dev_hidden,22222222-2222-2222-2222-222222222222:/warehouses/dev_prod,33333333-3333-3333-3333-333333333333:/warehouses/dev_client1,44444444-4444-4444-4444-444444444444:/warehouses/dev_backup,1e9783eb-296e-4cb0-853a-5355a92b2323:/warehouses/download/zim,c6bec3c1-46be-40ff-8bd9-eb789d3b3a22:/warehouses/hidden,dc0ac66e-5f55-4491-b930-aba47abef40f:/warehouses/zim-receiver"
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
