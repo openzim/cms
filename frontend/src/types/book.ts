@@ -1,5 +1,17 @@
 export type LocationKind = 'quarantine' | 'staging' | 'prod' | 'to_delete' | 'deleted'
 
+export type BookPromotionActionKind =
+  | 'unknown_languages'
+  | 'zimcheck_issues'
+  | 'create_title'
+  | 'restore_title'
+  | 'update_title_metadata'
+  | 'update_title_maturity'
+  | 'set_title_collections'
+  | 'update_title_flavours'
+
+export type BookPromotionRequirement = 'mandatory' | 'optional' | 'information'
+
 export interface Producer {
   display_name: string
   display_url: string
@@ -74,4 +86,22 @@ export interface BookHistory {
   created_at: string
   flavour: string | null
   name: string | null
+}
+
+export interface BaseBookPromotion {
+  kind: BookPromotionActionKind
+  data: Record<string, unknown>
+  requirement: BookPromotionRequirement
+}
+
+export interface BookPromotionAction extends BaseBookPromotion {
+  message: string
+}
+
+export interface BasePromoteBook {
+  actions: BaseBookPromotion[]
+}
+
+export interface PromoteBook {
+  actions: BookPromotionAction[]
 }

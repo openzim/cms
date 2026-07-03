@@ -4,7 +4,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query, Response
 from fastapi.responses import JSONResponse
-from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import (
@@ -41,7 +40,11 @@ from cms_backend.db.title import restore_titles as db_restore_titles
 from cms_backend.db.title import revert_title as db_revert_title
 from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.models import TitleCreateSchema, TitleUpdateSchema
+from cms_backend.schemas.models import (
+    RestoreTitlesSchema,
+    TitleCreateSchema,
+    TitleUpdateSchema,
+)
 from cms_backend.schemas.orms import (
     TitleFullSchema,
     TitleHistorySchema,
@@ -58,10 +61,6 @@ class TitlesGetSchema(BaseModel):
     name: NotEmptyString | None = None
     collection_name: NotEmptyString | None = None
     archived: bool = False
-
-
-class RestoreTitlesSchema(BaseModel):
-    title_names: list[NotEmptyString] = Field(default_factory=list)
 
 
 class RevertTitleSchema(BaseModel):

@@ -108,7 +108,13 @@
     <v-progress-circular indeterminate size="70" width="7" color="primary" />
   </div>
 
-  <CreateTitleDialog v-if="!archived" v-model="showCreateDialog" @created="handleTitleCreated" />
+  <CreateTitleDialog
+    v-if="!archived"
+    v-model="showCreateDialog"
+    :available-flavours="flavours"
+    :collections="collections"
+    @created="handleTitleCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -121,8 +127,10 @@ import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
+import { useBookStore } from '@/stores/book'
 import { useCollectionsStore } from '@/stores/collections'
 import type { TitleLight } from '@/types/title'
+import type { CollectionLight } from '@/types/collections'
 import type { Paginator } from '@/types/base'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -156,6 +164,8 @@ const errors = ref<string[]>([])
 const intervalId = ref<number | null>(null)
 const selectedTitles = ref<string[]>([])
 const showCreateDialog = ref(false)
+const flavours = ref<string[]>([])
+const collections = ref<CollectionLight[]>([])
 const archivedCount = ref(0)
 const loadingArchivedCount = ref(false)
 const restoringText = ref<string | null>(null)
@@ -170,6 +180,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const titleStore = useTitleStore()
+const bookStore = useBookStore()
 const collectionsStore = useCollectionsStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
@@ -389,6 +400,24 @@ async function handleTitleCreated() {
   await loadData(paginator.value.limit, paginator.value.skip)
 }
 
+async function fetchFlavours() {
+  try {
+    await bookStore.fetchBookFlavours()
+    flavours.value = bookStore.flavours
+  } catch (err) {
+    console.error('Failed to fetch flavours', err)
+  }
+}
+
+async function fetchCollections() {
+  try {
+    await collectionsStore.fetchCollections()
+    collections.value = collectionsStore.collections
+  } catch (err) {
+    console.error('Failed to fetch collections', err)
+  }
+}
+
 function updateUrl(sourceFilters: typeof filters.value) {
   const query: Record<string, string | string[]> = {}
 
@@ -448,6 +477,17 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (intervalId.value) {
     clearInterval(intervalId.value)
+  }
+})
+
+watch(showCreateDialog, async (val) => {
+  if (val) {
+    if (flavours.value.length == 0) {
+      await fetchFlavours()
+    }
+    if (collections.value.length == 0) {
+      await fetchCollections()
+    }
   }
 })
 

@@ -284,6 +284,12 @@ def move_book(
         raise RecordDoesNotExistError(
             f"Book {book_id} does not meet criteria to be moved."
         )
+    return move_book_to_destination(session, book=book, destination=destination)
+
+
+def move_book_to_destination(
+    session: OrmSession, *, book: Book, destination: Literal["staging", "prod"]
+) -> Book:
 
     if book.title and book.title.archived:
         raise ValueError(f"Book title {book.title_id} is currently archived")
@@ -295,10 +301,10 @@ def move_book(
         (loc for loc in book.locations if loc.status == "current"), None
     )
     if not current_location:
-        raise ValueError(f"Book {book_id} has no current location")
+        raise ValueError(f"Book {book.id} has no current location")
 
     if not book.title:
-        raise ValueError(f"Book {book_id} has no associated title.")
+        raise ValueError(f"Book {book.id} has no associated title.")
 
     if destination == "prod" and has_flavour_mismatch(
         book.flavour, book.title.flavours
@@ -692,6 +698,15 @@ def get_book_media_count_issues(*, book: Book, latest_book: Book) -> list[str]:
     return []
 
 
+def get_book_unsupported_languages(book: Book) -> list[str]:
+
+    unknown_languages: list[str] = []
+    for language_code in book.zim_metadata["Language"].split(","):
+        if pycountry.languages.get(alpha_3=language_code) is None:  # pyright: ignore[reportUnknownMemberType]
+            unknown_languages.append(language_code)
+    return unknown_languages
+
+
 def get_book_issues(
     session: OrmSession, book: Book, *, raise_exceptions: bool = False
 ) -> dict[str, list[str]]:
@@ -701,11 +716,7 @@ def get_book_issues(
     Makes the same assumptions as the update_book_issues function
     """
     issues: dict[str, list[str]] = {}
-    unknown_languages: list[str] = []
-    for language_code in book.zim_metadata["Language"].split(","):
-        if pycountry.languages.get(alpha_3=language_code) is None:  # pyright: ignore[reportUnknownMemberType]
-            unknown_languages.append(language_code)
-
+    unknown_languages = get_book_unsupported_languages(book)
     if unknown_languages:
         issues["invalid language code"] = [
             f"book has unknown language code(s) {','.join(unknown_languages)}"

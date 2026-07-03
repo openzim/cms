@@ -5,57 +5,15 @@
       <h3 class="text-h6 mb-4">Basic Settings</h3>
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.name"
-            label="Title Name"
-            :rules="[rules.required, rules.name]"
-            variant="outlined"
-            density="comfortable"
-            :color="nameInvalid ? 'warning' : undefined"
-            :base-color="nameInvalid ? 'warning' : undefined"
-          >
-            <template v-if="nameInvalid" #append-inner>
-              <v-icon color="warning" icon="mdi-alert-circle" />
-            </template>
-          </v-text-field>
+          <TitleNameField v-model="formData.name" />
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-switch
-            v-model="isStable"
-            color="primary"
-            density="comfortable"
-            :hint="maturityHint"
-            persistent-hint
-          >
-            <template #label>
-              <span class="text-subtitle-1"
-                >Maturity: <strong>{{ formData.maturity }}</strong></span
-              >
-            </template>
-          </v-switch>
+          <TitleMaturityField v-model="formData.maturity" />
         </v-col>
       </v-row>
       <v-row>
         <v-col cols="12">
-          <v-combobox
-            v-model="formData.flavours"
-            label="Expected Flavours"
-            variant="outlined"
-            density="compact"
-            clearable
-            chips
-            multiple
-            closable-chips
-            hint="Press Enter to add a new flavour or select from available options"
-            persistent-hint
-            :items="availableFlavours"
-            :loading="loadingFlavours"
-            :rules="[rules.flavours]"
-          >
-            <template #item="{ props, item }">
-              <v-list-item v-bind="props" :title="item.title === '' ? 'Empty' : item.title" />
-            </template>
-          </v-combobox>
+          <TitleFlavoursField v-model="formData.flavours" :available-flavours="flavours" />
         </v-col>
       </v-row>
     </div>
@@ -80,25 +38,7 @@
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.title"
-            label="Title"
-            variant="outlined"
-            density="comfortable"
-            :rules="[rules.title]"
-            clearable
-            :color="
-              titleInvalid || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
-            "
-            :base-color="
-              titleInvalid || (!inDialog && isFieldDifferent('title')) ? 'warning' : undefined
-            "
-          >
-            <template #counter> {{ titleGraphemeCount }}/{{ titleMaxLength }} </template>
-            <template v-if="titleInvalid" #append-inner>
-              <v-icon color="warning" icon="mdi-alert-circle" />
-            </template>
-          </v-text-field>
+          <TitleTextField v-model="formData.title" label="Title" :max-graphemes="titleMaxLength" />
           <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -111,22 +51,13 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('title')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.creator"
-            label="Creator"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            :color="!inDialog && isFieldDifferent('creator') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('creator') ? 'warning' : undefined"
-          />
+          <TitleTextField v-model="formData.creator" label="Creator" />
           <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -139,9 +70,8 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('creator')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
@@ -149,15 +79,7 @@
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.publisher"
-            label="Publisher"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            :color="!inDialog && isFieldDifferent('publisher') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('publisher') ? 'warning' : undefined"
-          />
+          <TitleTextField v-model="formData.publisher" label="Publisher" />
           <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -170,31 +92,13 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('publisher')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.language"
-            label="Language"
-            variant="outlined"
-            density="comfortable"
-            :rules="[rules.langCode]"
-            clearable
-            :color="
-              languageInvalid || (!inDialog && isFieldDifferent('language')) ? 'warning' : undefined
-            "
-            :base-color="
-              languageInvalid || (!inDialog && isFieldDifferent('language')) ? 'warning' : undefined
-            "
-          >
-            <template v-if="languageInvalid" #append-inner>
-              <v-icon color="warning" icon="mdi-alert-circle" />
-            </template>
-          </v-text-field>
+          <TitleLanguageField v-model="formData.language" />
           <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -207,9 +111,8 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('language')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
@@ -217,15 +120,7 @@
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.license"
-            label="License"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            :color="!inDialog && isFieldDifferent('license') ? 'warning' : undefined"
-            :base-color="!inDialog && isFieldDifferent('license') ? 'warning' : undefined"
-          />
+          <TitleTextField v-model="formData.license" label="License" />
           <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -238,42 +133,25 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('license')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.relation"
-            label="Relation"
-            variant="outlined"
-            density="comfortable"
-            clearable
-          />
+          <TitleTextField v-model="formData.relation" label="Relation" />
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <v-text-field
-            v-model="formData.source"
-            label="Source"
-            variant="outlined"
-            density="comfortable"
-            clearable
-          />
+          <TitleTextField v-model="formData.source" label="Source" />
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12">
-          <ImageEditor
-            v-model="formData.illustration_48x48_at_1"
-            label="Illustration"
-            description="Upload a 48x48 pixel illustration image"
-          />
+          <TitleIllustrationField v-model="formData.illustration_48x48_at_1" />
           <div
             v-if="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
             class="text-body-2 mt-2 mb-2"
@@ -289,9 +167,7 @@
                   height="48"
                   class="rounded border w-100"
                 />
-                <span class="text-caption text-grey-darken-1 mt-1">
-                  {{ bookIllustrationSize }}
-                </span>
+                <span class="text-caption text-grey-darken-1 mt-1">{{ bookIllustrationSize }}</span>
               </div>
               <v-btn
                 size="small"
@@ -299,9 +175,8 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('illustration_48x48_at_1')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
@@ -309,32 +184,12 @@
 
       <v-row>
         <v-col cols="12">
-          <v-textarea
+          <TitleTextField
             v-model="formData.description"
             label="Description"
-            variant="outlined"
-            density="comfortable"
-            :rules="[rules.description]"
-            rows="3"
-            clearable
-            :color="
-              descriptionOverLimit || (!inDialog && isFieldDifferent('description'))
-                ? 'warning'
-                : undefined
-            "
-            :base-color="
-              descriptionOverLimit || (!inDialog && isFieldDifferent('description'))
-                ? 'warning'
-                : undefined
-            "
-          >
-            <template #counter>
-              {{ descriptionGraphemeCount }}/{{ descriptionMaxLength }}
-            </template>
-            <template v-if="descriptionOverLimit" #append-inner>
-              <v-icon color="warning" icon="mdi-alert-circle" />
-            </template>
-          </v-textarea>
+            textarea
+            :max-graphemes="descriptionMaxLength"
+          />
           <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
               Different from latest book which has:
@@ -347,9 +202,8 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('description')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
@@ -357,15 +211,11 @@
 
       <v-row v-if="!inDialog">
         <v-col cols="12">
-          <v-textarea
+          <TitleTextField
             v-model="formData.long_description"
             label="Long Description"
-            variant="outlined"
-            density="comfortable"
-            rows="5"
-            clearable
-            :color="isFieldDifferent('long_description') ? 'warning' : undefined"
-            :base-color="isFieldDifferent('long_description') ? 'warning' : undefined"
+            textarea
+            :rows="5"
           />
           <div v-if="isFieldDifferent('long_description')" class="text-body-2 mb-2">
             <div class="mb-1 text-warning font-weight-medium">
@@ -379,9 +229,8 @@
                 color="warning"
                 class="ml-3"
                 @click="useBookValue('long_description')"
+                >Use this</v-btn
               >
-                Use this
-              </v-btn>
             </div>
           </div>
         </v-col>
@@ -392,69 +241,7 @@
 
     <!-- Collections Section -->
     <div>
-      <div class="d-flex align-center justify-space-between mb-4">
-        <h3 class="text-h6">Collections</h3>
-        <v-btn
-          color="primary"
-          variant="text"
-          size="small"
-          prepend-icon="mdi-plus"
-          @click="addCollectionTitle"
-          :disabled="loadingCollections || !canAddMoreCollections"
-        >
-          Add Collection
-        </v-btn>
-      </div>
-
-      <v-alert
-        v-if="formData.collection_titles.length === 0"
-        type="info"
-        density="compact"
-        class="mb-4"
-      >
-        No collections added.
-      </v-alert>
-
-      <div
-        v-for="(collectionTitle, index) in formData.collection_titles"
-        :key="index"
-        class="mb-4 pa-3 border rounded"
-      >
-        <div class="d-flex align-center mb-2">
-          <span class="text-subtitle-2 flex-grow-1">Collection #{{ index + 1 }}</span>
-          <v-btn
-            icon="mdi-delete"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeCollectionTitle(index)"
-          />
-        </div>
-
-        <v-select
-          v-model="collectionTitle.collection_name"
-          label="Collection"
-          :items="getAvailableCollections(index)"
-          :rules="[rules.required]"
-          variant="outlined"
-          density="comfortable"
-          class="mb-2"
-          :loading="loadingCollections"
-          @update:model-value="handleCollectionChange(index)"
-        />
-
-        <v-select
-          v-model="collectionTitle.path"
-          label="Path"
-          :items="getAvailablePaths(collectionTitle.collection_name)"
-          :rules="[rules.required]"
-          variant="outlined"
-          density="comfortable"
-          :disabled="!collectionTitle.collection_name"
-          :hint="!collectionTitle.collection_name ? 'Please select a collection first' : ''"
-          persistent-hint
-        />
-      </div>
+      <TitleCollectionsField v-model="formData.collection_titles" :collections="collections" />
 
       <v-alert
         v-if="isEditMode && hasCollectionChanges"
@@ -472,13 +259,17 @@
 </template>
 
 <script setup lang="ts">
-import ImageEditor from '@/components/ImageEditor.vue'
-import { useCollectionsStore } from '@/stores/collections'
-import { useBookStore } from '@/stores/book'
+import TitleNameField from '@/components/TitleNameField.vue'
+import TitleMaturityField from '@/components/TitleMaturityField.vue'
+import TitleFlavoursField from '@/components/TitleFlavoursField.vue'
+import TitleTextField from '@/components/TitleTextField.vue'
+import TitleLanguageField from '@/components/TitleLanguageField.vue'
+import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
+import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
+import type { CollectionLight } from '@/types/collections'
 import type { Book } from '@/types/book'
 import { computed, inject, ref, watch } from 'vue'
-import { byGrapheme } from 'split-by-grapheme'
 import constants from '@/constants'
 import type { Config } from '@/config'
 import { base64ByteSize } from '@/utils/format'
@@ -487,15 +278,16 @@ interface Props {
   title?: Title | null
   inDialog?: boolean
   latestBook?: Book | null
+  flavours: string[]
+  collections: CollectionLight[]
 }
-
-/* If you change this, also update ZIM_TITLE_NAME_REGEX in backend/src/cms_backend/schemas/models.py for consistency */
-const TITLE_NAME_PATTERN = '^[a-z0-9\-\.]+?_[a-z]{2,3}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$'
 
 const props = withDefaults(defineProps<Props>(), {
   title: null,
   inDialog: false,
   latestBook: null,
+  flavours: () => [],
+  collections: () => [],
 })
 
 const emit = defineEmits<{
@@ -504,14 +296,9 @@ const emit = defineEmits<{
 }>()
 
 const config = inject<Config>(constants.config)!
-const collectionsStore = useCollectionsStore()
-const bookStore = useBookStore()
 
 const formRef = ref()
 const formValid = ref(false)
-const loadingCollections = ref(false)
-const availableFlavours = ref<string[]>([])
-const loadingFlavours = ref(false)
 
 const formData = ref<TitleUpdate>({
   name: '',
@@ -534,23 +321,7 @@ const originalCollections = ref<BaseTitleCollection[]>([])
 
 const isEditMode = computed(() => props.title !== null && props.title.id !== '')
 
-const maturityHint = computed(() => {
-  if (formData.value.maturity === 'unstable') {
-    return 'ZIM files will go through staging first before moving to production.'
-  } else if (formData.value.maturity === 'stable') {
-    return 'ZIM files will go directly to production.'
-  }
-  return ''
-})
-
-const isStable = computed({
-  get: () => formData.value.maturity === 'stable',
-  set: (value: boolean) => {
-    formData.value.maturity = value ? 'stable' : 'unstable'
-  },
-})
-
-// Extract book metadata for comparison
+// Book metadata comparison
 type BookMetadataFields = {
   title: string | undefined
   creator: string | undefined
@@ -581,13 +352,8 @@ const isFieldDifferent = (field: keyof BookMetadataFields) => {
   if (!bookMetadata.value || !isEditMode.value) return false
   const bookValue = bookMetadata.value[field]
   const titleValue = formData.value[field as keyof typeof formData.value]
-
-  // If book has no value, don't show hint
   if (bookValue === undefined || bookValue === null) return false
-
-  // If values are the same, don't show hint
   if (bookValue === titleValue) return false
-
   return true
 }
 
@@ -627,17 +393,13 @@ const useAllBookValues = () => {
     'illustration_48x48_at_1',
   ]
   fields.forEach((field) => {
-    if (isFieldDifferent(field)) {
-      useBookValue(field)
-    }
+    if (isFieldDifferent(field)) useBookValue(field)
   })
 }
 
 const getImageDataUrl = (base64String: string | undefined): string | undefined => {
   if (!base64String) return undefined
-  if (base64String.startsWith('data:') || base64String.startsWith('http')) {
-    return base64String
-  }
+  if (base64String.startsWith('data:') || base64String.startsWith('http')) return base64String
   return `data:image/png;base64,${base64String}`
 }
 
@@ -647,28 +409,11 @@ const bookIllustrationSize = computed(() => {
   return `${base64ByteSize(illustration)} bytes`
 })
 
-const collectionNames = computed(() => {
-  return collectionsStore.collections.map((collection) => collection.name)
-})
-
-const canAddMoreCollections = computed(() => {
-  const usedCollections = new Set<string>()
-  formData.value.collection_titles.forEach((ct) => {
-    if (ct.collection_name) {
-      usedCollections.add(ct.collection_name)
-    }
-  })
-  return collectionNames.value.length > usedCollections.size
-})
-
 const hasCollectionChanges = computed(() => {
   if (!isEditMode.value) return false
-
   const currentCollections = formData.value.collection_titles
 
-  if (originalCollections.value.length !== currentCollections.length) {
-    return true
-  }
+  if (originalCollections.value.length !== currentCollections.length) return true
 
   const originalSet = new Set(
     originalCollections.value.map((c) => `${c.collection_name}:${c.path}`),
@@ -676,32 +421,14 @@ const hasCollectionChanges = computed(() => {
   const currentSet = new Set(currentCollections.map((c) => `${c.collection_name}:${c.path}`))
 
   for (const item of currentSet) {
-    if (!originalSet.has(item)) {
-      return true
-    }
+    if (!originalSet.has(item)) return true
   }
-
   return false
 })
 
 const hasChanges = computed(() => {
   if (!isEditMode.value) return true
 
-  const nameChanged = formData.value.name !== props.title?.name
-  const maturityChanged = formData.value.maturity !== props.title?.maturity
-  const titleChanged = formData.value.title !== props.title?.title
-  const creatorChanged = formData.value.creator !== props.title?.creator
-  const publisherChanged = formData.value.publisher !== props.title?.publisher
-  const descriptionChanged = formData.value.description !== props.title?.description
-  const languageChanged = formData.value.language !== props.title?.language
-  const illustrationChanged =
-    formData.value.illustration_48x48_at_1 !== props.title?.illustration_48x48_at_1
-  const longDescriptionChanged = formData.value.long_description !== props.title?.long_description
-  const licenseChanged = formData.value.license !== props.title?.license
-  const relationChanged = formData.value.relation !== props.title?.relation
-  const sourceChanged = formData.value.source !== props.title?.source
-
-  // Check if flavours changed
   const titleFlavours = props.title?.flavours || []
   const formFlavours = formData.value.flavours || []
   const flavoursChanged =
@@ -709,18 +436,18 @@ const hasChanges = computed(() => {
     !titleFlavours.every((f) => formFlavours.includes(f))
 
   return (
-    nameChanged ||
-    maturityChanged ||
-    titleChanged ||
-    creatorChanged ||
-    publisherChanged ||
-    descriptionChanged ||
-    languageChanged ||
-    illustrationChanged ||
-    longDescriptionChanged ||
-    licenseChanged ||
-    relationChanged ||
-    sourceChanged ||
+    formData.value.name !== props.title?.name ||
+    formData.value.maturity !== props.title?.maturity ||
+    formData.value.title !== props.title?.title ||
+    formData.value.creator !== props.title?.creator ||
+    formData.value.publisher !== props.title?.publisher ||
+    formData.value.description !== props.title?.description ||
+    formData.value.language !== props.title?.language ||
+    formData.value.illustration_48x48_at_1 !== props.title?.illustration_48x48_at_1 ||
+    formData.value.long_description !== props.title?.long_description ||
+    formData.value.license !== props.title?.license ||
+    formData.value.relation !== props.title?.relation ||
+    formData.value.source !== props.title?.source ||
     flavoursChanged ||
     hasCollectionChanges.value
   )
@@ -729,140 +456,17 @@ const hasChanges = computed(() => {
 const titleMaxLength = config.ZIM_TITLE_MAX_LENGTH ?? 30
 const descriptionMaxLength = config.ZIM_DESCRIPTION_MAX_LENGTH ?? 80
 
-const titleGraphemeCount = computed(() => {
-  if (!formData.value.title) return 0
-  return formData.value.title.split(byGrapheme).length
-})
-const descriptionGraphemeCount = computed(() => {
-  if (!formData.value.description) return 0
-  return formData.value.description.split(byGrapheme).length
-})
-const titleInvalid = computed(() => {
-  if (!formData.value.title) return false
-  const isValid = rules.title(formData.value.title)
-  if (typeof isValid === 'string') return true
-  return !isValid
-})
-
-const nameInvalid = computed(() => {
-  if (!formData.value.name) return false
-  const isValid = rules.name(formData.value.name)
-  console.log('nameisinvalid', isValid)
-  if (typeof isValid === 'string') return true
-  return !isValid
-})
-
-const descriptionOverLimit = computed(() => descriptionGraphemeCount.value > descriptionMaxLength)
-const languageInvalid = computed(() => {
-  const value = formData.value.language
-  if (!value) return false
-  const parts = value.split(',')
-  return !parts.every((part) => part.trim().length === 3)
-})
-
-const rules = {
-  required: (value: string) => !!value || 'This field is required',
-  langCode: (value: string) => {
-    if (!value) return true // optional
-    const parts = value.split(',')
-    return parts.every((part) => part.trim().length === 3)
-      ? true
-      : 'Language code(s) must be 3 characters long'
-  },
-  title: (value: string) => {
-    if (!value) return true
-    if (titleGraphemeCount.value > titleMaxLength) {
-      return `Maximum length is ${titleMaxLength} characters.`
-    }
-    return true
-  },
-  name: (value: string) => {
-    if (!value) return true
-    const regex = new RegExp(TITLE_NAME_PATTERN)
-    if (!regex.test(value)) {
-      return `Value does not meet pattern: ${TITLE_NAME_PATTERN}`
-    }
-    return true
-  },
-  description: (value: string) => {
-    if (!value) return true
-    if (descriptionGraphemeCount.value > descriptionMaxLength) {
-      return `Maximum length is ${descriptionMaxLength} characters.`
-    }
-    return true
-  },
-  flavours: (value: string | string[]) => {
-    if (!value || (Array.isArray(value) && value.length === 0)) return true
-    const flavours = Array.isArray(value) ? value : [value]
-    const invalid = flavours.filter((f) => !/^[a-zA-Z]*$/.test(f))
-    if (invalid.length > 0) {
-      return `Flavours must contain only alphabetic characters. Invalid: ${invalid.join(', ')}`
-    }
-    return true
-  },
-}
-
-watch(formValid, (value) => {
-  emit('update:valid', value)
-})
-
-watch(hasChanges, (value) => {
-  emit('update:hasChanges', value)
-})
+watch(formValid, (value) => emit('update:valid', value))
+watch(hasChanges, (value) => emit('update:hasChanges', value))
 
 watch(
   () => props.title,
   (newTitle) => {
-    if (newTitle) {
-      resetFormToTitle(newTitle)
-    } else {
-      resetForm()
-    }
+    if (newTitle) resetFormToTitle(newTitle)
+    else resetForm()
   },
   { immediate: true },
 )
-
-function getAvailableCollections(currentIndex: number) {
-  const usedCollections = new Set<string>()
-  formData.value.collection_titles.forEach((ct, index) => {
-    if (index !== currentIndex && ct.collection_name) {
-      usedCollections.add(ct.collection_name)
-    }
-  })
-  return collectionNames.value.filter((name) => !usedCollections.has(name))
-}
-
-function getAvailablePaths(collectionName: string) {
-  if (!collectionName) return []
-  const selectedCollection = collectionsStore.collections.find(
-    (collection) => collection.name === collectionName,
-  )
-  return selectedCollection?.paths || []
-}
-
-function addCollectionTitle() {
-  const newCollectionTitle: BaseTitleCollection = {
-    collection_name: '',
-    path: '',
-  }
-  const newIndex = formData.value.collection_titles.length
-  formData.value.collection_titles.push(newCollectionTitle)
-
-  // Auto-select collection if only one is available
-  const availableCollections = getAvailableCollections(newIndex)
-  if (availableCollections.length === 1) {
-    newCollectionTitle.collection_name = availableCollections[0]
-  }
-}
-
-function removeCollectionTitle(index: number) {
-  formData.value.collection_titles.splice(index, 1)
-}
-
-function handleCollectionChange(index: number) {
-  // Reset path when collection changes
-  formData.value.collection_titles[index].path = ''
-}
 
 function resetFormToTitle(title: Title) {
   const collections =
@@ -913,33 +517,7 @@ function resetForm() {
   formRef.value?.resetValidation()
 }
 
-async function fetchCollections() {
-  loadingCollections.value = true
-  try {
-    await collectionsStore.fetchCollections()
-  } catch (err) {
-    console.error('Failed to fetch collections', err)
-  } finally {
-    loadingCollections.value = false
-  }
-}
-
-async function fetchFlavours() {
-  loadingFlavours.value = true
-  try {
-    const flavours = await bookStore.fetchBookFlavours()
-    if (flavours) {
-      availableFlavours.value = Array.from(new Set(['', ...flavours]))
-    }
-  } catch (err) {
-    console.error('Failed to fetch flavours', err)
-  } finally {
-    loadingFlavours.value = false
-  }
-}
-
 function getFormData(): TitleUpdate {
-  // For creation (non-edit mode), include all fields with their current values (null if not set)
   if (!isEditMode.value) {
     return {
       name: formData.value.name || '',
@@ -966,76 +544,36 @@ function getUpdatePayload(): Partial<TitleUpdate> {
 
   const payload: Partial<TitleUpdate> = {}
 
-  if (formData.value.name !== props.title.name) {
-    payload.name = formData.value.name
-  }
-
-  if (formData.value.maturity !== props.title.maturity) {
-    payload.maturity = formData.value.maturity
-  }
-
-  if (formData.value.title !== props.title.title) {
-    payload.title = formData.value.title
-  }
-
-  if (formData.value.creator !== props.title.creator) {
-    payload.creator = formData.value.creator
-  }
-
-  if (formData.value.publisher !== props.title.publisher) {
+  if (formData.value.name !== props.title.name) payload.name = formData.value.name
+  if (formData.value.maturity !== props.title.maturity) payload.maturity = formData.value.maturity
+  if (formData.value.title !== props.title.title) payload.title = formData.value.title
+  if (formData.value.creator !== props.title.creator) payload.creator = formData.value.creator
+  if (formData.value.publisher !== props.title.publisher)
     payload.publisher = formData.value.publisher
-  }
-
-  if (formData.value.description !== props.title.description) {
+  if (formData.value.description !== props.title.description)
     payload.description = formData.value.description
-  }
-
-  if (formData.value.language !== props.title.language) {
-    payload.language = formData.value.language
-  }
-
-  if (formData.value.illustration_48x48_at_1 !== props.title.illustration_48x48_at_1) {
+  if (formData.value.language !== props.title.language) payload.language = formData.value.language
+  if (formData.value.illustration_48x48_at_1 !== props.title.illustration_48x48_at_1)
     payload.illustration_48x48_at_1 = formData.value.illustration_48x48_at_1
-  }
-
-  if (formData.value.long_description !== props.title.long_description) {
+  if (formData.value.long_description !== props.title.long_description)
     payload.long_description = formData.value.long_description
-  }
+  if (formData.value.license !== props.title.license) payload.license = formData.value.license
+  if (formData.value.relation !== props.title.relation) payload.relation = formData.value.relation
+  if (formData.value.source !== props.title.source) payload.source = formData.value.source
 
-  if (formData.value.license !== props.title.license) {
-    payload.license = formData.value.license
-  }
-
-  if (formData.value.relation !== props.title.relation) {
-    payload.relation = formData.value.relation
-  }
-
-  if (formData.value.source !== props.title.source) {
-    payload.source = formData.value.source
-  }
-
-  // Check if flavours changed
   const titleFlavours = props.title.flavours || []
   const formFlavours = formData.value.flavours || []
   const flavoursChanged =
     titleFlavours.length !== formFlavours.length ||
     !titleFlavours.every((f) => formFlavours.includes(f))
+  if (flavoursChanged) payload.flavours = formData.value.flavours
 
-  if (flavoursChanged) {
-    payload.flavours = formData.value.flavours
-  }
-
-  if (hasCollectionChanges.value) {
-    payload.collection_titles = formData.value.collection_titles
-  }
+  if (hasCollectionChanges.value) payload.collection_titles = formData.value.collection_titles
 
   return payload
 }
 
-// Expose methods and data for parent components
 defineExpose({
-  fetchCollections,
-  fetchFlavours,
   resetForm,
   resetFormToTitle,
   getFormData,
@@ -1049,6 +587,6 @@ defineExpose({
 
 <style scoped>
 .border {
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 </style>

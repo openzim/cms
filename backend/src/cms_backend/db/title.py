@@ -370,6 +370,7 @@ def update_title(
     title_identifier: str,
     author_id: UUID,
     payload: TitleUpdateSchema,
+    create_event: bool = True,
 ) -> Title:
     """Update a title's details
 
@@ -489,13 +490,13 @@ def update_title(
                 f"{getnow()}: locations updated due to title collection change"
             )
 
-    if name_changed:
+    for book in title.books:
+        update_book_issues(session, book)
+
+    if name_changed and create_event:
         create_title_modified_event(
             session, action="updated", title_name=title.name, title_id=title.id
         )
-
-    for book in title.books:
-        update_book_issues(session, book)
 
     create_title_history_entry(session, title, author_id, payload.comment)
 

@@ -2,7 +2,7 @@ import datetime
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import AfterValidator, AnyUrl, Field, model_validator
@@ -148,6 +148,34 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     comment: NotEmptyString | None = None
 
 
+class RestoreTitlesSchema(BaseModel):
+    title_names: list[NotEmptyString] = Field(default_factory=list)
+
+
 class BookUpdateSchema(BaseModel):
     comment: NotEmptyString | None = None
     flavour: str | None = None
+
+
+type BookPromotionActionKind = Literal[
+    "unknown_languages",
+    "zimcheck_issues",
+    "create_title",
+    "restore_title",
+    "update_title_metadata",
+    "update_title_maturity",
+    "set_title_collections",
+    "update_title_flavours",
+]
+
+type BookPromotionRequirement = Literal["mandatory", "optional", "information"]
+
+
+class BaseBookPromotionAction(BaseModel):
+    kind: BookPromotionActionKind
+    data: dict[str, Any]
+    requirement: BookPromotionRequirement
+
+
+class BookPromotionAction(BaseBookPromotionAction):
+    message: str

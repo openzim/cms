@@ -18,7 +18,8 @@
           canAddBookToTitle ||
           canCreateTitleFromBook ||
           canBackupBook ||
-          canRemoveBookBackup
+          canRemoveBookBackup ||
+          canPromoteBook
         "
       >
         <v-btn v-if="canMoveBook" color="primary" prepend-icon="mdi-truck" @click="openMoveDialog">
@@ -71,6 +72,14 @@
           @click="openRemoveBackupDialog"
         >
           Remove Backup
+        </v-btn>
+        <v-btn
+          v-if="canPromoteBook"
+          color="success"
+          prepend-icon="mdi-rocket-launch"
+          @click="openPromoteDialog"
+        >
+          Promote Book
         </v-btn>
       </div>
 
@@ -630,6 +639,8 @@
     <TitleFormDialog
       v-model="createTitleDialogOpen"
       :title="titleDataFromBook"
+      :available-flavours="flavours"
+      :collections="collections"
       @created="handleTitleCreated"
     />
 
@@ -710,6 +721,15 @@
         </div>
       </template>
     </ConfirmDialog>
+
+    <PromoteBookDialog
+      v-if="book"
+      v-model="promoteDialogOpen"
+      :book="book"
+      :available-flavours="flavours"
+      :collections="collections"
+      @promoted="handleBookPromoted"
+    />
   </v-container>
 </template>
 
@@ -718,6 +738,7 @@ import BookStatusIndicator from '@/components/BookStatusIndicator.vue'
 import BookLocationChip from '@/components/BookLocationChip.vue'
 import BookIssuesIndicator from '@/components/BookIssuesIndicator.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import PromoteBookDialog from '@/components/PromoteBookDialog.vue'
 import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import EditBookForm from '@/components/EditBookForm.vue'
@@ -739,6 +760,8 @@ import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import type { Book, ZimUrl } from '@/types/book'
 import type { Title } from '@/types/title'
 import { formatDt, fromNow, matchOffliner } from '@/utils/format'
+import { useCollectionsStore } from '@/stores/collections'
+import type { CollectionLight } from '@/types/collections'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { diff } from 'deep-diff'
@@ -753,6 +776,7 @@ const authStore = useAuthStore()
 const titleStore = useTitleStore()
 const bookHistoryStore = useBookHistoryStore()
 const offlinerStore = useZimfarmOfflinerStore()
+const collectionsStore = useCollectionsStore()
 
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
@@ -767,11 +791,13 @@ const addToTitleDialogOpen = ref(false)
 const createTitleDialogOpen = ref(false)
 const backupDialogOpen = ref(false)
 const removeBackupDialogOpen = ref(false)
+const promoteDialogOpen = ref(false)
 const removingBackup = ref(false)
 const backingUpBook = ref(false)
 const updatingBook = ref(false)
 const updateError = ref('')
 const flavours = ref<string[]>([])
+const collections = ref<CollectionLight[]>([])
 const loadingFlavours = ref(false)
 const loadingHistory = ref(false)
 const loadingIssues = ref(false)
@@ -932,6 +958,18 @@ const canRemoveBookBackup = computed(() => {
     !book.value.needs_processing &&
     !!book.value.title_id &&
     !book.value.title_archived
+  )
+})
+
+const canPromoteBook = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('book', 'update') &&
+    authStore.hasPermission('title', 'update') &&
+    ['staging', 'quarantine'].includes(book.value.location_kind) &&
+    !book.value.has_error &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing
   )
 })
 
@@ -1117,8 +1155,32 @@ const openAddToTitleDialog = () => {
   addToTitleDialogOpen.value = true
 }
 
-const openCreateTitleDialog = () => {
+const openCreateTitleDialog = async () => {
+  if (flavours.value.length == 0) {
+    await fetchFlavours()
+  }
+  if (collections.value.length == 0) {
+    await fetchCollections()
+  }
   createTitleDialogOpen.value = true
+}
+
+async function fetchFlavours() {
+  try {
+    await bookStore.fetchBookFlavours()
+    flavours.value = bookStore.flavours
+  } catch (err) {
+    console.error('Failed to fetch flavours', err)
+  }
+}
+
+async function fetchCollections() {
+  try {
+    await collectionsStore.fetchCollections(100)
+    collections.value = collectionsStore.collections
+  } catch (err) {
+    console.error('Failed to fetch collections', err)
+  }
 }
 
 const openBackupDialog = () => {
@@ -1171,6 +1233,21 @@ const handleRemoveBookBackup = async () => {
     removingBackup.value = false
     removeBackupDialogOpen.value = false
   }
+}
+
+const openPromoteDialog = async () => {
+  if (flavours.value.length == 0) {
+    await fetchFlavours()
+  }
+  if (collections.value.length == 0) {
+    await fetchCollections()
+  }
+  promoteDialogOpen.value = true
+}
+
+const handleBookPromoted = async () => {
+  notificationStore.showSuccess('Book promoted successfully!')
+  await loadData(true)
 }
 
 const handleTitleSelected = async (titleName: string) => {

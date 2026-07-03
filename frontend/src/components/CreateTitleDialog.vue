@@ -1,13 +1,21 @@
 <template>
-  <TitleFormDialog v-model="isOpen" @created="handleCreated" />
+  <TitleFormDialog
+    v-model="isOpen"
+    :available-flavours="availableFlavours"
+    :collections="collections"
+    @created="handleCreated"
+  />
 </template>
 
 <script setup lang="ts">
 import TitleFormDialog from '@/components/TitleFormDialog.vue'
+import type { CollectionLight } from '@/types/collections'
 import { computed } from 'vue'
 
 interface Props {
   modelValue: boolean
+  availableFlavours: string[]
+  collections: CollectionLight[]
 }
 
 const props = defineProps<Props>()
