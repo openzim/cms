@@ -124,7 +124,7 @@ LangCode = Annotated[
 ]
 
 ZimFlavour = Annotated[
-    NotEmptyString,
+    str,
     WrapValidator(skip_validation),
     AfterValidator(validate_zim_flavour),
 ]

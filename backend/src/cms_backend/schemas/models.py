@@ -150,4 +150,4 @@ class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
 
 class BookUpdateSchema(BaseModel):
     comment: NotEmptyString | None = None
-    flavour: NotEmptyString | None = None
+    flavour: str | None = None

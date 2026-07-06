@@ -51,7 +51,11 @@
             :items="availableFlavours"
             :loading="loadingFlavours"
             :rules="[rules.flavours]"
-          />
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props" :title="item.title === '' ? 'Empty' : item.title" />
+            </template>
+          </v-combobox>
         </v-col>
       </v-row>
     </div>
@@ -790,7 +794,7 @@ const rules = {
   flavours: (value: string | string[]) => {
     if (!value || (Array.isArray(value) && value.length === 0)) return true
     const flavours = Array.isArray(value) ? value : [value]
-    const invalid = flavours.filter((f) => f && !/^[a-zA-Z]+$/.test(f))
+    const invalid = flavours.filter((f) => !/^[a-zA-Z]*$/.test(f))
     if (invalid.length > 0) {
       return `Flavours must contain only alphabetic characters. Invalid: ${invalid.join(', ')}`
     }
@@ -925,7 +929,7 @@ async function fetchFlavours() {
   try {
     const flavours = await bookStore.fetchBookFlavours()
     if (flavours) {
-      availableFlavours.value = flavours
+      availableFlavours.value = Array.from(new Set(['', ...flavours]))
     }
   } catch (err) {
     console.error('Failed to fetch flavours', err)

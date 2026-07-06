@@ -142,7 +142,7 @@
                         color="primary"
                         class="mr-2 mb-1"
                       >
-                        {{ flavour }}
+                        {{ flavour == '' ? 'Empty' : flavour }}
                       </v-chip>
                     </div>
                     <span v-else class="text-grey">No flavours set</span>
