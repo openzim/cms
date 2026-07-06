@@ -31,12 +31,13 @@
 
         <template v-if="displayMode === 'card'" #tbody>
           <v-row>
-            <v-col v-for="book in books" :key="book.id" cols="12" sm="12" md="4" lg="3" xl="3">
+            <v-col v-for="book in books" :key="book.id" cols="12" sm="6" md="4" lg="3" xl="3">
               <BookCard
                 :book="book"
                 :show-urls="showUrls"
                 :zim-urls="zimUrls"
                 :loading-urls="loadingUrls"
+                :offliners="props.offliners"
               />
             </v-col>
           </v-row>
@@ -111,9 +112,7 @@
         </template>
 
         <template #[`item.offliner`]="{ item }">
-          <span v-if="item.offliner">{{
-            matchOffliner(item.offliner, offlinerStore.offliners)
-          }}</span>
+          <span v-if="item.offliner">{{ matchOffliner(item.offliner, props.offliners) }}</span>
           <span v-else class="text-grey">-</span>
         </template>
 
@@ -150,13 +149,11 @@ import type { BookLight, ZimUrl } from '@/types/book'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
-import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-const offlinerStore = useZimfarmOfflinerStore()
 
 const { smAndDown } = useDisplay()
 
@@ -177,6 +174,7 @@ interface Props {
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
   displayMode?: 'table' | 'card'
+  offliners?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -189,16 +187,13 @@ const props = withDefaults(defineProps<Props>(), {
   showUrls: false,
   loadingUrls: false,
   displayMode: 'table',
+  offliners: () => [],
 })
 
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]
 }>()
-
-onMounted(async () => {
-  await offlinerStore.fetchOffliners()
-})
 
 const computedHeaders = computed(() => {
   if (props.displayMode === 'card') return []
@@ -248,5 +243,9 @@ function handleRowClick(event: Event, { item }: { item: BookLight }) {
   overflow-x: visible !important;
   max-height: none !important;
   height: auto !important;
+}
+
+:deep(.v-data-table__tr--mobile) {
+  display: none !important;
 }
 </style>

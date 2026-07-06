@@ -299,6 +299,7 @@
                           :show-urls="true"
                           :zim-urls="zimUrls"
                           :loading-urls="loadingUrls"
+                          :offliners="offlinerStore.offliners"
                         />
                       </v-col>
                     </v-row>
@@ -452,6 +453,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
 import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useTitleHistoryStore } from '@/stores/titleHistory'
 import type { Title, TitleUpdate } from '@/types/title'
 import type { Book, ZimUrl } from '@/types/book'
@@ -469,6 +471,7 @@ const titleStore = useTitleStore()
 const bookStore = useBookStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
+const offlinerStore = useZimfarmOfflinerStore()
 const titleHistoryStore = useTitleHistoryStore()
 
 const { smAndDown } = useDisplay()
@@ -756,6 +759,7 @@ const handleRevert = async () => {
 }
 
 onMounted(async () => {
+  await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
 
   // Redirect to details if trying to access restricted tabs without permission

@@ -6,7 +6,7 @@
     v-if="currentTab == 'books'"
     :filters="bookFilters"
     :location-kind-options="['quarantine', 'staging']"
-    :offliner-options="offlinerOptions"
+    :offliner-options="offlinerStore.offliners"
     @filters-changed="handleBookFiltersChange"
     @clear-filters="clearFilters"
   />
@@ -31,6 +31,7 @@
     :loading-text="loadingStore.loadingText"
     :errors="errors"
     :filters="bookFilters"
+    :offliners="offlinerStore.offliners"
     display-mode="card"
     :show-urls="true"
     :zim-urls="zimUrls"
@@ -87,7 +88,7 @@ const router = useRouter()
 const route = useRoute()
 
 const bookStore = useBookStore()
-const zimfarmOfflinerStore = useZimfarmOfflinerStore()
+const offlinerStore = useZimfarmOfflinerStore()
 const zimfarmNotificationStore = useZimfarmNotificationStore()
 const eventStore = useEventStore()
 const loadingStore = useLoadingStore()
@@ -159,7 +160,6 @@ const paginator = ref<Paginator>({
   limit: defaultLimit.value,
   count: 0,
 })
-const offlinerOptions = ref<string[]>([])
 const errors = ref<string[]>([])
 
 const bookFilters = computed(() => {
@@ -436,10 +436,7 @@ watch(
 )
 
 onMounted(async () => {
-  const fetchedOffliners = await zimfarmOfflinerStore.fetchOffliners()
-  if (fetchedOffliners) {
-    offlinerOptions.value = fetchedOffliners
-  }
+  await offlinerStore.fetchOffliners()
 
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, currentTab.value, true)

@@ -123,27 +123,23 @@ import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import type { BookLight, ZimUrl } from '@/types/book'
 import { formatDt, matchOffliner } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
-import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 
 const authStore = useAuthStore()
-const offlinerStore = useZimfarmOfflinerStore()
-
-onMounted(async () => {
-  await offlinerStore.fetchOffliners()
-})
 
 interface Props {
   book: BookLight
   showUrls?: boolean
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
+  offliners?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showUrls: false,
   zimUrls: undefined,
   loadingUrls: false,
+  offliners: () => [],
 })
 
 const displayName = computed(() => {
@@ -166,7 +162,7 @@ const showLocationChip = computed(() => {
   return true
 })
 
-const offlinerName = computed(() => matchOffliner(props.book.offliner, offlinerStore.offliners))
+const offlinerName = computed(() => matchOffliner(props.book.offliner, props.offliners))
 
 const canViewBookIssues = computed(() => {
   return authStore.hasPermission('book', 'update')
