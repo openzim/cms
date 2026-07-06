@@ -816,6 +816,12 @@ const locationHeaders = [
 
 const hasPendingOperations = computed(() => {
   if (!book.value) return false
+  if (
+    book.value.location_kind == 'to_delete' &&
+    !book.value.needs_processing &&
+    canRecoverBook.value
+  )
+    return false
   return book.value.needs_processing || book.value.needs_file_operation
 })
 
@@ -874,7 +880,6 @@ const canRecoverBook = computed(() => {
   return (
     authStore.hasPermission('book', 'update') &&
     !book.value.needs_processing &&
-    !book.value.needs_file_operation &&
     !book.value.title_archived &&
     ((book.value.location_kind === 'to_delete' && hasFutureDeletionDate) ||
       (book.value.location_kind === 'deleted' && book.value.has_backup))
