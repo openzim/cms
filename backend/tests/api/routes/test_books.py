@@ -277,6 +277,57 @@ def test_get_books_filter_by_id(
     assert response_doc["items"][0]["id"] == str(book1.id)
 
 
+def test_get_books_filter_by_offliner(
+    client: TestClient,
+    create_book: Callable[..., Book],
+):
+    """Test get books endpoint passes offliner filter to database layer"""
+
+    book1 = create_book(
+        _id=UUID("12345678-1234-5678-1234-567812345678"),
+        zim_metadata={"test": "book1", "Scraper": "mwoffliner 1.17.5"},
+    )
+    create_book(
+        _id=UUID("87654321-4321-8765-4321-876543218765"),
+        zim_metadata={"test": "book2", "Scraper": "sotoki 1.14"},
+    )
+
+    # Test that offliner parameter is passed through and filters correctly
+    response = client.get("/v1/books?offliner=mwoffliner")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 1
+    assert response_doc["items"][0]["id"] == str(book1.id)
+
+
+def test_get_books_filter_by_issues(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_book: Callable[..., Book],
+):
+    """Test get books endpoint passes scraper filter to database layer"""
+
+    book1 = create_book(
+        _id=UUID("12345678-1234-5678-1234-567812345678"),
+        zim_metadata={"test": "book1", "Scraper": "mwoffliner 1.17.5"},
+    )
+    book1.issues = ["flavour mismatch"]
+    dbsession.add(book1)
+    dbsession.flush()
+
+    create_book(
+        _id=UUID("87654321-4321-8765-4321-876543218765"),
+        zim_metadata={"test": "book2", "Scraper": "sotoki 1.14"},
+    )
+
+    # Test that scraper parameter is passed through and filters correctly
+    response = client.get("/v1/books?issue=flavour mismatch")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 1
+    assert response_doc["items"][0]["id"] == str(book1.id)
+
+
 def test_get_book_languages(
     client: TestClient,
     dbsession: OrmSession,

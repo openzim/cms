@@ -12,7 +12,7 @@
         :items-per-page-options="isServerSide ? limits : undefined"
         :mobile="smAndDown"
         :density="smAndDown ? 'compact' : 'comfortable'"
-        class="elevation-1 book-table"
+        :class="['elevation-1', 'book-table', { 'card-mode': displayMode === 'card' }]"
         item-value="id"
         hover
         @update:options="isServerSide ? onUpdateOptions($event) : undefined"
@@ -29,6 +29,19 @@
           </div>
         </template>
 
+        <template v-if="displayMode === 'card'" #tbody>
+          <v-row>
+            <v-col v-for="book in books" :key="book.id" cols="12" sm="12" md="4" lg="3" xl="3">
+              <BookCard
+                :book="book"
+                :show-urls="showUrls"
+                :zim-urls="zimUrls"
+                :loading-urls="loadingUrls"
+              />
+            </v-col>
+          </v-row>
+        </template>
+
         <template #[`item.id`]="{ item }">
           <router-link :to="{ name: 'book-detail', params: { id: item.id } }" @click.stop>
             {{ item.id }}
@@ -43,15 +56,7 @@
         <template #[`item.flavour`]="{ item }">
           <div>
             <span v-if="item.flavour">{{ item.flavour }}</span>
-            <span v-else class="text-grey"></span>
-            <v-tooltip v-if="item.has_flavour_mismatch" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
-                  mdi-alert
-                </v-icon>
-              </template>
-              <span>Book flavour does not match title flavour</span>
-            </v-tooltip>
+            <span v-else class="text-grey">-</span>
           </div>
         </template>
 
@@ -61,11 +66,55 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <BookStatus :book="item" />
+          <div class="d-flex flex-md-column ga-1 justify-end">
+            <BookStatusIndicator :book="item" />
+            <BookLocationChip :book="item" />
+            <BookIssuesIndicator :book="item" />
+          </div>
         </template>
 
         <template #[`item.deletion_date`]="{ item }">
           {{ item.deletion_date ? formatDt(item.deletion_date, 'ff') : '-' }}
+        </template>
+
+        <template #[`item.issues`]="{ item }">
+          <div v-if="item.issues && item.issues.length" class="d-flex flex-column align-end">
+            <v-chip
+              v-for="(issue, idx) in item.issues"
+              :key="idx"
+              size="x-small"
+              class="mb-1"
+              color="red"
+              variant="outlined"
+            >
+              <span class="text-truncate d-block">{{ issue }}</span>
+            </v-chip>
+            <div v-if="canViewBookIssues">
+              <v-divider class="my-0" />
+              <v-btn
+                variant="outlined"
+                size="x-small"
+                color="primary"
+                block
+                rounded
+                :to="{
+                  name: 'book-detail-tab',
+                  params: { id: item.id, selectedTab: 'issues' },
+                }"
+              >
+                <v-icon size="small" class="mr-1">mdi-alert-circle</v-icon>
+                View Issues
+              </v-btn>
+            </div>
+          </div>
+          <span v-else class="text-grey">-</span>
+        </template>
+
+        <template #[`item.offliner`]="{ item }">
+          <span v-if="item.offliner">{{
+            matchOffliner(item.offliner, offlinerStore.offliners)
+          }}</span>
+          <span v-else class="text-grey">-</span>
         </template>
 
         <template #[`item.urls`]="{ item }">
@@ -90,21 +139,27 @@
 </template>
 
 <script setup lang="ts">
-import BookStatus from '@/components/BookStatus.vue'
+import BookStatusIndicator from '@/components/BookStatusIndicator.vue'
+import BookLocationChip from '@/components/BookLocationChip.vue'
+import BookIssuesIndicator from '@/components/BookIssuesIndicator.vue'
+import BookCard from '@/components/BookCard.vue'
 import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import type { Paginator } from '@/types/base'
-import { formatDt } from '@/utils/format'
+import { formatDt, matchOffliner } from '@/utils/format'
 import type { BookLight, ZimUrl } from '@/types/book'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
+import { computed, onMounted } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const offlinerStore = useZimfarmOfflinerStore()
 
 const { smAndDown } = useDisplay()
 
-// Props
 interface Props {
   headers: { title: string; value: string }[]
   books: BookLight[]
@@ -121,6 +176,7 @@ interface Props {
   showUrls?: boolean
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
+  displayMode?: 'table' | 'card'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -132,16 +188,25 @@ const props = withDefaults(defineProps<Props>(), {
   isServerSide: true,
   showUrls: false,
   loadingUrls: false,
+  displayMode: 'table',
 })
 
-// Define emits
 const emit = defineEmits<{
   limitChanged: [limit: number]
   loadData: [limit: number, skip: number]
 }>()
 
+onMounted(async () => {
+  await offlinerStore.fetchOffliners()
+})
+
 const computedHeaders = computed(() => {
+  if (props.displayMode === 'card') return []
   return props.headers
+})
+
+const canViewBookIssues = computed(() => {
+  return authStore.hasPermission('book', 'update')
 })
 
 const limits = [10, 20, 50, 100]
@@ -164,7 +229,7 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
 }
 
 function handleRowClick(event: Event, { item }: { item: BookLight }) {
-  // Prevent navigation if the user clicked on a link or button
+  if (props.displayMode === 'card') return
   const target = event.target as HTMLElement
   if (target.closest('a') || target.closest('button')) {
     return
@@ -176,5 +241,12 @@ function handleRowClick(event: Event, { item }: { item: BookLight }) {
 <style scoped>
 .book-table :deep(tbody tr) {
   cursor: pointer;
+}
+
+.book-table.card-mode :deep(.v-table__wrapper) {
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+  max-height: none !important;
+  height: auto !important;
 }
 </style>

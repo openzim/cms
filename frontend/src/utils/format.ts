@@ -40,3 +40,12 @@ export function base64FormattedSize(base64String: string): string {
   if (bytes === 0) return ''
   return formattedBytesSize(bytes)
 }
+
+export function matchOffliner(rawOffliner: string | null, offlinerNames: string[]): string {
+  if (!rawOffliner) return 'Unknown'
+  const lower = rawOffliner.toLowerCase()
+  for (const name of offlinerNames) {
+    if (lower.includes(name.toLowerCase())) return name
+  }
+  return 'Unknown'
+}

@@ -226,7 +226,11 @@
                     <div class="text-subtitle-2">Status</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <BookStatus :book="book" force-row />
+                    <div class="d-flex ga-2 align-center">
+                      <BookStatusIndicator :book="book" />
+                      <BookLocationChip :book="book" />
+                      <BookIssuesIndicator :book="book" />
+                    </div>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -326,6 +330,17 @@
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="book.date">{{ book.date }}</span>
+                    <span v-else class="text-grey">-</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Offliner</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="offlinerName !== 'Unknown'">{{ offlinerName }}</span>
                     <span v-else class="text-grey">-</span>
                   </v-col>
                 </v-row>
@@ -697,7 +712,9 @@
 </template>
 
 <script setup lang="ts">
-import BookStatus from '@/components/BookStatus.vue'
+import BookStatusIndicator from '@/components/BookStatusIndicator.vue'
+import BookLocationChip from '@/components/BookLocationChip.vue'
+import BookIssuesIndicator from '@/components/BookIssuesIndicator.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
@@ -716,9 +733,10 @@ import { useNotificationStore } from '@/stores/notification'
 import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
 import { useBookHistoryStore } from '@/stores/bookHistory'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import type { Book, ZimUrl } from '@/types/book'
 import type { Title } from '@/types/title'
-import { formatDt, fromNow } from '@/utils/format'
+import { formatDt, fromNow, matchOffliner } from '@/utils/format'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { diff } from 'deep-diff'
@@ -732,6 +750,7 @@ const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 const titleStore = useTitleStore()
 const bookHistoryStore = useBookHistoryStore()
+const offlinerStore = useZimfarmOfflinerStore()
 
 const error = ref<string | null>(null)
 const book = ref<Book | null>(null)
@@ -914,6 +933,10 @@ const isDeletionDatePast = computed(() => {
   return new Date(book.value.deletion_date) < new Date()
 })
 
+const offlinerName = computed(() =>
+  matchOffliner(book.value?.offliner ?? null, offlinerStore.offliners),
+)
+
 const titleDataFromBook = computed<Title | null>(() => {
   if (!book.value) return null
 
@@ -1033,6 +1056,7 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
+  await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', true, props.selectedTab === 'issues')
 })
 

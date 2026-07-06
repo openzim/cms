@@ -24,6 +24,7 @@ from cms_backend.db.models import (
     Title,
     Warehouse,
 )
+from cms_backend.schemas.models import GetBooksSchema
 from cms_backend.utils.datetime import getnow
 
 
@@ -54,7 +55,7 @@ def test_get_book_exist(dbsession: OrmSession, book: Book):
 
 def test_get_books_empty(dbsession: OrmSession):
     """Returns empty list when no books exist"""
-    results = get_books(dbsession, skip=0, limit=20)
+    results = get_books(dbsession, GetBooksSchema(skip=0, limit=20))
     assert results.nb_records == 0
     assert len(results.records) == 0
 
@@ -70,7 +71,7 @@ def test_get_books_with_data(
         book = create_book()
         books.append(book)
 
-    results = get_books(dbsession, skip=0, limit=20)
+    results = get_books(dbsession, GetBooksSchema(skip=0, limit=20))
     assert results.nb_records == 5
     assert len(results.records) == 5
 
@@ -103,8 +104,10 @@ def test_get_books_pagination(
 
     results = get_books(
         dbsession,
-        skip=skip,
-        limit=limit,
+        GetBooksSchema(
+            skip=skip,
+            limit=limit,
+        ),
     )
     assert results.nb_records == 8
     assert len(results.records) <= limit
@@ -144,9 +147,11 @@ def test_get_books_filter_by_has_title(
 
     results = get_books(
         dbsession,
-        skip=0,
-        limit=20,
-        has_title=has_title,
+        GetBooksSchema(
+            skip=0,
+            limit=20,
+            has_title=has_title,
+        ),
     )
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
@@ -202,9 +207,11 @@ def test_get_books_book_id_filter(
 
     results = get_books(
         dbsession,
-        skip=0,
-        limit=20,
-        book_id=book_id_filter,
+        GetBooksSchema(
+            skip=0,
+            limit=20,
+            id=book_id_filter,
+        ),
     )
 
     assert results.nb_records == expected_count
@@ -245,21 +252,27 @@ def test_get_books_book_id_combined_with_other_filters(
     dbsession.flush()
 
     # Filter by ID pattern "aaaa" - should match book1 and book2
-    results = get_books(dbsession, skip=0, limit=20, book_id="aaaa")
+    results = get_books(dbsession, GetBooksSchema(skip=0, limit=20, id="aaaa"))
     assert results.nb_records == 2
 
     # Filter by ID pattern "aaaa" AND has_title=true - should only match book1
-    results = get_books(dbsession, skip=0, limit=20, book_id="aaaa", has_title=True)
+    results = get_books(
+        dbsession, GetBooksSchema(skip=0, limit=20, id="aaaa", has_title=True)
+    )
     assert results.nb_records == 1
     assert results.records[0].id == book1.id
 
     # Filter by ID pattern "aaaa" AND has_title=false - should only match book2
-    results = get_books(dbsession, skip=0, limit=20, book_id="aaaa", has_title=False)
+    results = get_books(
+        dbsession, GetBooksSchema(skip=0, limit=20, id="aaaa", has_title=False)
+    )
     assert results.nb_records == 1
     assert results.records[0].id == book2.id
 
     # Filter by ID pattern "bbbb" AND has_title=true - should only match book3
-    results = get_books(dbsession, skip=0, limit=20, book_id="bbbb", has_title=True)
+    results = get_books(
+        dbsession, GetBooksSchema(skip=0, limit=20, id="bbbb", has_title=True)
+    )
     assert results.nb_records == 1
     assert results.records[0].id == book3.id
 
@@ -307,9 +320,11 @@ def test_get_books_filter_by_needs_attention(
 
     results = get_books(
         dbsession,
-        skip=0,
-        limit=20,
-        needs_attention=needs_attention,
+        GetBooksSchema(
+            skip=0,
+            limit=20,
+            needs_attention=needs_attention,
+        ),
     )
 
     assert results.nb_records == expected_count
@@ -1226,10 +1241,12 @@ def test_get_books_time_filters(
 
     results = get_books(
         dbsession,
-        skip=0,
-        limit=20,
-        updated_after=updated_after,
-        updated_before=updated_before,
+        GetBooksSchema(
+            skip=0,
+            limit=20,
+            updated_after=updated_after,
+            updated_before=updated_before,
+        ),
     )
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
@@ -1270,9 +1287,11 @@ def test_get_books_created_before_filters(
 
     results = get_books(
         dbsession,
-        skip=0,
-        limit=20,
-        created_before=created_before,
+        GetBooksSchema(
+            skip=0,
+            limit=20,
+            created_before=created_before,
+        ),
     )
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
