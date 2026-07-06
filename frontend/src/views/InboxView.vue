@@ -32,6 +32,9 @@
     :errors="errors"
     :filters="bookFilters"
     display-mode="card"
+    :show-urls="true"
+    :zim-urls="zimUrls"
+    :loading-urls="loadingUrls"
     @limit-changed="handleLimitChange"
     @load-data="loadData"
   />
@@ -73,7 +76,7 @@ import { useBookStore } from '@/stores/book'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useZimfarmNotificationStore } from '@/stores/zimfarmNotification'
 import { useEventStore } from '@/stores/event'
-import type { BookLight } from '@/types/book'
+import type { BookLight, ZimUrl } from '@/types/book'
 import type { ZimfarmNotificationLight } from '@/types/zimfarmNotification'
 import type { EventLight } from '@/types/event'
 import type { Paginator } from '@/types/base'
@@ -147,6 +150,8 @@ const defaultLimit = computed(() => {
 const books = ref<BookLight[]>([])
 const zimfarmNotifications = ref<ZimfarmNotificationLight[]>([])
 const events = ref<EventLight[]>([])
+const zimUrls = ref<Record<string, ZimUrl[]>>({})
+const loadingUrls = ref(false)
 const paginator = ref<Paginator>({
   page: Number(route.query.page) || 1,
   page_size: defaultLimit.value,
@@ -246,6 +251,7 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
     books.value = []
     zimfarmNotifications.value = []
     events.value = []
+    zimUrls.value = {}
   }
 
   switch (tab) {
@@ -267,6 +273,7 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
       errors.value = bookStore.errors
       bookStore.savePaginatorLimit(limit)
       paginator.value = { ...bookStore.paginator }
+      await loadZimUrls()
       break
     case 'zimfarm_notifications':
       await zimfarmNotificationStore.fetchZimfarmNotifications(
@@ -367,6 +374,22 @@ function updateUrlFilters(
     name: route.name,
     query: Object.keys(query).length > 0 ? query : undefined,
   })
+}
+
+async function loadZimUrls() {
+  if (!books.value || books.value.length === 0) return
+
+  loadingUrls.value = true
+  const bookIds = books.value.map((book) => book.id)
+
+  const response = await bookStore.fetchZimUrls(bookIds)
+  if (response?.urls) {
+    zimUrls.value = response.urls
+  } else {
+    console.error('Failed to fetch zim URLs for inbox books')
+  }
+
+  loadingUrls.value = false
 }
 
 async function clearFilters() {
