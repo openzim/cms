@@ -363,6 +363,7 @@ def test_update_book_flavour_mismatch_issues(
         pytest.param("maxi", [], True),
         pytest.param("", [], False),
         pytest.param("", ["maxi"], True),
+        pytest.param("", ["maxi", ""], False),
     ],
 )
 def test_has_flavour_mismatch(

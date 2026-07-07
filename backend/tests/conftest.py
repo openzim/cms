@@ -120,7 +120,9 @@ def create_book(
 
         # Extract flavour from zim_metadata if not explicitly provided
         if flavour is None:
-            flavour = zim_metadata.get("Flavour")
+            _flavour = zim_metadata.get("Flavour", "")
+        else:
+            _flavour = flavour
 
         book = Book(
             id=_id if _id is not None else uuid4(),
@@ -134,7 +136,7 @@ def create_book(
             zimcheck_result_url=zimcheck_result_url,
             name=name,
             date=date,
-            flavour=flavour,
+            flavour=_flavour,
             zimfarm_notification=zimfarm_notification,
         )
         book.title_id = title_id
@@ -144,7 +146,7 @@ def create_book(
 
         history_entry = BookHistory(
             name=name,
-            flavour=flavour,
+            flavour=_flavour,
             comment="Initial history entry",
         )
         history_entry.author_id = account.id

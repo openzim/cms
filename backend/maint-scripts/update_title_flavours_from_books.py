@@ -36,7 +36,7 @@ def update_title_flavour(session: OrmSession, title: Title) -> tuple[bool, str]:
             book.flavour = new_flavour
             session.add(book)
 
-    flavours = {book.flavour for book in books if book.flavour is not None}
+    flavours = {book.flavour for book in books}
     title.flavours = list(flavours)
     session.add(title)
     session.flush()
