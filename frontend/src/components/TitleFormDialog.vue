@@ -10,6 +10,8 @@
           ref="titleFormRef"
           :title="title"
           :in-dialog="true"
+          :flavours="availableFlavours"
+          :collections="collections"
           @update:valid="formValid = $event"
           @update:has-changes="hasChanges = $event"
         />
@@ -36,11 +38,14 @@
 import TitleForm from '@/components/TitleForm.vue'
 import { useTitleStore } from '@/stores/title'
 import type { Title, TitleCreate } from '@/types/title'
-import { computed, ref, watch } from 'vue'
+import type { CollectionLight } from '@/types/collections'
+import { computed, ref } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 
 interface Props {
   modelValue: boolean
+  availableFlavours: string[]
+  collections: CollectionLight[]
   title?: Title | null
 }
 
@@ -65,13 +70,6 @@ const loading = ref(false)
 const isOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
-})
-
-watch(isOpen, async (newValue) => {
-  if (newValue) {
-    await titleFormRef.value?.fetchCollections()
-    await titleFormRef.value?.fetchFlavours()
-  }
 })
 
 async function handleSubmit() {

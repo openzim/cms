@@ -2,6 +2,7 @@ import datetime
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -9,8 +10,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
-from cms_backend.context import Context
+from cms_backend.context import Context, parse_bool
 from cms_backend.db.book import update_book
+from cms_backend.db.book_actions import get_book_promotion_actions
 from cms_backend.db.models import (
     Account,
     Book,
@@ -20,7 +22,7 @@ from cms_backend.db.models import (
     Warehouse,
 )
 from cms_backend.roles import RoleEnum
-from cms_backend.schemas.models import BookUpdateSchema
+from cms_backend.schemas.models import BaseBookPromotionAction, BookUpdateSchema
 from cms_backend.utils.datetime import getnow
 
 
@@ -837,5 +839,104 @@ def test_get_book_issues(
     response = client.get(
         f"/v1/books/{book.id}/issues",
         headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,dry_run,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, "true", HTTPStatus.OK, id="editor-dry-run"),
+        pytest.param(RoleEnum.EDITOR, "false", HTTPStatus.OK, id="editor-apply"),
+        pytest.param(
+            RoleEnum.VIEWER, "true", HTTPStatus.UNAUTHORIZED, id="viewer-dry-run"
+        ),
+        pytest.param(
+            RoleEnum.VIEWER, "false", HTTPStatus.UNAUTHORIZED, id="viewer-apply"
+        ),
+    ],
+)
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promote_book_permissions(
+    mock_get_book_unsupported_languages: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    client: TestClient,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    illustration_48x48_at_1: str,
+    create_account: Callable[..., Account],
+    dry_run: str,
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test permissions required to promote book"""
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+    book = create_book(
+        flavour="nopic",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator 2",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+    )
+    title = create_title(
+        name="test_en_all",
+        title="Test Article",
+        creator=None,  # missing
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+    collection = create_collection(name="mycollection")
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    kinds = {a.kind for a in actions}
+    assert "update_title_metadata" in kinds  # creator differs/missing
+    assert "update_title_maturity" in kinds  # default "unstable"
+    assert "set_title_collections" in kinds  # no collections
+    assert "update_title_flavours" in kinds  # flavour mismatch
+
+    # Build apply actions from the generated ones
+    apply_actions: list[BaseBookPromotionAction] = []
+    for action in actions:
+        data = dict(action.data)
+        if action.kind == "set_title_collections":
+            data["collection_titles"] = [
+                {"collection_name": collection.name, "path": "/test/path"}
+            ]
+        apply_actions.append(
+            BaseBookPromotionAction(
+                kind=action.kind,
+                data=data,
+                requirement=action.requirement,
+            )
+        )
+
+    response = client.patch(
+        f"/v1/books/{book.id}/promote",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "actions": []
+            if parse_bool(dry_run)
+            else [action.model_dump(mode="json") for action in apply_actions]
+        },
     )
     assert response.status_code == expected_status_code

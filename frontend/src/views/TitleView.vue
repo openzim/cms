@@ -355,6 +355,8 @@
                   ref="titleFormRef"
                   :title="title"
                   :latest-book="latestBook"
+                  :flavours="flavours"
+                  :collections="collections"
                   @update:valid="formValid = $event"
                   @update:has-changes="hasChanges = $event"
                 />
@@ -452,11 +454,13 @@ import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
 import { useBookStore } from '@/stores/book'
+import { useCollectionsStore } from '@/stores/collections'
 import { useAuthStore } from '@/stores/auth'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useTitleHistoryStore } from '@/stores/titleHistory'
 import type { Title, TitleUpdate } from '@/types/title'
 import type { Book, ZimUrl } from '@/types/book'
+import type { CollectionLight } from '@/types/collections'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -469,6 +473,7 @@ const router = useRouter()
 const loadingStore = useLoadingStore()
 const titleStore = useTitleStore()
 const bookStore = useBookStore()
+const collectionsStore = useCollectionsStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 const offlinerStore = useZimfarmOfflinerStore()
@@ -489,6 +494,8 @@ const titleFormRef = ref<InstanceType<typeof TitleForm>>()
 const formValid = ref(false)
 const hasChanges = ref(false)
 const updating = ref(false)
+const flavours = ref<string[]>([])
+const collections = ref<CollectionLight[]>([])
 
 // Confirmation dialog state
 const showConfirmDialog = ref(false)
@@ -758,6 +765,24 @@ const handleRevert = async () => {
   await loadData(true, true)
 }
 
+async function fetchFlavours() {
+  try {
+    await bookStore.fetchBookFlavours()
+    flavours.value = bookStore.flavours
+  } catch (err) {
+    console.error('Failed to fetch flavours', err)
+  }
+}
+
+async function fetchCollections() {
+  try {
+    await collectionsStore.fetchCollections()
+    collections.value = collectionsStore.collections
+  } catch (err) {
+    console.error('Failed to fetch collections', err)
+  }
+}
+
 onMounted(async () => {
   await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
@@ -769,8 +794,12 @@ onMounted(async () => {
   }
 
   if (props.selectedTab === 'edit' && title.value) {
-    await titleFormRef.value?.fetchCollections()
-    await titleFormRef.value?.fetchFlavours()
+    if (flavours.value.length == 0) {
+      await fetchFlavours()
+    }
+    if (collections.value.length == 0) {
+      await fetchCollections()
+    }
     await loadLatestBook()
     titleFormRef.value?.resetFormToTitle(title.value)
   }
@@ -790,8 +819,13 @@ watch(
     await loadData(newTab == 'edit', newTab === 'history', newTab === 'details')
 
     if (newTab === 'edit' && title.value) {
-      await titleFormRef.value?.fetchCollections()
-      await titleFormRef.value?.fetchFlavours()
+      if (flavours.value.length == 0) {
+        await fetchFlavours()
+      }
+      if (collections.value.length == 0) {
+        await fetchCollections()
+      }
+
       await loadLatestBook()
       titleFormRef.value?.resetFormToTitle(title.value)
     }

@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import InlineImageEditor from './InlineImageEditor.vue'
+import InlineImageEditor from '@/components/InlineImageEditor.vue'
 
 interface Props {
   modelValue: string | null | undefined

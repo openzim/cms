@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse
+from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
@@ -25,6 +26,10 @@ from cms_backend.db.book import remove_book_backup as db_remove_book_backup
 from cms_backend.db.book import revert_book as db_revert_book
 from cms_backend.db.book import update_book as db_update_book
 from cms_backend.db.book import update_book_issues as db_update_book_issues
+from cms_backend.db.book_actions import (
+    apply_book_promotion_actions,
+    get_book_promotion_actions,
+)
 from cms_backend.db.books import get_book_flavours as db_get_book_flavours
 from cms_backend.db.books import get_book_languages as db_get_book_languages
 from cms_backend.db.books import get_books as db_get_books
@@ -32,6 +37,7 @@ from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.models import (
+    BaseBookPromotionAction,
     BookLanguagesSchema,
     BookUpdateSchema,
     GetBooksSchema,
@@ -195,6 +201,44 @@ def get_book_issues(
         content=db_update_book_issues(session, book),
         status_code=HTTPStatus.OK,
     )
+
+
+class PromoteBook(BaseModel):
+    actions: list[BaseBookPromotionAction] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
+
+
+@router.patch(
+    "/{book_id}/promote",
+    dependencies=[
+        Depends(require_permission(namespace="book", name="update")),
+        Depends(require_permission(namespace="title", name="update")),
+    ],
+)
+def promote_book(
+    book_id: Annotated[UUID, Path()],
+    request: PromoteBook,
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    current_account: Account = Depends(get_current_account),
+    *,
+    dry_run: Annotated[bool, Query()] = True,
+) -> JSONResponse:
+    if dry_run:
+        actions = get_book_promotion_actions(session, book_id=book_id)
+        return JSONResponse(
+            content={"actions": [action.model_dump(mode="json") for action in actions]},
+            status_code=HTTPStatus.OK,
+        )
+    else:
+        apply_book_promotion_actions(
+            session,
+            book_id=book_id,
+            author_id=current_account.id,
+            actions=request.actions,
+        )
+        return JSONResponse(
+            content={"actions": []},
+            status_code=HTTPStatus.OK,
+        )
 
 
 @router.get(

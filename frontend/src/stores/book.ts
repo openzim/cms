@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
-import type { Book, BookLight, ZimUrls } from '@/types/book'
+import type { BasePromoteBook, Book, BookLight, PromoteBook, ZimUrls } from '@/types/book'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
@@ -10,6 +10,7 @@ export const useBookStore = defineStore('book', () => {
   const book = ref<Book | null>(null)
   const errors = ref<string[]>([])
   const books = ref<BookLight[]>([])
+  const flavours = ref<string[]>([])
   const defaultLimit = ref<number>(Number(localStorage.getItem('books-table-limit') || 20))
   const paginator = ref<Paginator>({
     page: 1,
@@ -241,6 +242,7 @@ export const useBookStore = defineStore('book', () => {
     try {
       const response = await service.get<null, ListResponse<string>>('/flavours')
       errors.value = []
+      flavours.value = response.items
       return response.items
     } catch (_error) {
       console.error('Failed to fetch book flavours', _error)
@@ -282,11 +284,35 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const promoteBook = async (
+    bookId: string,
+    dry_run: boolean = true,
+    payload: BasePromoteBook | null = null,
+  ) => {
+    const service = await authStore.getApiService('books')
+    try {
+      errors.value = []
+      const response = await service.patch<BasePromoteBook | null, PromoteBook>(
+        `/${bookId}/promote`,
+        payload ?? {},
+        {
+          params: { dry_run },
+        },
+      )
+      return response
+    } catch (_error) {
+      console.error('Failed to promote book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
     book,
     books,
+    flavours,
     paginator,
     errors,
     // Actions
@@ -303,5 +329,6 @@ export const useBookStore = defineStore('book', () => {
     backupBook,
     countBooks,
     fetchBookIssues,
+    promoteBook,
   }
 })
