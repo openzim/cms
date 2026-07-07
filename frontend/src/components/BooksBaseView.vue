@@ -14,6 +14,11 @@
       :loading="loadingStore.isLoading"
       :loading-text="loadingStore.loadingText"
       :errors="errors"
+      :offliners="offlinerStore.offliners"
+      display-mode="card"
+      :show-urls="true"
+      :zim-urls="zimUrls"
+      :loading-urls="loadingUrls"
       @limit-changed="handleLimitChange"
       @load-data="loadData"
     />
@@ -43,7 +48,8 @@ import BookTable from '@/components/BookTable.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useBookStore } from '@/stores/book'
 import { useAuthStore } from '@/stores/auth'
-import type { BookLight } from '@/types/book'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
+import type { BookLight, ZimUrl } from '@/types/book'
 import type { Paginator } from '@/types/base'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -64,6 +70,7 @@ const route = useRoute()
 const bookStore = useBookStore()
 const loadingStore = useLoadingStore()
 const authStore = useAuthStore()
+const offlinerStore = useZimfarmOfflinerStore()
 
 const flavours = ref<string[]>([])
 const loadingFlavours = ref(false)
@@ -82,6 +89,8 @@ const headers = [
 const defaultLimit = computed(() => bookStore.defaultLimit)
 
 const books = ref<BookLight[]>([])
+const zimUrls = ref<Record<string, ZimUrl[]>>({})
+const loadingUrls = ref(false)
 const paginator = ref<Paginator>({
   page: Number(route.query.page) || 1,
   page_size: defaultLimit.value,
@@ -135,6 +144,7 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
   if (!hideLoading) {
     loadingStore.startLoading('Fetching books...')
     books.value = []
+    zimUrls.value = {}
   }
 
   // Fetch books with the selected filters
@@ -154,6 +164,7 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
   errors.value = bookStore.errors
   bookStore.savePaginatorLimit(limit)
   paginator.value = { ...bookStore.paginator }
+  await loadZimUrls()
 
   if (loadingStore.isLoading) {
     loadingStore.stopLoading()
@@ -173,6 +184,22 @@ async function handleLimitChange(newLimit: number) {
   } else {
     await loadData(newLimit, 0)
   }
+}
+
+async function loadZimUrls() {
+  if (!books.value || books.value.length === 0) return
+
+  loadingUrls.value = true
+  const bookIds = books.value.map((book) => book.id)
+
+  const response = await bookStore.fetchZimUrls(bookIds)
+  if (response?.urls) {
+    zimUrls.value = response.urls
+  } else {
+    console.error('Failed to fetch zim URLs for books')
+  }
+
+  loadingUrls.value = false
 }
 
 function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
@@ -264,6 +291,7 @@ watch(
 )
 
 onMounted(async () => {
+  await offlinerStore.fetchOffliners()
   loadingFlavours.value = true
   const fetchedFlavours = await bookStore.fetchBookFlavours()
   if (fetchedFlavours) {
