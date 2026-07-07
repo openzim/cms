@@ -60,10 +60,10 @@
       </v-row>
     </div>
 
-    <v-divider class="my-6" />
+    <v-divider v-if="isEditMode" class="my-6" />
 
     <!-- Metadata Section -->
-    <div class="mb-6">
+    <div v-if="isEditMode" class="mb-6">
       <div class="d-flex align-center justify-space-between mb-4">
         <h3 class="text-h6">Metadata</h3>
         <v-btn
