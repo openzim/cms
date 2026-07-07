@@ -133,7 +133,7 @@ class BookLightSchema(BaseModel):
     created_at: datetime
     name: str | None
     date: str | None
-    flavour: str | None
+    flavour: str
     issues: list[str]
     offliner: str | None
     has_flavour_mismatch: bool

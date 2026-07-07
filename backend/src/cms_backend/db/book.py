@@ -160,7 +160,7 @@ def create_book(
     # Extract metadata fields (optional fields may not be present)
     name = zim_metadata.get("Name")
     date = zim_metadata.get("Date")
-    flavour = zim_metadata.get("Flavour") or None
+    flavour = zim_metadata.get("Flavour", "")
 
     book = Book(
         id=book_id,

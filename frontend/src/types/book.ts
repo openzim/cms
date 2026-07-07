@@ -37,7 +37,7 @@ export interface BookLight {
   deletion_date?: string
   name?: string
   date?: string
-  flavour?: string
+  flavour: string
   has_flavour_mismatch: boolean
 }
 

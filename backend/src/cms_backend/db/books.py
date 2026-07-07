@@ -481,7 +481,5 @@ def get_book_flavours(session: OrmSession) -> ListResult[str]:
     )
     return ListResult[str](
         nb_records=count_from_stmt(session, stmt),
-        records=[
-            flavour for flavour in session.scalars(stmt).all() if flavour is not None
-        ],
+        records=list(session.scalars(stmt).all()),
     )

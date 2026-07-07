@@ -124,7 +124,7 @@ class Book(Base):
     zim_metadata: Mapped[dict[str, Any]]
     name: Mapped[str | None]
     date: Mapped[str | None]
-    flavour: Mapped[str | None]
+    flavour: Mapped[str]
     zimcheck_result_url: Mapped[str | None]
     filename: Mapped[str | None] = mapped_column(init=False, default=None)
     needs_processing: Mapped[bool] = mapped_column(
@@ -192,7 +192,7 @@ class BookHistory(Base):
     author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
     comment: Mapped[str | None]
     name: Mapped[str | None]
-    flavour: Mapped[str | None]
+    flavour: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )
