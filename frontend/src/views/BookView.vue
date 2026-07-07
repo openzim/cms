@@ -309,7 +309,9 @@
                   </v-col>
                   <v-col cols="12" md="9">
                     <div>
-                      <span v-if="book.flavour">{{ book.flavour }}</span>
+                      <span v-if="book.flavour !== null">{{
+                        book.flavour == '' ? 'Empty' : book.flavour
+                      }}</span>
                       <span v-else class="text-grey">-</span>
                       <v-tooltip v-if="book.has_flavour_mismatch" location="top">
                         <template #activator="{ props: tooltipProps }">
@@ -965,7 +967,7 @@ const titleDataFromBook = computed<Title | null>(() => {
     license: (metadata.License as string | null | undefined) || null,
     relation: (metadata.Relation as string | null | undefined) || null,
     source: (metadata.Source as string | null | undefined) || null,
-    flavours: book.value.flavour ? [book.value.flavour] : [],
+    flavours: book.value.flavour != null ? [book.value.flavour] : [],
     events: [],
     books: [],
     collections: [],
@@ -1306,7 +1308,7 @@ watch(
       loadingFlavours.value = true
       const fetchedFlavours = await bookStore.fetchBookFlavours()
       if (fetchedFlavours) {
-        flavours.value = fetchedFlavours
+        flavours.value = Array.from(new Set(['', ...fetchedFlavours]))
       }
       loadingFlavours.value = false
     }

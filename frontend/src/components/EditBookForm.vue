@@ -8,7 +8,6 @@
               v-model="localBook.flavour"
               label="Flavour"
               :items="formattedFlavourOptions"
-              :rules="[rules.required]"
               variant="outlined"
               :loading="loadingFlavours"
               :disabled="loading"
@@ -58,12 +57,8 @@ const formRef = ref()
 const formValid = ref(false)
 
 const localBook = ref({
-  flavour: props.book?.flavour || '',
+  flavour: props.book?.flavour,
 })
-
-const rules = {
-  required: (value: string) => !!value || 'This field is required',
-}
 
 const isDisabled = computed(() => {
   return props.loading || !hasChanges.value || !formValid.value
@@ -71,7 +66,7 @@ const isDisabled = computed(() => {
 
 const formattedFlavourOptions = computed(() => {
   return props.flavourOptions.map((option) => ({
-    title: option,
+    title: option == '' ? 'Empty' : option,
     value: option,
   }))
 })
@@ -86,7 +81,7 @@ watch(
   (newBook) => {
     if (newBook) {
       localBook.value = {
-        flavour: newBook.flavour || '',
+        flavour: newBook.flavour,
       }
       // Reset form validation when book changes
       formRef.value?.resetValidation()
@@ -97,7 +92,7 @@ watch(
 
 const handleSubmit = async () => {
   const { valid } = await formRef.value.validate()
-  if (valid) {
+  if (valid && typeof localBook.value.flavour === 'string') {
     emit('submit', {
       flavour: localBook.value.flavour,
     })
