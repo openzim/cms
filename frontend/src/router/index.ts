@@ -184,7 +184,7 @@ const router = createRouter({
   routes,
 })
 
-// Add global navigation guard to update title
+// Add global navigation guard to update title and handle auth redirects
 router.beforeEach((to, from, next) => {
   // Update document title
   if (to.meta.title) {
@@ -198,6 +198,16 @@ router.beforeEach((to, from, next) => {
   } else {
     document.title = 'CMS' // fallback
   }
+
+  // Save the referring page when navigating to sign-in,
+  // so we can redirect back after authentication.
+  if (to.name === 'sign-in' && from.name !== 'sign-in') {
+    // An explicit ?redirect= query param takes priority
+    if (!to.query.redirect) {
+      sessionStorage.setItem('auth_redirect', from.fullPath)
+    }
+  }
+
   next()
 })
 

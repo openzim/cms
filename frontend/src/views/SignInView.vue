@@ -173,7 +173,9 @@ const authenticate = async () => {
     const success = await authStore.authenticate('local', username.value, password.value)
 
     if (success && authStore.isLoggedIn) {
-      router.back()
+      const redirect = sessionStorage.getItem('auth_redirect') || '/'
+      sessionStorage.removeItem('auth_redirect')
+      router.push(redirect)
     } else {
       // Copy errors from auth store to component errors
       errors.value = [...authStore.errors]
