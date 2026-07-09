@@ -23,17 +23,26 @@ export const useAuthStore = defineStore('auth', () => {
     throw new Error('Config is not defined')
   }
 
-  const oauthProvider = new OAuthSessionProvider(getOAuthConfig(config))
-  const localauthProvider = new LocalAuthProvider(config.CMS_API)
+  let oauthProvider: OAuthSessionProvider | null = null
+  let localauthProvider: LocalAuthProvider | null = null
+
+  if (config.LOGIN_MODES.includes('local'))
+    localauthProvider = new LocalAuthProvider(config.CMS_API)
+
+  if (config.LOGIN_MODES.includes('oauth'))
+    oauthProvider = new OAuthSessionProvider(getOAuthConfig(config))
 
   const getAuthProvider = (providerType: AuthProviderType): AuthProvider => {
     switch (providerType) {
       case 'oauth':
         if (!oauthProvider) {
-          throw new Error('No oauth provider configured.')
+          throw new Error('OAuth provider not configured')
         }
         return oauthProvider
       case 'local':
+        if (!localauthProvider) {
+          throw new Error('Local auth provider not configured')
+        }
         return localauthProvider
       default:
         throw new Error(`Unknown auth provider type: ${providerType}`)
@@ -43,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Track refresh state to prevent duplicate requests
   const isRefreshFailed = ref(false)
   const refreshPromise = ref<Promise<StoredToken | null> | null>(null)
+  const refreshGeneration = ref(0)
 
   // Computed properties
   const isLoggedIn = computed(() => {
@@ -181,14 +191,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     let storedToken: StoredToken | null = null
-    // Try to load from kiwx/local providers as we don't know which
+    // Try to load from kiwix/local providers as we don't know which
     try {
-      if (oauthProvider) {
-        storedToken = await oauthProvider.loadToken()
+      if (localauthProvider) {
+        storedToken = await localauthProvider.loadToken()
       }
 
-      if (!storedToken) {
-        storedToken = await localauthProvider.loadToken()
+      if (!storedToken && oauthProvider) {
+        storedToken = await oauthProvider.loadToken()
       }
     } catch (error: unknown) {
       console.error('Failed to load token:', error)
@@ -215,11 +225,11 @@ export const useAuthStore = defineStore('auth', () => {
       storedToken = await renewToken(storedToken)
     }
 
-    // Token is still valid
     if (!storedToken) {
       await logout()
       return null
     }
+
     if (!user.value) {
       await fetchUserInfo(storedToken.access_token)
     }
@@ -245,6 +255,10 @@ export const useAuthStore = defineStore('auth', () => {
       return null
     }
 
+    // Capture the current generation so we can detect if a logout
+    // occurred while the refresh request was in flight.
+    const gen = refreshGeneration.value
+
     // Create and store the refresh promise to prevent duplicate requests
     refreshPromise.value = provider.refreshAuth(storedToken.refresh_token)
 
@@ -253,6 +267,13 @@ export const useAuthStore = defineStore('auth', () => {
       if (!newToken) {
         throw new Error('Unable to refresh token')
       }
+
+      // If logout was called while we were waiting, discard the result
+      if (gen !== refreshGeneration.value) {
+        provider.removeToken()
+        return null
+      }
+
       await fetchUserInfo(newToken.access_token)
       isRefreshFailed.value = false
       return newToken
@@ -276,7 +297,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = async () => {
-    // If we have a Kiwix token, revoke it
     if (token.value?.token_type) {
       try {
         const provider = getAuthProvider(token.value?.token_type)
@@ -288,6 +308,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     token.value = null
     user.value = null
+
+    // Increment the generation to invalidate any in-flight refreshes
+    refreshGeneration.value++
 
     // Reset refresh failure state on logout
     isRefreshFailed.value = false
