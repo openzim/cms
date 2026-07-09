@@ -4,7 +4,10 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.book import (
+    book_has_flavour_mismatch,
+    book_has_recipe_issue,
     get_book,
     get_book_or_none,
     get_book_unsupported_languages,
@@ -13,10 +16,13 @@ from cms_backend.db.book import (
     move_book_to_destination,
 )
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.rules import (
-    has_flavour_mismatch,
-    title_is_missing_mandatory_metadata,
+from cms_backend.db.flavour import (
+    create_title_flavour,
+    get_title_flavour,
+    get_title_flavour_or_none,
 )
+from cms_backend.db.models import Book
+from cms_backend.db.rules import title_is_missing_mandatory_metadata
 from cms_backend.db.title import create_title, restore_title, update_title
 from cms_backend.schemas.models import (
     BaseBookPromotionAction,
@@ -32,6 +38,12 @@ from cms_backend.utils.zim import (
     get_missing_keys,
     get_missing_metadata_keys,
 )
+
+
+def construct_recipe_link(recipe_id: UUID | None) -> str | None:
+    if recipe_id is None:
+        return None
+    return f"{Context.zimfarm_api_url}/recipes/{recipe_id}"
 
 
 def get_book_promotion_actions(
@@ -103,7 +115,12 @@ def get_book_promotion_actions(
                     "illustration_48x48_at_1": book.zim_metadata[
                         "Illustration_48x48@1"
                     ],
-                    "flavours": [book.flavour],
+                    "flavours": [
+                        {
+                            "flavour": book.flavour,
+                            "recipe_link": construct_recipe_link(book.recipe_id),
+                        }
+                    ],
                     "collection_titles": [],
                 },
                 message="Create new title. Please configure title collection(s).",
@@ -164,20 +181,61 @@ def get_book_promotion_actions(
                 message="Configure title collection(s)",
             )
         )
-    if has_flavour_mismatch(book.flavour, title.flavours):
+
+    if book_has_flavour_mismatch(book):
+        title_flavours = [tf.flavour for tf in title.flavours]
         actions.append(
             BookPromotionAction(
-                kind="update_title_flavours",
+                kind="create_title_flavour",
                 requirement="mandatory",
-                data={"flavours": [book.flavour, *title.flavours]},
+                data={
+                    "flavour": book.flavour,
+                    "recipe_link": construct_recipe_link(book.recipe_id),
+                },
                 message=(
                     f"Add '{book.flavour}' to title flavours: "
-                    f"{','.join(title.flavours)}"
+                    f"{','.join(title_flavours)}"
+                ),
+            )
+        )
+
+    if book_has_recipe_issue(book):
+        matching_flavour = get_title_flavour(session, title.id, book.flavour)
+        actions.append(
+            BookPromotionAction(
+                kind="update_flavour_recipe",
+                requirement="mandatory",
+                data={
+                    "recipe_id": book.recipe_id,
+                    "recipe_link": construct_recipe_link(book.recipe_id),
+                },
+                message=(
+                    f"Update flavour recipe from "
+                    f"{construct_recipe_link(matching_flavour.recipe_id)} to "
+                    f"{construct_recipe_link(book.recipe_id)}"
                 ),
             )
         )
 
     return actions
+
+
+def _apply_update_flavour_recipe_action(
+    session: OrmSession, action: BaseBookPromotionAction, book: Book
+):
+    if book.title is None:
+        raise ValueError("Book does not have an associated title")
+
+    if get_missing_keys(action.data, "recipe_id"):
+        raise ValueError("Action to update title flavour recipe must provide recipe id")
+    if str(action.data["recipe_id"]) != str(book.recipe_id):
+        raise ValueError(
+            f"Provided recipe {action.data['recipe_id']} differs from book recipe "
+            f"{book.recipe_id} and cannot solve book recipe issue."
+        )
+    title_flavour = get_title_flavour(session, book.title.id, book.flavour)
+    title_flavour.recipe_id = book.recipe_id
+    session.add(title_flavour)
 
 
 def apply_book_promotion_actions(
@@ -233,7 +291,16 @@ def apply_book_promotion_actions(
                     raise ValueError(
                         "Title must have at least one collection configured."
                     )
-                book.title = create_title(session, author_id=author_id, payload=payload)
+                title = create_title(session, author_id=author_id, payload=payload)
+                book.title = title
+                if get_title_flavour_or_none(session, title.id, book.flavour) is None:
+                    create_title_flavour(
+                        session,
+                        title,
+                        book.recipe_id,
+                        book.flavour,
+                    )
+
             case "restore_title":
                 if not book.title:
                     raise ValueError(
@@ -272,12 +339,26 @@ def apply_book_promotion_actions(
                         "Action to update title maturity must set maturity value"
                     )
                 title_update_payload.update(**action.data)
-            case "update_title_flavours":
-                if get_missing_keys(action.data, "flavours"):
+            case "create_title_flavour":
+                if action.data.get("flavour") is None:
                     raise ValueError(
-                        "Action to update title flavours must set flavours value"
+                        "Action to update title flavours must set flavour value"
                     )
-                title_update_payload.update(**action.data)
+                if not book.title:
+                    raise ValueError("Book does not have an associated title")
+
+                if (
+                    get_title_flavour_or_none(
+                        session, book.title.id, action.data["flavour"]
+                    )
+                    is None
+                ):
+                    create_title_flavour(
+                        session,
+                        title=book.title,
+                        recipe_id=book.recipe_id,
+                        flavour=action.data["flavour"],
+                    )
             case "set_title_collections":
                 if get_missing_keys(action.data, "collection_titles") or (
                     isinstance(action.data["collection_titles"], list)
@@ -288,6 +369,8 @@ def apply_book_promotion_actions(
                         "collection details"
                     )
                 title_update_payload.update(**action.data)
+            case "update_flavour_recipe":
+                _apply_update_flavour_recipe_action(session, action, book)
             case "unknown_languages" | "zimcheck_issues":
                 pass
 

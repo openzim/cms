@@ -19,19 +19,19 @@ from cms_backend.db.models import Warehouse
 # Configuration: Define warehouses and their paths
 # UUIDs must match those in docker-compose.yml LOCAL_WAREHOUSE_PATHS
 WAREHOUSES_CONFIG = {
-    "dev_hidden": {
+    "dev-hidden": {
         "id": UUID("11111111-1111-1111-1111-111111111111"),
         "paths": ["quarantine", "staging"],
     },
-    "dev_prod": {
+    "dev-prod": {
         "id": UUID("22222222-2222-2222-2222-222222222222"),
         "paths": ["other", "wikipedia"],
     },
-    "dev_client1": {
+    "dev-client1": {
         "id": UUID("33333333-3333-3333-3333-333333333333"),
         "paths": ["all"],
     },
-    "dev_backup": {
+    "dev-backup": {
         "id": UUID("44444444-4444-4444-4444-444444444444"),
         "paths": ["backup"],
     },

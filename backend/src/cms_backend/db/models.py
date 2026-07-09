@@ -152,6 +152,7 @@ class Book(Base):
     zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
         back_populates="book"
     )
+    recipe_id: Mapped[UUID | None] = mapped_column(default=None)
 
     zimcheck_summary: Mapped[dict[str, Any]] = mapped_column(
         default_factory=dict, server_default="{}"
@@ -256,9 +257,6 @@ class Title(Base):
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
-    flavours: Mapped[list[str]] = mapped_column(
-        default_factory=list, server_default="{}"
-    )
 
     books: Mapped[list["Book"]] = relationship(
         back_populates="title",
@@ -282,6 +280,22 @@ class Title(Base):
         # return the history entries in descending order of created_at
         order_by="TitleHistory.created_at.desc()",
     )
+    flavours: Mapped[list["TitleFlavour"]] = relationship(
+        back_populates="title",
+        cascade="all, delete",
+        passive_deletes=True,
+        default_factory=list,
+    )
+
+
+class TitleFlavour(Base):
+    __tablename__ = "title_flavour"
+    title_id: Mapped[UUID] = mapped_column(
+        ForeignKey("title.id", ondelete="CASCADE"), init=False, primary_key=True
+    )
+    flavour: Mapped[str] = mapped_column(primary_key=True)
+    recipe_id: Mapped[UUID | None]
+    title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
 
 
 class TitleHistory(Base):
@@ -310,7 +324,7 @@ class TitleHistory(Base):
     source: Mapped[str | None] = mapped_column(default=None)
     maturity: Mapped[str] = mapped_column(default="unstable")
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
-    flavours: Mapped[list[str]] = mapped_column(
+    flavours: Mapped[list[dict[str, Any]]] = mapped_column(
         default_factory=list, server_default="{}"
     )
     collection_titles: Mapped[list[dict[str, Any]]] = mapped_column(

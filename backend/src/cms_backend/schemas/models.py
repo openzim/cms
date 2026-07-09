@@ -7,22 +7,21 @@ from uuid import UUID
 
 from pydantic import AfterValidator, AnyUrl, Field, model_validator
 
-from cms_backend.api.routes.fields import (
+from cms_backend.context import Context
+from cms_backend.roles import RoleEnum
+from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import (
     Base64Str,
     GraphemeLength,
     LangCode,
     LimitFieldMax200,
     NotEmptyString,
     SkipField,
-    ZimFlavour,
 )
-from cms_backend.context import Context
-from cms_backend.roles import RoleEnum
-from cms_backend.schemas import BaseModel
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
 # If you change this, also update TITLE_NAME_PATTERN in
-# frontend/src/components/TitleForm.vue for consistency
+# frontend/src/components/TitleNameField.vue for consistency
 ZIM_TITLE_NAME_REGEX = re.compile(
     r"^[a-z0-9\-\.]+?_[a-z]{2,3}(?:-[a-z]{2,10})?_[a-z0-9\-\.]+?$"
 )
@@ -119,7 +118,6 @@ class BaseTitleCreateUpdateSchema(BaseModel):
     publisher: NotEmptyString | None = None
     language: LangCode | None = None
     illustration_48x48_at_1: Base64Str | None = None
-    flavours: list[ZimFlavour] | None = None
     archived: bool | None = None
 
     @model_validator(mode="after")
@@ -164,8 +162,9 @@ type BookPromotionActionKind = Literal[
     "restore_title",
     "update_title_metadata",
     "update_title_maturity",
+    "create_title_flavour",
     "set_title_collections",
-    "update_title_flavours",
+    "update_flavour_recipe",
 ]
 
 type BookPromotionRequirement = Literal["mandatory", "optional", "information"]

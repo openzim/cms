@@ -19,6 +19,7 @@ from cms_backend.db.models import (
     BookLocation,
     Collection,
     Title,
+    TitleFlavour,
     Warehouse,
 )
 from cms_backend.roles import RoleEnum
@@ -360,18 +361,47 @@ def test_get_book_languages(
 
 
 def test_get_book_flavours(
+    dbsession: OrmSession,
     client: TestClient,
-    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
 ):
     """Test books flavours endpoint returns sorted distinct flavours."""
-    for flavour in ["maxi", "mini", "nopic", "maxi", "mini"]:
-        create_book(flavour=flavour)
+    title = create_title()
+    recipe_id = uuid4()
+    for flavour in ["maxi", "mini", "nopic"]:
+        tf = TitleFlavour(flavour=flavour, recipe_id=recipe_id)
+        tf.title = title
+        dbsession.add(tf)
 
     response = client.get("/v1/books/flavours")
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["items"] == ["maxi", "mini", "nopic"]
     assert response_doc["meta"]["count"] == 3
+
+
+def test_get_book_flavours_filter_by_title_id(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_title: Callable[..., Title],
+):
+    """Test books flavours endpoint returns sorted distinct flavours."""
+    title1 = create_title(name="test_en_all")
+    for flavour in ["maxi", "mini"]:
+        tf = TitleFlavour(flavour=flavour, recipe_id=uuid4())
+        tf.title = title1
+        dbsession.add(tf)
+
+    title2 = create_title(name="test_fr_all")
+    tf = TitleFlavour(flavour="nopic", recipe_id=uuid4())
+    tf.title = title2
+    dbsession.add(tf)
+
+    response = client.get(f"/v1/books/flavours?title_id={title2.id}")
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["items"] == ["nopic"]
+    assert response_doc["meta"]["count"] == 1
 
 
 def test_get_book_by_id(
@@ -912,7 +942,6 @@ def test_promote_book_permissions(
     assert "update_title_metadata" in kinds  # creator differs/missing
     assert "update_title_maturity" in kinds  # default "unstable"
     assert "set_title_collections" in kinds  # no collections
-    assert "update_title_flavours" in kinds  # flavour mismatch
 
     # Build apply actions from the generated ones
     apply_actions: list[BaseBookPromotionAction] = []

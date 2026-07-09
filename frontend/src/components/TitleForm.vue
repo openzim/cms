@@ -11,11 +11,6 @@
           <TitleMaturityField v-model="formData.maturity" />
         </v-col>
       </v-row>
-      <v-row>
-        <v-col cols="12">
-          <TitleFlavoursField v-model="formData.flavours" :available-flavours="flavours" />
-        </v-col>
-      </v-row>
     </div>
 
     <v-divider v-if="isEditMode" class="my-6" />
@@ -261,7 +256,6 @@
 <script setup lang="ts">
 import TitleNameField from '@/components/TitleNameField.vue'
 import TitleMaturityField from '@/components/TitleMaturityField.vue'
-import TitleFlavoursField from '@/components/TitleFlavoursField.vue'
 import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
@@ -278,7 +272,6 @@ interface Props {
   title?: Title | null
   inDialog?: boolean
   latestBook?: Book | null
-  flavours: string[]
   collections: CollectionLight[]
 }
 
@@ -286,7 +279,6 @@ const props = withDefaults(defineProps<Props>(), {
   title: null,
   inDialog: false,
   latestBook: null,
-  flavours: () => [],
   collections: () => [],
 })
 
@@ -314,7 +306,6 @@ const formData = ref<TitleUpdate>({
   license: null,
   relation: null,
   source: null,
-  flavours: [],
 })
 
 const originalCollections = ref<BaseTitleCollection[]>([])
@@ -429,12 +420,6 @@ const hasCollectionChanges = computed(() => {
 const hasChanges = computed(() => {
   if (!isEditMode.value) return true
 
-  const titleFlavours = props.title?.flavours || []
-  const formFlavours = formData.value.flavours || []
-  const flavoursChanged =
-    titleFlavours.length !== formFlavours.length ||
-    !titleFlavours.every((f) => formFlavours.includes(f))
-
   return (
     formData.value.name !== props.title?.name ||
     formData.value.maturity !== props.title?.maturity ||
@@ -448,7 +433,6 @@ const hasChanges = computed(() => {
     formData.value.license !== props.title?.license ||
     formData.value.relation !== props.title?.relation ||
     formData.value.source !== props.title?.source ||
-    flavoursChanged ||
     hasCollectionChanges.value
   )
 })
@@ -489,7 +473,6 @@ function resetFormToTitle(title: Title) {
     license: title.license,
     relation: title.relation,
     source: title.source,
-    flavours: title.flavours ? [...title.flavours] : [],
   }
 
   originalCollections.value = collections.map((c) => ({ ...c }))
@@ -511,7 +494,6 @@ function resetForm() {
     license: null,
     relation: null,
     source: null,
-    flavours: [],
   }
   originalCollections.value = []
   formRef.value?.resetValidation()
@@ -533,7 +515,6 @@ function getFormData(): TitleUpdate {
       license: formData.value.license,
       relation: formData.value.relation,
       source: formData.value.source,
-      flavours: formData.value.flavours || [],
     }
   }
   return { ...formData.value }
@@ -560,13 +541,6 @@ function getUpdatePayload(): Partial<TitleUpdate> {
   if (formData.value.license !== props.title.license) payload.license = formData.value.license
   if (formData.value.relation !== props.title.relation) payload.relation = formData.value.relation
   if (formData.value.source !== props.title.source) payload.source = formData.value.source
-
-  const titleFlavours = props.title.flavours || []
-  const formFlavours = formData.value.flavours || []
-  const flavoursChanged =
-    titleFlavours.length !== formFlavours.length ||
-    !titleFlavours.every((f) => formFlavours.includes(f))
-  if (flavoursChanged) payload.flavours = formData.value.flavours
 
   if (hasCollectionChanges.value) payload.collection_titles = formData.value.collection_titles
 

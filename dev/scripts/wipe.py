@@ -25,7 +25,7 @@ from cms_backend.db.models import (
 
 # Base directory where warehouse folders are located (inside container)
 WAREHOUSE_BASE_PATH = Path("/warehouses")
-DEV_PREFIX = "dev\\_%"
+DEV_PREFIX = "dev-%"
 
 
 def wipe_database(session: OrmSession):

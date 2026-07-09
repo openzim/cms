@@ -10,7 +10,6 @@
           ref="titleFormRef"
           :title="title"
           :in-dialog="true"
-          :flavours="availableFlavours"
           :collections="collections"
           @update:valid="formValid = $event"
           @update:has-changes="hasChanges = $event"
@@ -44,7 +43,6 @@ import { useNotificationStore } from '@/stores/notification'
 
 interface Props {
   modelValue: boolean
-  availableFlavours: string[]
   collections: CollectionLight[]
   title?: Title | null
 }

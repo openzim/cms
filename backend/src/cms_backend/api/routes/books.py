@@ -8,7 +8,6 @@ from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
-from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db.book import backup_book as db_backup_book
@@ -36,6 +35,7 @@ from cms_backend.db.books import get_books as db_get_books
 from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.models import (
     BaseBookPromotionAction,
     BookLanguagesSchema,
@@ -98,8 +98,9 @@ def get_book_languages(
 @router.get("/flavours")
 def get_book_flavours(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    title_id: Annotated[UUID | None, Query()] = None,
 ) -> ListResponse[str]:
-    results = db_get_book_flavours(session)
+    results = db_get_book_flavours(session, title_id=title_id)
     return ListResponse[str](
         meta=calculate_pagination_metadata(
             nb_records=results.nb_records,

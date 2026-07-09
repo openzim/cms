@@ -111,7 +111,7 @@ services:
     environment:
       DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
-      LOCAL_WAREHOUSE_PATHS: "11111111-1111-1111-1111-111111111111:/warehouses/dev_hidden,22222222-2222-2222-2222-222222222222:/warehouses/dev_prod,33333333-3333-3333-3333-333333333333:/warehouses/dev_client1,44444444-4444-4444-4444-444444444444:/warehouses/dev_backup,1e9783eb-296e-4cb0-853a-5355a92b2323:/warehouses/download/zim,c6bec3c1-46be-40ff-8bd9-eb789d3b3a22:/warehouses/hidden,dc0ac66e-5f55-4491-b930-aba47abef40f:/warehouses/zim-receiver"
+      LOCAL_WAREHOUSE_PATHS: "11111111-1111-1111-1111-111111111111:/warehouses/dev-hidden,22222222-2222-2222-2222-222222222222:/warehouses/dev-prod,33333333-3333-3333-3333-333333333333:/warehouses/dev-client1,44444444-4444-4444-4444-444444444444:/warehouses/dev-backup,1e9783eb-296e-4cb0-853a-5355a92b2323:/warehouses/download/zim,c6bec3c1-46be-40ff-8bd9-eb789d3b3a22:/warehouses/hidden,dc0ac66e-5f55-4491-b930-aba47abef40f:/warehouses/zim-receiver"
       STAGING_WAREHOUSE_ID: 11111111-1111-1111-1111-111111111111
       STAGING_BASE_PATH: staging
       STAGING_DOWNLOAD_BASE_URL: https://download.staging.acme.org/
@@ -122,8 +122,11 @@ services:
       BACKUP_BASE_PATH: backup
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
+      ZIMCHECK_RESULTS_S3_BUCKET_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks
     depends_on:
       postgresdb:
+        condition: service_healthy
+      minio:
         condition: service_healthy
   backend-tests:
     build:
@@ -207,5 +210,35 @@ services:
     profiles:
       - healthcheck
 
+  minio:
+    image: minio/minio
+    container_name: cms_minio
+    ports:
+      - 127.0.0.1:37605:9000 # api
+      - 127.0.0.1:37606:9001 # web console
+    environment:
+      - MINIO_ROOT_USER=minio_key
+      - MINIO_ROOT_PASSWORD=minio_secret
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data_cms:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  createbuckets:
+    image: minio/mc
+    container_name: cms_minio_setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./contrib/setup-buckets.sh:/setup-buckets.sh
+    entrypoint: ["/bin/sh", "/setup-buckets.sh"]
+
 volumes:
   pg_data_cms:
+  minio_data_cms:

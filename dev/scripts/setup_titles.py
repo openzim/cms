@@ -11,14 +11,14 @@ from cms_backend.db.models import Title, CollectionTitle
 # Configuration: Define titles and their collection path associations
 TITLES_CONFIG = [
     {
-        "name": "dev_wikipedia_en_all",
+        "name": "dev-wikipedia_en_all",
         "maturity": "unstable",
         "collections": [
             {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "path": "wikipedia"}
         ],
     },
     {
-        "name": "dev_wiktionary_fr_all",
+        "name": "dev-wiktionary_fr_all",
         "maturity": "stable",
         "collections": [
             {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "path": "other"},

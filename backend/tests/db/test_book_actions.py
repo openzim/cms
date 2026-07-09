@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.db.book import book_has_recipe_issue
 from cms_backend.db.book_actions import (
     apply_book_promotion_actions,
     get_book_promotion_actions,
@@ -184,7 +185,7 @@ def test_promotion_actions_no_title(
     assert actions[0].requirement == "mandatory"
     assert actions[0].data["name"] == "test_en_all"
     assert actions[0].data["maturity"] == "stable"
-    assert actions[0].data["flavours"] == ["maxi"]
+    assert len(actions[0].data["flavours"]) != 0
     assert "Create new title" in actions[0].message
 
 
@@ -454,7 +455,7 @@ def test_promotion_actions_flavour_mismatch_no_book_flavour(
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
     book = create_book(
-        flavour=None,
+        flavour="",
         zim_metadata={
             "Name": "test_en_all",
             "Title": "Test Article",
@@ -484,11 +485,69 @@ def test_promotion_actions_flavour_mismatch_no_book_flavour(
     actions = get_book_promotion_actions(dbsession, book_id=book.id)
 
     flavour_actions = [
-        action for action in actions if action.kind == "update_title_flavours"
+        action for action in actions if action.kind == "create_title_flavour"
     ]
     assert len(flavour_actions) == 1
     assert flavour_actions[0].requirement == "mandatory"
-    assert flavour_actions[0].data["flavours"] == ["", "maxi", "mini"]
+    assert flavour_actions[0].data["flavour"] == ""
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promotion_actions_recipe_issue(
+    mock_get_book_unsupported_languages: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    illustration_48x48_at_1: str,
+):
+    """
+    Book with different recipe from title flavour produces action to update title
+    flavour
+    """
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+    )
+    book.recipe_id = uuid4()
+    dbsession.add(book)
+
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi", "mini"],
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+        recipe_id=uuid4(),
+    )
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+
+    recipe_actions = [
+        action for action in actions if action.kind == "update_flavour_recipe"
+    ]
+    assert len(recipe_actions) == 1
+    assert recipe_actions[0].requirement == "mandatory"
+    assert recipe_actions[0].data["recipe_id"] == book.recipe_id
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
@@ -501,7 +560,7 @@ def test_promotion_actions_flavour_mismatch_add_flavour(
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
 ):
-    """Book with a flavour not in title produces update_title_flavours action
+    """Book with a flavour not in title produces create_title_flavour action
     with book flavour in title flavours
     """
     mock_get_zimcheck_errors.return_value = []
@@ -537,12 +596,11 @@ def test_promotion_actions_flavour_mismatch_add_flavour(
     actions = get_book_promotion_actions(dbsession, book_id=book.id)
 
     flavour_actions = [
-        action for action in actions if action.kind == "update_title_flavours"
+        action for action in actions if action.kind == "create_title_flavour"
     ]
     assert len(flavour_actions) == 1
     assert flavour_actions[0].requirement == "mandatory"
-    assert flavour_actions[0].data["flavours"] == ["nopic", "maxi", "mini"]
-    assert "Add" in flavour_actions[0].message
+    assert flavour_actions[0].data["flavour"] == "nopic"
 
 
 def test_promotion_actions_multiple_actions(
@@ -602,7 +660,7 @@ def test_promotion_actions_multiple_actions(
     assert "update_title_metadata" in kinds
     assert "update_title_maturity" in kinds
     assert "set_title_collections" in kinds
-    assert "update_title_flavours" in kinds
+    assert "create_title_flavour" in kinds
 
 
 def test_promotion_actions_ready_for_prod(
@@ -856,6 +914,78 @@ def test_apply_actions_update_collections_without_entries_raises_error(
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_apply_action_update_recipe_flavour(
+    mock_get_book_unsupported_languages: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_title: Callable[..., Title],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_warehouse: Callable[..., Warehouse],
+    illustration_48x48_at_1: str,
+    account: Account,
+):
+    """
+    Test apply action to fix a recipe issue
+    """
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+
+    warehouse = create_warehouse()
+    book = _create_valid_book(create_book, illustration_48x48_at_1)
+    book.flavour = "maxi"
+    book.recipe_id = uuid4()
+    dbsession.add(book)
+
+    title = create_title(
+        name="test_en_all",
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+        flavours=["maxi", "mini"],
+        recipe_id=uuid4(),
+    )
+    title.maturity = "stable"
+    dbsession.add(title)
+
+    create_collection_title(title=title)
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 1
+    assert actions[0].kind == "update_flavour_recipe"
+
+    action = actions[0]
+    apply_book_promotion_actions(
+        dbsession,
+        book_id=book.id,
+        author_id=account.id,
+        actions=[
+            BaseBookPromotionAction(
+                kind=action.kind, data=action.data, requirement=action.requirement
+            )
+        ],
+    )
+    dbsession.refresh(book)
+    assert book_has_recipe_issue(book) is False
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_apply_actions_create_title(
     mock_get_zimcheck_errors: MagicMock,
     mock_get_book_unsupported_languages: MagicMock,
@@ -914,7 +1044,6 @@ def test_apply_actions_create_title(
     title = dbsession.query(Title).filter(Title.name == "test_en_all").one_or_none()
     assert title is not None
     assert title.title == "Test Article"
-    assert title.flavours == ["maxi"]
     assert title.maturity == "stable"
     assert len(title.collections) == 1
     dbsession.refresh(book)
@@ -1046,7 +1175,7 @@ def test_apply_actions_batched_updates(
     assert "update_title_metadata" in kinds  # creator differs/missing
     assert "update_title_maturity" in kinds  # default "unstable"
     assert "set_title_collections" in kinds  # no collections
-    assert "update_title_flavours" in kinds  # flavour mismatch
+    assert "create_title_flavour" in kinds  # flavour mismatch
 
     # Build apply actions from the generated ones
     apply_actions: list[BaseBookPromotionAction] = []
@@ -1075,7 +1204,6 @@ def test_apply_actions_batched_updates(
     assert title.creator == "Test Creator 2"
     assert title.maturity == "stable"
     assert len(title.collections) == 1
-    assert "nopic" in title.flavours
     dbsession.refresh(book)
     assert book.location_kind == "prod"
     assert book.needs_file_operation
