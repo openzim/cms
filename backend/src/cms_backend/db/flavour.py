@@ -3,13 +3,26 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.db import book as db_book
+from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Title, TitleFlavour
-from cms_backend.schemas.orms import TitleFlavourSchema
+from cms_backend.db.models import Book, Title, TitleFlavour
+from cms_backend.schemas.orms import ListResult, TitleFlavourSchema
 
 
-def get_title_flavours(title: Title) -> list[str]:
-    return [title_flavour.flavour for title_flavour in title.flavours]
+def get_title_flavours(
+    session: OrmSession, title_id: UUID, *, limit: int = 20, skip: int = 0
+) -> ListResult[TitleFlavourSchema]:
+    stmt = select(TitleFlavour).where(TitleFlavour.title_id == title_id)
+    return ListResult[TitleFlavourSchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            create_title_flavour_schema(tf)
+            for tf in session.scalars(
+                stmt.offset(skip).limit(limit).order_by(TitleFlavour.flavour)
+            )
+        ],
+    )
 
 
 def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
@@ -26,6 +39,7 @@ def create_title_flavour(
     title.flavours.append(title_flavour)
     session.add(title_flavour)
     session.flush()
+    return title_flavour
 
 
 def get_title_flavour_or_none(
@@ -47,3 +61,29 @@ def get_title_flavour(
             f"Title flavour {flavour} for title {title_id} does not exists"
         )
     return title_flavour
+
+
+def delete_title_flavour(session: OrmSession, title_id: UUID, flavour: str):
+    """Delete a title flavour and mark associated books for deletion.
+
+    Only books that are in staging, prod or quarantine and do not have any pending
+    operations are eligible for deletion.
+    """
+    tf = get_title_flavour_or_none(session, title_id=title_id, flavour=flavour)
+    if tf is None:
+        raise RecordDoesNotExistError(
+            f"Title flavour '{flavour}' for title {title_id} does not exist"
+        )
+    book_ids_to_delete = session.scalars(
+        select(Book.id).where(
+            Book.needs_processing.is_(False),
+            Book.needs_processing.is_(False),
+            Book.location_kind.in_(["staging", "prod", "quarantine"]),
+            Book.title_id == tf.title_id,
+            Book.flavour == tf.flavour,
+        )
+    ).all()
+    for book_id in book_ids_to_delete:
+        db_book.delete_book(session, book_id=book_id)
+    session.delete(tf)
+    session.flush()

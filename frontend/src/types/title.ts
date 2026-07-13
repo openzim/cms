@@ -1,4 +1,4 @@
-import type { BookLight } from './book'
+import type { BookLight } from '@/types/book'
 
 export interface WarehousePathInfo {
   path_id: string
@@ -17,7 +17,8 @@ export interface TitleCollection extends BaseTitleCollection {
 
 export interface TitleFlavour {
   flavour: string
-  recipe_id: string
+  recipe_id: string | null
+  recipe_link: string | null
 }
 
 export interface TitleLight {

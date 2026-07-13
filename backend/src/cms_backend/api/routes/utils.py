@@ -1,13 +1,13 @@
 import math
 from xml.etree import ElementTree as ET
 
-from cms_backend.db.collection import LibraryBookData
+from cms_backend.db import collection as db_collection
 from cms_backend.utils.filename import construct_download_url
 from cms_backend.utils.zim import convert_tags
 
 
 def build_library_xml(
-    entries: list[LibraryBookData], *, path_prefix: str | None = None
+    entries: list[db_collection.LibraryBookData], *, path_prefix: str | None = None
 ) -> str:
     """Build XML library catalog from books."""
     library_elem = ET.Element("library")

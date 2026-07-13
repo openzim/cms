@@ -17,6 +17,7 @@ from cms_backend.db.models import (
     Collection,
     Event,
     Title,
+    TitleFlavour,
     Warehouse,
 )
 from cms_backend.db.title import update_title
@@ -896,6 +897,79 @@ def test_merge_titles_required_permissions(
     response = client.post(
         "/v1/titles/merge",
         json={"target": title1.name, "sources": [title2.name]},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "skip,limit,expected_count",
+    [
+        pytest.param(0, 3, 3, id="first-page"),
+        pytest.param(3, 3, 1, id="second-page"),
+        pytest.param(8, 3, 0, id="page-num-too-high-no-results"),
+        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
+        pytest.param(0, 20, 4, id="first-page-with-high-limit"),
+    ],
+)
+def test_get_title_flavours_pagination(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_title: Callable[..., Title],
+    access_token: str,
+    skip: int,
+    limit: int,
+    expected_count: int,
+):
+    """Test retrieving title flavours"""
+    title = create_title(name="wikipedia_en_test")
+    flavours = ["maxi", "mini", "nopic", ""]
+    for flavour in flavours:
+        tf = TitleFlavour(flavour=flavour, recipe_id=None)
+        tf.title = title
+        dbsession.add(tf)
+        dbsession.flush()
+
+    response = client.get(
+        f"/v1/titles/{title.id}/flavours?skip={skip}&limit={limit}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["meta"]["skip"] == skip
+    assert data["meta"]["limit"] == limit
+    assert data["meta"]["page_size"] == expected_count
+    assert len(data["items"]) == expected_count
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+    ],
+)
+def test_delete_title_flavour_required_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test deleting title flavour with different roles"""
+    title = create_title(name="wikipedia_en_test")
+    tf = TitleFlavour(flavour="maxi", recipe_id=None)
+    tf.title = title
+    dbsession.add(tf)
+    dbsession.flush()
+
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.delete(
+        f"/v1/titles/{title.name}/flavours/maxi",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code

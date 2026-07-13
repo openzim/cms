@@ -21,6 +21,13 @@ class TitleFlavourSchema(BaseModel):
     flavour: str
     recipe_id: UUID | None
 
+    @computed_field
+    @property
+    def recipe_link(self) -> str | None:
+        if self.recipe_id is None:
+            return None
+        return f"{Context.zimfarm_api_url}/recipes/{self.recipe_id}"
+
 
 class TitleLightSchema(BaseModel):
     """
