@@ -5,7 +5,6 @@
   <InboxBookFilters
     v-if="currentTab == 'books'"
     :filters="bookFilters"
-    :location-kind-options="['quarantine', 'staging']"
     :offliner-options="offlinerStore.offliners"
     @filters-changed="handleBookFiltersChange"
     @clear-filters="clearFilters"
@@ -165,7 +164,7 @@ const errors = ref<string[]>([])
 const bookFilters = computed(() => {
   const query = router.currentRoute.value.query
   const derived = {
-    location_kind: '',
+    status: 'active',
     name: '',
     flag: '',
     offliner: '',
@@ -175,8 +174,8 @@ const bookFilters = computed(() => {
     derived.name = query.name
   }
 
-  if (query.location_kind && typeof query.location_kind === 'string') {
-    derived.location_kind = query.location_kind
+  if (query.status && typeof query.status === 'string') {
+    derived.status = query.status
   }
 
   if (query.flag && typeof query.flag === 'string') {
@@ -220,6 +219,25 @@ const eventFilters = computed(() => {
 
 const intervalId = ref<number | null>(null)
 
+function statusToLocationKinds(status: string): string[] | undefined {
+  switch (status) {
+    case 'active':
+      return ['quarantine', 'staging', 'prod']
+    case 'quarantine':
+      return ['quarantine']
+    case 'staging':
+      return ['staging']
+    case 'to_delete':
+      return ['to_delete']
+    case 'deleted':
+      return ['deleted']
+    case 'all':
+      return undefined
+    default:
+      return ['quarantine', 'staging', 'prod']
+  }
+}
+
 const handleTabChange = (newTab: string) => {
   // Navigate to the new tab route
   router.push({
@@ -261,7 +279,7 @@ async function loadData(limit: number, skip: number, tab?: string, hideLoading: 
         skip,
         true,
         undefined, // id not used in inbox
-        bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
+        statusToLocationKinds(bookFilters.value.status),
         bookFilters.value.flag || undefined,
         bookFilters.value.name || undefined,
         undefined, // flavour not used in inbox
@@ -350,8 +368,8 @@ function updateUrlFilters(
     query.id = sourceFilters.id
   }
 
-  if ('location_kind' in sourceFilters && sourceFilters.location_kind) {
-    query.location_kind = sourceFilters.location_kind
+  if ('status' in sourceFilters && sourceFilters.status !== 'active') {
+    query.status = sourceFilters.status
   }
 
   if ('flag' in sourceFilters && sourceFilters.flag) {
@@ -395,7 +413,7 @@ async function loadZimUrls() {
 async function clearFilters() {
   switch (currentTab.value) {
     case 'books':
-      updateUrlFilters({ name: '', location_kind: '', flag: '', offliner: '', issue: '' })
+      updateUrlFilters({ name: '', status: 'active', flag: '', offliner: '', issue: '' })
       break
     case 'zimfarm_notifications':
       updateUrlFilters({ id: '' })

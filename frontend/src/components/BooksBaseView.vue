@@ -105,7 +105,7 @@ const bookFilters = computed(() => {
   const derived = {
     name: '',
     flavour: '',
-    location_kind: '',
+    status: 'active',
   }
 
   if (query.name && typeof query.name === 'string') {
@@ -116,8 +116,8 @@ const bookFilters = computed(() => {
     derived.flavour = query.flavour
   }
 
-  if (query.location_kind && typeof query.location_kind === 'string') {
-    derived.location_kind = query.location_kind
+  if (query.status && typeof query.status === 'string') {
+    derived.status = query.status
   }
 
   return derived
@@ -140,6 +140,27 @@ const backupTooltipText = computed(() => {
   return count === 1 ? '1 matching backup book' : `${count} matching backup books`
 })
 
+function statusToLocationKinds(status: string): string[] | undefined {
+  switch (status) {
+    case 'active':
+      return ['quarantine', 'staging', 'prod']
+    case 'quarantine':
+      return ['quarantine']
+    case 'staging':
+      return ['staging']
+    case 'prod':
+      return ['prod']
+    case 'to_delete':
+      return ['to_delete']
+    case 'deleted':
+      return ['deleted']
+    case 'all':
+      return undefined
+    default:
+      return ['quarantine', 'staging', 'prod']
+  }
+}
+
 async function loadData(limit: number, skip: number, hideLoading: boolean = false) {
   if (!hideLoading) {
     loadingStore.startLoading('Fetching books...')
@@ -153,7 +174,7 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
     skip,
     undefined,
     undefined,
-    bookFilters.value.location_kind ? [bookFilters.value.location_kind] : undefined,
+    statusToLocationKinds(bookFilters.value.status),
     undefined, // flag not used in this view
     bookFilters.value.name || undefined,
     bookFilters.value.flavour || undefined,
@@ -214,8 +235,8 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
     query.flavour = sourceFilters.flavour
   }
 
-  if (sourceFilters.location_kind) {
-    query.location_kind = sourceFilters.location_kind
+  if (sourceFilters.status && sourceFilters.status !== 'active') {
+    query.status = sourceFilters.status
   }
 
   router.push({
@@ -225,7 +246,7 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
 }
 
 async function clearFilters() {
-  updateUrlFilters({ name: '', flavour: '', location_kind: '' })
+  updateUrlFilters({ name: '', flavour: '', status: 'active' })
 }
 
 async function handleBookFiltersChange(newFilters: typeof bookFilters.value) {
@@ -241,7 +262,7 @@ async function fetchBackupCount() {
     backupCount.value = await bookStore.countBooks(
       undefined,
       undefined,
-      currentFilters.location_kind ? [currentFilters.location_kind] : undefined,
+      statusToLocationKinds(currentFilters.status),
       undefined,
       currentFilters.name || undefined,
       currentFilters.flavour || undefined,
@@ -261,7 +282,7 @@ function navigateToBackups() {
 
   if (currentFilters.name) query.name = currentFilters.name
   if (currentFilters.flavour) query.flavour = currentFilters.flavour
-  if (currentFilters.location_kind) query.location_kind = currentFilters.location_kind
+  if (currentFilters.status !== 'active') query.status = currentFilters.status
 
   router.push({
     name: 'backup-books',
