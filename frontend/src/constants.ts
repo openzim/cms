@@ -11,4 +11,6 @@ export default {
   NOTIFICATION_DEFAULT_DURATION: 5000, // 5 seconds
   NOTIFICATION_ERROR_DURATION: 8000, // 8 seconds for errors
   NOTIFICATION_SUCCESS_DURATION: 3000, // 3 seconds for success
+  // Background event polling
+  BACKGROUND_EVENT_POLL_INTERVAL: 2000, // 2 seconds
 }

@@ -19,13 +19,14 @@ export const useEventStore = defineStore('event', () => {
   })
   const authStore = useAuthStore()
 
-  const fetchEvents = async (limit: number, skip: number, topic?: string) => {
+  const fetchEvents = async (limit: number, skip: number, topic?: string, payloadId?: string) => {
     const service = await authStore.getApiService('events')
     const cleanedParams = Object.fromEntries(
       Object.entries({
         limit,
         skip,
         topic,
+        payload_id: payloadId,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),

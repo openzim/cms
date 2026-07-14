@@ -8,6 +8,15 @@
       <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
     </div>
 
+    <!-- Background event polling indicator -->
+    <div
+      v-if="dataLoaded && title && backgroundEventPolling"
+      class="d-flex align-center justify-center ga-2 py-2 mb-2"
+    >
+      <v-progress-circular indeterminate size="18" width="2" />
+      <span class="text-body-2 text-medium-emphasis">{{ backgroundEventMessage }}</span>
+    </div>
+
     <div v-if="dataLoaded && title">
       <v-tabs
         v-model="currentTab"
@@ -468,9 +477,12 @@ import { useCollectionsStore } from '@/stores/collections'
 import { useAuthStore } from '@/stores/auth'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useTitleHistoryStore } from '@/stores/titleHistory'
+import { useEventStore } from '@/stores/event'
+import constants from '@/constants'
 import type { Title, TitleUpdate } from '@/types/title'
 import type { Book, BookStatus, ZimUrl } from '@/types/book'
 import type { CollectionLight } from '@/types/collections'
+import type { EventLight } from '@/types/event'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -488,6 +500,7 @@ const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 const offlinerStore = useZimfarmOfflinerStore()
 const titleHistoryStore = useTitleHistoryStore()
+const eventStore = useEventStore()
 
 const { smAndDown } = useDisplay()
 
@@ -498,6 +511,59 @@ const loadingUrls = ref(false)
 const loadingHistory = ref<boolean>(false)
 const zimUrls = ref<Record<string, ZimUrl[]>>({})
 const latestBook = ref<Book | null>(null)
+
+// Background event polling state
+const backgroundEventPolling = ref(false)
+const backgroundEventMessage = ref('')
+let backgroundPollingIntervalId: ReturnType<typeof setInterval> | null = null
+let trackedEventId: string | null = null
+
+const startBackgroundEventPolling = async () => {
+  if (backgroundPollingIntervalId) return
+
+  const initialEvents = await eventStore.fetchEvents(1, 0, 'title_modified', title.value?.id)
+  if (!initialEvents || initialEvents.length === 0) {
+    return
+  }
+
+  trackedEventId = initialEvents[0].id
+
+  backgroundEventPolling.value = true
+  backgroundEventMessage.value =
+    'Background event to process title modification is in progress... Status will update automatically.'
+
+  backgroundPollingIntervalId = setInterval(async () => {
+    const events = await eventStore.fetchEvents(1, 0, 'title_modified', title.value?.id)
+
+    if (!events || events.length === 0) {
+      stopBackgroundEventPolling()
+      notificationStore.showSuccess(
+        'Background event to process title modification has completed successfully.',
+      )
+      return
+    }
+
+    // Check if our tracked event ID is still present
+    const eventStillExists = events.some((e: EventLight) => e.id === trackedEventId)
+    if (!eventStillExists) {
+      trackedEventId = events[0].id
+      notificationStore.showSuccess(
+        'Background event to process title modification has completed successfully.',
+      )
+      backgroundEventMessage.value =
+        'Background event process title modification is in progress... Status will update automatically.'
+    }
+  }, constants.BACKGROUND_EVENT_POLL_INTERVAL)
+}
+
+const stopBackgroundEventPolling = () => {
+  if (backgroundPollingIntervalId) {
+    clearInterval(backgroundPollingIntervalId)
+    backgroundPollingIntervalId = null
+  }
+  backgroundEventPolling.value = false
+  trackedEventId = null
+}
 
 // Edit form state
 const titleFormRef = ref<InstanceType<typeof TitleForm>>()
@@ -816,6 +882,10 @@ onMounted(async () => {
   await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
 
+  if (title.value) {
+    startBackgroundEventPolling()
+  }
+
   // Redirect to details if trying to access restricted tabs without permission
   if (props.selectedTab !== 'details' && !canEditTitle.value) {
     router.push({ name: 'title-detail', params: { id: props.id } })
@@ -837,6 +907,7 @@ onMounted(async () => {
 onUnmounted(() => {
   // Clear recipe history to prevent accumulation of history items
   titleHistoryStore.clearHistory()
+  stopBackgroundEventPolling()
 })
 
 // Watch for tab changes
