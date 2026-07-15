@@ -166,7 +166,7 @@ interface Props {
   loadingText?: string
   filters?: {
     name: string
-    location_kind: string
+    status: string
     flag: string
   }
   isServerSide?: boolean
@@ -182,7 +182,7 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   errors: () => [],
   loadingText: 'Fetching books...',
-  filters: () => ({ name: '', location_kind: '', flag: '' }),
+  filters: () => ({ name: '', status: 'active', flag: '' }),
   isServerSide: true,
   showUrls: false,
   loadingUrls: false,

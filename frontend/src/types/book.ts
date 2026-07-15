@@ -1,5 +1,9 @@
 export type LocationKind = 'quarantine' | 'staging' | 'prod' | 'to_delete' | 'deleted'
 
+export type BookStatus = 'active' | 'deleted' | 'to_delete' | 'all'
+
+export const ACTIVE_LOCATION_KINDS: LocationKind[] = ['quarantine', 'staging', 'prod']
+
 export type BookPromotionActionKind =
   | 'unknown_languages'
   | 'zimcheck_issues'

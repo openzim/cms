@@ -15,14 +15,12 @@
         </v-col>
         <v-col cols="12" sm="6" md="4">
           <v-select
-            v-model="localFilters.location_kind"
-            label="Location"
-            :items="formattedLocationKindOptions"
-            placeholder="Select location kind"
+            v-model="localFilters.status"
+            label="Status"
+            :items="statusOptions"
             variant="outlined"
             density="compact"
             hide-details
-            clearable
             @update:model-value="emitFilters"
           />
         </v-col>
@@ -87,17 +85,15 @@ import { computed, ref, watch } from 'vue'
 interface Props {
   filters: {
     name: string
-    location_kind: string
+    status: string
     flag: string
     offliner: string
     issue: string
   }
-  locationKindOptions?: string[]
   offlinerOptions?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  locationKindOptions: () => [],
   offlinerOptions: () => [],
 })
 
@@ -106,7 +102,7 @@ const emit = defineEmits<{
   filtersChanged: [
     filters: {
       name: string
-      location_kind: string
+      status: string
       flag: string
       offliner: string
       issue: string
@@ -118,7 +114,7 @@ const emit = defineEmits<{
 // Local filters state
 const localFilters = ref({
   name: props.filters.name,
-  location_kind: props.filters.location_kind,
+  status: props.filters.status,
   flag: props.filters.flag,
   offliner: props.filters.offliner,
   issue: props.filters.issue,
@@ -130,7 +126,7 @@ watch(
   (newFilters) => {
     localFilters.value = {
       name: newFilters.name,
-      location_kind: newFilters.location_kind,
+      status: newFilters.status,
       flag: newFilters.flag,
       offliner: newFilters.offliner,
       issue: newFilters.issue,
@@ -138,19 +134,21 @@ watch(
   },
 )
 
-const formattedLocationKindOptions = computed(() => {
-  return props.locationKindOptions.map((option) => ({
-    title: option.charAt(0).toUpperCase() + option.slice(1),
-    value: option,
-  }))
-})
-
 const formattedOfflinerOptions = computed(() => {
   return props.offlinerOptions.map((option) => ({
     title: option,
     value: option,
   }))
 })
+
+const statusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Quarantine', value: 'quarantine' },
+  { title: 'Staging', value: 'staging' },
+  { title: 'To Be Deleted', value: 'to_delete' },
+  { title: 'Deleted', value: 'deleted' },
+  { title: 'All', value: 'all' },
+]
 
 const flagOptions = [
   { title: 'Needs File Operation', value: 'needs_file_operation' },
@@ -171,18 +169,17 @@ const issueOptions = [
 const hasActiveFilters = computed(() => {
   return (
     props.filters.name.length > 0 ||
-    props.filters.location_kind.length > 0 ||
+    props.filters.status !== 'active' ||
     props.filters.flag?.length > 0 ||
     props.filters.offliner.length > 0 ||
     props.filters.issue?.length > 0
   )
 })
 
-// Emit filters when they change
 function emitFilters() {
   emit('filtersChanged', {
     name: localFilters.value.name,
-    location_kind: localFilters.value.location_kind,
+    status: localFilters.value.status,
     flag: localFilters.value.flag,
     offliner: localFilters.value.offliner,
     issue: localFilters.value.issue,

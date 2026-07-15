@@ -284,9 +284,19 @@
                     <div class="text-subtitle-2">Books</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <v-row v-if="title.books.length > 0">
+                    <v-select
+                      v-model="bookStatusFilter"
+                      label="Book Status"
+                      :items="bookStatusOptions"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="my-3 my-md-0 mb-md-3"
+                      style="max-width: 250px"
+                    />
+                    <v-row v-if="filteredBooks.length > 0">
                       <v-col
-                        v-for="book in sortedBooks"
+                        v-for="book in filteredBooks"
                         :key="book.id"
                         cols="12"
                         sm="12"
@@ -459,7 +469,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import { useTitleHistoryStore } from '@/stores/titleHistory'
 import type { Title, TitleUpdate } from '@/types/title'
-import type { Book, ZimUrl } from '@/types/book'
+import type { Book, BookStatus, ZimUrl } from '@/types/book'
 import type { CollectionLight } from '@/types/collections'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -501,6 +511,15 @@ const collections = ref<CollectionLight[]>([])
 const showConfirmDialog = ref(false)
 const pendingComment = ref('')
 const pendingUpdatePayload = ref<Partial<TitleUpdate> | null>(null)
+
+const bookStatusFilter = ref<BookStatus>('active')
+
+const bookStatusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Deleted', value: 'deleted' },
+  { title: 'To Be Deleted', value: 'to_delete' },
+  { title: 'All', value: 'all' },
+]
 
 const titleDifferences = computed(() => {
   if (!(title.value && pendingUpdatePayload.value)) return undefined
@@ -567,13 +586,23 @@ const sortedBooks = computed(() => {
   )
 })
 
+const filteredBooks = computed(() => {
+  if (bookStatusFilter.value === 'all') return sortedBooks.value
+  if (bookStatusFilter.value === 'deleted')
+    return sortedBooks.value.filter((b) => b.location_kind === 'deleted')
+  if (bookStatusFilter.value === 'to_delete')
+    return sortedBooks.value.filter((b) => b.location_kind === 'to_delete')
+  // active: exclude deleted and to_delete
+  return sortedBooks.value.filter((b) => !['deleted', 'to_delete'].includes(b.location_kind))
+})
+
 const loadLatestBook = async () => {
   if (!title.value?.books || title.value.books.length === 0) {
     latestBook.value = null
     return
   }
 
-  const latestBookId = sortedBooks.value[0]?.id
+  const latestBookId = filteredBooks.value[0]?.id
   if (!latestBookId) {
     latestBook.value = null
     return

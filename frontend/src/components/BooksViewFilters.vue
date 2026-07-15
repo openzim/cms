@@ -29,14 +29,12 @@
         </v-col>
         <v-col cols="12" sm="6" md="4">
           <v-select
-            v-model="localFilters.location_kind"
-            label="Location"
-            :items="formattedLocationKindOptions"
-            placeholder="Select location kind"
+            v-model="localFilters.status"
+            label="Status"
+            :items="statusOptions"
             variant="outlined"
             density="compact"
             hide-details
-            clearable
             @update:model-value="emitFilters"
           />
         </v-col>
@@ -63,15 +61,13 @@ interface Props {
   filters: {
     name: string
     flavour: string
-    location_kind: string
+    status: string
   }
-  locationKindOptions?: string[]
   flavourOptions?: string[]
   loadingFlavours?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  locationKindOptions: () => ['quarantine', 'staging', 'prod'],
   flavourOptions: () => [],
   loadingFlavours: false,
 })
@@ -82,7 +78,7 @@ const emit = defineEmits<{
     filters: {
       name: string
       flavour: string
-      location_kind: string
+      status: string
     },
   ]
   clearFilters: []
@@ -92,7 +88,7 @@ const emit = defineEmits<{
 const localFilters = ref({
   name: props.filters.name,
   flavour: props.filters.flavour,
-  location_kind: props.filters.location_kind,
+  status: props.filters.status,
 })
 
 // Watch for prop changes and update local state
@@ -102,17 +98,10 @@ watch(
     localFilters.value = {
       name: newFilters.name,
       flavour: newFilters.flavour,
-      location_kind: newFilters.location_kind,
+      status: newFilters.status,
     }
   },
 )
-
-const formattedLocationKindOptions = computed(() => {
-  return props.locationKindOptions.map((option) => ({
-    title: option.charAt(0).toUpperCase() + option.slice(1),
-    value: option,
-  }))
-})
 
 const formattedFlavourOptions = computed(() => {
   return props.flavourOptions.map((option) => ({
@@ -121,11 +110,21 @@ const formattedFlavourOptions = computed(() => {
   }))
 })
 
+const statusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Quarantine', value: 'quarantine' },
+  { title: 'Staging', value: 'staging' },
+  { title: 'Published', value: 'prod' },
+  { title: 'To Be Deleted', value: 'to_delete' },
+  { title: 'Deleted', value: 'deleted' },
+  { title: 'All', value: 'all' },
+]
+
 const hasActiveFilters = computed(() => {
   return (
     props.filters.name.length > 0 ||
     props.filters.flavour.length > 0 ||
-    props.filters.location_kind.length > 0
+    props.filters.status !== 'active'
   )
 })
 
@@ -134,7 +133,7 @@ function emitFilters() {
   emit('filtersChanged', {
     name: localFilters.value.name,
     flavour: localFilters.value.flavour,
-    location_kind: localFilters.value.location_kind,
+    status: localFilters.value.status,
   })
 }
 
