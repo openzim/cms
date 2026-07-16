@@ -706,14 +706,65 @@ def test_promotion_actions_ready_for_prod(
     assert len(actions) == 0
 
 
-def test_apply_actions_no_actions_raises_error(
+def test_promote_book_with_no_actions_move_directly_to_prod(
     dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    illustration_48x48_at_1: str,
+    account: Account,
 ):
-    """Providing an empty actions list raises ValueError."""
-    with pytest.raises(ValueError, match=r"At least one action"):
-        apply_book_promotion_actions(
-            dbsession, book_id=uuid4(), actions=[], author_id=uuid4()
-        )
+    """Test applying empty actions on a book with no issues simply moves book to prod"""
+    warehouse = create_warehouse()
+
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+    )
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi"],
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    title.maturity = "stable"
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    create_collection_title(title=title)
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 0
+    assert book.location_kind == "quarantine"
+
+    apply_book_promotion_actions(
+        dbsession, book_id=book.id, actions=[], author_id=account.id
+    )
+    assert book.location_kind == "prod"
 
 
 def test_apply_actions_duplicate_actions_raises_error(
