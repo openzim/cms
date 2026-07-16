@@ -19,6 +19,7 @@ export interface TitleFlavour {
   flavour: string
   recipe_id: string | null
   recipe_link: string | null
+  recipe_api_link: string | null
 }
 
 export interface TitleLight {

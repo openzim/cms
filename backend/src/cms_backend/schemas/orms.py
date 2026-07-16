@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import Field, computed_field
 
-from cms_backend.context import Context
+from cms_backend import construct_recipe_api_link, construct_recipe_link
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import NotEmptyString
 
@@ -24,9 +24,12 @@ class TitleFlavourSchema(BaseModel):
     @computed_field
     @property
     def recipe_link(self) -> str | None:
-        if self.recipe_id is None:
-            return None
-        return f"{Context.zimfarm_api_url}/recipes/{self.recipe_id}"
+        return construct_recipe_link(self.recipe_id)
+
+    @computed_field
+    @property
+    def recipe_api_link(self) -> str | None:
+        return construct_recipe_api_link(self.recipe_id)
 
 
 class TitleLightSchema(BaseModel):
@@ -181,9 +184,7 @@ class BookFullSchema(BookLightSchema):
     @computed_field
     @property
     def recipe_link(self) -> str | None:
-        if self.recipe_id is None:
-            return None
-        return f"{Context.zimfarm_api_url}/recipes/{self.recipe_id}"
+        return construct_recipe_link(self.recipe_id)
 
 
 class BookHistorySchema(BaseModel):

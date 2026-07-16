@@ -135,6 +135,10 @@ class Context:
         _validate_regex(os.getenv("ZIMCHECK_SCRAPERS_WHITELIST_REGEX"))
     )
 
+    zimfarm_url: str = field(
+        default=os.getenv("ZIMFARM_URL", "https://farm.openzim.org")
+    )
+
     zimfarm_api_url: str = field(
         default=os.getenv("ZIMFARM_API_URL", "https://api.farm.openzim.org/v2")
     )
