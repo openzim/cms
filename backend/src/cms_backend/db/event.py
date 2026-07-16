@@ -44,7 +44,12 @@ def delete_event(session: OrmSession, event_id: UUID):
 
 
 def get_events(
-    session: OrmSession, *, skip: int, limit: int, topic: str | None = None
+    session: OrmSession,
+    *,
+    skip: int,
+    limit: int,
+    topic: str | None = None,
+    payload_id: str | None = None,
 ) -> ListResult[EventLightSchema]:
     """Get a list of events."""
     stmt = (
@@ -57,6 +62,7 @@ def get_events(
         .where(
             (Event.topic.ilike(f"%{topic if topic is not None else ''}%"))
             | (topic is None),
+            (Event.payload["id"].astext == payload_id) | (payload_id is None),
         )
         .offset(skip)
         .limit(limit)

@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
@@ -17,6 +18,7 @@ class EventsGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
     topic: NotEmptyString | None = None
+    payload_id: UUID | None = None
 
 
 @router.get("")
@@ -27,7 +29,11 @@ def get_events(
     """Get a list of events"""
 
     results = db_get_events(
-        session, skip=params.skip, limit=params.limit, topic=params.topic
+        session,
+        skip=params.skip,
+        limit=params.limit,
+        topic=params.topic,
+        payload_id=str(params.payload_id) if params.payload_id is not None else None,
     )
     return ListResponse[EventLightSchema](
         meta=calculate_pagination_metadata(
