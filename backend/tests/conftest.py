@@ -23,6 +23,7 @@ from cms_backend.db.models import (
     CollectionTitle,
     Event,
     Title,
+    TitleFlavour,
     TitleHistory,
     Warehouse,
     ZimfarmNotification,
@@ -138,6 +139,9 @@ def create_book(
             date=date,
             flavour=_flavour,
             zimfarm_notification=zimfarm_notification,
+            recipe_id=UUID(zimfarm_notification.content["recipe_id"])
+            if zimfarm_notification and zimfarm_notification.content.get("recipe_id")
+            else None,
         )
         book.title_id = title_id
         book.location_kind = location_kind
@@ -186,6 +190,7 @@ def create_title(
         relation: str | None = None,
         source: str | None = None,
         flavours: list[str] | None = None,
+        recipe_id: UUID | None = None,
     ) -> Title:
         db_title = Title(
             name=name,
@@ -200,8 +205,15 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
         )
+        if flavours:
+            for flavour in flavours:
+                title_flavour = TitleFlavour(
+                    flavour=flavour,
+                    recipe_id=recipe_id,
+                )
+                title_flavour.title = db_title
+                dbsession.add(title_flavour)
         history_entry = TitleHistory(
             name=name,
             title=title,
@@ -215,7 +227,10 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
-            flavours=flavours if flavours is not None else [],
+            flavours=[
+                {"flavour": tf.flavour, "recipe_id": str(tf.recipe_id)}
+                for tf in db_title.flavours
+            ],
             comment="Initial history entry",
         )
         history_entry.author_id = account.id

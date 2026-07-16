@@ -101,9 +101,33 @@
                         "
                         :title="getSyntheticTitle(index)"
                         :in-dialog="true"
-                        :flavours="availableFlavours"
                         :collections="collections"
                       />
+                      <div v-if="actionData[index].flavours?.length">
+                        <v-divider class="my-4" />
+                        <h3 class="text-h6 mb-3">Flavours</h3>
+                        <div
+                          v-for="(tf, idx) in actionData[index].flavours"
+                          :key="idx"
+                          class="mb-2"
+                        >
+                          <div class="d-flex align-center ga-2">
+                            <v-chip size="small" label color="primary" variant="tonal">
+                              {{ tf.flavour }}
+                            </v-chip>
+                          </div>
+                          <a
+                            v-if="tf.recipe_link"
+                            :href="tf.recipe_link"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-primary text-decoration-none text-body-2 ml-2 mt-1 d-inline-block"
+                          >
+                            <v-icon size="x-small" class="mr-1">mdi-open-in-new</v-icon>
+                            View recipe on Zimfarm
+                          </a>
+                        </div>
+                      </div>
                     </template>
 
                     <!-- update_title_metadata -->
@@ -182,15 +206,6 @@
                       />
                     </template>
 
-                    <!-- update_title_flavours -->
-                    <template v-else-if="action.kind === 'update_title_flavours'">
-                      <TitleFlavoursField
-                        :model-value="actionData[index].flavours"
-                        @update:model-value="actionData[index].flavours = $event"
-                        :available-flavours="availableFlavours"
-                      />
-                    </template>
-
                     <!-- restore_title: read-only -->
                     <template v-else-if="action.kind === 'restore_title'">
                       <div class="text-body-2">
@@ -204,6 +219,41 @@
                         >
                           {{ name }}
                         </v-chip>
+                      </div>
+                    </template>
+
+                    <!-- create_title_flavour -->
+                    <template v-else-if="action.kind === 'create_title_flavour'">
+                      <div class="text-body-2">
+                        <strong>Flavour to add:</strong>
+                        <v-chip size="small" class="ml-1" label color="primary" variant="tonal">
+                          {{ actionData[index].flavour }}
+                        </v-chip>
+                      </div>
+                      <div v-if="actionData[index].recipe_link" class="text-body-2 mt-2">
+                        <a
+                          :href="actionData[index].recipe_link"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary"
+                        >
+                          <v-icon size="small" class="mr-1">mdi-open-in-new</v-icon>
+                          View recipe on Zimfarm
+                        </a>
+                      </div>
+                    </template>
+
+                    <template v-else-if="action.kind === 'update_flavour_recipe'">
+                      <div v-if="actionData[index].recipe_link" class="text-body-2">
+                        <a
+                          :href="actionData[index].recipe_link"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary"
+                        >
+                          <v-icon size="small" class="mr-1">mdi-open-in-new</v-icon>
+                          View new recipe on Zimfarm
+                        </a>
                       </div>
                     </template>
                   </div>
@@ -291,7 +341,6 @@
 </template>
 
 <script setup lang="ts">
-import TitleFlavoursField from '@/components/TitleFlavoursField.vue'
 import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
@@ -314,7 +363,6 @@ import { computed, inject, ref, watch } from 'vue'
 interface Props {
   modelValue: boolean
   book: Book | null
-  availableFlavours: string[]
   collections: CollectionLight[]
 }
 
@@ -418,14 +466,24 @@ const titleDiffs = computed(() => {
         next = { collections: data.collection_titles ?? [] }
         break
       }
-      case 'update_title_flavours': {
-        current = { flavours: existingTitle.value!.flavours }
-        next = { flavours: data.flavours ?? [] }
-        break
-      }
       case 'restore_title': {
         current = { archived: existingTitle.value!.archived }
         next = { archived: false }
+        break
+      }
+      case 'create_title_flavour': {
+        const existingFlavours = existingTitle.value!.flavours.map((f) => f.flavour)
+        const newFlavour = data.flavour as string
+        current = { flavours: existingFlavours }
+        next = { flavours: [...existingFlavours, newFlavour] }
+        break
+      }
+      case 'update_flavour_recipe': {
+        const existingFlavour = existingTitle.value!.flavours.find(
+          (f) => f.flavour === props.book?.flavour,
+        )
+        current = { recipe_id: existingFlavour?.recipe_id ?? null }
+        next = { recipe_id: data.recipe_id }
         break
       }
       default:
@@ -451,8 +509,9 @@ const DIFFABLE_ACTION_KINDS = [
   'update_title_metadata',
   'update_title_maturity',
   'set_title_collections',
-  'update_title_flavours',
   'restore_title',
+  'create_title_flavour',
+  'update_flavour_recipe',
 ] as const
 
 function isDiffableAction(kind: string): boolean {
@@ -484,7 +543,7 @@ function getSyntheticTitle(index: number): Title {
     license: null,
     relation: null,
     source: null,
-    flavours: data.flavours || [],
+    flavours: [],
     events: [],
     books: [],
     collections: [],

@@ -7,8 +7,14 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
-from cms_backend.db.models import Book, BookLocation, Collection, CollectionTitle, Title
-from cms_backend.db.rules import has_flavour_mismatch
+from cms_backend.db.models import (
+    Book,
+    BookLocation,
+    Collection,
+    CollectionTitle,
+    Title,
+    TitleFlavour,
+)
 from cms_backend.schemas.models import (
     BookLanguagesSchema,
     GetBooksSchema,
@@ -39,7 +45,6 @@ def get_books(
         Book.date,
         Book.flavour,
         Book.issues,
-        Title.flavours,
         Book.zim_metadata["Scraper"].astext.label("scraper"),
     ).join(Title, Book.title_id == Title.id, isouter=True)
 
@@ -162,9 +167,6 @@ def get_books(
                 date=date,
                 flavour=flavour,
                 issues=book_issues,
-                has_flavour_mismatch=has_flavour_mismatch(flavour, title_flavours)
-                if title_flavours is not None
-                else False,
                 offliner=scraper,
             )
             for (
@@ -181,7 +183,6 @@ def get_books(
                 date,
                 flavour,
                 book_issues,
-                title_flavours,
                 scraper,
             ) in session.execute(
                 stmt.offset(params.skip).limit(params.limit).order_by(*order_clauses)
@@ -471,14 +472,14 @@ def get_book_languages(session: OrmSession) -> BookLanguagesSchema:
     return BookLanguagesSchema(languages=sorted(languages))
 
 
-def get_book_flavours(session: OrmSession) -> ListResult[str]:
+def get_book_flavours(
+    session: OrmSession, *, title_id: UUID | None = None
+) -> ListResult[str]:
     """Get a list of book flavours"""
-    stmt = (
-        select(Book.flavour)
-        .distinct()
-        .order_by(Book.flavour)
-        .where(Book.flavour.isnot(None))
-    )
+    stmt = select(TitleFlavour.flavour).distinct().order_by(TitleFlavour.flavour)
+    if title_id is not None:
+        stmt = stmt.where(TitleFlavour.title_id == title_id)
+
     return ListResult[str](
         nb_records=count_from_stmt(session, stmt),
         records=list(session.scalars(stmt).all()),

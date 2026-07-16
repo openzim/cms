@@ -3,6 +3,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from faker import Faker
@@ -11,6 +12,8 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db.book import (
     backup_book,
+    book_has_flavour_mismatch,
+    book_has_recipe_issue,
     get_book_history,
     get_book_history_entry_or_none,
     get_book_metadata_issues,
@@ -30,10 +33,10 @@ from cms_backend.db.models import (
     BookLocation,
     Collection,
     Title,
+    TitleFlavour,
     Warehouse,
     ZimfarmNotification,
 )
-from cms_backend.db.rules import has_flavour_mismatch
 from cms_backend.schemas.models import BookUpdateSchema
 from cms_backend.utils.datetime import getnow
 
@@ -367,9 +370,61 @@ def test_update_book_flavour_mismatch_issues(
     ],
 )
 def test_has_flavour_mismatch(
-    book_flavour: str, title_flavours: list[str], *, expected: bool
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    book_flavour: str,
+    title_flavours: list[str],
+    *,
+    expected: bool,
 ):
-    assert has_flavour_mismatch(book_flavour, title_flavours) is expected
+    book = create_book(flavour=book_flavour)
+    title = create_title(flavours=title_flavours)
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+    assert book_has_flavour_mismatch(book) is expected
+
+
+def test_book_has_recipe_issue(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    notification = create_zimfarm_notification(content={"recipe_id": str(uuid4())})
+    title = create_title()
+    tf = TitleFlavour(
+        flavour="maxi",
+        recipe_id=uuid4(),
+    )
+    dbsession.add(tf)
+    tf.title = title
+    book = create_book(zimfarm_notification=notification, flavour="maxi")
+    book.title = title
+    dbsession.flush()
+    assert book_has_recipe_issue(book) is True
+
+
+def test_book_has_no_recipe_issue(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    recipe_id = uuid4()
+    notification = create_zimfarm_notification(content={"recipe_id": str(recipe_id)})
+    title = create_title()
+    tf = TitleFlavour(
+        flavour="maxi",
+        recipe_id=recipe_id,
+    )
+    dbsession.add(tf)
+    tf.title = title
+    book = create_book(zimfarm_notification=notification, flavour="maxi")
+    book.title = title
+    dbsession.flush()
+    assert book_has_recipe_issue(book) is False
 
 
 def test_backup_book_success(

@@ -3,8 +3,11 @@ from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
 
-from cms_backend.api.routes.fields import NotEmptyString
+from pydantic import Field, computed_field
+
+from cms_backend.context import Context
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import NotEmptyString
 
 T = TypeVar("T")
 
@@ -12,6 +15,11 @@ T = TypeVar("T")
 class ListResult[T](BaseModel):
     nb_records: int
     records: list[T]
+
+
+class TitleFlavourSchema(BaseModel):
+    flavour: str
+    recipe_id: UUID | None
 
 
 class TitleLightSchema(BaseModel):
@@ -33,7 +41,6 @@ class TitleLightSchema(BaseModel):
     license: str | None
     relation: str | None
     source: str | None
-    flavours: list[str]
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -53,6 +60,7 @@ class TitleFullSchema(TitleLightSchema):
     events: list[str]
     books: list["BookLightSchema"]
     collections: list["TitleCollectionSchema"]
+    flavours: list[TitleFlavourSchema]
 
 
 class TitleHistorySchema(TitleLightSchema):
@@ -65,6 +73,7 @@ class TitleHistorySchema(TitleLightSchema):
     author: str
     collections: list[BaseTitleCollectionSchema]
     created_at: datetime
+    flavours: list[TitleFlavourSchema]
 
 
 class CollectionLightSchema(BaseModel):
@@ -136,7 +145,6 @@ class BookLightSchema(BaseModel):
     flavour: str
     issues: list[str]
     offliner: str | None
-    has_flavour_mismatch: bool
 
 
 class ZimcheckSummarySchema(BaseModel):
@@ -161,6 +169,14 @@ class BookFullSchema(BookLightSchema):
     has_backup: bool
     zimcheck_summary: ZimcheckSummarySchema | None
     zimcheck_s3_deleted: bool
+    recipe_id: UUID | None = Field(exclude=True)
+
+    @computed_field
+    @property
+    def recipe_link(self) -> str | None:
+        if self.recipe_id is None:
+            return None
+        return f"{Context.zimfarm_api_url}/recipes/{self.recipe_id}"
 
 
 class BookHistorySchema(BaseModel):

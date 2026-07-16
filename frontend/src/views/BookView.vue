@@ -100,7 +100,7 @@
       </v-alert>
 
       <v-alert
-        v-if="book.has_flavour_mismatch"
+        v-if="book.issues.includes('flavour mismatch')"
         type="warning"
         variant="tonal"
         class="my-2"
@@ -111,7 +111,7 @@
             <div class="font-weight-bold mb-1">Flavour Mismatch</div>
             <div>
               This book's flavour is not in the list of flavours expected by the title. Consider
-              updating the book flavour or title expected flavours to maintain consistency.
+              updating the book flavour or promote book to maintain consistency.
             </div>
           </div>
           <v-btn
@@ -122,18 +122,6 @@
             @click="currentTab = 'edit'"
           >
             Edit Book
-          </v-btn>
-          <v-btn
-            v-if="canEditBookTitle"
-            variant="outlined"
-            color="warning"
-            size="small"
-            :to="{
-              name: 'title-detail-tab',
-              params: { id: book.title_id, selectedTab: 'edit' },
-            }"
-          >
-            Edit Title
           </v-btn>
         </div>
       </v-alert>
@@ -232,6 +220,21 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Recipe</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <span v-if="book.recipe_link">
+                      <a :href="book.recipe_link" target="_blank">
+                        View in Zimfarm <v-icon size="small">mdi-open-in-new</v-icon>
+                      </a>
+                    </span>
+                    <span v-else class="text-grey">None</span>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Status</div>
                   </v-col>
                   <v-col cols="12" md="9">
@@ -322,14 +325,6 @@
                         book.flavour == '' ? 'Empty' : book.flavour
                       }}</span>
                       <span v-else class="text-grey">-</span>
-                      <v-tooltip v-if="book.has_flavour_mismatch" location="top">
-                        <template #activator="{ props: tooltipProps }">
-                          <v-icon v-bind="tooltipProps" color="warning" size="small" class="ml-2">
-                            mdi-alert
-                          </v-icon>
-                        </template>
-                        <span>Book flavour does not match title flavours</span>
-                      </v-tooltip>
                     </div>
                   </v-col>
                 </v-row>
@@ -639,7 +634,6 @@
     <TitleFormDialog
       v-model="createTitleDialogOpen"
       :title="titleDataFromBook"
-      :available-flavours="flavours"
       :collections="collections"
       @created="handleTitleCreated"
     />
@@ -726,7 +720,6 @@
       v-if="book"
       v-model="promoteDialogOpen"
       :book="book"
-      :available-flavours="flavours"
       :collections="collections"
       @promoted="handleBookPromoted"
     />
@@ -890,14 +883,6 @@ const canDeleteBook = computed(() => {
   )
 })
 
-const canEditBookTitle = computed(() => {
-  if (!book.value) return false
-
-  return (
-    authStore.hasPermission('title', 'update') && book.value.title_id && !book.value.title_archived
-  )
-})
-
 const canRecoverBook = computed(() => {
   if (!book.value) return false
 
@@ -1005,7 +990,7 @@ const titleDataFromBook = computed<Title | null>(() => {
     license: (metadata.License as string | null | undefined) || null,
     relation: (metadata.Relation as string | null | undefined) || null,
     source: (metadata.Source as string | null | undefined) || null,
-    flavours: book.value.flavour != null ? [book.value.flavour] : [],
+    flavours: [],
     events: [],
     books: [],
     collections: [],
@@ -1156,9 +1141,6 @@ const openAddToTitleDialog = () => {
 }
 
 const openCreateTitleDialog = async () => {
-  if (flavours.value.length == 0) {
-    await fetchFlavours()
-  }
   if (collections.value.length == 0) {
     await fetchCollections()
   }
@@ -1166,12 +1148,16 @@ const openCreateTitleDialog = async () => {
 }
 
 async function fetchFlavours() {
+  loadingFlavours.value = true
   try {
-    await bookStore.fetchBookFlavours()
-    flavours.value = bookStore.flavours
+    const fetchedFlavours = await bookStore.fetchBookFlavours(book.value?.title_id)
+    if (fetchedFlavours) {
+      flavours.value = fetchedFlavours
+    }
   } catch (err) {
     console.error('Failed to fetch flavours', err)
   }
+  loadingFlavours.value = false
 }
 
 async function fetchCollections() {
@@ -1236,9 +1222,6 @@ const handleRemoveBookBackup = async () => {
 }
 
 const openPromoteDialog = async () => {
-  if (flavours.value.length == 0) {
-    await fetchFlavours()
-  }
   if (collections.value.length == 0) {
     await fetchCollections()
   }
@@ -1382,12 +1365,7 @@ watch(
     )
 
     if (newTab === 'edit' && book.value && flavours.value.length == 0) {
-      loadingFlavours.value = true
-      const fetchedFlavours = await bookStore.fetchBookFlavours()
-      if (fetchedFlavours) {
-        flavours.value = Array.from(new Set(['', ...fetchedFlavours]))
-      }
-      loadingFlavours.value = false
+      await fetchFlavours()
     }
   },
 )

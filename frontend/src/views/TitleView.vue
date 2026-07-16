@@ -144,14 +144,14 @@
                   <v-col cols="12" md="9">
                     <div v-if="title.flavours && title.flavours.length > 0">
                       <v-chip
-                        v-for="flavour in title.flavours"
-                        :key="flavour"
+                        v-for="tf in title.flavours"
+                        :key="tf.flavour"
                         size="small"
                         variant="outlined"
                         color="primary"
                         class="mr-2 mb-1"
                       >
-                        {{ flavour == '' ? 'Empty' : flavour }}
+                        {{ tf.flavour == '' ? 'Empty' : tf.flavour }}
                       </v-chip>
                     </div>
                     <span v-else class="text-grey">No flavours set</span>
@@ -374,7 +374,6 @@
                   ref="titleFormRef"
                   :title="title"
                   :latest-book="latestBook"
-                  :flavours="flavours"
                   :collections="collections"
                   @update:valid="formValid = $event"
                   @update:has-changes="hasChanges = $event"
@@ -570,7 +569,6 @@ const titleFormRef = ref<InstanceType<typeof TitleForm>>()
 const formValid = ref(false)
 const hasChanges = ref(false)
 const updating = ref(false)
-const flavours = ref<string[]>([])
 const collections = ref<CollectionLight[]>([])
 
 // Confirmation dialog state
@@ -860,15 +858,6 @@ const handleRevert = async () => {
   await loadData(true, true)
 }
 
-async function fetchFlavours() {
-  try {
-    await bookStore.fetchBookFlavours()
-    flavours.value = bookStore.flavours
-  } catch (err) {
-    console.error('Failed to fetch flavours', err)
-  }
-}
-
 async function fetchCollections() {
   try {
     await collectionsStore.fetchCollections()
@@ -892,9 +881,6 @@ onMounted(async () => {
   }
 
   if (props.selectedTab === 'edit' && title.value) {
-    if (flavours.value.length == 0) {
-      await fetchFlavours()
-    }
     if (collections.value.length == 0) {
       await fetchCollections()
     }
@@ -919,9 +905,6 @@ watch(
     await loadData(newTab == 'edit', newTab === 'history', newTab === 'details')
 
     if (newTab === 'edit' && title.value) {
-      if (flavours.value.length == 0) {
-        await fetchFlavours()
-      }
       if (collections.value.length == 0) {
         await fetchCollections()
       }

@@ -4,11 +4,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db.event import get_events as db_get_events
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.orms import EventLightSchema
 
 router = APIRouter(prefix="/events", tags=["events"])

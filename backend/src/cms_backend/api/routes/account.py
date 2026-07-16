@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
-from cms_backend.api.routes.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.api.routes.http_errors import BadRequestError, ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
@@ -25,6 +24,7 @@ from cms_backend.db.account import update_account_password as db_update_account_
 from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
+from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.models import AccountUpdateSchema
 from cms_backend.schemas.orms import AccountSchema
 from cms_backend.utils import is_valid_uuid

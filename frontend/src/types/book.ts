@@ -13,6 +13,8 @@ export type BookPromotionActionKind =
   | 'update_title_maturity'
   | 'set_title_collections'
   | 'update_title_flavours'
+  | 'create_title_flavour'
+  | 'update_flavour_recipe'
 
 export type BookPromotionRequirement = 'mandatory' | 'optional' | 'information'
 
@@ -54,7 +56,6 @@ export interface BookLight {
   name?: string
   date?: string
   flavour: string
-  has_flavour_mismatch: boolean
 }
 
 export interface Book extends BookLight {
@@ -71,6 +72,7 @@ export interface Book extends BookLight {
   zimcheck_result_url: string | null
   zimcheck_s3_deleted: boolean
   zimcheck_summary: ZimcheckSummary | null
+  recipe_link: string | null
 }
 
 export interface ZimUrl {

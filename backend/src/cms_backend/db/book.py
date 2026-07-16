@@ -14,10 +14,10 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
+from cms_backend.db.flavour import get_title_flavours
 from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
 from cms_backend.db.rules import (
     apply_retention_rules,
-    has_flavour_mismatch,
     title_is_missing_mandatory_metadata,
 )
 from cms_backend.schemas.models import (
@@ -129,9 +129,6 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         current_locations=current_locations,
         target_locations=target_locations,
         title_archived=book.title.archived if book.title else False,
-        has_flavour_mismatch=has_flavour_mismatch(book.flavour, book.title.flavours)
-        if book.title
-        else False,
         has_backup=any(
             current_location.is_backup for current_location in current_locations
         ),
@@ -140,6 +137,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         if book.zimcheck_summary
         else None,
         offliner=book.zim_metadata.get("Scraper"),
+        recipe_id=book.recipe_id,
     )
 
 
@@ -174,6 +172,9 @@ def create_book(
         date=date,
         flavour=flavour,
         zimfarm_notification=zimfarm_notification,
+        recipe_id=UUID(zimfarm_notification.content["recipe_id"])
+        if zimfarm_notification.content.get("recipe_id")
+        else None,
     )
     session.add(book)
     zimfarm_notification.events.append(
@@ -284,12 +285,15 @@ def move_book(
         raise RecordDoesNotExistError(
             f"Book {book_id} does not meet criteria to be moved."
         )
+
     return move_book_to_destination(session, book=book, destination=destination)
 
 
 def move_book_to_destination(
     session: OrmSession, *, book: Book, destination: Literal["staging", "prod"]
 ) -> Book:
+    if not book.title:
+        raise ValueError(f"Book {book.id} has no associated title.")
 
     if book.title and book.title.archived:
         raise ValueError(f"Book title {book.title_id} is currently archived")
@@ -303,12 +307,7 @@ def move_book_to_destination(
     if not current_location:
         raise ValueError(f"Book {book.id} has no current location")
 
-    if not book.title:
-        raise ValueError(f"Book {book.id} has no associated title.")
-
-    if destination == "prod" and has_flavour_mismatch(
-        book.flavour, book.title.flavours
-    ):
+    if destination == "prod" and book_has_flavour_mismatch(book):
         raise ValueError(
             f"Book flavour '{book.flavour}' is not in title expected flavours "
             f"{book.title.flavours}"
@@ -715,6 +714,8 @@ def get_book_issues(
 
     Makes the same assumptions as the update_book_issues function
     """
+    if book.title is None:
+        raise ValueError("Book must have a title in order to compute issues")
     issues: dict[str, list[str]] = {}
     unknown_languages = get_book_unsupported_languages(book)
     if unknown_languages:
@@ -729,11 +730,22 @@ def get_book_issues(
             f"{','.join(different_metadata_keys)}"
         ]
 
-    if has_flavour_mismatch(book.flavour, book.title.flavours):  # pyright: ignore[reportOptionalMemberAccess]
+    if book_has_flavour_mismatch(book):
+        title_flavours = get_title_flavours(book.title)
         issues["flavour mismatch"] = [
             f"book flavour {book.flavour} is not in list of "
-            f"title flavours: {','.join(book.title.flavours)}"  # pyright: ignore[reportOptionalMemberAccess]
+            f"title flavours: {','.join(title_flavours)}"
         ]
+
+    if book.zimfarm_notification and book_has_recipe_issue(book):
+        matching_flavour = next(
+            (tf for tf in book.title.flavours if tf.flavour == book.flavour), None
+        )
+        if matching_flavour:
+            issues["recipe issue"] = [
+                f"book recipe {book.recipe_id} is different from title flavour recipe "
+                f"{matching_flavour.recipe_id}"
+            ]
 
     metadata_issues = get_book_metadata_issues(book)
     if metadata_issues:
@@ -1160,3 +1172,36 @@ def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
     session.flush()
 
     return book
+
+
+def book_has_recipe_issue(book: Book) -> bool:
+    """Check if book has recipe issues."""
+    if book.title is None:
+        raise ValueError("Book must be associated with a title.")
+
+    matching_flavour = next(
+        (tf for tf in book.title.flavours if tf.flavour == book.flavour), None
+    )
+    if matching_flavour is None:
+        return False
+
+    return matching_flavour.recipe_id != book.recipe_id
+
+
+def book_has_flavour_mismatch(
+    book: Book,
+) -> bool:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title.")
+
+    title_flavours = get_title_flavours(book.title)
+
+    # Title has flavours but book has no flavour or flavour not in book flavours
+    if title_flavours and book.flavour not in title_flavours:
+        return True
+
+    # Book has flavour but title has no flavours
+    if book.flavour and not title_flavours:
+        return True
+
+    return False

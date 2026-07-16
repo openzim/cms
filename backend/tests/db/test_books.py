@@ -784,12 +784,15 @@ def test_move_book_with_different_flavor_from_title_to_prod(
 def test_move_book_same_destination_raises_error(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
 ):
     """Test that moving a book to its current location raises an error"""
+    title = create_title()
     warehouse = create_warehouse()
     book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
     book.location_kind = "staging"
     create_book_location(
         book=book,
@@ -809,9 +812,12 @@ def test_move_book_same_destination_raises_error(
 def test_move_book_no_current_location_raises_error(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
 ):
     """Test that moving a book without a current location raises an error"""
+    title = create_title()
     book = create_book(name="test_en_all", date="2024-01")
+    book.title = title
     book.location_kind = "staging"
     dbsession.flush()
 

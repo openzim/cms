@@ -12,7 +12,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pycountry
 import pytest
@@ -53,6 +53,8 @@ VALID_NOTIFICATION_CONTENT: dict[str, Any] = {
     "zimcheck_url": "https://www.example.com/zimcheck.json",
     "folder_name": "test_folder",
     "filename": "test.zim",
+    "recipe_id": str(uuid4()),
+    "recipe_name": "test_en_all",
 }
 
 
@@ -280,8 +282,10 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
     """
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_set_missing_title_metadata_from_book(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -291,6 +295,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         """
         Set title metadata from book because title has no metadata set
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
         # Create title that matches book name
         title = create_title(name="test_en_all")
@@ -317,8 +322,10 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         assert title.language == book.zim_metadata["Language"]
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_preserve_title_metadata(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -329,6 +336,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         """
         Preserve existing title metadata even though book has different metadata
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
         # Create title that matches book name with all metadata matching with book
         # except for language
@@ -462,8 +470,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
     """
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_collection_warehouses(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -473,6 +483,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         create_warehouse: Callable[..., Warehouse],
     ):
         """Valid notification + stable title → book has collection warehouse targets."""
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         title = create_title(name="test_en_all")
@@ -518,8 +529,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_processing is False
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_collection_warehouses_with_empty_folder_name(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -532,6 +545,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Valid notification with empty folder_name + stable title → book has collection
         warehouse targets.
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         title = create_title(name="test_en_all")
@@ -578,8 +592,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_processing is False
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_staging_due_to_diffrent_metadata_from_title(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -593,6 +609,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to staging because there is a metadata mismatch between
         it and it's title
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         # Create title that matches book name with all metadata matching with book
@@ -640,59 +657,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_processing is False
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
-    def test_moves_book_to_staging_due_to_diffrent_flavour_from_title(
-        self,
-        mock_get_zimcheck_errors: MagicMock,
-        dbsession: OrmSession,
-        warehouse: Warehouse,  # noqa: ARG002
-        create_zimfarm_notification: Callable[..., ZimfarmNotification],
-        create_title: Callable[..., Title],
-        create_collection: Callable[..., Collection],
-        create_warehouse: Callable[..., Warehouse],
-    ):
-        """
-        Test that book goes to staging because there is a flavour mismatch between
-        it and it's title
-        """
-        mock_get_zimcheck_errors.return_value = []
-
-        title = create_title(name="test_en_all", flavours=["maxi", "mini"])
-        title.maturity = "stable"
-
-        prod = create_warehouse(
-            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
-        )
-        collection = create_collection(warehouse=prod)
-
-        ct = CollectionTitle(path=Path("wikipedia"))
-        ct.title = title
-        ct.collection = collection
-        dbsession.add(ct)
-        dbsession.flush()
-
-        content = VALID_NOTIFICATION_CONTENT.copy()
-        content["folder_name"] = ""
-
-        notification = create_zimfarm_notification(content=content)
-        dbsession.flush()
-
-        process_notification(dbsession, notification)
-
-        assert notification.status == "processed"
-
-        book = dbsession.query(Book).filter_by(id=notification.id).first()
-        assert book is not None
-        assert book.title_id == title.id
-        assert book.location_kind == "staging"
-        assert len(book.issues) == 1
-        assert set(book.issues) == {"flavour mismatch"}
-        assert book.has_error is False
-        assert book.needs_file_operation is True
-        assert book.needs_processing is False
-
-    @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_staging_due_to_invalid_language(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -704,6 +672,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         """
         Test that book goes to staging because it has an invalid language code
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         title = create_title(name="test_en_all")
@@ -742,8 +711,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_processing is False
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_prod_due_to_invalid_language_code_being_supported(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -757,6 +728,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to prod even though it's language code is invalid
         but supported
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         title = create_title(name="test_en_all")
@@ -798,8 +770,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_processing is False
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_staging_due_to_valid_language_code_being_disallowed(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         mock_get_zimcheck_errors: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
@@ -813,6 +787,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         Test that book goes to staging because there it's language code is disallowed
         even though it's valid
         """
+        mock_book_has_recipe_issue.return_value = False
         mock_get_zimcheck_errors.return_value = []
 
         title = create_title(name="test_en_all")
@@ -854,8 +829,10 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.needs_file_operation is True
         assert book.needs_processing is False
 
+    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_moves_book_to_staging_due_to_zimcheck_errors(
         self,
+        mock_book_has_recipe_issue: MagicMock,
         dbsession: OrmSession,
         warehouse: Warehouse,  # noqa: ARG002
         create_zimfarm_notification: Callable[..., ZimfarmNotification],
@@ -872,6 +849,8 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             "cms_backend.context.Context.zimcheck_scrapers_whitelist_regex",
             re.compile(r"sotoki"),
         )
+
+        mock_book_has_recipe_issue.return_value = False
 
         title = create_title(
             name=VALID_NOTIFICATION_CONTENT["metadata"]["Name"],

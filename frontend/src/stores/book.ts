@@ -237,10 +237,11 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
-  const fetchBookFlavours = async () => {
+  const fetchBookFlavours = async (titleId?: string) => {
     const service = await authStore.getApiService('books')
     try {
-      const response = await service.get<null, ListResponse<string>>('/flavours')
+      const params = titleId ? { title_id: titleId } : {}
+      const response = await service.get<null, ListResponse<string>>('/flavours', { params })
       errors.value = []
       flavours.value = response.items
       return response.items

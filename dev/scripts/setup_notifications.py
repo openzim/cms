@@ -7,14 +7,20 @@ Creates ZimfarmNotification records for testing the mill processor.
 
 from datetime import datetime
 from pathlib import Path
+import urllib.parse
 from uuid import uuid4
 
+from cms_backend.context import get_mandatory_env
 from cms_backend.db import Session
 from cms_backend.db.models import ZimfarmNotification
+from cms_backend.shuttle.delete_zimcheck_s3_results import get_kiwix_storage_client
 
 
 # Base directory where warehouse folders are located (inside container)
 WAREHOUSE_BASE_PATH = Path("/warehouses")
+
+# bucket to upload dummy zimcheck files
+ZIMCHECK_RESULTS_S3_BUCKET_URI = get_mandatory_env("ZIMCHECK_RESULTS_S3_BUCKET_URI")
 
 # Small 48x48 PNG icons encoded as base64 (for Illustration_48x48@1 metadata)
 # These are minimal valid PNGs with solid colors
@@ -42,7 +48,7 @@ NOTIFICATIONS_CONFIG = [
         "media_count": 5000,
         "size": 1024000000,
         "metadata": {
-            "Name": "dev_wikipedia_en_all",
+            "Name": "dev-wikipedia_en_all",
             "Title": "Wikipedia English All Maxi",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -53,14 +59,15 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_BLUE,
         },
         "folder_name": "wikipedia",
-        "filename": "dev_wikipedia_en_all_maxi_2025-01.zim",
+        "filename": "dev-wikipedia_en_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
     },
     {
         "article_count": 500,
         "media_count": 200,
         "size": 50000000,
         "metadata": {
-            "Name": "dev_wiktionary_fr_all",
+            "Name": "dev-wiktionary_fr_all",
             "Title": "Wiktionnaire Francais",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -71,14 +78,15 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_GREEN,
         },
         "folder_name": "wiktionary",
-        "filename": "dev_wiktionary_fr_all_maxi_2025-01.zim",
+        "filename": "dev-wiktionary_fr_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
     },
     {
         "article_count": 1500,
         "media_count": 2020,
         "size": 40000,
         "metadata": {
-            "Name": "dev_wiktionary_en_all",
+            "Name": "dev-wiktionary_en_all",
             "Title": "English Wiktionary",
             "Creator": "openZIM",
             "Publisher": "Kiwix",
@@ -89,14 +97,65 @@ NOTIFICATIONS_CONFIG = [
             "Illustration_48x48@1": FAVICON_RED,
         },
         "folder_name": "",
-        "filename": "dev_wiktionary_en_all_maxi_2025-01.zim",
+        "filename": "dev-wiktionary_en_all_maxi_2025-01.zim",
+        "recipe_id": str(uuid4()),
     },
 ]
+
+
+def generate_http_upload_url(uri: str, filename: str) -> str:
+    """Generate a HTTP(S) URL for HTTP/S3 upload URLs.
+
+    Raises ValueError if upload uri scheme is not HTTP(S) or S3.
+    """
+    url = urllib.parse.urlparse(uri)
+    scheme = url.scheme
+
+    if scheme not in ["http", "https"]:
+        url = urllib.parse.urlparse(uri.replace(url.scheme + ":", "http:"))
+
+    # Handle S3 scheme
+    if scheme in ["s3", "s3+http", "s3+https"]:
+        download_url = f"{url.scheme}://{url.netloc}{url.path}"
+
+        if not download_url.endswith("/"):
+            download_url += "/"
+        # Extract bucketName from query parameters
+        params = urllib.parse.parse_qs(url.query)
+        bucket_name = params.get("bucketName", [None])[0]
+
+        if bucket_name:
+            download_url += bucket_name + "/"
+
+        return download_url + filename
+
+    # For http/https schemes, return full URL with filename
+    if scheme in ["http", "https"]:
+        # Ensure path ends with / before adding filename
+        path = url.path
+        if path and not path.endswith("/"):
+            path += "/"
+        elif not path:
+            path = "/"
+
+        return f"{url.scheme}://{url.netloc}{path}{filename}"
+
+    raise ValueError(f"Unsupported scheme '{scheme}' in URI.")
 
 
 def create_notifications():
     """Create zimfarm notification records and placeholder files."""
     session = Session()
+
+    zimcheck_results_file = Path(__file__).parent / "zimcheck.json"
+    try:
+        upload_uri = urllib.parse.urlparse(ZIMCHECK_RESULTS_S3_BUCKET_URI)
+        Path(upload_uri.path)
+    except Exception as exc:
+        raise ValueError(
+            f"invalid upload URI: `{ZIMCHECK_RESULTS_S3_BUCKET_URI}`"
+        ) from exc
+    s3_client = get_kiwix_storage_client(upload_uri)
 
     created_notifications = []
 
@@ -109,7 +168,7 @@ def create_notifications():
 
             # Check if file already exists in warehouse
             file_path = (
-                WAREHOUSE_BASE_PATH / "dev_hidden/quarantine" / folder_name / filename
+                WAREHOUSE_BASE_PATH / "dev-hidden/quarantine" / folder_name / filename
             )
             if file_path.exists():
                 print(f"  - File already exists at {file_path} (skipping)")
@@ -118,8 +177,11 @@ def create_notifications():
             # Generate random notification ID
             notification_id = uuid4()
 
-            # Set fake zimcheck_url
-            content["zimcheck_url"] = f"https://foo.acme.com/{notification_id}.json"
+            key = f"zimcheck_{notification_id}.json"
+            s3_client.upload_file(zimcheck_results_file, key=key)
+            content["zimcheck_url"] = generate_http_upload_url(
+                ZIMCHECK_RESULTS_S3_BUCKET_URI, key
+            )
 
             # Create notification record
             notification = ZimfarmNotification(
