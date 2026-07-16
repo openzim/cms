@@ -9,30 +9,10 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
+from cms_backend.db import book as db_book
+from cms_backend.db import book_actions as db_book_actions
+from cms_backend.db import books as db_books
 from cms_backend.db import gen_dbsession
-from cms_backend.db.book import backup_book as db_backup_book
-from cms_backend.db.book import (
-    create_book_full_schema,
-    create_book_history_schema,
-)
-from cms_backend.db.book import delete_book as db_delete_book
-from cms_backend.db.book import get_book as db_get_book
-from cms_backend.db.book import get_book_history as db_get_book_history
-from cms_backend.db.book import get_book_history_entry as db_get_book_history_entry
-from cms_backend.db.book import move_book as db_move_book
-from cms_backend.db.book import recover_book as db_recover_book
-from cms_backend.db.book import remove_book_backup as db_remove_book_backup
-from cms_backend.db.book import revert_book as db_revert_book
-from cms_backend.db.book import update_book as db_update_book
-from cms_backend.db.book import update_book_issues as db_update_book_issues
-from cms_backend.db.book_actions import (
-    apply_book_promotion_actions,
-    get_book_promotion_actions,
-)
-from cms_backend.db.books import get_book_flavours as db_get_book_flavours
-from cms_backend.db.books import get_book_languages as db_get_book_languages
-from cms_backend.db.books import get_books as db_get_books
-from cms_backend.db.books import get_zim_urls as db_get_zim_urls
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
@@ -67,7 +47,7 @@ def get_books(
 ) -> ListResponse[BookLightSchema]:
     """Get a list of books"""
 
-    results = db_get_books(session, params=params)
+    results = db_books.get_books(session, params=params)
 
     return ListResponse[BookLightSchema](
         meta=calculate_pagination_metadata(
@@ -85,14 +65,14 @@ def get_zim_urls(
     zim_ids: Annotated[list[UUID], Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ZimUrlsSchema:
-    return db_get_zim_urls(session, zim_ids)
+    return db_books.get_zim_urls(session, zim_ids)
 
 
 @router.get("/languages")
 def get_book_languages(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookLanguagesSchema:
-    return db_get_book_languages(session)
+    return db_books.get_book_languages(session)
 
 
 @router.get("/flavours")
@@ -100,7 +80,7 @@ def get_book_flavours(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     title_id: Annotated[UUID | None, Query()] = None,
 ) -> ListResponse[str]:
-    results = db_get_book_flavours(session, title_id=title_id)
+    results = db_books.get_book_flavours(session, title_id=title_id)
     return ListResponse[str](
         meta=calculate_pagination_metadata(
             nb_records=results.nb_records,
@@ -118,7 +98,9 @@ def get_book(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
     """Get a book by ID"""
-    return create_book_full_schema(db_get_book(session=session, book_id=book_id))
+    return db_book.create_book_full_schema(
+        db_book.get_book(session=session, book_id=book_id)
+    )
 
 
 @router.patch(
@@ -131,8 +113,8 @@ def update_book(
     request: BookUpdateSchema,
     current_account: Account = Depends(get_current_account),
 ) -> BookFullSchema:
-    return create_book_full_schema(
-        db_update_book(
+    return db_book.create_book_full_schema(
+        db_book.update_book(
             session, book_id=book_id, payload=request, author_id=current_account.id
         )
     )
@@ -148,8 +130,8 @@ def delete_book(
     *,
     force_delete: Annotated[bool, Query()] = False,
 ) -> BookFullSchema:
-    return create_book_full_schema(
-        db_delete_book(session, book_id=book_id, force_delete=force_delete)
+    return db_book.create_book_full_schema(
+        db_book.delete_book(session, book_id=book_id, force_delete=force_delete)
     )
 
 
@@ -161,7 +143,9 @@ def recover_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
-    return create_book_full_schema(db_recover_book(session, book_id=book_id))
+    return db_book.create_book_full_schema(
+        db_book.recover_book(session, book_id=book_id)
+    )
 
 
 @router.post(
@@ -173,8 +157,8 @@ def move_book(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     request: BookMoveSchema,
 ) -> BookFullSchema:
-    return create_book_full_schema(
-        db_move_book(session, book_id=book_id, destination=request.destination)
+    return db_book.create_book_full_schema(
+        db_book.move_book(session, book_id=book_id, destination=request.destination)
     )
 
 
@@ -186,7 +170,9 @@ def backup_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
-    return create_book_full_schema(db_backup_book(session, book_id=book_id))
+    return db_book.create_book_full_schema(
+        db_book.backup_book(session, book_id=book_id)
+    )
 
 
 @router.get(
@@ -197,9 +183,9 @@ def get_book_issues(
     book_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
-    book = db_get_book(session, book_id)
+    book = db_book.get_book(session, book_id)
     return JSONResponse(
-        content=db_update_book_issues(session, book),
+        content=db_book.update_book_issues(session, book),
         status_code=HTTPStatus.OK,
     )
 
@@ -224,13 +210,13 @@ def promote_book(
     dry_run: Annotated[bool, Query()] = True,
 ) -> JSONResponse:
     if dry_run:
-        actions = get_book_promotion_actions(session, book_id=book_id)
+        actions = db_book_actions.get_book_promotion_actions(session, book_id=book_id)
         return JSONResponse(
             content={"actions": [action.model_dump(mode="json") for action in actions]},
             status_code=HTTPStatus.OK,
         )
     else:
-        apply_book_promotion_actions(
+        db_book_actions.apply_book_promotion_actions(
             session,
             book_id=book_id,
             author_id=current_account.id,
@@ -252,7 +238,7 @@ def get_book_history(
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[BookHistorySchema]:
-    results = db_get_book_history(session, book_id=book_id, skip=skip, limit=limit)
+    results = db_book.get_book_history(session, book_id=book_id, skip=skip, limit=limit)
     return ListResponse(
         items=results.records,
         meta=calculate_pagination_metadata(
@@ -273,10 +259,10 @@ def get_book_history_entry(
     history_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> BookHistorySchema:
-    history_entry = db_get_book_history_entry(
+    history_entry = db_book.get_book_history_entry(
         session, book_id=book_id, history_id=history_id
     )
-    return create_book_history_schema(history_entry)
+    return db_book.create_book_history_schema(history_entry)
 
 
 @router.patch(
@@ -291,7 +277,7 @@ def revert_book(
     current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
     """Revert a book to a previous history."""
-    db_revert_book(
+    db_book.revert_book(
         session,
         book_id=book_id,
         history_id=history_id,
@@ -312,4 +298,6 @@ def remove_book_backup(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookFullSchema:
-    return create_book_full_schema(db_remove_book_backup(session, book_id=book_id))
+    return db_book.create_book_full_schema(
+        db_book.remove_book_backup(session, book_id=book_id)
+    )

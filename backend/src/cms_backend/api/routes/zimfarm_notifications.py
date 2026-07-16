@@ -10,18 +10,7 @@ from cms_backend import logger
 from cms_backend.api.routes.dependencies import require_permission
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
-from cms_backend.db.zimfarm_notification import (
-    create_zimfarm_notification as db_create_zimfarm_notification,
-)
-from cms_backend.db.zimfarm_notification import (
-    get_zimfarm_notification as db_get_zimfarm_notification,
-)
-from cms_backend.db.zimfarm_notification import (
-    get_zimfarm_notification_or_none as db_get_zimfarm_notification_or_none,
-)
-from cms_backend.db.zimfarm_notification import (
-    get_zimfarm_notifications as db_get_zimfarm_notifications,
-)
+from cms_backend.db import zimfarm_notification as db_zimfarm_notification
 from cms_backend.schemas import BaseModel, WithExtraModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.orms import (
@@ -55,7 +44,7 @@ async def get_zimfarm_notifications(
 ) -> ListResponse[ZimfarmNotificationLightSchema]:
     """Get a list of zimfarm notifications"""
 
-    results = db_get_zimfarm_notifications(
+    results = db_zimfarm_notification.get_zimfarm_notifications(
         session,
         skip=params.skip,
         limit=params.limit,
@@ -89,13 +78,15 @@ async def create_zimfarm_notification(
 ) -> Response:
     """Create a zimfarm notification"""
 
-    if db_get_zimfarm_notification_or_none(session=session, notification_id=request.id):
+    if db_zimfarm_notification.get_zimfarm_notification_or_none(
+        session=session, notification_id=request.id
+    ):
         logger.warning(f"Ignoring duplicate Zimfarm notification for id {request.id}")
         return Response(status_code=HTTPStatus.ACCEPTED)
 
     content = request.model_dump()
     content.pop("id")
-    db_create_zimfarm_notification(
+    db_zimfarm_notification.create_zimfarm_notification(
         session,
         notification_id=request.id,
         content=content,
@@ -111,7 +102,7 @@ async def get_zimfarm_notification(
 ) -> ZimfarmNotificationFullSchema:
     """Create a zimfarm notification"""
 
-    db_notification = db_get_zimfarm_notification(
+    db_notification = db_zimfarm_notification.get_zimfarm_notification(
         session=session, notification_id=notification_id
     )
 

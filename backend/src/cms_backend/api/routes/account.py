@@ -10,17 +10,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
 from cms_backend.api.routes.http_errors import BadRequestError, ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
+from cms_backend.db import account as db_account
 from cms_backend.db import gen_dbsession
-from cms_backend.db.account import (
-    check_account_permission,
-    create_account_schema,
-    get_account_by_identifier,
-)
-from cms_backend.db.account import create_account as db_create_account
-from cms_backend.db.account import delete_account as db_delete_account
-from cms_backend.db.account import get_accounts as db_get_accounts
-from cms_backend.db.account import update_account as db_update_account
-from cms_backend.db.account import update_account_password as db_update_account_password
 from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
@@ -49,7 +40,7 @@ def require_permission_if_not_self(namespace: str, name: str):
         ) or (account_identifier == current_account.username):
             return
 
-        if not check_account_permission(
+        if not db_account.check_account_permission(
             current_account, namespace=namespace, name=name
         ):
             raise ForbiddenError("You are not allowed to access this resource")
@@ -73,7 +64,7 @@ def get_accounts(
     params: Annotated[AccountsGetSchema, Query()],
 ) -> ListResponse[AccountSchema]:
     """Get a list of accounts"""
-    results = db_get_accounts(
+    results = db_account.get_accounts(
         db_session,
         skip=params.skip,
         limit=params.limit,
@@ -88,7 +79,9 @@ def get_accounts(
             limit=params.limit,
             page_size=len(results.records),
         ),
-        items=[create_account_schema(account) for account in results.records],
+        items=[
+            db_account.create_account_schema(account) for account in results.records
+        ],
     )
 
 
@@ -134,7 +127,7 @@ def create_account(
     account_schema: AccountCreateSchema,
     db_session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> AccountSchema:
-    account = db_create_account(
+    account = db_account.create_account(
         db_session,
         username=account_schema.username,
         display_name=cast(str, account_schema.display_name),
@@ -146,7 +139,7 @@ def create_account(
         ),
     )
 
-    return create_account_schema(account)
+    return db_account.create_account_schema(account)
 
 
 @router.get(
@@ -160,10 +153,10 @@ def get_account(
     db_session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> AccountSchema:
     """Get a specific account"""
-    account = get_account_by_identifier(
+    account = db_account.get_account_by_identifier(
         db_session, account_identifier=account_identifier
     )
-    return create_account_schema(account)
+    return db_account.create_account_schema(account)
 
 
 @router.patch(
@@ -176,7 +169,7 @@ def update_account(
     db_session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> Response:
     """Update a specific account"""
-    db_update_account(
+    db_account.update_account(
         db_session,
         account_id=account_identifier,
         request=request,
@@ -193,10 +186,10 @@ def delete_account(
     db_session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> Response:
     """Delete a specific account"""
-    account = get_account_by_identifier(
+    account = db_account.get_account_by_identifier(
         db_session, account_identifier=account_identifier
     )
-    db_delete_account(db_session, account_id=account.id)
+    db_account.delete_account(db_session, account_id=account.id)
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
@@ -223,7 +216,7 @@ def update_account_password(
     current_account: Annotated[Account, Depends(get_current_account)],
 ) -> Response:
     """Update an account's password"""
-    account = get_account_by_identifier(
+    account = db_account.get_account_by_identifier(
         db_session, account_identifier=account_identifier
     )
     if not account.username:
@@ -234,7 +227,7 @@ def update_account_password(
     if (
         current_account.id == account.id
         and account.password_hash is not None
-        and not check_account_permission(
+        and not db_account.check_account_permission(
             current_account, namespace="account", name="update"
         )
     ):
@@ -244,7 +237,7 @@ def update_account_password(
         if not check_password_hash(account.password_hash, password_update.current):
             raise BadRequestError()
 
-    db_update_account_password(
+    db_account.update_account_password(
         db_session,
         account_id=account.id,
         password_hash=(

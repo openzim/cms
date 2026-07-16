@@ -13,32 +13,17 @@ from cms_backend.api.routes.dependencies import (
 )
 from cms_backend.api.routes.http_errors import ForbiddenError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
+from cms_backend.db import account as db_account
+from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
-from cms_backend.db.account import check_account_permission
+from cms_backend.db import title as db_title
 from cms_backend.db.models import Account
-from cms_backend.db.title import archive_title as db_archive_title
-from cms_backend.db.title import archive_titles as db_archive_titles
-from cms_backend.db.title import create_title as db_create_title
-from cms_backend.db.title import (
-    create_title_full_schema,
-    create_title_history_schema,
-    create_title_light_schema,
-)
-from cms_backend.db.title import get_title_by_id as db_get_title_by_id
-from cms_backend.db.title import get_title_by_name as db_get_title_by_name
-from cms_backend.db.title import get_title_history as db_get_title_history
-from cms_backend.db.title import get_title_history_entry as db_get_title_history_entry
-from cms_backend.db.title import get_titles as db_get_titles
-from cms_backend.db.title import merge_titles as db_merge_titles
-from cms_backend.db.title import restore_title as db_restore_title
-from cms_backend.db.title import restore_titles as db_restore_titles
-from cms_backend.db.title import revert_title as db_revert_title
-from cms_backend.db.title import update_title as db_update_title
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import (
     LimitFieldMax200,
     NotEmptyString,
     SkipField,
+    ZimFlavour,
 )
 from cms_backend.schemas.models import (
     RestoreTitlesSchema,
@@ -46,6 +31,7 @@ from cms_backend.schemas.models import (
     TitleUpdateSchema,
 )
 from cms_backend.schemas.orms import (
+    TitleFlavourSchema,
     TitleFullSchema,
     TitleHistorySchema,
     TitleLightSchema,
@@ -80,10 +66,12 @@ def get_titles(
 ) -> ListResponse[TitleLightSchema]:
     if params.archived and not (
         current_account
-        and check_account_permission(current_account, namespace="title", name="archive")
+        and db_account.check_account_permission(
+            current_account, namespace="title", name="archive"
+        )
     ):
         raise ForbiddenError("You are not allowed to view archived titles.")
-    results = db_get_titles(
+    results = db_title.get_titles(
         session,
         skip=params.skip,
         limit=params.limit,
@@ -113,7 +101,7 @@ def merge_titles(
     request: MergeTitlesSchema,
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
-    db_merge_titles(session, request.target, request.sources)
+    db_title.merge_titles(session, request.target, request.sources)
     return JSONResponse(
         content={"message": f"Titles have been merged with {request.target}"},
         status_code=HTTPStatus.OK,
@@ -127,10 +115,10 @@ def get_title(
 ) -> TitleFullSchema:
     """Get a title by ID with full details including books"""
     if is_valid_uuid(title_identifier):
-        title = db_get_title_by_id(session, title_id=UUID(title_identifier))
+        title = db_title.get_title_by_id(session, title_id=UUID(title_identifier))
     else:
-        title = db_get_title_by_name(session, name=title_identifier)
-    return create_title_full_schema(title)
+        title = db_title.get_title_by_name(session, name=title_identifier)
+    return db_title.create_title_full_schema(title)
 
 
 @router.post(
@@ -142,12 +130,12 @@ def create_title(
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Create a new title"""
-    title = db_create_title(
+    title = db_title.create_title(
         session,
         author_id=current_account.id,
         payload=title_data,
     )
-    return create_title_light_schema(title)
+    return db_title.create_title_light_schema(title)
 
 
 @router.patch(
@@ -161,13 +149,13 @@ def update_title(
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Update a title"""
-    title = db_update_title(
+    title = db_title.update_title(
         session,
         title_identifier=title_identifier,
         author_id=current_account.id,
         payload=title_data,
     )
-    return create_title_light_schema(title)
+    return db_title.create_title_light_schema(title)
 
 
 @router.post(
@@ -179,7 +167,7 @@ def archive_titles(
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> Response:
-    db_archive_titles(
+    db_title.archive_titles(
         session,
         title_names=request.title_names,
         author_id=current_account.id,
@@ -196,7 +184,7 @@ def restore_archived_titles(
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> Response:
-    db_restore_titles(
+    db_title.restore_titles(
         session,
         title_names=request.title_names,
         author_id=current_account.id,
@@ -214,12 +202,12 @@ def archive_title(
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Mark a title as archived"""
-    title = db_archive_title(
+    title = db_title.archive_title(
         session,
         title_identifier=title_identifier,
         author_id=current_account.id,
     )
-    return create_title_light_schema(title)
+    return db_title.create_title_light_schema(title)
 
 
 @router.patch(
@@ -232,12 +220,12 @@ def restore_archived_title(
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
     """Restore an archived title"""
-    title = db_restore_title(
+    title = db_title.restore_title(
         session,
         title_identifier=title_identifier,
         author_id=current_account.id,
     )
-    return create_title_light_schema(title)
+    return db_title.create_title_light_schema(title)
 
 
 @router.get(
@@ -250,7 +238,7 @@ def get_title_history(
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[TitleHistorySchema]:
-    results = db_get_title_history(
+    results = db_title.get_title_history(
         session, title_identifier=title_identifier, skip=skip, limit=limit
     )
     return ListResponse(
@@ -265,6 +253,54 @@ def get_title_history(
 
 
 @router.get(
+    "/{title_identifier}/flavours",
+)
+def get_title_flavours(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+    skip: Annotated[SkipField, Query()] = 0,
+    limit: Annotated[LimitFieldMax200, Query()] = 200,
+) -> ListResponse[TitleFlavourSchema]:
+    title = db_title.get_title(session, title_identifier=title_identifier)
+    results = db_flavour.get_title_flavours(
+        session, title_id=title.id, skip=skip, limit=limit
+    )
+    return ListResponse(
+        items=results.records,
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=skip,
+            limit=limit,
+            page_size=len(results.records),
+        ),
+    )
+
+
+@router.delete(
+    "/{title_identifier}/flavours/{flavour}",
+    dependencies=[
+        Depends(require_permission(namespace="title", name="update")),
+        Depends(require_permission(namespace="book", name="delete")),
+    ],
+)
+def delete_title_flavour(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    flavour: Annotated[ZimFlavour, Path()],
+    session: OrmSession = Depends(gen_dbsession),
+) -> JSONResponse:
+    title = db_title.get_title(session, title_identifier=title_identifier)
+    db_flavour.delete_title_flavour(session, title_id=title.id, flavour=flavour)
+    return JSONResponse(
+        content={
+            "message": (
+                f"title flavour '{flavour}' for title '{title.name}' has been deleted"
+            )
+        },
+        status_code=HTTPStatus.OK,
+    )
+
+
+@router.get(
     "/{title_identifier}/history/{history_id}",
     dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
@@ -273,10 +309,10 @@ def get_title_history_entry(
     history_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleHistorySchema:
-    history_entry = db_get_title_history_entry(
+    history_entry = db_title.get_title_history_entry(
         session, title_identifier=title_identifier, history_id=history_id
     )
-    return create_title_history_schema(history_entry)
+    return db_title.create_title_history_schema(history_entry)
 
 
 @router.patch(
@@ -291,7 +327,7 @@ def revert_title(
     current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
     """Revert a title to a previous history."""
-    db_revert_title(
+    db_title.revert_title(
         session,
         title_identifier=title_identifier,
         history_id=history_id,

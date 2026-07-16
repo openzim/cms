@@ -11,26 +11,8 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.api.routes.dependencies import get_current_account, require_permission
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.api.routes.utils import build_library_xml
+from cms_backend.db import collection as db_collection
 from cms_backend.db import gen_dbsession
-from cms_backend.db.collection import create_collection as db_create_collection
-from cms_backend.db.collection import (
-    create_collection_full_schema,
-    create_collection_history_schema,
-    get_collection_by_name_or_none,
-    get_latest_books_for_collection,
-)
-from cms_backend.db.collection import get_collection as db_get_collection
-from cms_backend.db.collection import (
-    get_collection_history as db_get_collection_history,
-)
-from cms_backend.db.collection import (
-    get_collection_history_entry as db_get_collection_history_entry,
-)
-from cms_backend.db.collection import get_collections as db_get_collections
-from cms_backend.db.collection import (
-    revert_collection as db_revert_collection,
-)
-from cms_backend.db.collection import update_collection as db_update_collection
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
@@ -62,7 +44,7 @@ def get_collections(
 ) -> ListResponse[CollectionLightSchema]:
     """Get a list of collections"""
 
-    results = db_get_collections(
+    results = db_collection.get_collections(
         session, skip=params.skip, limit=params.limit, name=params.name
     )
 
@@ -98,8 +80,8 @@ def create_collection(
     request: CollectionCreateSchema,
 ):
     """Create a collection"""
-    return create_collection_full_schema(
-        db_create_collection(
+    return db_collection.create_collection_full_schema(
+        db_collection.create_collection(
             session,
             author_id=current_account.id,
             name=request.name,
@@ -128,8 +110,8 @@ def get_collection(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ):
     """Get collection by collection ID (UUID) or name."""
-    collection = db_get_collection(session, collection_id_or_name)
-    return create_collection_full_schema(collection)
+    collection = db_collection.get_collection(session, collection_id_or_name)
+    return db_collection.create_collection_full_schema(collection)
 
 
 @router.patch(
@@ -143,8 +125,8 @@ def update_collection(
     session: OrmSession = Depends(gen_dbsession),
 ) -> CollectionFullSchema:
     """Update a collection's data"""
-    return create_collection_full_schema(
-        db_update_collection(
+    return db_collection.create_collection_full_schema(
+        db_collection.update_collection(
             session,
             collection_id=collection_id_or_name,
             request=collection_data,
@@ -160,12 +142,14 @@ def _get_catalog_xml_content(
     collection = None
     try:
         try:
-            collection = db_get_collection(session, collection_id_or_name)
+            collection = db_collection.get_collection(session, collection_id_or_name)
         except RecordDoesNotExistError:
             pass
     except ValueError:
         # Not a valid UUID, try as name
-        collection = get_collection_by_name_or_none(session, collection_id_or_name)
+        collection = db_collection.get_collection_by_name_or_none(
+            session, collection_id_or_name
+        )
 
     if collection is None:
         return (
@@ -174,7 +158,7 @@ def _get_catalog_xml_content(
             HTTPStatus.NOT_FOUND,
         )
 
-    entries = get_latest_books_for_collection(session, collection.id)
+    entries = db_collection.get_latest_books_for_collection(session, collection.id)
     xml_content = build_library_xml(entries, path_prefix=path_prefix)
 
     return xml_content, HTTPStatus.OK
@@ -228,7 +212,7 @@ def get_collection_history(
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[CollectionHistorySchema]:
-    results = db_get_collection_history(
+    results = db_collection.get_collection_history(
         session, collection_id=collection_id_or_name, skip=skip, limit=limit
     )
     return ListResponse(
@@ -251,10 +235,10 @@ def get_collection_history_entry(
     history_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> CollectionHistorySchema:
-    history_entry = db_get_collection_history_entry(
+    history_entry = db_collection.get_collection_history_entry(
         session, collection_id=collection_id_or_name, history_id=history_id
     )
-    return create_collection_history_schema(history_entry)
+    return db_collection.create_collection_history_schema(history_entry)
 
 
 @router.patch(
@@ -269,7 +253,7 @@ def revert_collection(
     current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
     """Revert a collection to a previous history."""
-    db_revert_collection(
+    db_collection.revert_collection(
         session,
         collection_id=collection_id_or_name,
         history_id=history_id,

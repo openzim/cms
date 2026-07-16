@@ -14,7 +14,6 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.flavour import get_title_flavours
 from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
 from cms_backend.db.rules import (
     apply_retention_rules,
@@ -731,7 +730,7 @@ def get_book_issues(
         ]
 
     if book_has_flavour_mismatch(book):
-        title_flavours = get_title_flavours(book.title)
+        title_flavours = [tf.flavour for tf in book.title.flavours]
         issues["flavour mismatch"] = [
             f"book flavour {book.flavour} is not in list of "
             f"title flavours: {','.join(title_flavours)}"
@@ -1194,7 +1193,7 @@ def book_has_flavour_mismatch(
     if book.title is None:
         raise ValueError("Book must be associated with a title.")
 
-    title_flavours = get_title_flavours(book.title)
+    title_flavours = [tf.flavour for tf in book.title.flavours]
 
     # Title has flavours but book has no flavour or flavour not in book flavours
     if title_flavours and book.flavour not in title_flavours:

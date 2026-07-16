@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
+from cms_backend.db import event as db_event
 from cms_backend.db import gen_dbsession
-from cms_backend.db.event import get_events as db_get_events
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.orms import EventLightSchema
@@ -28,7 +28,7 @@ def get_events(
 ) -> ListResponse[EventLightSchema]:
     """Get a list of events"""
 
-    results = db_get_events(
+    results = db_event.get_events(
         session,
         skip=params.skip,
         limit=params.limit,

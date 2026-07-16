@@ -18,6 +18,13 @@
     </div>
 
     <div v-if="dataLoaded && title">
+      <v-row>
+        <v-col>
+          <h2 class="text-h6 text-md-h5">
+            <code>{{ title.name }}</code>
+          </h2>
+        </v-col>
+      </v-row>
       <v-tabs
         v-model="currentTab"
         class="mb-4"
@@ -36,6 +43,18 @@
         >
           <v-icon class="mr-2">mdi-information</v-icon>
           Info
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
+          value="flavours"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.name, selectedTab: 'flavours' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-tag-multiple</v-icon>
+          Flavours
         </v-tab>
 
         <v-tab
@@ -133,28 +152,6 @@
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ title.maturity }}
-                  </v-col>
-                </v-row>
-                <v-divider class="my-2"></v-divider>
-
-                <v-row no-gutters class="py-2">
-                  <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Expected Flavours</div>
-                  </v-col>
-                  <v-col cols="12" md="9">
-                    <div v-if="title.flavours && title.flavours.length > 0">
-                      <v-chip
-                        v-for="tf in title.flavours"
-                        :key="tf.flavour"
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        class="mr-2 mb-1"
-                      >
-                        {{ tf.flavour == '' ? 'Empty' : tf.flavour }}
-                      </v-chip>
-                    </div>
-                    <span v-else class="text-grey">No flavours set</span>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -330,6 +327,31 @@
           </v-card>
         </v-window-item>
 
+        <!-- Flavours Tab -->
+        <v-window-item value="flavours">
+          <v-card flat>
+            <v-card-text class="pa-0">
+              <div v-if="loadingFlavours" class="text-center pa-8">
+                <v-progress-circular indeterminate size="24" class="mr-2" />
+                <span>Loading flavours...</span>
+              </div>
+              <div v-else class="ml-4 mr-4 mt-2 mb-2">
+                <div v-if="titleFlavours && titleFlavours.length > 0">
+                  <TitleFlavourItem
+                    v-for="tf in titleFlavours"
+                    :key="tf.flavour"
+                    :flavour="tf"
+                    :can-delete="!!canEditTitle"
+                    :disabled="deletingFlavour"
+                    @delete="handleDeleteFlavour"
+                  />
+                </div>
+                <div v-else class="py-4 text-center text-grey">No flavours set</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-window-item>
+
         <v-window-item value="history">
           <TitleHistory
             v-if="canEditTitle"
@@ -486,8 +508,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import TitleHistory from '@/components/TitleHistory.vue'
+import TitleFlavourItem from '@/components/TitleFlavourItem.vue'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
+import type { TitleFlavour } from '@/types/title'
 
 const router = useRouter()
 
@@ -584,6 +608,9 @@ const bookStatusOptions = [
   { title: 'To Be Deleted', value: 'to_delete' },
   { title: 'All', value: 'all' },
 ]
+const titleFlavours = ref<TitleFlavour[]>([])
+const loadingFlavours = ref(false)
+const deletingFlavour = ref(false)
 
 const titleDifferences = computed(() => {
   if (!(title.value && pendingUpdatePayload.value)) return undefined
@@ -867,6 +894,44 @@ async function fetchCollections() {
   }
 }
 
+const loadFlavours = async () => {
+  if (!title.value) return
+
+  loadingFlavours.value = true
+  try {
+    const flavours = await titleStore.fetchTitleFlavours(title.value.name)
+    if (flavours) {
+      titleFlavours.value = flavours
+    }
+  } catch (err) {
+    console.error('Failed to load flavours', err)
+  } finally {
+    loadingFlavours.value = false
+  }
+}
+
+const handleDeleteFlavour = async (flavour: string) => {
+  if (!title.value) return
+
+  deletingFlavour.value = true
+  try {
+    const response = await titleStore.deleteTitleFlavour(title.value.name, flavour)
+    if (response) {
+      notificationStore.showSuccess(
+        `Flavour <code>${flavour === '' ? 'Empty' : flavour}</code> has been deleted.`,
+      )
+      await loadFlavours()
+    } else {
+      notificationStore.showErrors(titleStore.errors)
+    }
+  } catch (err) {
+    console.error('Failed to delete flavour', err)
+    notificationStore.showError('Failed to delete flavour')
+  } finally {
+    deletingFlavour.value = false
+  }
+}
+
 onMounted(async () => {
   await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
 
@@ -875,9 +940,13 @@ onMounted(async () => {
   }
 
   // Redirect to details if trying to access restricted tabs without permission
-  if (props.selectedTab !== 'details' && !canEditTitle.value) {
+  if (props.selectedTab !== 'details' && props.selectedTab !== 'flavours' && !canEditTitle.value) {
     router.push({ name: 'title-detail', params: { id: props.id } })
     return
+  }
+
+  if (props.selectedTab === 'flavours' && title.value) {
+    await loadFlavours()
   }
 
   if (props.selectedTab === 'edit' && title.value) {
@@ -903,6 +972,10 @@ watch(
     currentTab.value = newTab
 
     await loadData(newTab == 'edit', newTab === 'history', newTab === 'details')
+
+    if (newTab === 'flavours' && title.value) {
+      await loadFlavours()
+    }
 
     if (newTab === 'edit' && title.value) {
       if (collections.value.length == 0) {
