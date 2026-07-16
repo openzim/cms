@@ -282,12 +282,12 @@
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="submitting">Cancel</v-btn>
         <v-btn
-          v-if="actions.length > 0 && !dryRunError"
+          v-if="!loadingDryRun && !dryRunError"
           color="primary"
           variant="elevated"
-          @click="handleSubmit"
+          @click="actions.length > 0 ? handleSubmit() : executePromote()"
           :loading="submitting"
-          :disabled="submitting || !hasAnyActionChecked"
+          :disabled="submitting || (actions.length > 0 && !hasAnyActionChecked)"
         >
           Promote Book
         </v-btn>

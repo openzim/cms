@@ -246,8 +246,6 @@ def apply_book_promotion_actions(
     author_id: UUID,
 ) -> None:
     """Apply a list of actions to book so that it can be promoted to 'prod'"""
-    if len(actions) == 0:
-        raise ValueError("At least one action must be provided to promote the book")
     action_kinds = {action.kind for action in actions}
     if len(action_kinds) != len(actions):
         raise ValueError("Provided actions contain duplicates")
