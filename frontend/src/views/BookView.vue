@@ -99,33 +99,6 @@
         </div>
       </v-alert>
 
-      <v-alert
-        v-if="book.issues.includes('flavour mismatch')"
-        type="warning"
-        variant="tonal"
-        class="my-2"
-        icon="mdi-alert"
-      >
-        <div class="d-flex align-center ga-2">
-          <div class="flex-grow-1">
-            <div class="font-weight-bold mb-1">Flavour Mismatch</div>
-            <div>
-              This book's flavour is not in the list of flavours expected by the title. Consider
-              updating the book flavour or promote book to maintain consistency.
-            </div>
-          </div>
-          <v-btn
-            v-if="canEditBook"
-            variant="outlined"
-            color="warning"
-            size="small"
-            @click="currentTab = 'edit'"
-          >
-            Edit Book
-          </v-btn>
-        </div>
-      </v-alert>
-
       <v-tabs
         v-model="currentTab"
         class="mb-4"
