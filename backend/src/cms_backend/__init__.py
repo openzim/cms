@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 import pycountry
 
@@ -22,6 +23,18 @@ def update_language_codes():
 
     for code in Context.custom_language_codes:
         pycountry.languages.add_entry(alpha_3=code)  # pyright: ignore[reportUnknownMemberType]
+
+
+def construct_recipe_link(recipe_id: UUID | None) -> str | None:
+    if recipe_id is None:
+        return None
+    return f"{Context.zimfarm_url}/recipes/{recipe_id}"
+
+
+def construct_recipe_api_link(recipe_id: UUID | None) -> str | None:
+    if recipe_id is None:
+        return None
+    return f"{Context.zimfarm_api_url}/recipes/{recipe_id}"
 
 
 update_language_codes()

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.context import Context
+from cms_backend import construct_recipe_link
 from cms_backend.db.book import (
     book_has_flavour_mismatch,
     book_has_recipe_issue,
@@ -38,12 +38,6 @@ from cms_backend.utils.zim import (
     get_missing_keys,
     get_missing_metadata_keys,
 )
-
-
-def construct_recipe_link(recipe_id: UUID | None) -> str | None:
-    if recipe_id is None:
-        return None
-    return f"{Context.zimfarm_api_url}/recipes/{recipe_id}"
 
 
 def get_book_promotion_actions(
