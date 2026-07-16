@@ -879,7 +879,6 @@ async function fetchCollections() {
 }
 
 onMounted(async () => {
-  await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
 
   if (title.value) {
@@ -902,6 +901,7 @@ onMounted(async () => {
     await loadLatestBook()
     titleFormRef.value?.resetFormToTitle(title.value)
   }
+  await offlinerStore.fetchOffliners()
 })
 
 onUnmounted(() => {

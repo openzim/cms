@@ -1101,8 +1101,8 @@ const loadZimUrls = async () => {
 }
 
 onMounted(async () => {
-  await offlinerStore.fetchOffliners()
   await loadData(true, props.selectedTab === 'history', true, props.selectedTab === 'issues')
+  await offlinerStore.fetchOffliners()
 })
 
 const copyToClipboard = async (text: string) => {

@@ -454,11 +454,11 @@ watch(
 )
 
 onMounted(async () => {
-  await offlinerStore.fetchOffliners()
-
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, currentTab.value, true)
   }, 60000)
+
+  await offlinerStore.fetchOffliners()
 })
 
 onBeforeUnmount(() => {
