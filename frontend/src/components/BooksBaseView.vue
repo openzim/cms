@@ -312,7 +312,6 @@ watch(
 )
 
 onMounted(async () => {
-  await offlinerStore.fetchOffliners()
   loadingFlavours.value = true
   const fetchedFlavours = await bookStore.fetchBookFlavours()
   if (fetchedFlavours) {
@@ -325,6 +324,7 @@ onMounted(async () => {
       await fetchBackupCount()
     }
   }, 60000)
+  await offlinerStore.fetchOffliners()
 })
 
 onBeforeUnmount(() => {
