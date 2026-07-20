@@ -47,6 +47,7 @@ class TitlesGetSchema(BaseModel):
     name: NotEmptyString | None = None
     collection_name: NotEmptyString | None = None
     archived: bool = False
+    is_rotten: bool | None = None
 
 
 class RevertTitleSchema(BaseModel):
@@ -78,6 +79,7 @@ def get_titles(
         name=params.name,
         collection_name=params.collection_name,
         archived=params.archived,
+        is_rotten=params.is_rotten,
     )
     return ListResponse[TitleLightSchema](
         meta=calculate_pagination_metadata(

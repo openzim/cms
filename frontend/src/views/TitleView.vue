@@ -336,16 +336,24 @@
                 <span>Loading flavours...</span>
               </div>
               <div v-else class="ml-4 mr-4 mt-2 mb-2">
-                <div v-if="titleFlavours && titleFlavours.length > 0">
-                  <TitleFlavourItem
+                <v-row v-if="titleFlavours && titleFlavours.length > 0">
+                  <v-col
                     v-for="tf in titleFlavours"
                     :key="tf.flavour"
-                    :flavour="tf"
-                    :can-delete="!!canEditTitle"
-                    :disabled="deletingFlavour"
-                    @delete="handleDeleteFlavour"
-                  />
-                </div>
+                    cols="12"
+                    sm="6"
+                    md="6"
+                    lg="4"
+                    xl="3"
+                  >
+                    <TitleFlavourItem
+                      :flavour="tf"
+                      :can-delete="!!canEditTitle"
+                      :disabled="deletingFlavour"
+                      @delete="handleDeleteFlavour"
+                    />
+                  </v-col>
+                </v-row>
                 <div v-else class="py-4 text-center text-grey">No flavours set</div>
               </div>
             </v-card-text>

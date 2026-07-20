@@ -1,37 +1,61 @@
 <template>
-  <div>
-    <v-row no-gutters class="py-2 align-center">
-      <v-col cols="12" sm="4">
-        <span class="text-body-1 font-weight-medium">{{
-          flavour.flavour === '' ? 'Empty' : flavour.flavour
-        }}</span>
-      </v-col>
-      <v-col cols="12" sm="6">
-        <a
-          v-if="flavour.recipe_link"
-          :href="flavour.recipe_link"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-decoration-none"
-        >
-          <v-icon size="small" class="mr-1">mdi-open-in-new</v-icon>
-          View recipe on Zimfarm
-        </a>
-        <span v-else class="text-grey">Zimfarm recipe pending</span>
-      </v-col>
-      <v-col cols="12" sm="2" class="text-right">
-        <v-btn
-          v-if="canDelete"
-          icon="mdi-delete"
-          variant="text"
+  <v-card elevation="2" class="mb-3 border">
+    <v-card-title class="d-flex flex-column align-start pa-4 pb-2">
+      <div class="d-flex align-center flex-wrap w-100">
+        <div class="text-subtitle-1 font-weight-medium">
+          {{ flavour.flavour === '' ? 'Empty' : flavour.flavour }}
+        </div>
+      </div>
+
+      <div class="d-flex align-center flex-wrap mt-2 ga-2">
+        <v-chip
+          v-if="flavour.recipe_id"
           size="small"
-          color="error"
-          :disabled="disabled"
-          @click="showDialog = true"
-        />
-      </v-col>
-    </v-row>
-    <v-divider class="my-2"></v-divider>
+          variant="tonal"
+          :color="flavour.recipe_link ? 'success' : 'warning'"
+        >
+          {{ flavour.recipe_link ? 'Recipe available' : 'Recipe pending' }}
+        </v-chip>
+
+        <v-chip v-if="flavour.recipe_link" size="small" variant="outlined">
+          <v-icon start size="small">mdi-open-in-new</v-icon>
+          <a
+            :href="flavour.recipe_link"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-decoration-none text-inherit"
+            >View recipe</a
+          >
+        </v-chip>
+
+        <v-chip v-if="flavour.is_rotten" size="small" variant="tonal" color="error">
+          <v-icon start size="small">mdi-alert-circle</v-icon>
+          Rotten
+        </v-chip>
+
+        <v-chip v-if="flavour.last_book_added_at" size="small" variant="outlined">
+          <v-icon start size="small">mdi-calendar-plus</v-icon>
+          Last book: {{ formatDt(flavour.last_book_added_at, 'ff') }}
+        </v-chip>
+      </div>
+    </v-card-title>
+
+    <v-card-actions class="pa-3 justify-end">
+      <v-tooltip v-if="canDelete" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <v-btn
+            v-bind="tooltipProps"
+            icon="mdi-delete"
+            variant="text"
+            size="small"
+            color="error"
+            :disabled="disabled"
+            @click="showDialog = true"
+          />
+        </template>
+        <span>Delete flavour</span>
+      </v-tooltip>
+    </v-card-actions>
 
     <ConfirmDialog
       v-model="showDialog"
@@ -57,13 +81,14 @@
         </p>
       </template>
     </ConfirmDialog>
-  </div>
+  </v-card>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { TitleFlavour } from '@/types/title'
+import { formatDt } from '@/utils/format'
 
 interface Props {
   flavour: TitleFlavour

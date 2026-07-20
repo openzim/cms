@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.db.book import process_book
+from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import Book, Title
 from cms_backend.db.rules import (
     apply_retention_rules,
@@ -54,6 +55,10 @@ def add_book_to_title(session: OrmSession, book: Book, title: Title):
             date=book.date,
             book_id=book.id,
         )
+
+        tf = get_title_flavour_or_none(session, title.id, book.flavour)
+        if tf is not None:
+            tf.last_book_added_at = getnow()
 
         if title_is_missing_mandatory_metadata(title):
             update_title_metadata_from_book(title, book)

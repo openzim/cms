@@ -142,3 +142,9 @@ class Context:
     zimfarm_api_url: str = field(
         default=os.getenv("ZIMFARM_API_URL", "https://api.farm.openzim.org/v2")
     )
+
+    rotten_flavour_threshold: timedelta = field(
+        default=timedelta(
+            seconds=parse_timespan(os.getenv("ROTTEN_FLAVOUR_THRESHOLD", default="56w"))
+        )
+    )

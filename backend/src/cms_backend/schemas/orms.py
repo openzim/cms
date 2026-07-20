@@ -6,8 +6,10 @@ from uuid import UUID
 from pydantic import Field, computed_field
 
 from cms_backend import construct_recipe_api_link, construct_recipe_link
+from cms_backend.context import Context
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import NotEmptyString
+from cms_backend.utils.datetime import getnow
 
 T = TypeVar("T")
 
@@ -17,9 +19,13 @@ class ListResult[T](BaseModel):
     records: list[T]
 
 
-class TitleFlavourSchema(BaseModel):
+class BaseTitleFlavourSchema(BaseModel):
     flavour: str
     recipe_id: UUID | None
+
+
+class TitleFlavourSchema(BaseTitleFlavourSchema):
+    last_book_added_at: datetime | None
 
     @computed_field
     @property
@@ -30,6 +36,13 @@ class TitleFlavourSchema(BaseModel):
     @property
     def recipe_api_link(self) -> str | None:
         return construct_recipe_api_link(self.recipe_id)
+
+    @computed_field
+    @property
+    def is_rotten(self) -> bool:
+        if self.last_book_added_at is None:
+            return False
+        return self.last_book_added_at < (getnow() - Context.rotten_flavour_threshold)
 
 
 class TitleLightSchema(BaseModel):
@@ -83,7 +96,7 @@ class TitleHistorySchema(TitleLightSchema):
     author: str
     collections: list[BaseTitleCollectionSchema]
     created_at: datetime
-    flavours: list[TitleFlavourSchema]
+    flavours: list[BaseTitleFlavourSchema]
 
 
 class CollectionLightSchema(BaseModel):
