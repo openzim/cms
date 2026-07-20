@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book import (
     delete_book,
@@ -26,6 +27,7 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleFlavour,
     TitleHistory,
 )
 from cms_backend.db.rules import apply_retention_rules
@@ -36,10 +38,10 @@ from cms_backend.schemas.models import (
 )
 from cms_backend.schemas.orms import (
     BaseTitleCollectionSchema,
+    BaseTitleFlavourSchema,
     BookLightSchema,
     ListResult,
     TitleCollectionSchema,
-    TitleFlavourSchema,
     TitleFullSchema,
     TitleHistorySchema,
     TitleLightSchema,
@@ -190,6 +192,7 @@ def get_titles(
     omit_names: list[str] | None = None,
     collection_name: str | None = None,
     archived: bool = False,
+    is_rotten: bool | None = None,
 ) -> ListResult[TitleLightSchema]:
     """Get a list of titles"""
 
@@ -233,6 +236,21 @@ def get_titles(
             ),
         )
     )
+
+    if is_rotten is not None:
+        rotten_titles_subquery = (
+            select(Title.id)
+            .join(TitleFlavour, TitleFlavour.title_id == Title.id)
+            .where(
+                TitleFlavour.last_book_added_at
+                < (getnow() - Context.rotten_flavour_threshold)
+            )
+            .distinct()
+        )
+        if is_rotten:
+            stmt = stmt.where(Title.id.in_(rotten_titles_subquery))
+        else:
+            stmt = stmt.where(Title.id.not_in(rotten_titles_subquery))
 
     return ListResult[TitleLightSchema](
         nb_records=count_from_stmt(session, stmt),
@@ -623,7 +641,7 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         relation=entry.relation,
         source=entry.source,
         flavours=[
-            TitleFlavourSchema(
+            BaseTitleFlavourSchema(
                 flavour=tf["flavour"],
                 recipe_id=UUID(tf["recipe_id"]) if tf.get("recipe_id") else None,
             )

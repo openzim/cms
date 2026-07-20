@@ -116,6 +116,7 @@ const errors = ref<string[]>([])
 const filters = ref({
   name: '',
   collection_name: '',
+  status: '',
 })
 const selectedTitle = ref<string[]>([])
 
@@ -184,6 +185,7 @@ async function clearFilters() {
   filters.value = {
     name: '',
     collection_name: '',
+    status: '',
   }
   selectedTitle.value = []
   await loadData(paginator.value.limit, 0)
@@ -225,6 +227,7 @@ watch(dialogModel, async (newValue) => {
     filters.value = {
       name: '',
       collection_name: '',
+      status: '',
     }
     await loadData(paginator.value.limit, 0)
   }

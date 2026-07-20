@@ -212,6 +212,17 @@ const archivedTooltipText = computed(() => {
   return count === 1 ? '1 matching archived title' : `${count} matching archived titles`
 })
 
+function statusToIsRotten(status: string): boolean | undefined {
+  switch (status) {
+    case 'active':
+      return false
+    case 'rotten':
+      return true
+    default:
+      return undefined
+  }
+}
+
 // Methods
 async function loadData(limit: number, skip: number, hideLoading: boolean = false) {
   if (props.archived && !canAccessArchives.value) return
@@ -225,6 +236,7 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
     filters.value.name || undefined,
     filters.value.collection_name || undefined,
     props.archived,
+    statusToIsRotten(filters.value.status),
   )
 
   titles.value = titleStore.titles
@@ -248,6 +260,7 @@ async function fetchArchivedCount(currentFilters: typeof filters.value) {
       currentFilters.name || undefined,
       currentFilters.collection_name || undefined,
       true,
+      statusToIsRotten(currentFilters.status),
     )
   } catch (error) {
     console.error('Failed to fetch archived count', error)
@@ -387,6 +400,7 @@ async function clearFilters() {
   const emptyFilters = {
     name: '',
     collection_name: '',
+    status: '',
   }
   updateUrl(emptyFilters)
 }
@@ -427,6 +441,9 @@ function updateUrl(sourceFilters: typeof filters.value) {
   if (sourceFilters.collection_name) {
     query.collection_name = sourceFilters.collection_name
   }
+  if (sourceFilters.status) {
+    query.status = sourceFilters.status
+  }
 
   router.push({
     name: props.routeName,
@@ -436,13 +453,16 @@ function updateUrl(sourceFilters: typeof filters.value) {
 
 const filters = computed(() => {
   const query = router.currentRoute.value.query
-  const derived = { name: '', collection_name: '' }
+  const derived = { name: '', collection_name: '', status: '' }
 
   if (query.name && typeof query.name === 'string') {
     derived.name = query.name
   }
   if (query.collection_name && typeof query.collection_name === 'string') {
     derived.collection_name = query.collection_name
+  }
+  if (query.status && typeof query.status === 'string') {
+    derived.status = query.status
   }
 
   return derived
@@ -456,6 +476,9 @@ function navigateToArchives() {
   }
   if (filters.value.collection_name) {
     query.collection_name = filters.value.collection_name
+  }
+  if (filters.value.status) {
+    query.status = filters.value.status
   }
   router.push({
     name: 'archived-titles',

@@ -51,6 +51,7 @@ export const useTitleStore = defineStore('title', () => {
     name: string | undefined,
     collection_name: string | undefined,
     archived: boolean = false,
+    is_rotten: boolean | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('titles')
     // filter out undefined values from params
@@ -61,7 +62,8 @@ export const useTitleStore = defineStore('title', () => {
         name,
         collection_name,
         archived: archived || undefined,
-      }).filter(([, value]) => !!value),
+        is_rotten: is_rotten !== undefined ? is_rotten : undefined,
+      }).filter(([, value]) => value !== undefined),
     )
     try {
       const response = await service.get<null, ListResponse<TitleLight>>('', {
@@ -82,6 +84,7 @@ export const useTitleStore = defineStore('title', () => {
     name: string | undefined,
     collection_name: string | undefined,
     archived: boolean = false,
+    is_rotten: boolean | undefined = undefined,
   ): Promise<number> => {
     const service = await authStore.getApiService('titles')
     const cleanedParams = Object.fromEntries(
@@ -91,7 +94,8 @@ export const useTitleStore = defineStore('title', () => {
         name,
         collection_name,
         archived: archived || undefined,
-      }).filter(([, value]) => !!value),
+        is_rotten: is_rotten !== undefined ? is_rotten : undefined,
+      }).filter(([, value]) => value !== undefined),
     )
     try {
       const response = await service.get<null, ListResponse<TitleLight>>('', {

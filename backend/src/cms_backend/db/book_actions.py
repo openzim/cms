@@ -34,6 +34,7 @@ from cms_backend.schemas.models import (
 from cms_backend.schemas.orms import (
     ZimcheckSummarySchema,
 )
+from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import (
     get_missing_keys,
     get_missing_metadata_keys,
@@ -214,6 +215,63 @@ def get_book_promotion_actions(
     return actions
 
 
+def _apply_restore_title_action(
+    session: OrmSession, action: BaseBookPromotionAction, book: Book, author_id: UUID
+):
+
+    if not book.title:
+        raise ValueError("Book does not have an associated title to restore")
+    payload = RestoreTitlesSchema.model_validate(action.data)
+    if len(payload.title_names) != 1 or payload.title_names[0] != book.title.name:
+        raise ValueError(
+            "Only the book's title should be specified in the restore payload"
+        )
+    book.title = restore_title(
+        session,
+        title_identifier=payload.title_names[0],
+        author_id=author_id,
+    )
+
+
+def _apply_create_title_flavour_action(
+    session: OrmSession, action: BaseBookPromotionAction, book: Book
+):
+
+    if action.data.get("flavour") is None:
+        raise ValueError("Action to update title flavours must set flavour value")
+    if not book.title:
+        raise ValueError("Book does not have an associated title")
+
+    tf = get_title_flavour_or_none(session, book.title.id, action.data["flavour"])
+    if tf is None:
+        tf = create_title_flavour(
+            session,
+            title=book.title,
+            recipe_id=book.recipe_id,
+            flavour=action.data["flavour"],
+        )
+    tf.last_book_added_at = getnow()
+
+
+def _apply_create_title_action(
+    session: OrmSession, action: BaseBookPromotionAction, book: Book, author_id: UUID
+):
+    payload = TitleCreateSchema.model_validate(action.data)
+    if not payload.collection_titles:
+        raise ValueError("Title must have at least one collection configured.")
+    title = create_title(session, author_id=author_id, payload=payload)
+    book.title = title
+    tf = get_title_flavour_or_none(session, title.id, book.flavour)
+    if tf is None:
+        tf = create_title_flavour(
+            session,
+            title,
+            book.recipe_id,
+            book.flavour,
+        )
+    tf.last_book_added_at = getnow()
+
+
 def _apply_update_flavour_recipe_action(
     session: OrmSession, action: BaseBookPromotionAction, book: Book
 ):
@@ -278,40 +336,9 @@ def apply_book_promotion_actions(
         action = actions_todo.popleft()
         match action.kind:
             case "create_title":
-                payload = TitleCreateSchema.model_validate(action.data)
-                if not payload.collection_titles:
-                    raise ValueError(
-                        "Title must have at least one collection configured."
-                    )
-                title = create_title(session, author_id=author_id, payload=payload)
-                book.title = title
-                if get_title_flavour_or_none(session, title.id, book.flavour) is None:
-                    create_title_flavour(
-                        session,
-                        title,
-                        book.recipe_id,
-                        book.flavour,
-                    )
-
+                _apply_create_title_action(session, action, book, author_id)
             case "restore_title":
-                if not book.title:
-                    raise ValueError(
-                        "Book does not have an associated title to restore"
-                    )
-                payload = RestoreTitlesSchema.model_validate(action.data)
-                if (
-                    len(payload.title_names) != 1
-                    or payload.title_names[0] != book.title.name
-                ):
-                    raise ValueError(
-                        "Only the book's title should be specified in "
-                        "the restore payload"
-                    )
-                book.title = restore_title(
-                    session,
-                    title_identifier=payload.title_names[0],
-                    author_id=author_id,
-                )
+                _apply_restore_title_action(session, action, book, author_id)
             case "update_title_metadata":
                 missing_keys = get_missing_keys(
                     action.data,
@@ -332,25 +359,7 @@ def apply_book_promotion_actions(
                     )
                 title_update_payload.update(**action.data)
             case "create_title_flavour":
-                if action.data.get("flavour") is None:
-                    raise ValueError(
-                        "Action to update title flavours must set flavour value"
-                    )
-                if not book.title:
-                    raise ValueError("Book does not have an associated title")
-
-                if (
-                    get_title_flavour_or_none(
-                        session, book.title.id, action.data["flavour"]
-                    )
-                    is None
-                ):
-                    create_title_flavour(
-                        session,
-                        title=book.title,
-                        recipe_id=book.recipe_id,
-                        flavour=action.data["flavour"],
-                    )
+                _apply_create_title_flavour_action(session, action, book)
             case "set_title_collections":
                 if get_missing_keys(action.data, "collection_titles") or (
                     isinstance(action.data["collection_titles"], list)

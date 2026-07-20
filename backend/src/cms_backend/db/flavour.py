@@ -26,7 +26,11 @@ def get_title_flavours(
 
 
 def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
-    return TitleFlavourSchema(flavour=tf.flavour, recipe_id=tf.recipe_id)
+    return TitleFlavourSchema(
+        flavour=tf.flavour,
+        recipe_id=tf.recipe_id,
+        last_book_added_at=tf.last_book_added_at,
+    )
 
 
 def create_title_flavour(

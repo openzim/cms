@@ -295,6 +295,9 @@ class TitleFlavour(Base):
     )
     flavour: Mapped[str] = mapped_column(primary_key=True)
     recipe_id: Mapped[UUID | None]
+    last_book_added_at: Mapped[datetime | None] = mapped_column(
+        default=None, server_default=func.now()
+    )
     title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
 
 

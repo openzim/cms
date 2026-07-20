@@ -20,6 +20,8 @@ export interface TitleFlavour {
   recipe_id: string | null
   recipe_link: string | null
   recipe_api_link: string | null
+  last_book_added_at: string | null
+  is_rotten: boolean
 }
 
 export interface TitleLight {

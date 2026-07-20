@@ -23,6 +23,7 @@ from cms_backend.db.models import (
     Warehouse,
 )
 from cms_backend.schemas.models import BaseBookPromotionAction
+from cms_backend.utils.datetime import getnow
 
 
 def test_promotion_actions_book_not_eligible_raises_error(
@@ -1035,11 +1036,13 @@ def test_apply_action_update_recipe_flavour(
     assert book_has_recipe_issue(book) is False
 
 
+@patch("cms_backend.db.book_actions.getnow")
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_apply_actions_create_title(
     mock_get_zimcheck_errors: MagicMock,
     mock_get_book_unsupported_languages: MagicMock,
+    mock_getnow: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_collection: Callable[..., Collection],
@@ -1049,6 +1052,8 @@ def test_apply_actions_create_title(
     account: Account,
 ):
     """Applying a create_title action creates a new title."""
+    now = getnow()
+    mock_getnow.return_value = now
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
 
@@ -1100,6 +1105,8 @@ def test_apply_actions_create_title(
     dbsession.refresh(book)
     assert book.location_kind == "prod"
     assert book.needs_file_operation
+    assert len(title.flavours) == 1
+    assert title.flavours[0].last_book_added_at == now
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")

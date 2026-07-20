@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -38,6 +39,34 @@ def test_get_titles_empty(client: TestClient):
     assert data["meta"]["page_size"] == 0
     assert data["meta"]["count"] == 0
     assert data["items"] == []
+
+
+def test_get_titles_only_rotten_titles(
+    client: TestClient, create_title: Callable[..., Title]
+):
+    title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
+    title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
+
+    create_title(name="test_en_all2", flavours=["maxi", "mini"])
+
+    response = client.get("/v1/titles/?skip=0&liit=10&is_rotten=true")
+    data = response.json()
+    assert data["meta"]["count"] == 1
+    assert data["items"][0]["id"] == str(title1.id)
+
+
+def test_get_titles_skip_rotten_titles(
+    client: TestClient, create_title: Callable[..., Title]
+):
+    title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
+    title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
+
+    title2 = create_title(name="test_en_all2", flavours=["maxi", "mini"])
+
+    response = client.get("/v1/titles/?skip=0&liit=10&is_rotten=false")
+    data = response.json()
+    assert data["meta"]["count"] == 1
+    assert data["items"][0]["id"] == str(title2.id)
 
 
 def test_get_titles(

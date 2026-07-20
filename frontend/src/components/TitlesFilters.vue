@@ -31,6 +31,18 @@
             @update:model-value="emitFilters"
           />
         </v-col>
+        <v-col cols="12" sm="4">
+          <v-select
+            v-model="localFilters.status"
+            label="Status"
+            :items="statusOptions"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            @update:model-value="emitFilters"
+          />
+        </v-col>
         <v-col v-if="hasActiveFilters" cols="12" sm="4">
           <v-btn size="small" variant="outlined" @click="handleClearFilters">
             <v-icon size="small" class="mr-1">mdi-close-circle</v-icon>
@@ -50,6 +62,7 @@ interface Props {
   filters: {
     name: string
     collection_name: string
+    status: string
   }
   collections: string[]
 }
@@ -62,15 +75,17 @@ const emit = defineEmits<{
     filters: {
       name: string
       collection_name: string
+      status: string
     },
   ]
   clearFilters: []
 }>()
 
 // Local filters state
-const localFilters = ref<{ name: string; collection_name: string | null }>({
+const localFilters = ref<{ name: string; collection_name: string | null; status: string | null }>({
   name: props.filters.name,
   collection_name: props.filters.collection_name || null,
+  status: props.filters.status || null,
 })
 
 const collectionsOptions = computed(() => {
@@ -87,13 +102,23 @@ watch(
     localFilters.value = {
       name: newFilters.name,
       collection_name: newFilters.collection_name,
+      status: newFilters.status,
     }
   },
   { deep: true },
 )
 
+const statusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Rotten', value: 'rotten' },
+]
+
 const hasActiveFilters = computed(() => {
-  return props.filters.name.length > 0 || props.filters.collection_name.length > 0
+  return (
+    props.filters.name.length > 0 ||
+    props.filters.collection_name.length > 0 ||
+    props.filters.status.length > 0
+  )
 })
 
 // Emit filters when they change
@@ -101,6 +126,7 @@ function emitFilters() {
   emit('filtersChanged', {
     name: localFilters.value.name,
     collection_name: localFilters.value.collection_name || '',
+    status: localFilters.value.status || '',
   })
 }
 
