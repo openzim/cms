@@ -12,7 +12,7 @@
       <div
         class="d-flex flex-md-row flex-column justify-md-end ga-2"
         v-if="
-          canMoveBook ||
+          canUnpromoteBook ||
           canDeleteBook ||
           canRecoverBook ||
           canAddBookToTitle ||
@@ -22,8 +22,13 @@
           canPromoteBook
         "
       >
-        <v-btn v-if="canMoveBook" color="primary" prepend-icon="mdi-truck" @click="openMoveDialog">
-          Move Book
+        <v-btn
+          v-if="canUnpromoteBook"
+          color="warning"
+          prepend-icon="mdi-arrow-down-bold-circle"
+          @click="openUnpromoteDialog"
+        >
+          Unpromote Book
         </v-btn>
         <v-btn
           v-if="canRecoverBook"
@@ -595,7 +600,7 @@
       </v-window>
     </div>
 
-    <MoveBookDialog v-model="moveDialogOpen" :book="book" @moved="handleBookMoved" />
+    <UnPromoteBookDialog v-model="unpromoteDialogOpen" :book="book" @moved="handleBookMoved" />
     <RecoverBookDialog v-model="recoverDialogOpen" :book="book" @recovered="handleBookRecovered" />
     <DeleteBookDialog v-model="deleteDialogOpen" :book="book" @deleted="handleBookDeleted" />
     <TitleSelectDialog
@@ -709,7 +714,7 @@ import DeleteBookDialog from '@/components/DeleteBookDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import EditBookForm from '@/components/EditBookForm.vue'
 import EventsList from '@/components/EventsList.vue'
-import MoveBookDialog from '@/components/MoveBookDialog.vue'
+import UnPromoteBookDialog from '@/components/UnPromoteBookDialog.vue'
 import RecoverBookDialog from '@/components/RecoverBookDialog.vue'
 import TitleSelectDialog from '@/components/TitleSelectDialog.vue'
 import TitleFormDialog from '@/components/TitleFormDialog.vue'
@@ -750,7 +755,7 @@ const title = ref<Title | null>(null)
 const dataLoaded = ref(false)
 const loadingUrls = ref(false)
 const zimUrls = ref<ZimUrl[]>([])
-const moveDialogOpen = ref(false)
+const unpromoteDialogOpen = ref(false)
 const recoverDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const addToTitleDialogOpen = ref(false)
@@ -832,12 +837,12 @@ const canViewBookIssues = computed(() => {
   return authStore.hasPermission('book', 'update')
 })
 
-const canMoveBook = computed(() => {
+const canUnpromoteBook = computed(() => {
   if (!book.value) return false
 
   return (
     authStore.hasPermission('book', 'update') &&
-    ['staging', 'prod'].includes(book.value.location_kind) &&
+    book.value.location_kind === 'prod' &&
     book.value.current_locations.length > 0 &&
     !book.value.has_error &&
     !book.value.needs_file_operation &&
@@ -1082,8 +1087,8 @@ const formatBytes = (bytes: number): string => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
-const openMoveDialog = () => {
-  moveDialogOpen.value = true
+const openUnpromoteDialog = () => {
+  unpromoteDialogOpen.value = true
 }
 
 const handleBookMoved = async () => {

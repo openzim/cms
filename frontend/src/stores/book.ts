@@ -221,12 +221,10 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
-  const moveBook = async (bookId: string, destination: 'staging' | 'prod') => {
+  const unPromoteBook = async (bookId: string) => {
     const service = await authStore.getApiService('books')
     try {
-      const response = await service.post<{ destination: string }, Book>(`/${bookId}/move`, {
-        destination,
-      })
+      const response = await service.post<null, Book>(`/${bookId}/unpromote`)
       errors.value = []
       book.value = response
       return response
@@ -324,7 +322,7 @@ export const useBookStore = defineStore('book', () => {
     deleteBook,
     recoverBook,
     removeBookBackup,
-    moveBook,
+    unPromoteBook,
     fetchBookFlavours,
     updateBook,
     backupBook,
