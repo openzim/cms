@@ -286,7 +286,7 @@ def test_promotion_actions_missing_mandatory_title_metadata(
     ]
     assert len(metadata_actions) == 1
     assert metadata_actions[0].requirement == "optional"
-    assert metadata_actions[0].data["title"] == "Test Article"
+    assert list(metadata_actions[0].data.keys()) == ["illustration_48x48_at_1"]
     assert (
         metadata_actions[0].data["illustration_48x48_at_1"] == illustration_48x48_at_1
     )

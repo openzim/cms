@@ -419,7 +419,7 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
 def get_differing_metadata_keys(book: Book) -> list[str]:
     """Get the list of metadata keys that are different between book and it's title.
 
-    Assumes book and title both have mandatory metadata set.
+    Assumes book has mandatory metadata set.
     Assumes that the book name and title name already match, thus aren't checked.
     """
 
@@ -433,6 +433,10 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         "Description": book.zim_metadata["Description"],
         "Language": book.zim_metadata["Language"],
         "Illustration_48x48@1": book.zim_metadata["Illustration_48x48@1"],
+        "LongDescription": book.zim_metadata.get("LongDescription"),
+        "License": book.zim_metadata.get("License"),
+        "Relation": book.zim_metadata.get("Relation"),
+        "Source": book.zim_metadata.get("Source"),
     }
 
     title_metadata = {
@@ -442,6 +446,10 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         "Description": book.title.description,
         "Language": book.title.language,
         "Illustration_48x48@1": book.title.illustration_48x48_at_1,
+        "LongDescription": book.title.long_description,
+        "License": book.title.license,
+        "Relation": book.title.relation,
+        "Source": book.title.source,
     }
 
     return [key for key in book_metadata if book_metadata[key] != title_metadata[key]]

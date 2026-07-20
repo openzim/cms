@@ -1,6 +1,21 @@
 import type { Config } from '@/config'
 import type { InjectionKey } from 'vue'
 
+export const TITLE_METADATA_FIELDS = [
+  'title',
+  'creator',
+  'publisher',
+  'license',
+  'language',
+  'illustration_48x48_at_1',
+  'description',
+  'long_description',
+  'relation',
+  'source',
+] as const
+
+export type TitleMetadataFieldKey = (typeof TITLE_METADATA_FIELDS)[number]
+
 export default {
   config: Symbol() as InjectionKey<Config>,
   COOKIE_LIFETIME_EXPIRY: '10y', // 10 years
