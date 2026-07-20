@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Annotated, Literal
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -30,10 +30,6 @@ from cms_backend.schemas.orms import (
 )
 
 router = APIRouter(prefix="/books", tags=["books"])
-
-
-class BookMoveSchema(BaseModel):
-    destination: Literal["prod", "staging"]
 
 
 class RevertBookSchema(BaseModel):
@@ -149,16 +145,15 @@ def recover_book(
 
 
 @router.post(
-    "/{book_id}/move",
+    "/{book_id}/unpromote",
     dependencies=[Depends(require_permission(namespace="book", name="update"))],
 )
-def move_book(
+def unpromote_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-    request: BookMoveSchema,
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.move_book(session, book_id=book_id, destination=request.destination)
+        db_book.move_book(session, book_id=book_id, destination="staging")
     )
 
 
