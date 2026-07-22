@@ -390,11 +390,14 @@ def apply_book_promotion_actions(
                     for action in expected_actions
                     if action.kind == "update_title_metadata"
                 )
-                missing_keys = get_missing_keys(
-                    action.data, *expected_action.data.keys()
+                missing_keys = set(expected_action.data.keys()) - set(
+                    action.data.keys()
                 )
                 if missing_keys:
-                    raise ValueError("Title must be updated with mandatory metadata")
+                    raise ValueError(
+                        "Title must be updated with all metadata keys: "
+                        f"{' '.join(missing_keys)}"
+                    )
                 title_update_payload.update(**action.data)
             case "update_title_maturity":
                 if get_missing_keys(action.data, "maturity"):
