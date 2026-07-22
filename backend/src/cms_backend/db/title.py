@@ -368,7 +368,11 @@ def create_title_history_entry(
         maturity=title.maturity,
         archived=title.archived,
         flavours=[
-            {"flavour": tf.flavour, "recipe_id": tf.recipe_id} for tf in title.flavours
+            {
+                "flavour": tf.flavour,
+                "recipe_id": str(tf.recipe_id) if tf.recipe_id else None,
+            }
+            for tf in title.flavours
         ],
         collection_titles=[
             {
