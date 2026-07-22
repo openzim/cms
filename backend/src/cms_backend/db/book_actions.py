@@ -22,7 +22,6 @@ from cms_backend.db.flavour import (
     get_title_flavour_or_none,
 )
 from cms_backend.db.models import Book
-from cms_backend.db.rules import title_is_missing_mandatory_metadata
 from cms_backend.db.title import create_title, restore_title, update_title
 from cms_backend.schemas.models import (
     BaseBookPromotionAction,
@@ -39,6 +38,169 @@ from cms_backend.utils.zim import (
     get_missing_keys,
     get_missing_metadata_keys,
 )
+
+
+def _get_update_title_metadata_action(book: Book) -> BookPromotionAction | None:
+    if differing_metadata_keys := get_differing_metadata_keys(book):
+        metadata_to_identifier_map = {
+            "Title": "title",
+            "Creator": "creator",
+            "Publisher": "publisher",
+            "Description": "description",
+            "Language": "language",
+            "Illustration_48x48@1": "illustration_48x48_at_1",
+            "LongDescription": "long_description",
+            "License": "license",
+            "Relation": "relation",
+            "Source": "source",
+        }
+        return BookPromotionAction(
+            kind="update_title_metadata",
+            requirement="optional",
+            data={
+                metadata_to_identifier_map[key]: book.zim_metadata.get(key)
+                for key in differing_metadata_keys
+            },
+            message="Update title metadata from book",
+        )
+
+
+def _get_unknown_languages_action(book: Book) -> BookPromotionAction | None:
+    unknown_languages = get_book_unsupported_languages(book)
+    if unknown_languages:
+        return BookPromotionAction(
+            kind="unknown_languages",
+            requirement="information",
+            data={},
+            message=(
+                "Book has unknown language code(s): "
+                f"{','.join(unknown_languages)}. "
+                "Please contact a CMS admin if code(s) look legit to you."
+            ),
+        )
+
+
+def _get_zimcheck_issues_action(book: Book) -> BookPromotionAction | None:
+    zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=False)
+    if zimcheck_errors and book.zimcheck_summary:
+        zimcheck_summary = ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
+        return BookPromotionAction(
+            kind="zimcheck_issues",
+            requirement="information",
+            data={},
+            message=f"Book has {zimcheck_summary.error_count} zimcheck error(s). ",
+        )
+
+
+def _get_create_title_action(book: Book) -> BookPromotionAction | None:
+    if book.title is None:
+        return BookPromotionAction(
+            kind="create_title",
+            requirement="mandatory",
+            data={
+                "name": book.name,
+                "maturity": "stable",
+                "title": book.zim_metadata["Title"],
+                "creator": book.zim_metadata["Creator"],
+                "publisher": book.zim_metadata["Publisher"],
+                "description": book.zim_metadata["Description"],
+                "language": book.zim_metadata["Language"],
+                "illustration_48x48_at_1": book.zim_metadata["Illustration_48x48@1"],
+                "flavours": [
+                    {
+                        "flavour": book.flavour,
+                        "recipe_link": construct_recipe_link(book.recipe_id),
+                    }
+                ],
+                "collection_titles": [],
+            },
+            message="Create new title. Please configure title collection(s).",
+        )
+
+
+def _get_restore_title_action(book: Book) -> BookPromotionAction | None:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title")
+
+    if book.title.archived:
+        return BookPromotionAction(
+            kind="restore_title",
+            requirement="mandatory",
+            data={"title_names": [book.title.name]},
+            message=f"Restore title '{book.title.name}' from archive",
+        )
+
+
+def _get_update_title_maturity_action(book: Book) -> BookPromotionAction | None:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title")
+
+    if book.title.maturity != "stable":
+        return BookPromotionAction(
+            kind="update_title_maturity",
+            requirement="optional",
+            data={
+                "maturity": "stable",
+            },
+            message=f"Mark title '{book.title.maturity}' as stable.",
+        )
+
+
+def _get_set_title_collections_action(book: Book) -> BookPromotionAction | None:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title")
+
+    if len(book.title.collections) == 0:
+        return BookPromotionAction(
+            kind="set_title_collections",
+            requirement="mandatory",
+            data={
+                "collection_titles": [],
+            },
+            message="Configure title collection(s)",
+        )
+
+
+def _get_create_title_flavour_action(book: Book) -> BookPromotionAction | None:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title")
+
+    if book_has_flavour_mismatch(book):
+        title_flavours = [tf.flavour for tf in book.title.flavours]
+        return BookPromotionAction(
+            kind="create_title_flavour",
+            requirement="mandatory",
+            data={
+                "flavour": book.flavour,
+                "recipe_link": construct_recipe_link(book.recipe_id),
+            },
+            message=(
+                f"Add '{book.flavour}' to title flavours: {','.join(title_flavours)}"
+            ),
+        )
+
+
+def _get_update_flavour_recipe_action(
+    session: OrmSession, book: Book
+) -> BookPromotionAction | None:
+    if book.title is None:
+        raise ValueError("Book must be associated with a title")
+
+    if book_has_recipe_issue(book):
+        matching_flavour = get_title_flavour(session, book.title.id, book.flavour)
+        return BookPromotionAction(
+            kind="update_flavour_recipe",
+            requirement="mandatory",
+            data={
+                "recipe_id": book.recipe_id,
+                "recipe_link": construct_recipe_link(book.recipe_id),
+            },
+            message=(
+                f"Update flavour recipe from "
+                f"{construct_recipe_link(matching_flavour.recipe_id)} to "
+                f"{construct_recipe_link(book.recipe_id)}"
+            ),
+        )
 
 
 def get_book_promotion_actions(
@@ -67,150 +229,33 @@ def get_book_promotion_actions(
             "possibly be promoted through to 'prod'"
         )
 
-    unknown_languages = get_book_unsupported_languages(book)
-    if unknown_languages:
-        actions.append(
-            BookPromotionAction(
-                kind="unknown_languages",
-                requirement="information",
-                data={},
-                message=(
-                    "Book has unknown language code(s): "
-                    f"{','.join(unknown_languages)}. "
-                    "Please contact a CMS admin if code(s) look legit to you."
-                ),
-            )
-        )
+    if action := _get_unknown_languages_action(book):
+        actions.append(action)
 
-    zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=False)
-    if zimcheck_errors and book.zimcheck_summary:
-        zimcheck_summary = ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
-        actions.append(
-            BookPromotionAction(
-                kind="zimcheck_issues",
-                requirement="information",
-                data={},
-                message=f"Book has {zimcheck_summary.error_count} zimcheck error(s). ",
-            )
-        )
+    if action := _get_zimcheck_issues_action(book):
+        actions.append(action)
 
-    if book.title is None:
-        actions.append(
-            BookPromotionAction(
-                kind="create_title",
-                requirement="mandatory",
-                data={
-                    "name": book.name,
-                    "maturity": "stable",
-                    "title": book.zim_metadata["Title"],
-                    "creator": book.zim_metadata["Creator"],
-                    "publisher": book.zim_metadata["Publisher"],
-                    "description": book.zim_metadata["Description"],
-                    "language": book.zim_metadata["Language"],
-                    "illustration_48x48_at_1": book.zim_metadata[
-                        "Illustration_48x48@1"
-                    ],
-                    "flavours": [
-                        {
-                            "flavour": book.flavour,
-                            "recipe_link": construct_recipe_link(book.recipe_id),
-                        }
-                    ],
-                    "collection_titles": [],
-                },
-                message="Create new title. Please configure title collection(s).",
-            )
-        )
+    if action := _get_create_title_action(book):
+        actions.append(action)
         return actions
 
-    title = book.title
+    if action := _get_restore_title_action(book):
+        actions.append(action)
 
-    if title.archived:
-        actions.append(
-            BookPromotionAction(
-                kind="restore_title",
-                requirement="mandatory",
-                data={"title_names": [title.name]},
-                message=f"Restore title '{title.name}' from archive",
-            )
-        )
+    if action := _get_update_title_metadata_action(book):
+        actions.append(action)
 
-    if title_is_missing_mandatory_metadata(title) or get_differing_metadata_keys(book):
-        actions.append(
-            BookPromotionAction(
-                kind="update_title_metadata",
-                requirement="optional",
-                data={
-                    "title": book.zim_metadata["Title"],
-                    "creator": book.zim_metadata["Creator"],
-                    "publisher": book.zim_metadata["Publisher"],
-                    "description": book.zim_metadata["Description"],
-                    "language": book.zim_metadata["Language"],
-                    "illustration_48x48_at_1": book.zim_metadata[
-                        "Illustration_48x48@1"
-                    ],
-                },
-                message="Update title metadata",
-            )
-        )
+    if action := _get_update_title_maturity_action(book):
+        actions.append(action)
 
-    if title.maturity != "stable":
-        actions.append(
-            BookPromotionAction(
-                kind="update_title_maturity",
-                requirement="optional",
-                data={
-                    "maturity": "stable",
-                },
-                message=f"Mark title '{title.maturity}' as stable.",
-            )
-        )
-    if len(title.collections) == 0:
-        actions.append(
-            BookPromotionAction(
-                kind="set_title_collections",
-                requirement="mandatory",
-                data={
-                    "collection_titles": [],
-                },
-                message="Configure title collection(s)",
-            )
-        )
+    if action := _get_set_title_collections_action(book):
+        actions.append(action)
 
-    if book_has_flavour_mismatch(book):
-        title_flavours = [tf.flavour for tf in title.flavours]
-        actions.append(
-            BookPromotionAction(
-                kind="create_title_flavour",
-                requirement="mandatory",
-                data={
-                    "flavour": book.flavour,
-                    "recipe_link": construct_recipe_link(book.recipe_id),
-                },
-                message=(
-                    f"Add '{book.flavour}' to title flavours: "
-                    f"{','.join(title_flavours)}"
-                ),
-            )
-        )
+    if action := _get_create_title_flavour_action(book):
+        actions.append(action)
 
-    if book_has_recipe_issue(book):
-        matching_flavour = get_title_flavour(session, title.id, book.flavour)
-        actions.append(
-            BookPromotionAction(
-                kind="update_flavour_recipe",
-                requirement="mandatory",
-                data={
-                    "recipe_id": book.recipe_id,
-                    "recipe_link": construct_recipe_link(book.recipe_id),
-                },
-                message=(
-                    f"Update flavour recipe from "
-                    f"{construct_recipe_link(matching_flavour.recipe_id)} to "
-                    f"{construct_recipe_link(book.recipe_id)}"
-                ),
-            )
-        )
+    if action := _get_update_flavour_recipe_action(session, book):
+        actions.append(action)
 
     return actions
 
@@ -340,14 +385,13 @@ def apply_book_promotion_actions(
             case "restore_title":
                 _apply_restore_title_action(session, action, book, author_id)
             case "update_title_metadata":
+                expected_action = next(
+                    action
+                    for action in expected_actions
+                    if action.kind == "update_title_metadata"
+                )
                 missing_keys = get_missing_keys(
-                    action.data,
-                    "title",
-                    "creator",
-                    "publisher",
-                    "description",
-                    "language",
-                    "illustration_48x48_at_1",
+                    action.data, *expected_action.data.keys()
                 )
                 if missing_keys:
                     raise ValueError("Title must be updated with mandatory metadata")

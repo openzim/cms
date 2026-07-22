@@ -33,128 +33,99 @@
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.title" label="Title" :max-graphemes="titleMaxLength" />
-          <div v-if="!inDialog && isFieldDifferent('title')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.title }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('title')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('title')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.title"
+            @use="useBookValue('title')"
+          >
+            <TitleTextField
+              v-model="formData.title"
+              label="Title"
+              :max-graphemes="titleMaxLength"
+            />
+          </MetadataFieldWithDiff>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.creator" label="Creator" />
-          <div v-if="!inDialog && isFieldDifferent('creator')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.creator }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('creator')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('creator')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.creator"
+            @use="useBookValue('creator')"
+          >
+            <TitleTextField v-model="formData.creator" label="Creator" />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.publisher" label="Publisher" />
-          <div v-if="!inDialog && isFieldDifferent('publisher')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.publisher }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('publisher')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('publisher')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.publisher"
+            @use="useBookValue('publisher')"
+          >
+            <TitleTextField v-model="formData.publisher" label="Publisher" />
+          </MetadataFieldWithDiff>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleLanguageField v-model="formData.language" />
-          <div v-if="!inDialog && isFieldDifferent('language')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.language }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('language')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('language')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.language"
+            @use="useBookValue('language')"
+          >
+            <TitleLanguageField v-model="formData.language" />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.license" label="License" />
-          <div v-if="!inDialog && isFieldDifferent('license')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.license }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('license')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('license')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.license"
+            @use="useBookValue('license')"
+          >
+            <TitleTextField v-model="formData.license" label="License" />
+          </MetadataFieldWithDiff>
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.relation" label="Relation" />
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('relation')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.relation"
+            @use="useBookValue('relation')"
+          >
+            <TitleTextField v-model="formData.relation" label="Relation" />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleTextField v-model="formData.source" label="Source" />
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('source')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.source"
+            @use="useBookValue('source')"
+          >
+            <TitleTextField v-model="formData.source" label="Source" />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12">
-          <TitleIllustrationField v-model="formData.illustration_48x48_at_1" />
-          <div
-            v-if="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
-            class="text-body-2 mt-2 mb-2"
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('illustration_48x48_at_1')"
+            diff-label="Different from latest book which has:"
+            @use="useBookValue('illustration_48x48_at_1')"
           >
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between mb-2">
+            <TitleIllustrationField v-model="formData.illustration_48x48_at_1" />
+            <template #diff-content>
               <div class="d-flex flex-column flex-grow-1">
                 <v-img
                   :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
@@ -164,70 +135,44 @@
                 />
                 <span class="text-caption text-grey-darken-1 mt-1">{{ bookIllustrationSize }}</span>
               </div>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('illustration_48x48_at_1')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+            </template>
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row>
         <v-col cols="12">
-          <TitleTextField
-            v-model="formData.description"
-            label="Description"
-            textarea
-            :max-graphemes="descriptionMaxLength"
-          />
-          <div v-if="!inDialog && isFieldDifferent('description')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.description }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('description')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="!inDialog && isFieldDifferent('description')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.description"
+            @use="useBookValue('description')"
+          >
+            <TitleTextField
+              v-model="formData.description"
+              label="Description"
+              textarea
+              :max-graphemes="descriptionMaxLength"
+            />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
 
       <v-row v-if="!inDialog">
         <v-col cols="12">
-          <TitleTextField
-            v-model="formData.long_description"
-            label="Long Description"
-            textarea
-            :rows="5"
-          />
-          <div v-if="isFieldDifferent('long_description')" class="text-body-2 mb-2">
-            <div class="mb-1 text-warning font-weight-medium">
-              Different from latest book which has:
-            </div>
-            <div class="d-flex align-center justify-space-between">
-              <strong>{{ bookMetadata?.long_description }}</strong>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="warning"
-                class="ml-3"
-                @click="useBookValue('long_description')"
-                >Use this</v-btn
-              >
-            </div>
-          </div>
+          <MetadataFieldWithDiff
+            :show-diff="isFieldDifferent('long_description')"
+            diff-label="Different from latest book which has:"
+            :diff-value="bookMetadata?.long_description"
+            @use="useBookValue('long_description')"
+          >
+            <TitleTextField
+              v-model="formData.long_description"
+              label="Long Description"
+              textarea
+              :rows="5"
+            />
+          </MetadataFieldWithDiff>
         </v-col>
       </v-row>
     </div>
@@ -260,13 +205,15 @@ import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
 import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
+import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
 import type { CollectionLight } from '@/types/collections'
 import type { Book } from '@/types/book'
 import { computed, inject, ref, watch } from 'vue'
-import constants from '@/constants'
+import constants, { TITLE_METADATA_FIELDS, type TitleMetadataFieldKey } from '@/constants'
 import type { Config } from '@/config'
 import { base64ByteSize } from '@/utils/format'
+import { getImageDataUrl } from '@/utils/image'
 
 interface Props {
   title?: Title | null
@@ -313,16 +260,7 @@ const originalCollections = ref<BaseTitleCollection[]>([])
 const isEditMode = computed(() => props.title !== null && props.title.id !== '')
 
 // Book metadata comparison
-type BookMetadataFields = {
-  title: string | undefined
-  creator: string | undefined
-  publisher: string | undefined
-  description: string | undefined
-  long_description: string | undefined
-  language: string | undefined
-  license: string | undefined
-  illustration_48x48_at_1: string | undefined
-}
+type BookMetadataFields = Record<TitleMetadataFieldKey, string | undefined>
 
 const bookMetadata = computed<BookMetadataFields | null>(() => {
   if (!props.latestBook?.zim_metadata) return null
@@ -336,6 +274,8 @@ const bookMetadata = computed<BookMetadataFields | null>(() => {
     language: metadata.Language as string | undefined,
     license: metadata.License as string | undefined,
     illustration_48x48_at_1: metadata['Illustration_48x48@1'] as string | undefined,
+    relation: metadata.Relation as string | undefined,
+    source: metadata.Source as string | undefined,
   }
 })
 
@@ -343,55 +283,28 @@ const isFieldDifferent = (field: keyof BookMetadataFields) => {
   if (!bookMetadata.value || !isEditMode.value) return false
   const bookValue = bookMetadata.value[field]
   const titleValue = formData.value[field as keyof typeof formData.value]
-  if (bookValue === undefined || bookValue === null) return false
-  if (bookValue === titleValue) return false
-  return true
+  if (bookValue === undefined) return false
+  return bookValue !== titleValue
 }
 
 const hasAnyDifferences = computed(() => {
   if (!bookMetadata.value || !isEditMode.value) return false
-  const fields: (keyof BookMetadataFields)[] = [
-    'title',
-    'creator',
-    'publisher',
-    'description',
-    'long_description',
-    'language',
-    'license',
-    'illustration_48x48_at_1',
-  ]
-  return fields.some((field) => isFieldDifferent(field))
+  return TITLE_METADATA_FIELDS.some((field) => isFieldDifferent(field))
 })
 
 const useBookValue = (field: keyof BookMetadataFields) => {
   if (!bookMetadata.value) return
   const value = bookMetadata.value[field]
-  if (value !== undefined && value !== null) {
+  if (value !== undefined) {
     ;(formData.value[field as keyof typeof formData.value] as string | null) = value
   }
 }
 
 const useAllBookValues = () => {
   if (!bookMetadata.value) return
-  const fields: (keyof BookMetadataFields)[] = [
-    'title',
-    'creator',
-    'publisher',
-    'description',
-    'long_description',
-    'language',
-    'license',
-    'illustration_48x48_at_1',
-  ]
-  fields.forEach((field) => {
+  TITLE_METADATA_FIELDS.forEach((field) => {
     if (isFieldDifferent(field)) useBookValue(field)
   })
-}
-
-const getImageDataUrl = (base64String: string | undefined): string | undefined => {
-  if (!base64String) return undefined
-  if (base64String.startsWith('data:') || base64String.startsWith('http')) return base64String
-  return `data:image/png;base64,${base64String}`
 }
 
 const bookIllustrationSize = computed(() => {
