@@ -3,7 +3,7 @@
     <v-card class="mb-4" flat>
       <v-card-text>
         <v-row align="center">
-          <v-col cols="12" sm="8">
+          <v-col cols="12" sm="4">
             <v-text-field
               v-model="searchCollection"
               label="Search collection"
@@ -16,6 +16,18 @@
               @blur="handleSearchChange"
               @keyup.enter="handleSearchChange"
               @click:clear="handleSearchChange"
+            />
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="filterPrivate"
+              :items="privateFilterOptions"
+              label="Visibility"
+              variant="outlined"
+              density="compact"
+              clearable
+              hide-details
+              @update:model-value="handleSearchChange"
             />
           </v-col>
           <v-col cols="12" sm="4">
@@ -71,7 +83,14 @@ const collectionStore = useCollectionsStore()
 // Reactive data
 const collections = ref<CollectionLight[]>([])
 const searchCollection = ref<string>('')
+const filterPrivate = ref<string | null>(null)
 const showCreateDialog = ref(false)
+
+const privateFilterOptions = [
+  { title: 'All', value: null },
+  { title: 'Private', value: 'true' },
+  { title: 'Public', value: 'false' },
+]
 
 const paginator = ref({
   page: Number(route.query.page) || 1,
@@ -88,6 +107,7 @@ const canCreateCollections = computed(() => authStore.hasPermission('collection'
 const headers = [
   { title: 'Name', key: 'name', sortable: false },
   { title: 'Paths', key: 'paths', sortable: false },
+  { title: 'Private', key: 'is_private', sortable: false },
 ]
 
 // Methods
@@ -103,6 +123,8 @@ const loadData = async (limit: number, skip: number) => {
     limit,
     skip,
     searchCollection.value || undefined,
+    undefined,
+    filterPrivate.value !== null ? filterPrivate.value === 'true' : undefined,
   )
 
   if (response) {
@@ -136,6 +158,9 @@ const handleSearchChange = async () => {
   if (searchCollection.value) {
     query.name = searchCollection.value
   }
+  if (filterPrivate.value !== null) {
+    query.is_private = filterPrivate.value
+  }
   router.push({
     query: Object.keys(query).length > 0 ? query : undefined,
   })
@@ -159,6 +184,11 @@ watch(
       searchCollection.value = query.name
     } else {
       searchCollection.value = ''
+    }
+    if (query.is_private && typeof query.is_private === 'string') {
+      filterPrivate.value = query.is_private
+    } else {
+      filterPrivate.value = null
     }
     const newSkip = (page - 1) * paginator.value.limit
     await loadData(paginator.value.limit, newSkip)

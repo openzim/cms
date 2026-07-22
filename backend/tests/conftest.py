@@ -344,6 +344,7 @@ def create_collection(
     create_warehouse: Callable[..., Warehouse],
 ) -> Callable[..., Collection]:
     def _create_collection(
+        *,
         name: str | None = None,
         warehouse: Warehouse | None = None,
         download_base_url: str = "https://download.kiwix.org/zim/",
@@ -353,6 +354,7 @@ def create_collection(
         article_count_increase_threshold: float | None = None,
         media_count_decrease_threshold: float | None = None,
         article_count_decrease_threshold: float | None = None,
+        is_private: bool = False,
     ) -> Collection:
         if warehouse is None:
             warehouse = create_warehouse()
@@ -366,6 +368,7 @@ def create_collection(
             article_count_decrease_threshold=article_count_decrease_threshold,
             media_count_increase_threshold=media_count_increase_threshold,
             media_count_decrease_threshold=media_count_decrease_threshold,
+            is_private=is_private,
         )
 
         # Add title associations if provided
@@ -380,6 +383,7 @@ def create_collection(
             name=collection.name,
             view_base_url=collection.view_base_url,
             download_base_url=collection.download_base_url,
+            is_private=is_private,
         )
         history_entry.author_id = account.id
         history_entry.collection = collection

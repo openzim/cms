@@ -47,7 +47,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
     },
     RoleEnum.COLLECTION_EDITOR: {
         "book": ResourcePermissions.get_all(),
-        "title": TitlePermissions.get_all(),
+        "title": TitlePermissions.get(read=True, update=True),
         "collection": ResourcePermissions.get(read=True, update=True),
     },
     RoleEnum.ZIMFARM: {

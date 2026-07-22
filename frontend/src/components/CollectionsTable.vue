@@ -43,6 +43,12 @@
           </v-chip>
         </template>
 
+        <template #[`item.is_private`]="{ item }">
+          <v-chip :color="item.is_private ? 'warning' : 'success'" size="small" variant="tonal">
+            {{ item.is_private ? 'Yes' : 'No' }}
+          </v-chip>
+        </template>
+
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="large" class="mb-2">mdi-folder-multiple-outline</v-icon>
