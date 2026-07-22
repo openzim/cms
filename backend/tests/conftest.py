@@ -435,7 +435,7 @@ def create_account(
     def _create_account(
         *,
         username: str | None = None,
-        permission: RoleEnum = RoleEnum.EDITOR,
+        permission: RoleEnum = RoleEnum.ADMIN,
         password: str | None = None,
     ):
         username = username or faker.first_name()

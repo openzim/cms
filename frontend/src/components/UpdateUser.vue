@@ -1,7 +1,7 @@
 <template>
   <v-card class="mb-4">
     <v-card-text>
-      <v-form @submit.prevent="submitForm">
+      <v-form ref="formRef" @submit.prevent="submitForm">
         <v-row>
           <v-col cols="12" md="6">
             <v-text-field
@@ -12,8 +12,8 @@
               variant="outlined"
               density="compact"
               persistent-hint
-              :error-messages="displayNameError ? [displayNameError] : []"
-              required
+              :validate-on="'blur'"
+              :rules="[rules.required, rules.minLength(3)]"
             />
           </v-col>
 
@@ -24,6 +24,21 @@
               label="Role"
               variant="outlined"
               density="compact"
+            />
+          </v-col>
+
+          <v-col cols="12" v-if="form.role === 'collection-editor'">
+            <v-autocomplete
+              v-model="form.collections"
+              :items="collectionNames"
+              label="Collections"
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="compact"
+              hint="Select the collections this user can access"
+              persistent-hint
             />
           </v-col>
         </v-row>
@@ -41,7 +56,8 @@
                 variant="outlined"
                 density="compact"
                 persistent-hint
-                :error-messages="usernameError ? [usernameError] : []"
+                :validate-on="'blur'"
+                :rules="props.user.has_password ? [rules.required, rules.minLength(3)] : []"
               />
             </v-col>
 
@@ -54,6 +70,8 @@
                 variant="outlined"
                 density="compact"
                 persistent-hint
+                :validate-on="'blur'"
+                :rules="form.password !== PASSWORD_PLACEHOLDER ? [rules.minLength(8)] : []"
                 append-inner-icon="mdi-refresh"
                 @click:append-inner="generateNewPassword"
               />
@@ -74,6 +92,7 @@
                 variant="outlined"
                 density="compact"
                 persistent-hint
+                :validate-on="'blur'"
               />
             </v-col>
           </v-row>
@@ -102,22 +121,29 @@ import type { User } from '@/types/user'
 // Props
 interface Props {
   user: User
+  collectionNames: string[]
+  initialCollections?: string[]
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  initialCollections: () => [],
+})
 
 const emit = defineEmits<{
   (
-    e: 'update-user',
+    e: 'submit',
     payload: {
-      username?: string | null
-      display_name?: string
-      role?: (typeof constants.ROLES)[number]
-      scope?: Record<string, Record<string, boolean>>
-      idp_sub?: string | null
+      userPayload: {
+        username?: string | null
+        display_name?: string
+        role?: (typeof constants.ROLES)[number]
+        scope?: Record<string, Record<string, boolean>>
+        idp_sub?: string | null
+        collections?: string[] | null
+      } | null
+      password?: string | null
     },
   ): void
-  (e: 'change-password', password: string | null): void
 }>()
 
 const roles = constants.ROLES
@@ -131,6 +157,13 @@ const hasOauth = computed(() => config?.LOGIN_MODES.includes('oauth') || !!props
 
 const PASSWORD_PLACEHOLDER = '******'
 
+// Form validation rules
+const rules = {
+  required: (value: string) => !!value || 'This field is required',
+  minLength: (min: number) => (value: string) =>
+    !value || value.length >= min || `This field must be at least ${min} characters long`,
+}
+
 // Reactive data
 const form = ref({
   username: '',
@@ -138,21 +171,7 @@ const form = ref({
   role: '' as (typeof constants.ROLES)[number],
   password: '',
   idp_sub: '',
-})
-
-const usernameError = computed(() => {
-  // If user has password, username cannot be empty
-  if (props.user.has_password && !form.value.username.trim()) {
-    return 'Username is required for users with password'
-  }
-  return null
-})
-
-const displayNameError = computed(() => {
-  if (!form.value.display_name.trim()) {
-    return 'Display name is required'
-  }
-  return null
+  collections: [] as string[],
 })
 
 const passwordChanged = computed(() => {
@@ -166,20 +185,15 @@ const payload = computed(() => {
     role?: (typeof constants.ROLES)[number]
     scope?: Record<string, Record<string, boolean>>
     idp_sub?: string | null
+    collections?: string[] | null
   } = {}
 
   // Only include username if it has changed
   if (form.value.username !== (props.user.username || '')) {
-    if (usernameError.value) {
-      return null
-    }
     result.username = form.value.username.trim() ? form.value.username.trim() : null
   }
 
   if (form.value.display_name !== props.user.display_name) {
-    if (displayNameError.value) {
-      return null
-    }
     result.display_name = form.value.display_name
   }
 
@@ -190,6 +204,26 @@ const payload = computed(() => {
   // Only include idp_sub if it has changed
   if (form.value.idp_sub !== (props.user.idp_sub || '')) {
     result.idp_sub = form.value.idp_sub.trim() ? form.value.idp_sub : null
+  }
+
+  // Include collections if role is collection-editor and they differ from initial,
+  // or if the role has just been changed to collection-editor
+  if (form.value.role === 'collection-editor') {
+    const roleChanged = form.value.role !== props.user.role
+    const initial = props.initialCollections
+    const current = form.value.collections
+    const collectionsChanged =
+      initial.length !== current.length || !initial.every((c) => current.includes(c))
+    if (roleChanged || collectionsChanged) {
+      result.collections = current
+    }
+  } else if (form.value.role !== props.user.role && props.user.role === 'collection-editor') {
+    result.collections = null
+  }
+
+  // If we're sending collections, always include the role
+  if ('collections' in result) {
+    result.role = form.value.role
   }
 
   if (Object.keys(result).length === 0) {
@@ -203,20 +237,26 @@ const generateNewPassword = () => {
   form.value.password = generatePassword(8)
 }
 
-// Watchers
+// Form ref for validation
+const formRef = ref()
 
 // Methods
 const hasChanges = computed(() => {
   return payload.value !== null || passwordChanged.value
 })
 
-const submitForm = () => {
-  if (payload.value) {
-    emit('update-user', payload.value)
-  }
-  if (passwordChanged.value) {
-    emit('change-password', form.value.password.trim() ? form.value.password.trim() : null)
-  }
+const submitForm = async () => {
+  const { valid } = await formRef.value?.validate()
+  if (!valid) return
+
+  emit('submit', {
+    userPayload: payload.value,
+    password: passwordChanged.value
+      ? form.value.password.trim()
+        ? form.value.password.trim()
+        : null
+      : undefined,
+  })
 }
 
 const initializeForm = () => {
@@ -224,7 +264,7 @@ const initializeForm = () => {
 
   const role = constants.ROLES.includes(props.user.role as (typeof constants.ROLES)[number])
     ? (props.user.role as (typeof constants.ROLES)[number])
-    : 'editor'
+    : 'global-editor'
 
   form.value = {
     username: props.user.username || '',
@@ -232,6 +272,7 @@ const initializeForm = () => {
     role,
     password: props.user.has_password ? PASSWORD_PLACEHOLDER : '',
     idp_sub: props.user.idp_sub || '',
+    collections: role === 'collection-editor' ? [...props.initialCollections] : [],
   }
 }
 
@@ -242,6 +283,24 @@ watch(
     initializeForm()
   },
   { deep: true },
+)
+
+watch(
+  () => form.value.role,
+  (newRole) => {
+    if (newRole !== 'collection-editor') {
+      form.value.collections = []
+    }
+  },
+)
+
+watch(
+  () => props.initialCollections,
+  (newCollections) => {
+    if (form.value.role === 'collection-editor') {
+      form.value.collections = [...newCollections]
+    }
+  },
 )
 
 onMounted(() => {

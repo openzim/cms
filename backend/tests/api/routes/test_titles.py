@@ -42,28 +42,34 @@ def test_get_titles_empty(client: TestClient):
 
 
 def test_get_titles_only_rotten_titles(
-    client: TestClient, create_title: Callable[..., Title]
+    client: TestClient, create_title: Callable[..., Title], access_token: str
 ):
     title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
     title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
 
     create_title(name="test_en_all2", flavours=["maxi", "mini"])
 
-    response = client.get("/v1/titles/?skip=0&liit=10&is_rotten=true")
+    response = client.get(
+        "/v1/titles/?skip=0&liit=10&is_rotten=true",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     data = response.json()
     assert data["meta"]["count"] == 1
     assert data["items"][0]["id"] == str(title1.id)
 
 
 def test_get_titles_skip_rotten_titles(
-    client: TestClient, create_title: Callable[..., Title]
+    client: TestClient, create_title: Callable[..., Title], access_token: str
 ):
     title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
     title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
 
     title2 = create_title(name="test_en_all2", flavours=["maxi", "mini"])
 
-    response = client.get("/v1/titles/?skip=0&liit=10&is_rotten=false")
+    response = client.get(
+        "/v1/titles/?skip=0&liit=10&is_rotten=false",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     data = response.json()
     assert data["meta"]["count"] == 1
     assert data["items"][0]["id"] == str(title2.id)
@@ -72,12 +78,16 @@ def test_get_titles_skip_rotten_titles(
 def test_get_titles(
     client: TestClient,
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test that get_titles returns titles"""
     create_title(name="wikipedia_en_all")
     create_title(name="wikipedia_fr_all")
 
-    response = client.get("/v1/titles?skip=1&limit=12")
+    response = client.get(
+        "/v1/titles?skip=1&limit=12",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["meta"]["skip"] == 1
@@ -107,7 +117,7 @@ def test_get_titles(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -339,13 +349,16 @@ def test_create_title_duplicate_name(
 def test_get_title_by_id(
     client: TestClient,
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test retrieving a title by ID returns full details"""
     title = create_title(
         name="wikipedia_en_test",
     )
 
-    response = client.get(f"/v1/titles/{title.id}")
+    response = client.get(
+        f"/v1/titles/{title.id}", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
@@ -384,6 +397,7 @@ def test_get_title_by_id_with_books(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test retrieving a title with associated books"""
     title = create_title(
@@ -403,7 +417,9 @@ def test_get_title_by_id_with_books(
     title.books.append(book2)
     dbsession.flush()
 
-    response = client.get(f"/v1/titles/{title.id}")
+    response = client.get(
+        f"/v1/titles/{title.id}", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
 
@@ -445,7 +461,7 @@ def test_get_title_by_id_not_found(client: TestClient):
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -592,7 +608,7 @@ def test_update_title_metadata(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -619,7 +635,7 @@ def test_archive_title_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.NO_CONTENT, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NO_CONTENT, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -649,7 +665,7 @@ def test_archive_multiple_titles_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -676,7 +692,7 @@ def test_restore_archived_title_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.NO_CONTENT, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NO_CONTENT, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -751,7 +767,7 @@ def test_get_title_history(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -794,7 +810,7 @@ def test_get_title_history_entry(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -834,7 +850,7 @@ def test_revert_title_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -974,7 +990,7 @@ def test_get_title_flavours_pagination(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )

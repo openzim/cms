@@ -18,6 +18,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.db.title import (
     archive_title,
+    get_title_by_id_or_none,
     get_title_by_name_or_none,
     get_title_history,
     get_title_history_entry_or_none,
@@ -715,3 +716,43 @@ def test_merge_titles_success(
         != 0
     )
     assert book1.needs_file_operation is True
+
+
+def test_get_title_by_id_or_none_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+):
+    """Returns title when it belongs to an accessible collection."""
+    title = create_title(name="test_title")
+    collection = create_collection(
+        title_ids_with_paths=[(title.id, "/test/path")],
+    )
+    dbsession.flush()
+
+    result = get_title_by_id_or_none(
+        dbsession,
+        title_id=title.id,
+        accessible_collection_ids=[collection.id],
+    )
+    assert result is not None
+    assert result.id == title.id
+
+
+def test_get_title_by_id_or_none_not_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+):
+    """Returns None when title does not belong to any accessible collection."""
+    title = create_title(name="test_title")
+    other_collection = create_collection()
+    dbsession.flush()
+
+    # Pass an unrelated collection's ID — title not linked to it
+    result = get_title_by_id_or_none(
+        dbsession,
+        title_id=title.id,
+        accessible_collection_ids=[other_collection.id],
+    )
+    assert result is None

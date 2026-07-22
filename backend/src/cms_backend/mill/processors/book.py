@@ -1,3 +1,6 @@
+from collections.abc import Sequence
+from uuid import UUID
+
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
@@ -58,7 +61,11 @@ def check_book_zim_spec(book: Book) -> bool:
         return False
 
 
-def get_matching_title(session: ORMSession, book: Book) -> Title | None:
+def get_matching_title(
+    session: ORMSession,
+    book: Book,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title | None:
     try:
         if not book.name:
             book.events.append(
@@ -67,7 +74,11 @@ def get_matching_title(session: ORMSession, book: Book) -> Title | None:
             book.has_error = True
             return None
 
-        title = get_title_by_name_or_none(session, name=book.name)
+        title = get_title_by_name_or_none(
+            session,
+            name=book.name,
+            accessible_collection_ids=accessible_collection_ids,
+        )
 
         if not title:
             book.events.append(f"{getnow()}: no matching title found for book")

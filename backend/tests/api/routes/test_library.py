@@ -27,22 +27,30 @@ def test_head_collection_catalog_xml(
     client: TestClient,
     dbsession: OrmSession,
     create_collection: Callable[..., Collection],
+    access_token: str,
 ):
     collection = create_collection()
     dbsession.flush()
 
-    response = client.head(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.head(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     assert "ETag" in response.headers
 
 
 def test_get_collection_catalog_xml_not_found_by_id(
     client: TestClient,
+    access_token: str,
 ):
     """Test that requesting a non-existent collection by ID returns 404
     with empty XML"""
     non_existent_collection_id = uuid4()
-    response = client.get(f"/v1/collections/{non_existent_collection_id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{non_existent_collection_id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.headers["content-type"] == "application/xml"
     # Should return valid empty XML
@@ -55,10 +63,14 @@ def test_get_collection_catalog_xml_not_found_by_id(
 
 def test_get_collection_catalog_xml_not_found_by_name(
     client: TestClient,
+    access_token: str,
 ):
     """Test that requesting a non-existent collection by name returns 404
     with empty XML"""
-    response = client.get("/v1/collections/nonexistent_collection/catalog.xml")
+    response = client.get(
+        "/v1/collections/nonexistent_collection/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.headers["content-type"] == "application/xml"
     # Should return valid empty XML
@@ -72,11 +84,15 @@ def test_get_collection_catalog_xml_not_found_by_name(
 def test_get_collection_catalog_xml_empty(
     client: TestClient,
     create_collection: Callable[..., Collection],
+    access_token: str,
 ):
     """Test that an empty collection returns valid XML with no books"""
     collection = create_collection(name="empty_collection")
 
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -109,6 +125,7 @@ def test_get_collection_catalog_xml_by_name(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that collection can be queried by name"""
     # Setup
@@ -142,7 +159,10 @@ def test_get_collection_catalog_xml_by_name(
     dbsession.flush()
 
     # Test by name
-    response = client.get("/v1/collections/my_collection/catalog.xml")
+    response = client.get(
+        "/v1/collections/my_collection/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -164,6 +184,7 @@ def test_get_collection_catalog_xml_single_book(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test collection XML with a single book"""
     # Setup
@@ -210,7 +231,8 @@ def test_get_collection_catalog_xml_single_book(
 
     # Test
     response = client.get(
-        f"/v1/collections/{collection.id}/catalog.xml?path_prefix=/data/dev"
+        f"/v1/collections/{collection.id}/catalog.xml?path_prefix=/data/dev",
+        headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
@@ -256,6 +278,7 @@ def test_get_collection_catalog_xml_root_path(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test collection XML with a single book"""
     # Setup
@@ -293,7 +316,10 @@ def test_get_collection_catalog_xml_root_path(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -315,6 +341,7 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that books with different flavours in same name are properly handled"""
     # Setup
@@ -373,7 +400,10 @@ def test_get_collection_catalog_xml_multiple_books_different_formats(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -391,6 +421,7 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that unpublished books are not included"""
     # Setup
@@ -446,7 +477,10 @@ def test_get_collection_catalog_xml_skips_unpublished_books(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -463,6 +497,7 @@ def test_get_collection_catalog_xml_skips_staging_books(
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
+    access_token: str,
 ):
     """Test that book still in staging is not included"""
     # Setup
@@ -521,7 +556,10 @@ def test_get_collection_catalog_xml_skips_staging_books(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -538,6 +576,7 @@ def test_get_collection_catalog_xml_single_warehouse(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that a collection with a single warehouse returns correct books"""
     # Each collection is tied to exactly one warehouse, so this tests that design
@@ -571,7 +610,10 @@ def test_get_collection_catalog_xml_single_warehouse(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -588,6 +630,7 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that only the latest book per name+flavour combination is returned"""
     # Setup
@@ -645,7 +688,10 @@ def test_get_collection_catalog_xml_latest_book_per_name_flavour(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -665,6 +711,7 @@ def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
 ):
     """Test that grouping is done by title_id, not by title name.
 
@@ -732,7 +779,10 @@ def test_get_collection_catalog_xml_grouping_by_title_id_not_name(
     )
     dbsession.flush()
 
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -764,6 +814,7 @@ def test_get_collection_catalog_xml_latest_book_bad_location_kind(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
+    access_token: str,
     location_kind: str,
 ):
     """Test that only the latest book per name+flavour combination is returned"""
@@ -822,7 +873,10 @@ def test_get_collection_catalog_xml_latest_book_bad_location_kind(
     dbsession.flush()
 
     # Test
-    response = client.get(f"/v1/collections/{collection.id}/catalog.xml")
+    response = client.get(
+        f"/v1/collections/{collection.id}/catalog.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)
@@ -836,10 +890,13 @@ def test_get_collection_catalog_xml_latest_book_bad_location_kind(
 
 def test_get_staging_catalog_xml_empty(
     client: TestClient,
+    access_token: str,
 ):
     """Test that staging can generate its library"""
     # Test by name
-    response = client.get("/v1/staging/catalog.xml")
+    response = client.get(
+        "/v1/staging/catalog.xml", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/xml"
 
@@ -856,6 +913,7 @@ def test_get_prod_and_staging_catalog_xml(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     warehouse: Warehouse,
+    access_token: str,
 ):
     """Test all the books in staging are returned, even same title, and only them"""
     # Setup
@@ -944,7 +1002,8 @@ def test_get_prod_and_staging_catalog_xml(
 
     # Test prod
     response = client.get(
-        f"/v1/collections/{collection.name}/catalog.xml?path_prefix=/data/dev"
+        f"/v1/collections/{collection.name}/catalog.xml?path_prefix=/data/dev",
+        headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
 
@@ -961,7 +1020,10 @@ def test_get_prod_and_staging_catalog_xml(
     assert books[0].get("path") == "/data/dev/wikipedia/wiki_2024-12.zim"
 
     # Test staging
-    response = client.get("/v1/staging/catalog.xml?path_prefix=/data/dev")
+    response = client.get(
+        "/v1/staging/catalog.xml?path_prefix=/data/dev",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
 
     root = ET.fromstring(response.text)

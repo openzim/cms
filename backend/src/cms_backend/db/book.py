@@ -1,11 +1,12 @@
 import datetime
 import re
+from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID
 
 import pycountry
 import regex
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
@@ -14,7 +15,12 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, BookHistory, ZimfarmNotification
+from cms_backend.db.models import (
+    Book,
+    BookHistory,
+    CollectionTitle,
+    ZimfarmNotification,
+)
 from cms_backend.db.rules import (
     apply_retention_rules,
     title_is_missing_mandatory_metadata,
@@ -44,12 +50,17 @@ def get_book_or_none(
     session: OrmSession,
     book_id: UUID,
     *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     needs_file_operation: bool | None = None,
     needs_processing: bool | None = None,
     locations: list[str] | None = None,
     has_error: bool | None = None,
 ) -> Book | None:
-    """Get a book by ID if possible else None"""
+    """Get a book by ID if possible else None
+
+    Only returns books whose title belongs to at least one of the
+    accessible_collection_ids.
+    """
     return session.scalars(
         select(Book)
         .where(
@@ -63,6 +74,11 @@ def get_book_or_none(
             (Book.needs_processing.is_(needs_processing)) | (needs_processing is None),
             (Book.has_error.is_(has_error)) | (has_error is None),
             (Book.location_kind.in_(locations or [])) | (locations is None),
+            exists().where(
+                CollectionTitle.title_id == Book.title_id,
+                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+            )
+            | (accessible_collection_ids is None),
         )
         .options(
             selectinload(Book.title),
@@ -72,10 +88,23 @@ def get_book_or_none(
     ).one_or_none()
 
 
-def get_book(session: OrmSession, book_id: UUID) -> Book:
+def get_book(
+    session: OrmSession,
+    book_id: UUID,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Book:
     """Get a book by ID if possible else raise an exception"""
-    if (book := get_book_or_none(session, book_id=book_id)) is None:
-        raise RecordDoesNotExistError(f"Book with ID {book_id} does not exist")
+    if (
+        book := get_book_or_none(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
+    ) is None:
+        raise RecordDoesNotExistError(
+            f"Book with ID {book_id} does not exist or is not accessible to you"
+        )
     return book
 
 
@@ -224,6 +253,7 @@ def delete_book(
     book_id: UUID,
     force_delete: bool = False,
     deletion_delay: datetime.timedelta = Context.book_deletion_delay,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Mark a book as deleted.
 
@@ -235,13 +265,15 @@ def delete_book(
     book = get_book_or_none(
         session,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         needs_processing=False,
         needs_file_operation=False,
         locations=["staging", "prod", "quarantine"],
     )
     if book is None:
         raise RecordDoesNotExistError(
-            f"Book {book_id} does not meet criteria to be marked as deleted."
+            f"Book {book_id} does not meet criteria to be marked as deleted or "
+            "is not accessible to you."
         )
 
     deletion_date = now if force_delete else now + deletion_delay
@@ -264,7 +296,11 @@ def delete_book(
 
 
 def move_book(
-    session: OrmSession, *, book_id: UUID, destination: Literal["staging", "prod"]
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    destination: Literal["staging", "prod"],
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Move a book in staging/prod to prod/staging.
 
@@ -274,6 +310,7 @@ def move_book(
     book = get_book_or_none(
         session,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         needs_file_operation=False,
         needs_processing=False,
         locations=["staging", "prod"],
@@ -282,7 +319,8 @@ def move_book(
 
     if book is None:
         raise RecordDoesNotExistError(
-            f"Book {book_id} does not meet criteria to be moved."
+            f"Book {book_id} does not meet criteria to be moved or is not "
+            "accessible to you."
         )
 
     return move_book_to_destination(session, book=book, destination=destination)
@@ -377,18 +415,26 @@ def determine_current_location_kind(
     return "prod"
 
 
-def recover_book(session: OrmSession, book_id: UUID) -> Book:
+def recover_book(
+    session: OrmSession,
+    book_id: UUID,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Book:
     """Recover a book marked for deletion."""
     now = getnow()
     book = get_book_or_none(
         session,
         book_id,
+        accessible_collection_ids=accessible_collection_ids,
         needs_processing=False,
         locations=["to_delete", "deleted"],
     )
 
     if book is None:
-        raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
+        raise RecordDoesNotExistError(
+            f"Book {book_id} is not eligible for recovery or is not accessible to you."
+        )
 
     if book.title and book.title.archived:
         raise ValueError(f"Book title {book.title_id} is currently archived")
@@ -397,10 +443,14 @@ def recover_book(session: OrmSession, book_id: UUID) -> Book:
         return _recover_deleted_book(session, book)
 
     if book.location_kind == "to_delete" and book.needs_file_operation is False:
-        raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
+        raise RecordDoesNotExistError(
+            f"Book {book_id} is not eligible for recovery or is not accessible to you."
+        )
 
     if book.deletion_date and book.deletion_date <= now:
-        raise RecordDoesNotExistError(f"Book {book_id} is not eligible for recovery.")
+        raise RecordDoesNotExistError(
+            f"Book {book_id} is not eligible for recovery or is not accessible to you."
+        )
 
     location_kind = determine_current_location_kind(book)
     book.needs_processing = False
@@ -470,9 +520,16 @@ def create_book_history_entry(
 
 
 def update_book(
-    session: OrmSession, *, author_id: UUID, book_id: UUID, payload: BookUpdateSchema
+    session: OrmSession,
+    *,
+    author_id: UUID,
+    book_id: UUID,
+    payload: BookUpdateSchema,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
-    book = get_book(session, book_id)
+    book = get_book(
+        session, book_id, accessible_collection_ids=accessible_collection_ids
+    )
     if book.location_kind == "deleted":
         raise RecordDoesNotExistError(f"Book {book_id} is already deleted.")
 
@@ -511,10 +568,17 @@ def create_book_history_schema(entry: BookHistory) -> BookHistorySchema:
 
 
 def get_book_history(
-    session: OrmSession, *, book_id: UUID, skip: int, limit: int
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    skip: int,
+    limit: int,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> ListResult[BookHistorySchema]:
     """Get a book's history"""
-    book = get_book(session, book_id)
+    book = get_book(
+        session, book_id, accessible_collection_ids=accessible_collection_ids
+    )
     stmt = (
         select(BookHistory)
         .where(BookHistory.book_id == book.id)
@@ -531,10 +595,16 @@ def get_book_history(
 
 
 def get_book_history_entry_or_none(
-    session: OrmSession, *, book_id: UUID, history_id: UUID
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> BookHistory | None:
     """Get a book's history entry or None if it does not exist"""
-    book = get_book(session, book_id)
+    book = get_book(
+        session, book_id, accessible_collection_ids=accessible_collection_ids
+    )
     return session.scalars(
         select(BookHistory).where(
             BookHistory.id == history_id, BookHistory.book_id == book.id
@@ -543,11 +613,18 @@ def get_book_history_entry_or_none(
 
 
 def get_book_history_entry(
-    session: OrmSession, *, book_id: UUID, history_id: UUID
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> BookHistory:
     """Get a book's history entry"""
     if history_entry := get_book_history_entry_or_none(
-        session, book_id=book_id, history_id=history_id
+        session,
+        book_id=book_id,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     ):
         return history_entry
     raise RecordDoesNotExistError(
@@ -561,14 +638,21 @@ def revert_book(
     book_id: UUID,
     history_id: UUID,
     author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     comment: str | None = None,
 ) -> Book:
     """Revert the book configuration and settings to those defined in history_id"""
-    entry = get_book_history_entry(session, book_id=book_id, history_id=history_id)
+    entry = get_book_history_entry(
+        session,
+        book_id=book_id,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     book = update_book(
         session,
         author_id=author_id,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         payload=BookUpdateSchema(
             comment=comment,
             flavour=entry.flavour,
@@ -904,11 +988,13 @@ def backup_book(
     session: OrmSession,
     *,
     book_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Create a backup of a book."""
     book = get_book_or_none(
         session,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         has_error=False,
         needs_processing=False,
         needs_file_operation=False,
@@ -917,7 +1003,8 @@ def backup_book(
 
     if book is None:
         raise RecordDoesNotExistError(
-            f"Book {book_id} does not meet criteria to be backed up."
+            f"Book {book_id} does not meet criteria to be backed up or is not "
+            "accessible to you."
         )
 
     if book.title is None:
@@ -973,11 +1060,13 @@ def remove_book_backup(
     session: OrmSession,
     *,
     book_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Create a backup of a book."""
     book = get_book_or_none(
         session,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         has_error=False,
         needs_processing=False,
         needs_file_operation=False,
@@ -986,7 +1075,8 @@ def remove_book_backup(
 
     if book is None:
         raise RecordDoesNotExistError(
-            f"Book {book_id} does not meet criteria for it's backup to be removed."
+            f"Book {book_id} does not meet criteria for it's backup to be "
+            "removed or is not accessible to you."
         )
 
     if book.title is None:

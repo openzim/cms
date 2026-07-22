@@ -9,6 +9,7 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.account import create_account, get_account_by_username_or_none
+from cms_backend.roles import RoleEnum
 
 
 def check_if_schema_is_up_to_date():
@@ -48,7 +49,7 @@ def create_initial_account():
                 display_name=username,
                 username=username,
                 password_hash=generate_password_hash(password),
-                role="editor",
+                role=RoleEnum.ADMIN,
             )
         else:
             logger.info(f"account {username} already exists")

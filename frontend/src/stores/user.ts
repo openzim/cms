@@ -30,6 +30,7 @@ export const useUserStore = defineStore('user', () => {
     username?: string
     password?: string
     idp_sub?: string
+    collections?: string[] | null
   }) => {
     const service = await authStore.getApiService('accounts')
     try {
@@ -40,6 +41,7 @@ export const useUserStore = defineStore('user', () => {
           username?: string
           password?: string
           idp_sub?: string
+          collections?: string[] | null
         },
         User
       >('', payload)
@@ -127,6 +129,7 @@ export const useUserStore = defineStore('user', () => {
       role?: string
       scope?: Record<string, Record<string, boolean>>
       idp_sub?: string | null
+      collections?: string[] | null
     },
   ) => {
     const service = await authStore.getApiService('accounts')
@@ -141,6 +144,7 @@ export const useUserStore = defineStore('user', () => {
           role?: string
           scope?: Record<string, Record<string, boolean>>
           idp_sub?: string | null
+          collections?: string[] | null
         },
         null
       >(`/${userId}`, cleanedPayload)

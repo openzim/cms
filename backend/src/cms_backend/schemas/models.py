@@ -72,15 +72,34 @@ class FileLocation:
     is_backup: bool = False
 
 
-class AccountUpdateSchema(BaseModel):
+class BaseAccountCreateUpdateSchema(BaseModel):
+    username: NotEmptyString | None = Field(default=None, min_length=3)
+    display_name: NotEmptyString | None = Field(default=None, min_length=3)
+    collections: list[NotEmptyString] | None = None
+    role: RoleEnum | None = None
+    idp_sub: UUID | None = None
+
+    @model_validator(mode="after")
+    def restrict_collections_to_collection_editor(self) -> Self:
+        if self.role == RoleEnum.COLLECTION_EDITOR and self.collections is None:
+            raise ValueError(
+                f"Collections must be specified when setting role to "
+                f"{RoleEnum.COLLECTION_EDITOR}"
+            )
+
+        if self.role != RoleEnum.COLLECTION_EDITOR and self.collections:
+            raise ValueError(
+                f"Collections must not be specified when role is not"
+                f"{RoleEnum.COLLECTION_EDITOR}"
+            )
+
+        return self
+
+
+class AccountUpdateSchema(BaseAccountCreateUpdateSchema):
     """
     Schema for updating an account
     """
-
-    role: RoleEnum | None = None
-    username: NotEmptyString | None = None
-    idp_sub: NotEmptyString | None = None
-    display_name: NotEmptyString | None = None
 
 
 class CollectionUpdateSchema(BaseModel):

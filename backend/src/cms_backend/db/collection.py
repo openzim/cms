@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import NamedTuple, cast
 from uuid import UUID
@@ -17,6 +18,7 @@ from cms_backend.db.models import (
     BookLocation,
     Collection,
     CollectionHistory,
+    CollectionPermission,
     CollectionTitle,
     Title,
 )
@@ -32,59 +34,105 @@ from cms_backend.utils import is_valid_uuid
 
 
 def get_collection_by_id_or_none(
-    session: OrmSession, library_id: UUID
+    session: OrmSession,
+    collection_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Collection | None:
     """Get a collection by ID if possible else None"""
     return session.scalars(
-        select(Collection).where(Collection.id == library_id)
+        select(Collection).where(
+            Collection.id == collection_id,
+            (
+                Collection.id.in_(accessible_collection_ids or [])
+                | (accessible_collection_ids is None)
+            ),
+        )
     ).one_or_none()
 
 
-def get_collection_by_id(session: OrmSession, library_id: UUID) -> Collection:
+def get_collection_by_id(
+    session: OrmSession,
+    collection_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Collection:
     """Get a collection by ID if possible else raise an exception"""
     if (
-        collection := get_collection_by_id_or_none(session, library_id=library_id)
+        collection := get_collection_by_id_or_none(
+            session,
+            collection_id=collection_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     ) is None:
-        raise RecordDoesNotExistError(f"Collection with ID {library_id} does not exist")
+        raise RecordDoesNotExistError(
+            f"Collection with ID {collection_id} does not exist or is not "
+            "accessible to you"
+        )
     return collection
 
 
 def get_collection_by_name_or_none(
-    session: OrmSession, collection_name: str
+    session: OrmSession,
+    collection_name: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Collection | None:
     """Get a collection by name if possible else None"""
     return session.scalars(
-        select(Collection).where(Collection.name == collection_name)
+        select(Collection).where(
+            Collection.name == collection_name,
+            Collection.id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
+        )
     ).one_or_none()
 
 
-def get_collection_by_name(session: OrmSession, collection_name: str) -> Collection:
+def get_collection_by_name(
+    session: OrmSession,
+    collection_name: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Collection:
     """Get a collection by name if possible else raise an exception"""
     if (
         collection := get_collection_by_name_or_none(
-            session, collection_name=collection_name
+            session,
+            collection_name=collection_name,
+            accessible_collection_ids=accessible_collection_ids,
         )
     ) is None:
-        raise RecordDoesNotExistError(f"Collection '{collection_name}' does not exist")
+        raise RecordDoesNotExistError(
+            f"Collection '{collection_name}' does not exist or is not accessible to you"
+        )
     return collection
 
 
 def get_collection_or_none(
-    session: OrmSession, collection_identifier: str
+    session: OrmSession,
+    collection_identifier: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Collection | None:
     """Get a collection by it's name or ID if possible else None"""
     if is_valid_uuid(collection_identifier):
-        collection = get_collection_by_id_or_none(session, UUID(collection_identifier))
+        collection = get_collection_by_id_or_none(
+            session, UUID(collection_identifier), accessible_collection_ids
+        )
     else:
-        collection = get_collection_by_name_or_none(session, collection_identifier)
+        collection = get_collection_by_name_or_none(
+            session, collection_identifier, accessible_collection_ids
+        )
     return collection
 
 
-def get_collection(session: OrmSession, collection_identifier: str) -> Collection:
-    collection = get_collection_or_none(session, collection_identifier)
+def get_collection(
+    session: OrmSession,
+    collection_identifier: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Collection:
+    collection = get_collection_or_none(
+        session, collection_identifier, accessible_collection_ids
+    )
     if collection is None:
         raise RecordDoesNotExistError(
-            f"Collection '{collection_identifier}' does not exist"
+            f"Collection '{collection_identifier}' does not exist or is not "
+            "accessible to you"
         )
     return collection
 
@@ -100,7 +148,9 @@ class LibraryBookData(NamedTuple):
 
 
 def get_latest_books_for_collection(
-    session: OrmSession, collection_id: UUID
+    session: OrmSession,
+    collection_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> list[LibraryBookData]:
     """
     Get the latest published book for each name+flavour combination in a collection.
@@ -139,6 +189,8 @@ def get_latest_books_for_collection(
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
                 Collection.id == collection_id,
+                Collection.id.in_(accessible_collection_ids or [])
+                | (accessible_collection_ids is None),
                 BookLocation.is_backup.is_(False),
             )
         )
@@ -167,7 +219,13 @@ def get_latest_books_for_collection(
 
 
 def get_collections(
-    session: OrmSession, *, name: str | None = None, skip: int, limit: int
+    session: OrmSession,
+    *,
+    skip: int,
+    limit: int,
+    name: str | None = None,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_by: UUID | None = None,
 ) -> ListResult[CollectionLightSchema]:
     """Get the list of collections."""
     stmt = (
@@ -182,6 +240,8 @@ def get_collections(
             ).label("paths"),
         )
         .where(
+            Collection.id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
             # If a client provides an argument i.e it is not None,
             # we compare the corresponding model field against the argument,
             # otherwise, we compare the argument to its default which translates
@@ -195,9 +255,13 @@ def get_collections(
         .group_by(Collection.id)
         .order_by(Collection.name.desc())
     )
+    if accessible_by is not None:
+        stmt = stmt.join(
+            CollectionPermission, CollectionPermission.collection_id == Collection.id
+        ).where(CollectionPermission.account_id == accessible_by)
 
     return ListResult[CollectionLightSchema](
-        nb_records=count_from_stmt(session, select(Collection.id)),
+        nb_records=count_from_stmt(session, stmt),
         records=[
             CollectionLightSchema(
                 id=collection_id,
@@ -281,9 +345,11 @@ def create_collection(
             ) from exc
         logger.exception("Unknown exception encountered while creating collection")
         raise
+
     create_collection_history_entry(
         session, collection, author_id, comment="Create initial history"
     )
+
     return collection
 
 
@@ -293,9 +359,10 @@ def update_collection(
     collection_id: str,
     author_id: UUID,
     request: CollectionUpdateSchema,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Collection:
     """Update a collection"""
-    collection = get_collection(session, collection_id)
+    collection = get_collection(session, collection_id, accessible_collection_ids)
 
     values = request.model_dump(exclude_unset=True, exclude={"comment"}, mode="json")
     if not values:
@@ -339,10 +406,15 @@ def create_collection_history_schema(
 
 
 def get_collection_history(
-    session: OrmSession, *, collection_id: str, skip: int, limit: int
+    session: OrmSession,
+    *,
+    collection_id: str,
+    skip: int,
+    limit: int,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> ListResult[CollectionHistorySchema]:
     """Get a collection's history"""
-    collection = get_collection(session, collection_id)
+    collection = get_collection(session, collection_id, accessible_collection_ids)
     stmt = (
         select(CollectionHistory)
         .where(CollectionHistory.collection_id == collection.id)
@@ -359,10 +431,14 @@ def get_collection_history(
 
 
 def get_collection_history_entry_or_none(
-    session: OrmSession, *, collection_id: str, history_id: UUID
+    session: OrmSession,
+    *,
+    collection_id: str,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> CollectionHistory | None:
     """Get a collecton's history entry or None if it does not exist"""
-    collection = get_collection(session, collection_id)
+    collection = get_collection(session, collection_id, accessible_collection_ids)
     return session.scalars(
         select(CollectionHistory).where(
             CollectionHistory.id == history_id,
@@ -372,11 +448,18 @@ def get_collection_history_entry_or_none(
 
 
 def get_collection_history_entry(
-    session: OrmSession, *, collection_id: str, history_id: UUID
+    session: OrmSession,
+    *,
+    collection_id: str,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> CollectionHistory:
     """Get a book's history entry"""
     if history_entry := get_collection_history_entry_or_none(
-        session, collection_id=collection_id, history_id=history_id
+        session,
+        collection_id=collection_id,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     ):
         return history_entry
     raise RecordDoesNotExistError(
@@ -391,16 +474,21 @@ def revert_collection(
     collection_id: str,
     history_id: UUID,
     author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     comment: str | None = None,
 ) -> Collection:
     """Revert the collection configuration to those defined in history_id"""
     entry = get_collection_history_entry(
-        session, collection_id=collection_id, history_id=history_id
+        session,
+        collection_id=collection_id,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     collection = update_collection(
         session,
         author_id=author_id,
         collection_id=str(collection_id),
+        accessible_collection_ids=accessible_collection_ids,
         request=CollectionUpdateSchema(
             name=entry.name,
             comment=comment,

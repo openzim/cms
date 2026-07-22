@@ -20,7 +20,12 @@ export const useCollectionsStore = defineStore('collection', () => {
   })
   const authStore = useAuthStore()
 
-  const fetchCollections = async (limit: number = 20, skip: number = 0, name?: string) => {
+  const fetchCollections = async (
+    limit: number = 20,
+    skip: number = 0,
+    name?: string,
+    accessible_by?: string,
+  ) => {
     const service = await authStore.getApiService('collections')
     // filter out undefined/falsy string values
     const cleanedParams = Object.fromEntries(
@@ -28,6 +33,7 @@ export const useCollectionsStore = defineStore('collection', () => {
         limit,
         skip,
         name,
+        accessible_by,
       }).filter(([, value]) => !!value || value === 0),
     )
     try {

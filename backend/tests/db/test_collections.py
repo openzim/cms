@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.collection import (
     create_collection,
+    get_collection_by_id,
+    get_collection_by_id_or_none,
     get_collection_by_name,
     get_collection_by_name_or_none,
     get_collection_history,
@@ -13,8 +15,10 @@ from cms_backend.db.collection import (
     revert_collection,
     update_collection,
 )
+from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account, Collection, Title, Warehouse
+from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import CollectionUpdateSchema
 
 
@@ -99,6 +103,35 @@ def test_get_collections_pagination(
     )
     assert len(results.records) <= limit
     assert len(results.records) == expected_count
+
+
+def test_get_collections_accessible_by_account(
+    dbsession: OrmSession,
+    create_account: Callable[..., Account],
+    create_collection: Callable[..., Collection],
+):
+    account1 = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    account2 = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    # collections 1 and 2 are accessible by account1 and collections 2 and 3 are
+    # accessible by account2
+    collection1 = create_collection()
+    collection2 = create_collection()
+    collection3 = create_collection()
+
+    create_collection_permission(dbsession, collection1.id, account1.id)
+    create_collection_permission(dbsession, collection2.id, account1.id)
+    create_collection_permission(dbsession, collection2.id, account2.id)
+    create_collection_permission(dbsession, collection3.id, account2.id)
+
+    results = get_collections(
+        dbsession,
+        skip=0,
+        limit=10,
+        accessible_collection_ids=[collection1.id, collection2.id],
+        accessible_by=account2.id,
+    )
+    assert results.nb_records == 1
+    assert results.records[0].name == collection2.name
 
 
 def test_create_collection(
@@ -228,3 +261,70 @@ def test_revert_collection(
         comment="Reverting to version 1",
     )
     assert reverted_collection.name == "test_collection1"
+
+
+def test_get_collection_by_id_or_none_not_accessible(
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    """Returns None when collection exists but is not in accessible_collection_ids."""
+    collection = create_collection()
+    dbsession.flush()
+
+    result = get_collection_by_id_or_none(
+        dbsession,
+        collection_id=collection.id,
+        accessible_collection_ids=[],
+    )
+    assert result is None
+
+
+def test_get_collection_by_id_or_none_accessible(
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    """Returns collection when it is in accessible_collection_ids."""
+    collection = create_collection()
+    dbsession.flush()
+
+    result = get_collection_by_id_or_none(
+        dbsession,
+        collection_id=collection.id,
+        accessible_collection_ids=[collection.id],
+    )
+    assert result is not None
+    assert result.id == collection.id
+
+
+def test_get_collection_by_id_not_accessible(
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    """
+    Raises RecordDoesNotExistError when collection is not in accessible_collection_ids
+    """
+    collection = create_collection()
+    dbsession.flush()
+
+    with pytest.raises(RecordDoesNotExistError):
+        get_collection_by_id(
+            dbsession,
+            collection_id=collection.id,
+            accessible_collection_ids=[],
+        )
+
+
+def test_get_collection_by_id_accessible(
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+):
+    """Returns collection when it is in accessible_collection_ids."""
+    collection = create_collection()
+    dbsession.flush()
+
+    result = get_collection_by_id(
+        dbsession,
+        collection_id=collection.id,
+        accessible_collection_ids=[collection.id],
+    )
+    assert result.id == collection.id

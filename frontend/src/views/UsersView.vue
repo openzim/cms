@@ -93,6 +93,21 @@
                 />
               </v-col>
 
+              <v-col cols="12" v-if="form.role === 'collection-editor'">
+                <v-autocomplete
+                  v-model="form.collections"
+                  :items="collectionNames"
+                  label="Collections"
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="compact"
+                  :loading="collectionsLoading"
+                  hide-details="auto"
+                />
+              </v-col>
+
               <v-col cols="12" v-if="showLocalLogin">
                 <v-text-field
                   v-model="form.username"
@@ -192,6 +207,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
+import { useCollectionsStore } from '@/stores/collections'
 import type { User } from '@/types/user'
 import { generatePassword } from '@/utils/browsers'
 
@@ -213,6 +229,11 @@ const authStore = useAuthStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
 const userStore = useUserStore()
+const collectionsStore = useCollectionsStore()
+
+const collectionsLoading = ref(false)
+
+const collectionNames = ref<string[]>([])
 
 // Form ref
 const formRef = ref()
@@ -237,9 +258,10 @@ const paginator = ref({
 const form = ref({
   display_name: '',
   username: '',
-  role: 'editor' as const,
+  role: 'global-editor' as (typeof constants.ROLES)[number],
   password: '',
   idp_sub: '',
+  collections: [] as string[],
 })
 
 const showPassword = ref(false)
@@ -313,9 +335,13 @@ const createUser = async () => {
     username?: string
     password?: string
     idp_sub?: string
+    collections?: string[] | null
   } = {
     display_name: form.value.display_name,
     role: form.value.role,
+  }
+  if (form.value.role === 'collection-editor') {
+    payload.collections = form.value.collections
   }
   if (showLocalLogin.value) {
     payload.username = form.value.username
@@ -338,9 +364,10 @@ const createUser = async () => {
     form.value = {
       display_name: '',
       username: '',
-      role: 'editor' as const,
+      role: 'global-editor' as const,
       password: '',
       idp_sub: '',
+      collections: [],
     }
     formRef.value?.reset()
     showPassword.value = false
@@ -400,9 +427,10 @@ const closeCreateDialog = () => {
   form.value = {
     display_name: '',
     username: '',
-    role: 'editor' as const,
+    role: 'global-editor' as const,
     password: '',
     idp_sub: '',
+    collections: [],
   }
   formRef.value?.reset()
   showPassword.value = false
@@ -433,6 +461,17 @@ onMounted(async () => {
     error.value = 'You do not have permission to view users.'
     return
   }
+  if (collectionNames.value.length === 0) {
+    collectionsLoading.value = true
+    try {
+      const collections = await collectionsStore.fetchCollections(200, 0)
+      if (collections) {
+        collectionNames.value = collections.map((c) => c.name)
+      }
+    } finally {
+      collectionsLoading.value = false
+    }
+  }
 })
 
 // Watch for dialog open to generate password
@@ -441,6 +480,16 @@ watch(showCreateDialog, (newValue) => {
     generateNewPassword()
   }
 })
+
+// Clear collections when switching away from collection-editor role
+watch(
+  () => form.value.role,
+  (newRole) => {
+    if (newRole !== 'collection-editor') {
+      form.value.collections = []
+    }
+  },
+)
 
 // Auto-fill username from display name if it hasn't been manually edited
 watch(

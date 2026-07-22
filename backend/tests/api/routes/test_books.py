@@ -45,6 +45,7 @@ def test_get_books_empty(client: TestClient):
 def test_get_books_with_data(
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint with books present"""
 
@@ -54,7 +55,9 @@ def test_get_books_with_data(
         book = create_book(zim_metadata={"index": i, "name": f"book_{i}"})
         books.append(book)
 
-    response = client.get("/v1/books")
+    response = client.get(
+        "/v1/books", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 5
@@ -79,6 +82,7 @@ def test_get_books_with_data(
 def test_get_books_pagination(
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint with pagination"""
 
@@ -87,7 +91,9 @@ def test_get_books_pagination(
         create_book(zim_metadata={"index": i})
 
     # Test first page
-    response = client.get("/v1/books?skip=0&limit=3")
+    response = client.get(
+        "/v1/books?skip=0&limit=3", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 10
@@ -97,7 +103,9 @@ def test_get_books_pagination(
     assert len(response_doc["items"]) == 3
 
     # Test second page
-    response = client.get("/v1/books?skip=3&limit=3")
+    response = client.get(
+        "/v1/books?skip=3&limit=3", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 10
@@ -107,7 +115,9 @@ def test_get_books_pagination(
     assert len(response_doc["items"]) == 3
 
     # Test last page (partial)
-    response = client.get("/v1/books?skip=9&limit=3")
+    response = client.get(
+        "/v1/books?skip=9&limit=3", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 10
@@ -121,6 +131,7 @@ def test_get_books_filter_by_has_title(
     client: TestClient,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test get books endpoint filtering by has_title"""
 
@@ -136,7 +147,9 @@ def test_get_books_filter_by_has_title(
         create_book(zim_metadata={"Name": "different_name"})
 
     # Filter for books with title
-    response = client.get("/v1/books?has_title=true")
+    response = client.get(
+        "/v1/books?has_title=true", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 3
@@ -145,7 +158,9 @@ def test_get_books_filter_by_has_title(
         assert item["title_id"] is not None
 
     # Filter for books without title
-    response = client.get("/v1/books?has_title=false")
+    response = client.get(
+        "/v1/books?has_title=false", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2
@@ -158,6 +173,7 @@ def test_get_books_combined_filters(
     client: TestClient,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test get books endpoint with multiple filters combined"""
 
@@ -179,13 +195,17 @@ def test_get_books_combined_filters(
     create_book(zim_metadata={"Name": "another"})
 
     # Filter for books with title
-    response = client.get("/v1/books?has_title=true")
+    response = client.get(
+        "/v1/books?has_title=true", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2
 
     # Filter for books without title
-    response = client.get("/v1/books?has_title=false")
+    response = client.get(
+        "/v1/books?has_title=false", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2
@@ -204,6 +224,7 @@ def test_get_books_filter_by_needs_attention(
     client: TestClient,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
+    access_token: str,
     needs_attention: bool | None,
     expected_count: int,
 ):
@@ -235,7 +256,7 @@ def test_get_books_filter_by_needs_attention(
         if needs_attention is None
         else f"/v1/books?needs_attention={str(needs_attention).lower()}"
     )
-    response = client.get(url)
+    response = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
 
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
@@ -259,6 +280,7 @@ def test_get_books_filter_by_needs_attention(
 def test_get_books_filter_by_id(
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint passes id filter to database layer"""
 
@@ -273,7 +295,9 @@ def test_get_books_filter_by_id(
     )
 
     # Test that id parameter is passed through and filters correctly
-    response = client.get("/v1/books?id=1234-5678")
+    response = client.get(
+        "/v1/books?id=1234-5678", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
@@ -283,6 +307,7 @@ def test_get_books_filter_by_id(
 def test_get_books_filter_by_offliner(
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint passes offliner filter to database layer"""
 
@@ -296,7 +321,10 @@ def test_get_books_filter_by_offliner(
     )
 
     # Test that offliner parameter is passed through and filters correctly
-    response = client.get("/v1/books?offliner=mwoffliner")
+    response = client.get(
+        "/v1/books?offliner=mwoffliner",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
@@ -307,6 +335,7 @@ def test_get_books_filter_by_issues(
     dbsession: OrmSession,
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint passes scraper filter to database layer"""
 
@@ -324,7 +353,10 @@ def test_get_books_filter_by_issues(
     )
 
     # Test that scraper parameter is passed through and filters correctly
-    response = client.get("/v1/books?issue=flavour mismatch")
+    response = client.get(
+        "/v1/books?issue=flavour mismatch",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
@@ -335,6 +367,7 @@ def test_get_book_languages(
     client: TestClient,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test books languages endpoint returns sorted distinct production languages."""
     prod_book = create_book(zim_metadata={"Language": "eng, fra"})
@@ -355,7 +388,9 @@ def test_get_book_languages(
 
     dbsession.flush()
 
-    response = client.get("/v1/books/languages")
+    response = client.get(
+        "/v1/books/languages", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {"languages": ["deu", "eng", "fra", "spa"]}
 
@@ -364,6 +399,7 @@ def test_get_book_flavours(
     dbsession: OrmSession,
     client: TestClient,
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test books flavours endpoint returns sorted distinct flavours."""
     title = create_title()
@@ -373,7 +409,9 @@ def test_get_book_flavours(
         tf.title = title
         dbsession.add(tf)
 
-    response = client.get("/v1/books/flavours")
+    response = client.get(
+        "/v1/books/flavours", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["items"] == ["maxi", "mini", "nopic"]
@@ -384,6 +422,7 @@ def test_get_book_flavours_filter_by_title_id(
     dbsession: OrmSession,
     client: TestClient,
     create_title: Callable[..., Title],
+    access_token: str,
 ):
     """Test books flavours endpoint returns sorted distinct flavours."""
     title1 = create_title(name="test_en_all")
@@ -397,7 +436,10 @@ def test_get_book_flavours_filter_by_title_id(
     tf.title = title2
     dbsession.add(tf)
 
-    response = client.get(f"/v1/books/flavours?title_id={title2.id}")
+    response = client.get(
+        f"/v1/books/flavours?title_id={title2.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["items"] == ["nopic"]
@@ -407,10 +449,13 @@ def test_get_book_flavours_filter_by_title_id(
 def test_get_book_by_id(
     client: TestClient,
     book: Book,
+    access_token: str,
 ):
     """Test get book by ID endpoint"""
 
-    response = client.get(f"/v1/books/{book.id}")
+    response = client.get(
+        f"/v1/books/{book.id}", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
 
@@ -436,11 +481,15 @@ def test_get_book_by_id(
 def test_get_book_by_id_not_found(
     client: TestClient,
     book: Book,  # noqa: ARG001 - needed for conftest
+    access_token: str,
 ):
     """Test get book by ID endpoint when book doesn't exist"""
 
     non_existent_id = uuid4()
-    response = client.get(f"/v1/books/{non_existent_id}")
+    response = client.get(
+        f"/v1/books/{non_existent_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
     response_doc = response.json()
     assert "success" in response_doc
@@ -460,15 +509,19 @@ def test_get_book_by_id_invalid_uuid(
     client: TestClient,
     book: Book,  # noqa: ARG001 - needed for conftest
     invalid_id: str,
+    access_token: str,
 ):
     """Test get book by ID endpoint with invalid UUID format"""
-    response = client.get(f"/v1/books/{invalid_id}")
+    response = client.get(
+        f"/v1/books/{invalid_id}", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_get_books_filter_by_date_range(
     client: TestClient,
     create_book: Callable[..., Book],
+    access_token: str,
 ):
     """Test get books endpoint filtering by updated_after/before"""
 
@@ -484,20 +537,27 @@ def test_get_books_filter_by_date_range(
     create_book(updated_at=now)
 
     # Filter for books received after two days ago
-    response = client.get(f"/v1/books?updated_after={two_days_ago.isoformat()}")
+    response = client.get(
+        f"/v1/books?updated_after={two_days_ago.isoformat()}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2  # yesterday and today
 
     # Filter for books received before yesterday
-    response = client.get(f"/v1/books?updated_before={yesterday.isoformat()}")
+    response = client.get(
+        f"/v1/books?updated_before={yesterday.isoformat()}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 2  # three days ago and two days ago
 
     # Filter for books in a specific range
     response = client.get(
-        f"/v1/books?updated_after={three_days_ago.isoformat()}&updated_before={yesterday.isoformat()}"
+        f"/v1/books?updated_after={three_days_ago.isoformat()}&updated_before={yesterday.isoformat()}",
+        headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
@@ -507,7 +567,7 @@ def test_get_books_filter_by_date_range(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -515,6 +575,7 @@ def test_update_book_required_permissions(
     client: TestClient,
     create_account: Callable[..., Account],
     create_book: Callable[..., Book],
+    access_token: str,
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
@@ -580,7 +641,7 @@ def test_get_book_history(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -623,7 +684,7 @@ def test_get_title_history_entry(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -663,7 +724,7 @@ def test_revert_book_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -718,7 +779,7 @@ def test_backup_book_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -784,7 +845,7 @@ def test_remove_book_backup_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -876,8 +937,12 @@ def test_get_book_issues(
 @pytest.mark.parametrize(
     "permission,dry_run,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, "true", HTTPStatus.OK, id="editor-dry-run"),
-        pytest.param(RoleEnum.EDITOR, "false", HTTPStatus.OK, id="editor-apply"),
+        pytest.param(
+            RoleEnum.GLOBAL_EDITOR, "true", HTTPStatus.OK, id="global-editor-dry-run"
+        ),
+        pytest.param(
+            RoleEnum.GLOBAL_EDITOR, "false", HTTPStatus.OK, id="global-editor-apply"
+        ),
         pytest.param(
             RoleEnum.VIEWER, "true", HTTPStatus.UNAUTHORIZED, id="viewer-dry-run"
         ),
