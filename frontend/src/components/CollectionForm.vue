@@ -31,6 +31,15 @@
       disabled
     />
 
+    <v-switch
+      v-model="formData.is_private"
+      :label="formData.is_private ? 'Private Collection' : 'Public Collection'"
+      color="primary"
+      density="comfortable"
+      class="mb-2"
+      hide-details
+    />
+
     <v-text-field
       v-model="formData.download_base_url"
       label="Download Base URL (Optional)"
@@ -142,6 +151,7 @@ interface FormData {
   article_count_decrease_threshold?: number
   media_count_increase_threshold?: number
   media_count_decrease_threshold?: number
+  is_private: boolean
 }
 
 const defaultArticleCountIncreaseThreshold = computed(() =>
@@ -166,6 +176,7 @@ const formData = ref<FormData>({
   article_count_decrease_threshold: defaultArticleCountDecreaseThreshold.value,
   media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
   media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
+  is_private: false,
 })
 
 const isEditMode = computed(() => props.collection !== null)
@@ -195,6 +206,8 @@ const hasChanges = computed(() => {
     (formData.value.media_count_decrease_threshold || null) !=
     (props.collection.media_count_decrease_threshold || null)
 
+  const isPrivateChanged = formData.value.is_private !== props.collection.is_private
+
   return (
     nameChanged ||
     downloadUrlChanged ||
@@ -202,7 +215,8 @@ const hasChanges = computed(() => {
     articleCountIncreaseChanged ||
     articleCountDecreaseChanged ||
     mediaCountIncreaseChanged ||
-    mediaCountDecreaseChanged
+    mediaCountDecreaseChanged ||
+    isPrivateChanged
   )
 })
 
@@ -274,6 +288,7 @@ function resetFormToCollection(collection: Collection) {
     article_count_decrease_threshold: collection.article_count_decrease_threshold || undefined,
     media_count_increase_threshold: collection.media_count_increase_threshold || undefined,
     media_count_decrease_threshold: collection.media_count_decrease_threshold || undefined,
+    is_private: collection.is_private,
   }
   formRef.value?.resetValidation()
 }
@@ -291,6 +306,7 @@ function resetForm() {
       article_count_decrease_threshold: defaultArticleCountDecreaseThreshold.value,
       media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
       media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
+      is_private: false,
     }
     formRef.value?.resetValidation()
   }
@@ -345,6 +361,10 @@ function getUpdatePayload(): Partial<CollectionUpdate> | null {
     props.collection.media_count_decrease_threshold || null
   if (currentMediaCountDecreaseThreshold != originalMediaCountDecreaseThreshold) {
     updatePayload.media_count_decrease_threshold = currentMediaCountDecreaseThreshold
+  }
+
+  if (formData.value.is_private !== props.collection.is_private) {
+    updatePayload.is_private = formData.value.is_private
   }
 
   return updatePayload

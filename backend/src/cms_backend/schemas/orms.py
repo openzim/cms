@@ -105,6 +105,7 @@ class CollectionLightSchema(BaseModel):
     id: UUID
     name: str
     paths: list[Path]
+    is_private: bool
 
 
 class CollectionFullSchema(BaseModel):
@@ -113,6 +114,7 @@ class CollectionFullSchema(BaseModel):
     id: UUID
     name: str
     warehouse: str
+    is_private: bool
     download_base_url: str | None = None
     view_base_url: str | None = None
     article_count_increase_threshold: float | None = None
@@ -225,6 +227,7 @@ class CollectionHistorySchema(BaseModel):
     created_at: datetime
     download_base_url: str | None
     view_base_url: str | None
+    is_private: bool
     article_count_increase_threshold: float | None = None
     media_count_increase_threshold: float | None = None
     article_count_decrease_threshold: float | None = None

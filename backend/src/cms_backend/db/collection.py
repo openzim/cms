@@ -224,6 +224,7 @@ def get_collections(
     skip: int,
     limit: int,
     name: str | None = None,
+    is_private: bool | None = None,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_by: UUID | None = None,
 ) -> ListResult[CollectionLightSchema]:
@@ -232,6 +233,7 @@ def get_collections(
         select(
             Collection.id,
             Collection.name,
+            Collection.is_private,
             func.coalesce(
                 func.array_agg(func.distinct(CollectionTitle.path)).filter(
                     CollectionTitle.path.is_not(None)
@@ -250,6 +252,7 @@ def get_collections(
                 Collection.name.ilike(f"%{name if name is not None else ''}%")
                 | (name is None)
             ),
+            Collection.is_private.is_(bool(is_private)) | (is_private is None),
         )
         .outerjoin(CollectionTitle)
         .group_by(Collection.id)
@@ -266,9 +269,10 @@ def get_collections(
             CollectionLightSchema(
                 id=collection_id,
                 name=collection_name,
+                is_private=is_private,
                 paths=paths,
             )
-            for collection_id, collection_name, paths in session.execute(
+            for collection_id, collection_name, is_private, paths in session.execute(
                 stmt.offset(skip).limit(limit)
             ).all()
         ],
@@ -286,6 +290,7 @@ def create_collection_full_schema(collection: Collection) -> CollectionFullSchem
         media_count_increase_threshold=collection.media_count_increase_threshold,
         article_count_decrease_threshold=collection.article_count_decrease_threshold,
         media_count_decrease_threshold=collection.media_count_decrease_threshold,
+        is_private=collection.is_private,
     )
 
 
@@ -304,6 +309,7 @@ def create_collection_history_entry(
         media_count_increase_threshold=collection.media_count_increase_threshold,
         article_count_decrease_threshold=collection.article_count_decrease_threshold,
         media_count_decrease_threshold=collection.media_count_decrease_threshold,
+        is_private=collection.is_private,
     )
     history_entry.collection = collection
     history_entry.author_id = author_id
@@ -317,6 +323,7 @@ def create_collection(
     name: str,
     author_id: UUID,
     warehouse_name: str,
+    is_private: bool,
     download_base_url: str | None = None,
     view_base_url: str | None = None,
     article_count_increase_threshold: float | None = None,
@@ -334,6 +341,7 @@ def create_collection(
         article_count_decrease_threshold=article_count_decrease_threshold,
         media_count_increase_threshold=media_count_increase_threshold,
         media_count_decrease_threshold=media_count_decrease_threshold,
+        is_private=is_private,
     )
     session.add(collection)
     try:
@@ -402,6 +410,7 @@ def create_collection_history_schema(
         article_count_decrease_threshold=entry.article_count_decrease_threshold,
         media_count_increase_threshold=entry.media_count_increase_threshold,
         media_count_decrease_threshold=entry.media_count_decrease_threshold,
+        is_private=entry.is_private,
     )
 
 

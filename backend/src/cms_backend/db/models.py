@@ -351,6 +351,8 @@ class Collection(Base):
     article_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
     media_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
 
+    is_private: Mapped[bool] = mapped_column(default=False, server_default="false")
+
     titles: Mapped[list["CollectionTitle"]] = relationship(
         back_populates="collection",
         cascade="all, delete-orphan",
@@ -398,6 +400,7 @@ class CollectionHistory(Base):
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )
+    is_private: Mapped[bool] = mapped_column(default=False, server_default="false")
     article_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
     media_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
     article_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)

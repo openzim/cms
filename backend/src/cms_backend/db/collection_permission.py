@@ -8,23 +8,37 @@ from cms_backend.db.models import Account, Collection, CollectionPermission
 from cms_backend.roles import RoleEnum
 
 
+def _get_public_collection_ids(session: OrmSession):
+    return session.scalars(
+        select(Collection.id).where(Collection.is_private.is_(False))
+    ).all()
+
+
 def get_accessible_collection_ids(
     session: OrmSession, account: Account | None
 ) -> Sequence[UUID] | None:
-    """Get the collection IDs account is allowed to operate on
+    """Get the collection IDs account is allowed to view/operate on
 
     NOTE: None implies to skip check if account has permission to collection.
     This translates to account having access to all collections, books, titles, etc
     """
-    if account and account.role == RoleEnum.COLLECTION_EDITOR:
-        return session.scalars(
-            select(Collection.id)
-            .join(
-                CollectionPermission,
-                CollectionPermission.collection_id == Collection.id,
-            )
-            .where(CollectionPermission.account_id == account.id)
-        ).all()
+    if account is None:
+        return _get_public_collection_ids(session)
+
+    match RoleEnum(account.role):
+        case RoleEnum.VIEWER | RoleEnum.ZIMFARM:
+            return _get_public_collection_ids(session)
+        case RoleEnum.GLOBAL_EDITOR | RoleEnum.ADMIN:
+            return None
+        case RoleEnum.COLLECTION_EDITOR:
+            return session.scalars(
+                select(Collection.id)
+                .join(
+                    CollectionPermission,
+                    CollectionPermission.collection_id == Collection.id,
+                )
+                .where(CollectionPermission.account_id == account.id)
+            ).all()
 
 
 def create_collection_permission(

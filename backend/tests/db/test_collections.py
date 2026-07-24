@@ -145,11 +145,13 @@ def test_create_collection(
         download_base_url="https://www.example.com",
         view_base_url="https://www.example.com",
         warehouse_name=warehouse.name,
+        is_private=True,
     )
     assert collection.name == "testcollection"
     assert collection.download_base_url == "https://www.example.com"
     assert collection.view_base_url == "https://www.example.com"
     assert collection.warehouse.name == warehouse.name
+    assert collection.is_private
 
 
 @pytest.mark.parametrize(

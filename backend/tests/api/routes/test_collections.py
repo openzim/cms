@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
 from cms_backend.db.collection import update_collection
-from cms_backend.db.models import Account, Collection, Title, Warehouse
+from cms_backend.db.models import Account, Collection, Warehouse
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import CollectionUpdateSchema
 from cms_backend.utils.datetime import getnow
@@ -30,66 +30,50 @@ def test_get_collections_empty(client: TestClient):
 
 
 @pytest.mark.parametrize(
-    "skip,limit,expected_count",
+    "skip,limit,is_private,nb_records,page_size",
     [
-        pytest.param(0, 3, 3, id="first-page"),
-        pytest.param(3, 3, 3, id="second-page"),
-        pytest.param(6, 3, 2, id="third-page-partial"),
-        pytest.param(8, 3, 0, id="page-num-too-high-no-results"),
-        pytest.param(0, 1, 1, id="first-page-with-low-limit"),
-        pytest.param(0, 20, 8, id="first-page-with-high-limit"),
+        pytest.param(0, 3, "false", 4, 3, id="first-page-public-collections"),
+        pytest.param(0, 3, "true", 5, 3, id="first-page-private-collections"),
+        pytest.param(0, 3, None, 9, 3, id="first-page-all-collections"),
+        pytest.param(3, 3, "false", 4, 1, id="second-page-public-collections"),
+        pytest.param(3, 3, "true", 5, 2, id="second-page-private-collections"),
+        pytest.param(3, 3, None, 9, 3, id="second-page-all-collections"),
+        pytest.param(6, 3, "false", 4, 0, id="third-page-public-collections"),
+        pytest.param(6, 3, "true", 5, 0, id="third-page-private-collections"),
+        pytest.param(6, 3, None, 9, 3, id="third-page-all-collections"),
     ],
 )
 def test_get_collections_pagination(
     client: TestClient,
-    dbsession: OrmSession,
     create_collection: Callable[..., Collection],
-    create_title: Callable[..., Title],
     access_token: str,
+    *,
     skip: int,
     limit: int,
-    expected_count: int,
+    is_private: bool | None,
+    nb_records: int,
+    page_size: int,
 ):
     """Test that get_collections works correctly with skip and limit"""
 
-    title1 = create_title(name="wikipedia_en_all")
-    title2 = create_title(name="ted_en_all")
-    title3 = create_title(name="gutenberg_en_all")
+    # Create 9 (5 private, 4 public) collections with different settings
+    for i in range(9):
+        create_collection(is_private=i % 2 == 0)
 
-    # Create 8 collections with varying numbers of titles/paths
-    for i in range(8):
-        if i % 3 == 0:
-            # Every third collection has multiple titles
-            create_collection(
-                title_ids_with_paths=[
-                    (title1.id, f"/path/to/collection{i}/wikipedia"),
-                    (title2.id, f"/path/to/collection{i}/ted"),
-                ]
-            )
-        elif i % 3 == 1:
-            # Some collections have a single title
-            create_collection(
-                title_ids_with_paths=[
-                    (title3.id, f"/path/to/collection{i}/gutenberg"),
-                ]
-            )
-        else:
-            # Some collections have no titles
-            create_collection()
-
-    dbsession.flush()
-
+    query = f"/v1/collections?skip={skip}&limit={limit}"
+    if is_private is not None:
+        query += f"&is_private={str(is_private).lower()}"
     response = client.get(
-        f"/v1/collections?skip={skip}&limit={limit}",
+        query,
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert "meta" in response_doc
-    assert response_doc["meta"]["count"] == 8
+    assert response_doc["meta"]["count"] == nb_records
     assert response_doc["meta"]["skip"] == skip
     assert response_doc["meta"]["limit"] <= limit
-    assert response_doc["meta"]["page_size"] == expected_count
+    assert response_doc["meta"]["page_size"] == page_size
     assert "items" in response_doc
 
 
@@ -111,6 +95,7 @@ def test_create_collection_required_permissions(
     collection_data = {
         "name": "wikipedia_en_test",
         "warehouse_name": warehouse.name,
+        "is_private": True,
     }
 
     account = create_account(permission=permission)

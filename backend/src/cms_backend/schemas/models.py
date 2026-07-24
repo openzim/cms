@@ -107,6 +107,7 @@ class CollectionUpdateSchema(BaseModel):
     download_base_url: AnyUrl | None = None
     view_base_url: AnyUrl | None = None
     comment: NotEmptyString | None = None
+    is_private: bool | None = None
     article_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
     media_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
     article_count_decrease_threshold: float | None = Field(ge=0.0, le=1.0, default=None)

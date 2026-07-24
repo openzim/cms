@@ -162,6 +162,22 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Private</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <v-chip
+                  :color="collection.is_private ? 'warning' : 'success'"
+                  size="small"
+                  variant="tonal"
+                >
+                  {{ collection.is_private ? 'Yes' : 'No' }}
+                </v-chip>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
                 <div class="text-subtitle-2">Titles</div>
               </v-col>
               <v-col cols="12" md="9">

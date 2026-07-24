@@ -25,6 +25,7 @@ export const useCollectionsStore = defineStore('collection', () => {
     skip: number = 0,
     name?: string,
     accessible_by?: string,
+    is_private?: boolean,
   ) => {
     const service = await authStore.getApiService('collections')
     // filter out undefined/falsy string values
@@ -34,7 +35,11 @@ export const useCollectionsStore = defineStore('collection', () => {
         skip,
         name,
         accessible_by,
-      }).filter(([, value]) => !!value || value === 0),
+        is_private,
+      }).filter(
+        ([, value]) =>
+          value !== undefined && (typeof value === 'boolean' || !!value || value === 0),
+      ),
     )
     try {
       const response = await service.get<null, ListResponse<CollectionLight>>('', {
@@ -86,6 +91,7 @@ export const useCollectionsStore = defineStore('collection', () => {
     article_count_decrease_threshold?: number
     media_count_increase_threshold?: number
     media_count_decrease_threshold?: number
+    is_private?: boolean
   }) => {
     const service = await authStore.getApiService('collections')
     try {
@@ -99,6 +105,7 @@ export const useCollectionsStore = defineStore('collection', () => {
           article_count_decrease_threshold?: number
           media_count_increase_threshold?: number
           media_count_decrease_threshold?: number
+          is_private?: boolean
         },
         Collection
       >('', payload)

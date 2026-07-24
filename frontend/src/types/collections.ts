@@ -2,6 +2,7 @@ export interface CollectionLight {
   id: string
   name: string
   paths: string[]
+  is_private: boolean
 }
 
 export interface Collection {
@@ -14,6 +15,7 @@ export interface Collection {
   article_count_decrease_threshold?: number | null
   media_count_increase_threshold?: number | null
   media_count_decrease_threshold?: number | null
+  is_private: boolean
 }
 
 export interface CollectionUpdate {
@@ -25,6 +27,7 @@ export interface CollectionUpdate {
   article_count_decrease_threshold?: number | null
   media_count_increase_threshold?: number | null
   media_count_decrease_threshold?: number | null
+  is_private?: boolean
 }
 
 export interface CollectionHistory {

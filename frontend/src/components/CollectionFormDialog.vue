@@ -128,6 +128,7 @@ async function handleSubmit() {
         article_count_decrease_threshold: formData.article_count_decrease_threshold || undefined,
         media_count_increase_threshold: formData.media_count_increase_threshold || undefined,
         media_count_decrease_threshold: formData.media_count_decrease_threshold || undefined,
+        is_private: formData.is_private,
       }
       const response = await collectionsStore.createCollection(createPayload)
       if (response) {
