@@ -13,10 +13,11 @@ from cms_backend.db.account import (
     get_accounts,
     update_account,
 )
+from cms_backend.db.collection_permission import get_accessible_collection_ids
 from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
-from cms_backend.db.models import Account
+from cms_backend.db.models import Account, Collection
 from cms_backend.roles import RoleEnum, merge_scopes
 from cms_backend.schemas.models import AccountUpdateSchema
 
@@ -122,10 +123,12 @@ def test_update_account_partial(dbsession: OrmSession, account: Account):
     update_account(
         dbsession,
         account_id=account.id,
-        request=AccountUpdateSchema(role=RoleEnum.EDITOR, display_name="newdisplay"),
+        request=AccountUpdateSchema(
+            role=RoleEnum.GLOBAL_EDITOR, display_name="newdisplay"
+        ),
     )
     dbsession.refresh(account)
-    assert account.role == RoleEnum.EDITOR
+    assert account.role == RoleEnum.GLOBAL_EDITOR
     assert account.display_name == "newdisplay"
 
 
@@ -146,3 +149,26 @@ def test_update_account_with_password_set_blank_username(
         update_account(
             dbsession, account_id=account.id, request=AccountUpdateSchema(username=None)
         )
+
+
+def test_update_account_set_permission_collections(
+    dbsession: OrmSession,
+    account: Account,
+    create_collection: Callable[..., Collection],
+):
+    """
+    Test update account role with permission collections correctly sets permissions
+    """
+    collection = create_collection()
+    update_account(
+        dbsession,
+        account_id=account.id,
+        request=AccountUpdateSchema(
+            role=RoleEnum.COLLECTION_EDITOR, collections=[collection.name]
+        ),
+    )
+    dbsession.refresh(account)
+    assert account.role == RoleEnum.COLLECTION_EDITOR
+    accessible_collections = get_accessible_collection_ids(dbsession, account)
+    assert accessible_collections is not None
+    assert set(accessible_collections) == {collection.id}

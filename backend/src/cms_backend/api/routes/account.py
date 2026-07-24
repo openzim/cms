@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from typing import Annotated, Self, cast
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import Field, model_validator
@@ -16,7 +15,10 @@ from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
-from cms_backend.schemas.models import AccountUpdateSchema
+from cms_backend.schemas.models import (
+    AccountUpdateSchema,
+    BaseAccountCreateUpdateSchema,
+)
 from cms_backend.schemas.orms import AccountSchema
 from cms_backend.utils import is_valid_uuid
 
@@ -85,16 +87,12 @@ def get_accounts(
     )
 
 
-class AccountCreateSchema(BaseModel):
+class AccountCreateSchema(BaseAccountCreateUpdateSchema):
     """
     Schema for creating an account
     """
 
-    username: NotEmptyString | None = Field(default=None, min_length=3)
-    display_name: NotEmptyString | None = Field(default=None, min_length=3)
     password: NotEmptyString | None = Field(default=None, min_length=8)
-    role: RoleEnum
-    idp_sub: UUID | None = None
 
     @model_validator(mode="after")
     def check_username_and_displayname(self) -> Self:
@@ -108,6 +106,9 @@ class AccountCreateSchema(BaseModel):
 
     @model_validator(mode="after")
     def check_role(self) -> Self:
+        if self.role is None:
+            raise ValueError("Role must be specified while creating account")
+
         if self.role == RoleEnum.ZIMFARM:
             raise ValueError("Zimfarm accounts cannot be created.")
         return self
@@ -131,12 +132,13 @@ def create_account(
         db_session,
         username=account_schema.username,
         display_name=cast(str, account_schema.display_name),
-        role=account_schema.role,
+        role=cast(RoleEnum, account_schema.role),
         password_hash=(
             generate_password_hash(account_schema.password)
             if account_schema.password
             else None
         ),
+        collections=account_schema.collections,
     )
 
     return db_account.create_account_schema(account)

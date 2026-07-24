@@ -192,9 +192,10 @@
               <v-window-item value="edit">
                 <UpdateUser
                   :user="user"
+                  :collection-names="collectionNames"
+                  :initial-collections="userCollections"
                   v-if="user"
-                  @update-user="updateUser"
-                  @change-password="changePassword"
+                  @submit="handleSubmit"
                 />
               </v-window-item>
 
@@ -229,6 +230,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
+import { useCollectionsStore } from '@/stores/collections'
 import type { User } from '@/types/user'
 
 // Props
@@ -248,6 +250,7 @@ const authStore = useAuthStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
 const userStore = useUserStore()
+const collectionsStore = useCollectionsStore()
 
 // Reactive data
 const error = ref<string | null>(null)
@@ -261,6 +264,9 @@ const scope = computed(() => user.value?.scope || {})
 const canReadAccounts = computed(() => authStore.hasPermission('account', 'read'))
 const canUpdateAccounts = computed(() => authStore.hasPermission('account', 'update'))
 const canDeleteAccount = computed(() => authStore.hasPermission('account', 'delete'))
+
+const collectionNames = ref<string[]>([])
+const userCollections = ref<string[]>([])
 
 const getNamespaceIcon = (namespace: string): string => {
   const iconMap: Record<string, string> = {
@@ -300,53 +306,47 @@ const getAllPermissionsForNamespace = (namespace: string): string[] => {
 }
 
 // Methods
-const changePassword = async (password: string | null) => {
-  loadingStore.startLoading('Changing password...')
+const handleSubmit = async ({
+  userPayload,
+  password,
+}: {
+  userPayload: {
+    username?: string | null
+    display_name?: string
+    role?: string
+    scope?: Record<string, Record<string, boolean>>
+    idp_sub?: string | null
+    collections?: string[] | null
+  } | null
+  password?: string | null
+}) => {
+  loadingStore.startLoading('Updating user…')
 
-  const success = await userStore.changePassword(props.userId, {
-    new: password,
-  })
-  if (success) {
-    if (password === null) {
-      notificationStore.showSuccess(
-        `Password for ${user.value?.display_name} has been cleared.`,
-        10000,
-      )
-    } else {
-      notificationStore.showSuccess(
-        `Password for ${user.value?.display_name} has been changed to ${password}.`,
-        10000,
-      )
-    }
-    await refreshData()
-  } else {
-    for (const error of userStore.errors) {
-      notificationStore.showError(error)
+  let success = true
+
+  if (userPayload && Object.keys(userPayload).length > 0) {
+    success = await userStore.updateUser(props.userId, userPayload)
+    if (!success) {
+      for (const error of userStore.errors) {
+        notificationStore.showError(error)
+      }
     }
   }
-  loadingStore.stopLoading()
-}
 
-const updateUser = async (payload: {
-  username?: string | null
-  display_name?: string
-  role?: string
-  scope?: Record<string, Record<string, boolean>>
-  idp_sub?: string | null
-}) => {
-  // Check if payload has any keys (not just truthy values, since null is valid)
-  if (Object.keys(payload).length === 0) return
+  if (success && password !== undefined) {
+    success = await userStore.changePassword(props.userId, { new: password })
+    if (!success) {
+      for (const error of userStore.errors) {
+        notificationStore.showError(error)
+      }
+    }
+  }
 
-  loadingStore.startLoading('updating user…')
-  const success = await userStore.updateUser(props.userId, payload)
   if (success) {
     notificationStore.showSuccess(`User account ${user.value?.display_name} has been updated.`)
     await refreshData()
-  } else {
-    for (const error of userStore.errors) {
-      notificationStore.showError(error)
-    }
   }
+
   loadingStore.stopLoading()
 }
 
@@ -393,6 +393,22 @@ const loadUser = async () => {
   }
 }
 
+const loadUserCollections = async () => {
+  if (user.value?.role === 'collection-editor') {
+    const accessibleCollections = await collectionsStore.fetchCollections(
+      200,
+      0,
+      undefined,
+      user.value?.id,
+    )
+    if (accessibleCollections) {
+      userCollections.value = accessibleCollections.map((c) => c.name)
+    }
+  } else {
+    userCollections.value = []
+  }
+}
+
 const refreshData = async () => {
   if (!canReadAccounts.value) {
     return
@@ -403,6 +419,7 @@ const refreshData = async () => {
   }
 
   await loadUser()
+  await loadUserCollections()
 }
 
 watch(
@@ -446,7 +463,18 @@ onMounted(async () => {
     return
   }
   loadingStore.startLoading('Fetching user...')
+
   await loadUser()
+
+  if (collectionNames.value.length === 0) {
+    const collections = await collectionsStore.fetchCollections(200, 0)
+    if (collections) {
+      collectionNames.value = collections.map((c) => c.name)
+    }
+  }
+
+  await loadUserCollections()
+
   loadingStore.stopLoading()
 })
 </script>

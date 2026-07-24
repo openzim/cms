@@ -45,6 +45,7 @@ def test_get_collections_pagination(
     dbsession: OrmSession,
     create_collection: Callable[..., Collection],
     create_title: Callable[..., Title],
+    access_token: str,
     skip: int,
     limit: int,
     expected_count: int,
@@ -78,7 +79,10 @@ def test_get_collections_pagination(
 
     dbsession.flush()
 
-    response = client.get(f"/v1/collections?skip={skip}&limit={limit}")
+    response = client.get(
+        f"/v1/collections?skip={skip}&limit={limit}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert "meta" in response_doc
@@ -92,7 +96,7 @@ def test_get_collections_pagination(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.ADMIN, HTTPStatus.OK, id="admin"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -124,7 +128,7 @@ def test_create_collection_required_permissions(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -154,12 +158,12 @@ def test_updating_collection_required_permissions(
     assert response.status_code == expected_status_code
 
 
-def test_get_collection(
-    client: TestClient,
-    collection: Collection,
-):
+def test_get_collection(client: TestClient, collection: Collection, access_token: str):
     """Test retrieving a collection"""
-    response = client.get(f"/v1/collections/{collection.name}")
+    response = client.get(
+        f"/v1/collections/{collection.name}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["name"] == collection.name
@@ -217,7 +221,7 @@ def test_get_collection_history(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )
@@ -260,7 +264,7 @@ def test_get_collection_history_entry(
 @pytest.mark.parametrize(
     "permission,expected_status_code",
     [
-        pytest.param(RoleEnum.EDITOR, HTTPStatus.OK, id="editor"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
         pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
     ],
 )

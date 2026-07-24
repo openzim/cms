@@ -1,10 +1,11 @@
 import datetime
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, cast
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -130,8 +131,16 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
     )
 
 
-def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | None:
-    """Get a title by ID"""
+def get_title_by_id_or_none(
+    session: OrmSession,
+    *,
+    title_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title | None:
+    """Get a title by ID
+
+    Only returns titles that belong to at least one of the accessible_collection_ids.
+    """
     return session.scalars(
         select(Title)
         .options(
@@ -139,53 +148,116 @@ def get_title_by_id_or_none(session: OrmSession, *, title_id: UUID) -> Title | N
             selectinload(Title.collections),
             selectinload(Title.flavours),
         )
-        .where(Title.id == title_id)
+        .where(
+            Title.id == title_id,
+            exists().where(
+                CollectionTitle.title_id == Title.id,
+                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+            )
+            | (accessible_collection_ids is None),
+        )
     ).one_or_none()
 
 
-def get_title_by_id(session: OrmSession, *, title_id: UUID) -> Title:
+def get_title_by_id(
+    session: OrmSession,
+    *,
+    title_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title:
     """Get a title by ID"""
 
-    title = get_title_by_id_or_none(session, title_id=title_id)
+    title = get_title_by_id_or_none(
+        session, title_id=title_id, accessible_collection_ids=accessible_collection_ids
+    )
     if not title:
         raise RecordDoesNotExistError(f"Title with id {title_id} does not exist")
     return title
 
 
-def get_title_by_name_or_none(session: OrmSession, *, name: str) -> Title | None:
-    """Get a title by name if possible else None"""
+def get_title_by_name_or_none(
+    session: OrmSession,
+    *,
+    name: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title | None:
+    """Get a title by name if possible else None
+
+    Only returns titles that belong to at least one of the accessible_collection_ids.
+    """
 
     return session.scalars(
         select(Title)
         .options(selectinload(Title.books), selectinload(Title.collections))
-        .where(Title.name == name)
+        .where(
+            Title.name == name,
+            exists().where(
+                CollectionTitle.title_id == Title.id,
+                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+            )
+            | (accessible_collection_ids is None),
+        )
     ).one_or_none()
 
 
-def get_title_by_name(session: OrmSession, *, name: str) -> Title:
+def get_title_by_name(
+    session: OrmSession,
+    *,
+    name: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title:
     """Get a title or raise RecordDoesNotExistError if it doesn't exist."""
-    if (title := get_title_by_name_or_none(session, name=name)) is None:
-        raise RecordDoesNotExistError(f"Title with name '{name}' does not exist")
+    if (
+        title := get_title_by_name_or_none(
+            session, name=name, accessible_collection_ids=accessible_collection_ids
+        )
+    ) is None:
+        raise RecordDoesNotExistError(
+            f"Title with name '{name}' does not exist or is not acessible to you"
+        )
     return title
 
 
-def get_title_or_none(session: OrmSession, title_identifier: str) -> Title | None:
+def get_title_or_none(
+    session: OrmSession,
+    title_identifier: str,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title | None:
     if is_valid_uuid(title_identifier):
-        return get_title_by_id_or_none(session, title_id=UUID(title_identifier))
+        return get_title_by_id_or_none(
+            session,
+            title_id=UUID(title_identifier),
+            accessible_collection_ids=accessible_collection_ids,
+        )
     else:
-        return get_title_by_name_or_none(session, name=title_identifier)
+        return get_title_by_name_or_none(
+            session,
+            name=title_identifier,
+            accessible_collection_ids=accessible_collection_ids,
+        )
 
 
-def get_title(session: OrmSession, title_identifier: str) -> Title:
-    if is_valid_uuid(title_identifier):
-        return get_title_by_id(session, title_id=UUID(title_identifier))
-    else:
-        return get_title_by_name(session, name=title_identifier)
+def get_title(
+    session: OrmSession,
+    title_identifier: str,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Title:
+    title = get_title_or_none(
+        session, title_identifier, accessible_collection_ids=accessible_collection_ids
+    )
+    if title is None:
+        raise RecordDoesNotExistError(
+            f"Title '{title_identifier}' does not exist or or is not accessible to you"
+        )
+    return title
 
 
 def get_titles(
     session: OrmSession,
     *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     skip: int,
     limit: int,
     name: str | None = None,
@@ -194,7 +266,10 @@ def get_titles(
     archived: bool = False,
     is_rotten: bool | None = None,
 ) -> ListResult[TitleLightSchema]:
-    """Get a list of titles"""
+    """Get a list of titles
+
+    Only returns titles that belong to at least one of the accessible_collection_ids.
+    """
 
     stmt = (
         select(
@@ -222,6 +297,8 @@ def get_titles(
             # we compare the corresponding model field against the argument,
             # otherwise, we compare the argument to its default which translates
             # to a SQL true i.e we don't filter based on this argument (a no-op).
+            CollectionTitle.collection_id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
             (
                 Title.name.ilike(f"%{name if name is not None else ''}%")
                 | (name is None)
@@ -292,7 +369,11 @@ def get_titles(
 
 
 def create_title(
-    session: OrmSession, *, author_id: UUID, payload: TitleCreateSchema
+    session: OrmSession,
+    *,
+    author_id: UUID,
+    payload: TitleCreateSchema,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Title:
     """Create a new title"""
 
@@ -317,7 +398,9 @@ def create_title(
         # Create the collection titles for the title
         for entry in payload.collection_titles:
             collection = get_collection_by_name(
-                session, collection_name=entry.collection_name
+                session,
+                collection_name=entry.collection_name,
+                accessible_collection_ids=accessible_collection_ids,
             )
 
             collection_title = CollectionTitle(path=Path(entry.path))
@@ -394,6 +477,7 @@ def update_title(
     title_identifier: str,
     author_id: UUID,
     payload: TitleUpdateSchema,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     create_event: bool = True,
 ) -> Title:
     """Update a title's details
@@ -403,7 +487,9 @@ def update_title(
     - Updates their locations according to the new collection configuration
     - Sets the needs_file_operation flag to true for these books
     """
-    title = get_title(session, title_identifier)
+    title = get_title(
+        session, title_identifier, accessible_collection_ids=accessible_collection_ids
+    )
 
     # Return early if no update data
     if not payload.model_dump(exclude_unset=True, mode="json"):
@@ -467,7 +553,9 @@ def update_title(
 
         for entry in payload.collection_titles:
             collection = get_collection_by_name(
-                session, collection_name=entry.collection_name
+                session,
+                collection_name=entry.collection_name,
+                accessible_collection_ids=accessible_collection_ids,
             )
 
             collection_title = CollectionTitle(path=Path(entry.path))
@@ -527,13 +615,19 @@ def update_title(
 
     create_title_history_entry(session, title, author_id, payload.comment)
 
-    return get_title_by_id(session, title_id=title.id)
+    return get_title_by_id(
+        session,
+        title_id=title.id,
+        accessible_collection_ids=accessible_collection_ids,
+    )
 
 
 def archive_title(
     session: OrmSession,
     title_identifier: str,
     author_id: UUID,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Title:
     """Mark a title as archived.
 
@@ -543,6 +637,7 @@ def archive_title(
         session,
         author_id=author_id,
         title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
         payload=TitleUpdateSchema(archived=True),
     )
 
@@ -552,7 +647,11 @@ def archive_title(
     for book in title.books:
         with session.begin_nested():
             try:
-                delete_book(session, book_id=book.id)
+                delete_book(
+                    session,
+                    book_id=book.id,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
             except Exception:
                 logger.exception(f"error while deleting book {book.id}")
             else:
@@ -572,16 +671,24 @@ def archive_titles(
     *,
     author_id: UUID,
     title_names: list[str],
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """Archive a list of titles"""
     for title_name in title_names:
-        archive_title(session, title_name, author_id)
+        archive_title(
+            session,
+            title_name,
+            author_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
 
 
 def restore_title(
     session: OrmSession,
     title_identifier: str,
     author_id: UUID,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Title:
     """Remove a title from the archive status.
 
@@ -592,6 +699,7 @@ def restore_title(
         session,
         author_id=author_id,
         title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
         payload=TitleUpdateSchema(archived=False),
     )
     now = getnow()
@@ -603,7 +711,11 @@ def restore_title(
     for book in title.books:
         with session.begin_nested():
             try:
-                recover_book(session, book.id)
+                recover_book(
+                    session,
+                    book.id,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
             except Exception:
                 logger.exception(f"error while restoring title book {book.id}")
             else:
@@ -619,11 +731,20 @@ def restore_title(
 
 
 def restore_titles(
-    session: OrmSession, *, title_names: list[str], author_id: UUID
+    session: OrmSession,
+    *,
+    title_names: list[str],
+    author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """Restore a list of archived titles"""
     for title_name in title_names:
-        restore_title(session, title_name, author_id)
+        restore_title(
+            session,
+            title_name,
+            author_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
 
 
 def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
@@ -662,10 +783,17 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
 
 
 def get_title_history(
-    session: OrmSession, *, title_identifier: str, skip: int, limit: int
+    session: OrmSession,
+    *,
+    title_identifier: str,
+    skip: int,
+    limit: int,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> ListResult[TitleHistorySchema]:
     """Get a title's history"""
-    title = get_title(session, title_identifier)
+    title = get_title(
+        session, title_identifier, accessible_collection_ids=accessible_collection_ids
+    )
     stmt = (
         select(TitleHistory)
         .where(TitleHistory.title_id == title.id)
@@ -682,10 +810,16 @@ def get_title_history(
 
 
 def get_title_history_entry_or_none(
-    session: OrmSession, *, title_identifier: str, history_id: UUID
+    session: OrmSession,
+    *,
+    title_identifier: str,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleHistory | None:
     """Get a title's history entry or None if it does not exist"""
-    title = get_title(session, title_identifier)
+    title = get_title(
+        session, title_identifier, accessible_collection_ids=accessible_collection_ids
+    )
     return session.scalars(
         select(TitleHistory).where(
             TitleHistory.id == history_id, TitleHistory.title_id == title.id
@@ -694,11 +828,18 @@ def get_title_history_entry_or_none(
 
 
 def get_title_history_entry(
-    session: OrmSession, *, title_identifier: str, history_id: UUID
+    session: OrmSession,
+    *,
+    title_identifier: str,
+    history_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleHistory:
     """Get a title's history entry"""
     if history_entry := get_title_history_entry_or_none(
-        session, title_identifier=title_identifier, history_id=history_id
+        session,
+        title_identifier=title_identifier,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     ):
         return history_entry
     raise RecordDoesNotExistError(
@@ -712,16 +853,21 @@ def revert_title(
     title_identifier: str,
     history_id: UUID,
     author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
     comment: str | None = None,
 ) -> Title:
     """Revert the title configuration and settings to those defined in history_id"""
     entry = get_title_history_entry(
-        session, title_identifier=title_identifier, history_id=history_id
+        session,
+        title_identifier=title_identifier,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     title = update_title(
         session,
         title_identifier=title_identifier,
         author_id=author_id,
+        accessible_collection_ids=accessible_collection_ids,
         payload=TitleUpdateSchema(
             comment=comment,
             name=entry.name,
@@ -749,7 +895,11 @@ def revert_title(
 
 
 def merge_titles(
-    session: OrmSession, target_title_name: str, source_title_names: list[str]
+    session: OrmSession,
+    target_title_name: str,
+    source_title_names: list[str],
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """
     Merge list of titles in sources to the target title.
@@ -765,10 +915,18 @@ def merge_titles(
         raise ValueError("Target title must not be in the list of sources")
 
     source_titles = [
-        get_title_by_name(session, name=source_title_name)
+        get_title_by_name(
+            session,
+            name=source_title_name,
+            accessible_collection_ids=accessible_collection_ids,
+        )
         for source_title_name in source_title_names
     ]
-    target_title = get_title_by_name(session, name=target_title_name)
+    target_title = get_title_by_name(
+        session,
+        name=target_title_name,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     source_books = [book for title in source_titles for book in title.books]
     # Attach all the books to the new title
     for source_book in source_books:

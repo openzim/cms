@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
@@ -7,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import (
+    get_accessible_collection_ids,
     get_current_account,
     get_current_account_or_none,
     require_permission,
@@ -62,6 +64,9 @@ class MergeTitlesSchema(BaseModel):
 @router.get("")
 def get_titles(
     params: Annotated[TitlesGetSchema, Query()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account | None = Depends(get_current_account_or_none),
 ) -> ListResponse[TitleLightSchema]:
@@ -74,6 +79,7 @@ def get_titles(
         raise ForbiddenError("You are not allowed to view archived titles.")
     results = db_title.get_titles(
         session,
+        accessible_collection_ids=accessible_collection_ids,
         skip=params.skip,
         limit=params.limit,
         name=params.name,
@@ -101,9 +107,17 @@ def get_titles(
 )
 def merge_titles(
     request: MergeTitlesSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
-    db_title.merge_titles(session, request.target, request.sources)
+    db_title.merge_titles(
+        session,
+        request.target,
+        request.sources,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     return JSONResponse(
         content={"message": f"Titles have been merged with {request.target}"},
         status_code=HTTPStatus.OK,
@@ -113,13 +127,24 @@ def merge_titles(
 @router.get("/{title_identifier}")
 def get_title(
     title_identifier: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleFullSchema:
     """Get a title by ID with full details including books"""
     if is_valid_uuid(title_identifier):
-        title = db_title.get_title_by_id(session, title_id=UUID(title_identifier))
+        title = db_title.get_title_by_id(
+            session,
+            title_id=UUID(title_identifier),
+            accessible_collection_ids=accessible_collection_ids,
+        )
     else:
-        title = db_title.get_title_by_name(session, name=title_identifier)
+        title = db_title.get_title_by_name(
+            session,
+            name=title_identifier,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     return db_title.create_title_full_schema(title)
 
 
@@ -128,6 +153,9 @@ def get_title(
 )
 def create_title(
     title_data: TitleCreateSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
@@ -136,6 +164,7 @@ def create_title(
         session,
         author_id=current_account.id,
         payload=title_data,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_light_schema(title)
 
@@ -147,6 +176,9 @@ def create_title(
 def update_title(
     title_identifier: Annotated[NotEmptyString, Path()],
     title_data: TitleUpdateSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
@@ -156,6 +188,7 @@ def update_title(
         title_identifier=title_identifier,
         author_id=current_account.id,
         payload=title_data,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_light_schema(title)
 
@@ -166,6 +199,9 @@ def update_title(
 )
 def archive_titles(
     request: RestoreTitlesSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> Response:
@@ -173,6 +209,7 @@ def archive_titles(
         session,
         title_names=request.title_names,
         author_id=current_account.id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -183,6 +220,9 @@ def archive_titles(
 )
 def restore_archived_titles(
     request: RestoreTitlesSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> Response:
@@ -190,6 +230,7 @@ def restore_archived_titles(
         session,
         title_names=request.title_names,
         author_id=current_account.id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -200,6 +241,9 @@ def restore_archived_titles(
 )
 def archive_title(
     title_identifier: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
@@ -208,6 +252,7 @@ def archive_title(
         session,
         title_identifier=title_identifier,
         author_id=current_account.id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_light_schema(title)
 
@@ -218,6 +263,9 @@ def archive_title(
 )
 def restore_archived_title(
     title_identifier: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> TitleLightSchema:
@@ -226,6 +274,7 @@ def restore_archived_title(
         session,
         title_identifier=title_identifier,
         author_id=current_account.id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_light_schema(title)
 
@@ -236,12 +285,19 @@ def restore_archived_title(
 )
 def get_title_history(
     title_identifier: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[TitleHistorySchema]:
     results = db_title.get_title_history(
-        session, title_identifier=title_identifier, skip=skip, limit=limit
+        session,
+        title_identifier=title_identifier,
+        skip=skip,
+        limit=limit,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return ListResponse(
         items=results.records,
@@ -259,13 +315,24 @@ def get_title_history(
 )
 def get_title_flavours(
     title_identifier: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[TitleFlavourSchema]:
-    title = db_title.get_title(session, title_identifier=title_identifier)
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     results = db_flavour.get_title_flavours(
-        session, title_id=title.id, skip=skip, limit=limit
+        session,
+        title_id=title.id,
+        skip=skip,
+        limit=limit,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return ListResponse(
         items=results.records,
@@ -288,10 +355,22 @@ def get_title_flavours(
 def delete_title_flavour(
     title_identifier: Annotated[NotEmptyString, Path()],
     flavour: Annotated[ZimFlavour, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
-    title = db_title.get_title(session, title_identifier=title_identifier)
-    db_flavour.delete_title_flavour(session, title_id=title.id, flavour=flavour)
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+    db_flavour.delete_title_flavour(
+        session,
+        title_id=title.id,
+        flavour=flavour,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     return JSONResponse(
         content={
             "message": (
@@ -309,10 +388,16 @@ def delete_title_flavour(
 def get_title_history_entry(
     title_identifier: Annotated[NotEmptyString, Path()],
     history_id: Annotated[UUID, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleHistorySchema:
     history_entry = db_title.get_title_history_entry(
-        session, title_identifier=title_identifier, history_id=history_id
+        session,
+        title_identifier=title_identifier,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_history_schema(history_entry)
 
@@ -325,6 +410,9 @@ def revert_title(
     title_identifier: Annotated[NotEmptyString, Path()],
     history_id: Annotated[UUID, Path()],
     request: RevertTitleSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
@@ -335,6 +423,7 @@ def revert_title(
         history_id=history_id,
         author_id=current_account.id,
         comment=request.comment,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return JSONResponse(
         content={"message": f"title '{title_identifier}' has been restored"},

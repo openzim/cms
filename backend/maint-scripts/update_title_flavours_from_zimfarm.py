@@ -111,7 +111,10 @@ def process_task(
             )
             continue
 
-        title = get_title_by_name_or_none(session, name=metadata["Name"])
+        title = get_title_by_name_or_none(
+            session,
+            name=metadata["Name"],
+        )
         if title is None:
             logger.debug(
                 f"Title with name '{metadata['Name']}' from task {task['id']} "
@@ -216,7 +219,11 @@ def populate_recipes_from_zimfarm(session: OrmSession, zimfarm_api_url: str):
             logger.info(f"No more recipes returned from {zimfarm_api_url}")
             break
         for zf_recipe in zf_recipes:
-            process_recipe(session, zf_recipe, zimfarm_api_url)
+            process_recipe(
+                session,
+                zf_recipe,
+                zimfarm_api_url,
+            )
             session.commit()
         skip += limit
 

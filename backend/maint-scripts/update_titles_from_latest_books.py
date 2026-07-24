@@ -78,7 +78,10 @@ def main():
         reasons: list[dict[str, Any]] = []
 
         for title_id in title_ids:
-            title = get_title_by_id(session, title_id=title_id)
+            title = get_title_by_id(
+                session,
+                title_id=title_id,
+            )
             processed, reason = process_title(session, title)
             if processed:
                 nb_titles_updated += 1

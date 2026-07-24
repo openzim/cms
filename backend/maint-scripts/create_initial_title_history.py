@@ -38,7 +38,10 @@ def create_initial_history_for_titles(session: OrmSession) -> None:
             skipped_count += 1
             continue
 
-        title = get_title(session, title_name)
+        title = get_title(
+            session,
+            title_name,
+        )
 
         create_title_history_entry(
             session,

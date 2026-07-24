@@ -1,5 +1,7 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
+from uuid import UUID
 
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session as OrmSession
@@ -9,16 +11,23 @@ from cms_backend.db.collection import LibraryBookData
 from cms_backend.db.models import (
     Book,
     BookLocation,
+    CollectionTitle,
     Title,
 )
 
 
-def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]:
+def get_staging_books_library_data(
+    session: OrmSession, *, accessible_collection_ids: Sequence[UUID] | None = None
+) -> list[LibraryBookData]:
     """
     Get the list of library data for all books in staging.
 
+    Only returns books whose title belongs to at least one of the
+    accessible_collection_ids.
+
     Args:
         session: ORM session
+        accessible_collection_ids: IDs of collections the caller can access
 
     Returns:
         List of LibraryBookData objects for each book in staging.
@@ -33,6 +42,7 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
         )
         .join(BookLocation)
         .join(Title, Book.title_id == Title.id)
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .where(
             and_(
                 Book.location_kind == "staging",
@@ -43,6 +53,8 @@ def get_staging_books_library_data(session: OrmSession) -> list[LibraryBookData]
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
                 BookLocation.is_backup.is_(False),
+                CollectionTitle.collection_id.in_(accessible_collection_ids or [])
+                | (accessible_collection_ids is None),
             )
         )
         .order_by(Book.created_at.desc())

@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -9,6 +11,7 @@ from cms_backend.api.context import Context
 from cms_backend.api.routes.http_errors import UnauthorizedError
 from cms_backend.api.token import JWTClaims, token_decoder
 from cms_backend.db import account as db_account
+from cms_backend.db import collection_permission as db_collection_permission
 from cms_backend.db import gen_dbsession, gen_manual_dbsession
 from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
@@ -125,3 +128,12 @@ def require_permission(*, namespace: str, name: str):
         return current_account
 
     return _check_permission
+
+
+def get_accessible_collection_ids(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    current_account: Annotated[Account | None, Depends(get_current_account_or_none)],
+) -> Sequence[UUID] | None:
+    return db_collection_permission.get_accessible_collection_ids(
+        session, current_account
+    )

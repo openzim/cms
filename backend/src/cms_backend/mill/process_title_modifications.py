@@ -30,7 +30,10 @@ def process_title_modifications(session: OrmSession):
             session.commit()
             continue
 
-        title = get_title_by_id_or_none(session, title_id=UUID(event.payload["id"]))
+        title = get_title_by_id_or_none(
+            session,
+            title_id=UUID(event.payload["id"]),
+        )
         if not title:
             logger.warning(f"Title with ID {event.payload['id']} does not exist.")
             delete_event(session, event_id=event.id)

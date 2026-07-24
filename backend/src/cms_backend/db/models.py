@@ -372,6 +372,16 @@ class Collection(Base):
     )
 
 
+class CollectionPermission(Base):
+    __tablename__ = "collection_permission"
+    collection_id: Mapped[UUID] = mapped_column(
+        ForeignKey("collection.id", ondelete="CASCADE"), primary_key=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("account.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class CollectionHistory(Base):
     __tablename__ = "collection_history"
     id: Mapped[UUID] = mapped_column(

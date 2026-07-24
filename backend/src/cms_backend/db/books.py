@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, case, or_, select
+from sqlalchemy import String, and_, case, exists, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
@@ -28,25 +29,37 @@ from cms_backend.utils.filename import construct_download_url
 def get_books(
     session: OrmSession,
     params: GetBooksSchema,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> ListResult[BookLightSchema]:
     """Get a list of books"""
 
-    stmt = select(
-        Book.id,
-        Book.title_id,
-        Title.name,
-        Book.needs_processing,
-        Book.has_error,
-        Book.needs_file_operation,
-        Book.location_kind,
-        Book.created_at,
-        Book.deletion_date,
-        Book.name,
-        Book.date,
-        Book.flavour,
-        Book.issues,
-        Book.zim_metadata["Scraper"].astext.label("scraper"),
-    ).join(Title, Book.title_id == Title.id, isouter=True)
+    stmt = (
+        select(
+            Book.id,
+            Book.title_id,
+            Title.name,
+            Book.needs_processing,
+            Book.has_error,
+            Book.needs_file_operation,
+            Book.location_kind,
+            Book.created_at,
+            Book.deletion_date,
+            Book.name,
+            Book.date,
+            Book.flavour,
+            Book.issues,
+            Book.zim_metadata["Scraper"].astext.label("scraper"),
+        )
+        .join(Title, Book.title_id == Title.id, isouter=True)
+        .where(
+            exists().where(
+                CollectionTitle.title_id == Book.title_id,
+                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+            )
+            | (accessible_collection_ids is None)
+        )
+    )
 
     if params.id is not None:
         stmt = stmt.where(Book.id.cast(String).ilike(f"%{params.id}%"))

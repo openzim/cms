@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
@@ -7,7 +8,11 @@ from fastapi.responses import JSONResponse
 from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import get_current_account, require_permission
+from cms_backend.api.routes.dependencies import (
+    get_accessible_collection_ids,
+    get_current_account,
+    require_permission,
+)
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import book as db_book
 from cms_backend.db import book_actions as db_book_actions
@@ -40,10 +45,15 @@ class RevertBookSchema(BaseModel):
 def get_books(
     params: Annotated[GetBooksSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> ListResponse[BookLightSchema]:
     """Get a list of books"""
 
-    results = db_books.get_books(session, params=params)
+    results = db_books.get_books(
+        session, params=params, accessible_collection_ids=accessible_collection_ids
+    )
 
     return ListResponse[BookLightSchema](
         meta=calculate_pagination_metadata(
@@ -92,10 +102,17 @@ def get_book_flavours(
 def get_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> BookFullSchema:
     """Get a book by ID"""
     return db_book.create_book_full_schema(
-        db_book.get_book(session=session, book_id=book_id)
+        db_book.get_book(
+            session=session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )
 
 
@@ -107,11 +124,18 @@ def update_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     request: BookUpdateSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     current_account: Account = Depends(get_current_account),
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
         db_book.update_book(
-            session, book_id=book_id, payload=request, author_id=current_account.id
+            session,
+            book_id=book_id,
+            payload=request,
+            author_id=current_account.id,
+            accessible_collection_ids=accessible_collection_ids,
         )
     )
 
@@ -123,11 +147,19 @@ def update_book(
 def delete_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     *,
     force_delete: Annotated[bool, Query()] = False,
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.delete_book(session, book_id=book_id, force_delete=force_delete)
+        db_book.delete_book(
+            session,
+            book_id=book_id,
+            force_delete=force_delete,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )
 
 
@@ -138,9 +170,16 @@ def delete_book(
 def recover_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.recover_book(session, book_id=book_id)
+        db_book.recover_book(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )
 
 
@@ -151,9 +190,17 @@ def recover_book(
 def unpromote_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.move_book(session, book_id=book_id, destination="staging")
+        db_book.move_book(
+            session,
+            book_id=book_id,
+            destination="staging",
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )
 
 
@@ -164,9 +211,16 @@ def unpromote_book(
 def backup_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.backup_book(session, book_id=book_id)
+        db_book.backup_book(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )
 
 
@@ -176,9 +230,14 @@ def backup_book(
 )
 def get_book_issues(
     book_id: Annotated[UUID, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> JSONResponse:
-    book = db_book.get_book(session, book_id)
+    book = db_book.get_book(
+        session, book_id, accessible_collection_ids=accessible_collection_ids
+    )
     return JSONResponse(
         content=db_book.update_book_issues(session, book),
         status_code=HTTPStatus.OK,
@@ -200,12 +259,19 @@ def promote_book(
     book_id: Annotated[UUID, Path()],
     request: PromoteBook,
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     current_account: Account = Depends(get_current_account),
     *,
     dry_run: Annotated[bool, Query()] = True,
 ) -> JSONResponse:
     if dry_run:
-        actions = db_book_actions.get_book_promotion_actions(session, book_id=book_id)
+        actions = db_book_actions.get_book_promotion_actions(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
         return JSONResponse(
             content={"actions": [action.model_dump(mode="json") for action in actions]},
             status_code=HTTPStatus.OK,
@@ -216,6 +282,7 @@ def promote_book(
             book_id=book_id,
             author_id=current_account.id,
             actions=request.actions,
+            accessible_collection_ids=accessible_collection_ids,
         )
         return JSONResponse(
             content={"actions": []},
@@ -229,11 +296,20 @@ def promote_book(
 )
 def get_book_history(
     book_id: Annotated[UUID, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[BookHistorySchema]:
-    results = db_book.get_book_history(session, book_id=book_id, skip=skip, limit=limit)
+    results = db_book.get_book_history(
+        session,
+        book_id=book_id,
+        skip=skip,
+        limit=limit,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     return ListResponse(
         items=results.records,
         meta=calculate_pagination_metadata(
@@ -252,10 +328,16 @@ def get_book_history(
 def get_book_history_entry(
     book_id: Annotated[UUID, Path()],
     history_id: Annotated[UUID, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> BookHistorySchema:
     history_entry = db_book.get_book_history_entry(
-        session, book_id=book_id, history_id=history_id
+        session,
+        book_id=book_id,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_book.create_book_history_schema(history_entry)
 
@@ -268,6 +350,9 @@ def revert_book(
     book_id: Annotated[UUID, Path()],
     history_id: Annotated[UUID, Path()],
     request: RevertBookSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
@@ -278,6 +363,7 @@ def revert_book(
         history_id=history_id,
         author_id=current_account.id,
         comment=request.comment,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return JSONResponse(
         content={"message": f"book '{book_id}' has been restored"},
@@ -292,7 +378,14 @@ def revert_book(
 def remove_book_backup(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
-        db_book.remove_book_backup(session, book_id=book_id)
+        db_book.remove_book_backup(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     )

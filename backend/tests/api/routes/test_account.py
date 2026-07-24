@@ -21,7 +21,7 @@ from cms_backend.utils.datetime import getnow
             None,
             None,
             "testpassword",
-            RoleEnum.EDITOR,
+            RoleEnum.GLOBAL_EDITOR,
             pytest.raises(ValidationError),
             id="no-username-and-displayname",
         ),
@@ -37,7 +37,7 @@ from cms_backend.utils.datetime import getnow
             None,
             "Test User",
             "testpassword",
-            RoleEnum.EDITOR,
+            RoleEnum.GLOBAL_EDITOR,
             pytest.raises(ValidationError),
             id="no-username-with-password",
         ),
@@ -45,7 +45,7 @@ from cms_backend.utils.datetime import getnow
             "testuser",
             "Test User",
             "testpassword",
-            RoleEnum.EDITOR,
+            RoleEnum.GLOBAL_EDITOR,
             does_not_raise(),
             id="valid-inputs",
         ),
@@ -70,7 +70,7 @@ def test_account_creation_schema(
 def test_display_username_set_from_username_if_no_display_name():
     account = AccountCreateSchema(
         username="testuser",
-        role=RoleEnum.EDITOR,
+        role=RoleEnum.GLOBAL_EDITOR,
         password="testpassword",
     )
 
@@ -93,7 +93,7 @@ def test_list_accounts_with_param(
     for _ in range(4):
         create_account()
 
-    account = create_account(permission=RoleEnum.EDITOR)
+    account = create_account(permission=RoleEnum.ADMIN)
     access_token = generate_access_token(
         issue_time=getnow(),
         account_id=str(account.id),

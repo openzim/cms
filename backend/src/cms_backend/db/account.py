@@ -4,12 +4,18 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.db.collection import get_collection_by_name
+from cms_backend.db.collection_permission import (
+    create_collection_permission,
+    delete_collection_permissions,
+)
 from cms_backend.db.exceptions import (
     RecordAlreadyExistsError,
     RecordDoesNotExistError,
 )
 from cms_backend.db.models import Account
 from cms_backend.roles import ROLES, RoleEnum, merge_scopes
+from cms_backend.schemas.fields import NotEmptyString
 from cms_backend.schemas.models import AccountUpdateSchema
 from cms_backend.schemas.orms import AccountSchema, ListResult
 from cms_backend.utils import is_valid_uuid
@@ -99,7 +105,7 @@ def create_account_schema(account: Account) -> AccountSchema:
         idp_sub=account.idp_sub,
         display_name=account.display_name,
         role=account.role,
-        scope=merge_scopes(ROLES.get(account.role, {}), ROLES[RoleEnum.EDITOR]),
+        scope=merge_scopes(ROLES.get(account.role, {}), ROLES[RoleEnum.ADMIN]),
         has_password=account.password_hash is not None,
     )
 
@@ -110,8 +116,9 @@ def create_account(
     display_name: str,
     username: str | None = None,
     password_hash: str | None = None,
-    role: str = "custom",
+    role: RoleEnum = RoleEnum.VIEWER,
     idp_sub: UUID | None = None,
+    collections: list[NotEmptyString] | None = None,
 ) -> Account:
     """Create a new account"""
     account = Account(
@@ -127,6 +134,10 @@ def create_account(
         session.flush()
     except IntegrityError as exc:
         raise RecordAlreadyExistsError("Account already exists") from exc
+    if account.role == RoleEnum.COLLECTION_EDITOR and collections:
+        for collection_name in set(collections):
+            collection = get_collection_by_name(session, collection_name)
+            create_collection_permission(session, collection.id, account.id)
     return account
 
 
@@ -199,7 +210,9 @@ def update_account(
     """Update an account"""
     account = get_account_by_identifier(session, account_identifier=str(account_id))
 
-    values = request.model_dump(exclude_unset=True, mode="json")
+    values = request.model_dump(
+        exclude_unset=True, mode="json", exclude={"collections"}
+    )
 
     if "display_name" in values and not values["display_name"]:
         raise ValueError("Account must have a display name.")
@@ -213,7 +226,18 @@ def update_account(
     if (role := values.get("role")) is not None:
         values["role"] = role
 
-    if not values:
-        return
+    if values:
+        account = session.scalars(
+            update(Account)
+            .where(Account.id == account.id)
+            .values(**values)
+            .returning(Account)
+        ).one()
 
-    session.execute(update(Account).where(Account.id == account.id).values(**values))
+    if request.role is not None:
+        delete_collection_permissions(session, account_id=account.id)
+
+    if request.collections and account.role == RoleEnum.COLLECTION_EDITOR:
+        for collection_name in set(request.collections):
+            collection = get_collection_by_name(session, collection_name)
+            create_collection_permission(session, collection.id, account.id)

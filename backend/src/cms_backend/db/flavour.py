@@ -1,19 +1,32 @@
+from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import book as db_book
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, Title, TitleFlavour
+from cms_backend.db.models import Book, CollectionTitle, Title, TitleFlavour
 from cms_backend.schemas.orms import ListResult, TitleFlavourSchema
 
 
 def get_title_flavours(
-    session: OrmSession, title_id: UUID, *, limit: int = 20, skip: int = 0
+    session: OrmSession,
+    title_id: UUID,
+    *,
+    limit: int = 20,
+    skip: int = 0,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> ListResult[TitleFlavourSchema]:
-    stmt = select(TitleFlavour).where(TitleFlavour.title_id == title_id)
+    stmt = select(TitleFlavour).where(
+        TitleFlavour.title_id == title_id,
+        exists().where(
+            CollectionTitle.title_id == TitleFlavour.title_id,
+            CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+        )
+        | (accessible_collection_ids is None),
+    )
     return ListResult[TitleFlavourSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
@@ -47,19 +60,33 @@ def create_title_flavour(
 
 
 def get_title_flavour_or_none(
-    session: OrmSession, title_id: UUID, flavour: str
+    session: OrmSession,
+    title_id: UUID,
+    flavour: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleFlavour | None:
     return session.scalars(
         select(TitleFlavour).where(
-            TitleFlavour.title_id == title_id, TitleFlavour.flavour == flavour
+            TitleFlavour.title_id == title_id,
+            TitleFlavour.flavour == flavour,
+            exists().where(
+                CollectionTitle.title_id == TitleFlavour.title_id,
+                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
+            )
+            | (accessible_collection_ids is None),
         )
     ).one_or_none()
 
 
 def get_title_flavour(
-    session: OrmSession, title_id: UUID, flavour: str
+    session: OrmSession,
+    title_id: UUID,
+    flavour: str,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleFlavour:
-    title_flavour = get_title_flavour_or_none(session, title_id, flavour)
+    title_flavour = get_title_flavour_or_none(
+        session, title_id, flavour, accessible_collection_ids=accessible_collection_ids
+    )
     if title_flavour is None:
         raise RecordDoesNotExistError(
             f"Title flavour {flavour} for title {title_id} does not exists"
@@ -67,13 +94,24 @@ def get_title_flavour(
     return title_flavour
 
 
-def delete_title_flavour(session: OrmSession, title_id: UUID, flavour: str):
+def delete_title_flavour(
+    session: OrmSession,
+    title_id: UUID,
+    flavour: str,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+):
     """Delete a title flavour and mark associated books for deletion.
 
     Only books that are in staging, prod or quarantine and do not have any pending
     operations are eligible for deletion.
     """
-    tf = get_title_flavour_or_none(session, title_id=title_id, flavour=flavour)
+    tf = get_title_flavour_or_none(
+        session,
+        title_id=title_id,
+        flavour=flavour,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     if tf is None:
         raise RecordDoesNotExistError(
             f"Title flavour '{flavour}' for title {title_id} does not exist"
@@ -88,6 +126,10 @@ def delete_title_flavour(session: OrmSession, title_id: UUID, flavour: str):
         )
     ).all()
     for book_id in book_ids_to_delete:
-        db_book.delete_book(session, book_id=book_id)
+        db_book.delete_book(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
     session.delete(tf)
     session.flush()

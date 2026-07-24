@@ -1301,3 +1301,90 @@ def test_get_books_created_before_filters(
     )
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
+
+
+def test_get_book_or_none_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+):
+    """Returns book when its title belongs to an accessible collection."""
+    title = create_title(name="test_title")
+    collection = create_collection(
+        title_ids_with_paths=[(title.id, "/test/path")],
+    )
+    book = create_book(title_id=title.id)
+    dbsession.flush()
+
+    result = get_book_or_none(
+        dbsession,
+        book_id=book.id,
+        accessible_collection_ids=[collection.id],
+    )
+    assert result is not None
+    assert result.id == book.id
+
+
+def test_get_book_or_none_not_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+):
+    """Returns None when book exists but its title is not in accessible collections."""
+    title = create_title(name="test_title")
+    other_collection = create_collection()
+    book = create_book(title_id=title.id)
+    dbsession.flush()
+
+    result = get_book_or_none(
+        dbsession,
+        book_id=book.id,
+        accessible_collection_ids=[other_collection.id],
+    )
+    assert result is None
+
+
+def test_get_book_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+):
+    """Returns book when its title belongs to an accessible collection."""
+    title = create_title(name="test_title")
+    collection = create_collection(
+        title_ids_with_paths=[(title.id, "/test/path")],
+    )
+    book = create_book(title_id=title.id)
+    dbsession.flush()
+
+    result = get_book(
+        dbsession,
+        book_id=book.id,
+        accessible_collection_ids=[collection.id],
+    )
+    assert result.id == book.id
+
+
+def test_get_book_not_accessible(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+):
+    """
+    Raises RecordDoesNotExistError when book's title is not in accessible collections
+    """
+    title = create_title(name="test_title")
+    other_collection = create_collection()
+    book = create_book(title_id=title.id)
+    dbsession.flush()
+
+    with pytest.raises(RecordDoesNotExistError):
+        get_book(
+            dbsession,
+            book_id=book.id,
+            accessible_collection_ids=[other_collection.id],
+        )

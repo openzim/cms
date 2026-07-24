@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
@@ -8,7 +9,11 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import AnyUrl, Field
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import get_current_account, require_permission
+from cms_backend.api.routes.dependencies import (
+    get_accessible_collection_ids,
+    get_current_account,
+    require_permission,
+)
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.api.routes.utils import build_library_xml
 from cms_backend.db import collection as db_collection
@@ -31,6 +36,7 @@ class CollectionsGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
     name: NotEmptyString | None = None
+    accessible_by: UUID | None = None
 
 
 class RevertCollectionSchema(BaseModel):
@@ -41,11 +47,19 @@ class RevertCollectionSchema(BaseModel):
 def get_collections(
     params: Annotated[CollectionsGetSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> ListResponse[CollectionLightSchema]:
     """Get a list of collections"""
 
     results = db_collection.get_collections(
-        session, skip=params.skip, limit=params.limit, name=params.name
+        session,
+        skip=params.skip,
+        limit=params.limit,
+        name=params.name,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_by=params.accessible_by,
     )
 
     return ListResponse[CollectionLightSchema](
@@ -108,9 +122,14 @@ def create_collection(
 def get_collection(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ):
     """Get collection by collection ID (UUID) or name."""
-    collection = db_collection.get_collection(session, collection_id_or_name)
+    collection = db_collection.get_collection(
+        session, collection_id_or_name, accessible_collection_ids
+    )
     return db_collection.create_collection_full_schema(collection)
 
 
@@ -121,6 +140,9 @@ def get_collection(
 def update_collection(
     collection_id_or_name: Annotated[str, Path()],
     current_account: Annotated[Account, Depends(get_current_account)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     collection_data: CollectionUpdateSchema,
     session: OrmSession = Depends(gen_dbsession),
 ) -> CollectionFullSchema:
@@ -129,6 +151,7 @@ def update_collection(
         db_collection.update_collection(
             session,
             collection_id=collection_id_or_name,
+            accessible_collection_ids=accessible_collection_ids,
             request=collection_data,
             author_id=current_account.id,
         )
@@ -136,19 +159,24 @@ def update_collection(
 
 
 def _get_catalog_xml_content(
-    collection_id_or_name: str, session: OrmSession, path_prefix: str | None
+    collection_id_or_name: str,
+    session: OrmSession,
+    path_prefix: str | None,
+    accessible_collection_ids: Sequence[UUID] | None,
 ) -> tuple[str, int]:
     # Try to parse as UUID first, otherwise treat as name
     collection = None
     try:
         try:
-            collection = db_collection.get_collection(session, collection_id_or_name)
+            collection = db_collection.get_collection(
+                session, collection_id_or_name, accessible_collection_ids
+            )
         except RecordDoesNotExistError:
             pass
     except ValueError:
         # Not a valid UUID, try as name
         collection = db_collection.get_collection_by_name_or_none(
-            session, collection_id_or_name
+            session, collection_id_or_name, accessible_collection_ids
         )
 
     if collection is None:
@@ -158,7 +186,9 @@ def _get_catalog_xml_content(
             HTTPStatus.NOT_FOUND,
         )
 
-    entries = db_collection.get_latest_books_for_collection(session, collection.id)
+    entries = db_collection.get_latest_books_for_collection(
+        session, collection.id, accessible_collection_ids
+    )
     xml_content = build_library_xml(entries, path_prefix=path_prefix)
 
     return xml_content, HTTPStatus.OK
@@ -168,11 +198,14 @@ def _get_catalog_xml_content(
 def get_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     path_prefix: Annotated[str | None, Query()] = None,
 ):
     """Get collection catalog as XML library by collection ID (UUID) or name."""
     xml_content, status_code = _get_catalog_xml_content(
-        collection_id_or_name, session, path_prefix
+        collection_id_or_name, session, path_prefix, accessible_collection_ids
     )
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
 
@@ -188,11 +221,14 @@ def get_library_catalog_xml(
 def head_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     path_prefix: Annotated[str | None, Query()] = None,
 ):
     """Get collection catalog as XML library by collection ID (UUID) or name."""
     xml_content, status_code = _get_catalog_xml_content(
-        collection_id_or_name, session, path_prefix
+        collection_id_or_name, session, path_prefix, accessible_collection_ids
     )
     etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
     return Response(
@@ -208,12 +244,19 @@ def head_library_catalog_xml(
 )
 def get_collection_history(
     collection_id_or_name: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     skip: Annotated[SkipField, Query()] = 0,
     limit: Annotated[LimitFieldMax200, Query()] = 200,
 ) -> ListResponse[CollectionHistorySchema]:
     results = db_collection.get_collection_history(
-        session, collection_id=collection_id_or_name, skip=skip, limit=limit
+        session,
+        collection_id=collection_id_or_name,
+        skip=skip,
+        limit=limit,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return ListResponse(
         items=results.records,
@@ -232,11 +275,17 @@ def get_collection_history(
 )
 def get_collection_history_entry(
     collection_id_or_name: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     history_id: Annotated[UUID, Path()],
     session: OrmSession = Depends(gen_dbsession),
 ) -> CollectionHistorySchema:
     history_entry = db_collection.get_collection_history_entry(
-        session, collection_id=collection_id_or_name, history_id=history_id
+        session,
+        collection_id=collection_id_or_name,
+        history_id=history_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return db_collection.create_collection_history_schema(history_entry)
 
@@ -247,6 +296,9 @@ def get_collection_history_entry(
 )
 def revert_collection(
     collection_id_or_name: Annotated[NotEmptyString, Path()],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
     history_id: Annotated[UUID, Path()],
     request: RevertCollectionSchema,
     session: OrmSession = Depends(gen_dbsession),
@@ -259,6 +311,7 @@ def revert_collection(
         history_id=history_id,
         author_id=current_account.id,
         comment=request.comment,
+        accessible_collection_ids=accessible_collection_ids,
     )
     return JSONResponse(
         content={"message": f"collection '{collection_id_or_name}' has been restored"},

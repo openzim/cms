@@ -1,4 +1,5 @@
 from collections import deque
+from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
@@ -204,12 +205,16 @@ def _get_update_flavour_recipe_action(
 
 
 def get_book_promotion_actions(
-    session: OrmSession, *, book_id: UUID
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> list[BookPromotionAction]:
     """Get actions required to promote a book to 'prod'."""
     book = get_book_or_none(
         session,
         book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
         has_error=False,
         needs_file_operation=False,
         needs_processing=False,
@@ -217,7 +222,8 @@ def get_book_promotion_actions(
     )
     if book is None:
         raise RecordDoesNotExistError(
-            f"Book {book_id} does not meet criteria to be validated"
+            f"Book {book_id} does not meet criteria to be validated or is not "
+            "accessible to you"
         )
 
     actions: list[BookPromotionAction] = []
@@ -261,7 +267,11 @@ def get_book_promotion_actions(
 
 
 def _apply_restore_title_action(
-    session: OrmSession, action: BaseBookPromotionAction, book: Book, author_id: UUID
+    session: OrmSession,
+    action: BaseBookPromotionAction,
+    book: Book,
+    author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ):
 
     if not book.title:
@@ -275,6 +285,7 @@ def _apply_restore_title_action(
         session,
         title_identifier=payload.title_names[0],
         author_id=author_id,
+        accessible_collection_ids=accessible_collection_ids,
     )
 
 
@@ -299,12 +310,21 @@ def _apply_create_title_flavour_action(
 
 
 def _apply_create_title_action(
-    session: OrmSession, action: BaseBookPromotionAction, book: Book, author_id: UUID
+    session: OrmSession,
+    action: BaseBookPromotionAction,
+    book: Book,
+    author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ):
     payload = TitleCreateSchema.model_validate(action.data)
     if not payload.collection_titles:
         raise ValueError("Title must have at least one collection configured.")
-    title = create_title(session, author_id=author_id, payload=payload)
+    title = create_title(
+        session,
+        author_id=author_id,
+        payload=payload,
+        accessible_collection_ids=accessible_collection_ids,
+    )
     book.title = title
     tf = get_title_flavour_or_none(session, title.id, book.flavour)
     if tf is None:
@@ -341,14 +361,19 @@ def apply_book_promotion_actions(
     book_id: UUID,
     actions: list[BaseBookPromotionAction],
     author_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """Apply a list of actions to book so that it can be promoted to 'prod'"""
     action_kinds = {action.kind for action in actions}
     if len(action_kinds) != len(actions):
         raise ValueError("Provided actions contain duplicates")
 
-    book = get_book(session, book_id=book_id)
-    expected_actions = get_book_promotion_actions(session, book_id=book_id)
+    book = get_book(
+        session, book_id=book_id, accessible_collection_ids=accessible_collection_ids
+    )
+    expected_actions = get_book_promotion_actions(
+        session, book_id=book_id, accessible_collection_ids=accessible_collection_ids
+    )
 
     expected_actions_set = {action.kind for action in expected_actions}
     provided_actions_set = {action.kind for action in actions}
@@ -381,9 +406,21 @@ def apply_book_promotion_actions(
         action = actions_todo.popleft()
         match action.kind:
             case "create_title":
-                _apply_create_title_action(session, action, book, author_id)
+                _apply_create_title_action(
+                    session,
+                    action,
+                    book,
+                    author_id,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
             case "restore_title":
-                _apply_restore_title_action(session, action, book, author_id)
+                _apply_restore_title_action(
+                    session,
+                    action,
+                    book,
+                    author_id,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
             case "update_title_metadata":
                 expected_action = next(
                     action
@@ -432,6 +469,7 @@ def apply_book_promotion_actions(
             title_identifier=book.title.name,
             author_id=author_id,
             payload=payload,
+            accessible_collection_ids=accessible_collection_ids,
             create_event=False,
         )
 
