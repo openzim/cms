@@ -107,6 +107,7 @@ def create_book(
         location_kind: str = "quarantine",
         updated_at: datetime | None = None,
         title_id: UUID | None = None,
+        filename: str | None = None,
     ) -> Book:
         if zim_metadata is None:
             zim_metadata = {}
@@ -143,6 +144,7 @@ def create_book(
             if zimfarm_notification and zimfarm_notification.content.get("recipe_id")
             else None,
         )
+        book.filename = filename
         book.title_id = title_id
         book.location_kind = location_kind
         if updated_at:
