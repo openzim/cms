@@ -5,7 +5,7 @@ from collections.abc import Callable
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import BookLocation
+from cms_backend.db.models import Book
 from cms_backend.utils.filename import compute_target_filename, get_next_suffix
 
 
@@ -76,8 +76,8 @@ class TestComputeTargetFilename:
         assert result == "wikipedia_en_all_maxi_2024-01.zim"
 
     def test_no_existing_locations_uses_base(self, dbsession: OrmSession):
-        """When no existing locations, should use base pattern."""
-        # Fresh database has no locations
+        """When no existing books, should use base pattern."""
+        # Fresh database has no books
         result = compute_target_filename(
             dbsession,
             name="new_book",
@@ -87,13 +87,12 @@ class TestComputeTargetFilename:
         assert result == "new_book_2024-02.zim"
 
     def test_collision_handling_single_letter(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Should handle collision with single letter suffix."""
-        # Create first location (base pattern)
-        create_book_location(
+        # Create first book (base pattern)
+        create_book(
             filename="test_book_2024-03.zim",
-            status="target",
         )
 
         # Compute filename for same name/flavour/period
@@ -106,13 +105,13 @@ class TestComputeTargetFilename:
         assert result == "test_book_2024-03a.zim"
 
     def test_multiple_collisions_progression(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Should handle multiple collisions in progression."""
-        # Create locations with existing suffixes
-        create_book_location(filename="foo_2024-04.zim", status="target")
-        create_book_location(filename="foo_2024-04a.zim", status="target")
-        create_book_location(filename="foo_2024-04b.zim", status="target")
+        # Create books with existing suffixes
+        create_book(filename="foo_2024-04.zim")
+        create_book(filename="foo_2024-04a.zim")
+        create_book(filename="foo_2024-04b.zim")
 
         # Should get next suffix
         result = compute_target_filename(
@@ -124,14 +123,14 @@ class TestComputeTargetFilename:
         assert result == "foo_2024-04c.zim"
 
     def test_gap_in_suffixes_uses_last(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Should use last suffix even if gaps exist."""
-        # Create locations with a gap (a, c exist, b is missing)
-        create_book_location(filename="bar_2024-05.zim", status="target")
-        create_book_location(filename="bar_2024-05a.zim", status="target")
+        # Create books with a gap (a, c exist, b is missing)
+        create_book(filename="bar_2024-05.zim")
+        create_book(filename="bar_2024-05a.zim")
         # Note: bar_2024-05b.zim is missing
-        create_book_location(filename="bar_2024-05c.zim", status="target")
+        create_book(filename="bar_2024-05c.zim")
 
         # Should get suffix after 'c', not reuse 'b'
         result = compute_target_filename(
@@ -143,13 +142,13 @@ class TestComputeTargetFilename:
         assert result == "bar_2024-05d.zim"
 
     def test_double_letter_suffix_progression(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Should progress to double letter suffixes when needed."""
-        # Create locations through z
-        create_book_location(filename="baz_2024-06.zim", status="target")
+        # Create books through z
+        create_book(filename="baz_2024-06.zim")
         for letter in "abcdefghijklmnopqrstuvwxyz":
-            create_book_location(filename=f"baz_2024-06{letter}.zim", status="target")
+            create_book(filename=f"baz_2024-06{letter}.zim")
 
         # Should wrap to aa
         result = compute_target_filename(
@@ -161,11 +160,11 @@ class TestComputeTargetFilename:
         assert result == "baz_2024-06aa.zim"
 
     def test_flavour_prevents_collision(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Different flavours should not collide."""
-        # Create location for name without flavour
-        create_book_location(filename="wiki_2024-07.zim", status="target")
+        # Create book for name without flavour
+        create_book(filename="wiki_2024-07.zim")
 
         # Same name with flavour should not collide
         result = compute_target_filename(
@@ -176,29 +175,12 @@ class TestComputeTargetFilename:
         )
         assert result == "wiki_maxi_2024-07.zim"
 
-    def test_mixed_status_locations_included(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
-    ):
-        """Should consider both current and target locations."""
-        # Create both current and target locations
-        create_book_location(filename="mixed_2024-08.zim", status="current")
-        create_book_location(filename="mixed_2024-08a.zim", status="target")
-
-        # Should get suffix after 'a'
-        result = compute_target_filename(
-            dbsession,
-            name="mixed",
-            flavour=None,
-            date="2024-08-10",
-        )
-        assert result == "mixed_2024-08b.zim"
-
     def test_different_period_no_collision(
-        self, dbsession: OrmSession, create_book_location: Callable[..., BookLocation]
+        self, dbsession: OrmSession, create_book: Callable[..., Book]
     ):
         """Different periods should not collide."""
-        # Create location for different period
-        create_book_location(filename="period_2024-08.zim", status="target")
+        # Create book for different period
+        create_book(filename="period_2024-08.zim")
 
         # Different period should not collide
         result = compute_target_filename(

@@ -2,12 +2,13 @@
 
 import re
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import BookLocation
+from cms_backend.db.models import Book
 
 PERIOD_LENGTH = 7
 FILENAME_PERIOD_SUFFIX_PATTERN = re.compile(
@@ -119,14 +120,11 @@ def compute_target_filename(
     # Base pattern for this book (without .zim extension)
     base_pattern = f"{base_name}_{base_period}"
 
-    # Query all locations where filename starts with this pattern
-    # Check ALL locations regardless of status (current or target)
+    # Query all books where filename starts with this pattern
     # Exclude the current book's own locations to avoid self-collision
-    stmt = select(BookLocation.filename).where(
-        BookLocation.filename.like(f"{base_pattern}%")
-    )
+    stmt = select(Book.filename).where(Book.filename.like(f"{base_pattern}%"))
     if book_id is not None:
-        stmt = stmt.where(BookLocation.book_id != book_id)
+        stmt = stmt.where(Book.id != book_id)
 
     existing_filenames = list(session.scalars(stmt).all())
 
@@ -143,7 +141,7 @@ def compute_target_filename(
     suffixes: list[str] = []
     for filename in existing_filenames:
         # Remove .zim extension
-        name_part = filename.rsplit(".zim", 1)[0]
+        name_part = cast(str, filename).rsplit(".zim", 1)[0]
 
         # Extract suffix after base_pattern
         if name_part == base_pattern:
