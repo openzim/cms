@@ -567,29 +567,11 @@ const titleDiffs = computed(() => {
 
     switch (action.kind) {
       case 'update_title_metadata': {
-        current = {
-          title: existingTitle.value!.title,
-          creator: existingTitle.value!.creator,
-          publisher: existingTitle.value!.publisher,
-          description: existingTitle.value!.description,
-          license: existingTitle.value!.license,
-          language: existingTitle.value!.language,
-          illustration_48x48_at_1: existingTitle.value!.illustration_48x48_at_1,
-          long_description: existingTitle.value!.long_description,
-          relation: existingTitle.value!.relation,
-          source: existingTitle.value!.source,
-        }
-        next = {
-          title: data.title ?? null,
-          creator: data.creator ?? null,
-          publisher: data.publisher ?? null,
-          description: data.description ?? null,
-          license: data.license ?? null,
-          language: data.language ?? null,
-          illustration_48x48_at_1: data.illustration_48x48_at_1 ?? null,
-          long_description: data.long_description ?? null,
-          relation: data.relation ?? null,
-          source: data.source ?? null,
+        current = {}
+        next = {}
+        for (const key of Object.keys(data)) {
+          current[key] = existingTitle.value![key as keyof Title] ?? null
+          next[key] = data[key] ?? null
         }
         break
       }
