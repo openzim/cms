@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
 
-from pydantic import Field, computed_field
+from pydantic import computed_field
 
 from cms_backend import construct_recipe_api_link, construct_recipe_link
 from cms_backend.context import Context
@@ -194,12 +194,17 @@ class BookFullSchema(BookLightSchema):
     has_backup: bool
     zimcheck_summary: ZimcheckSummarySchema | None
     zimcheck_s3_deleted: bool
-    recipe_id: UUID | None = Field(exclude=True)
+    recipe_id: UUID | None
 
     @computed_field
     @property
     def recipe_link(self) -> str | None:
         return construct_recipe_link(self.recipe_id)
+
+    @computed_field
+    @property
+    def recipe_api_link(self) -> str | None:
+        return construct_recipe_api_link(self.recipe_id)
 
 
 class BookHistorySchema(BaseModel):

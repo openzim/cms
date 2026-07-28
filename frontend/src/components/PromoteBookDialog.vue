@@ -132,20 +132,28 @@
 
                     <!-- update_title_metadata -->
                     <template v-else-if="action.kind === 'update_title_metadata'">
-                      <div
-                        v-if="existingTitle && hasAnyFieldDifferentFromTitle(index)"
-                        class="d-flex align-center justify-space-between mb-4"
-                      >
-                        <v-spacer />
-                        <v-btn
-                          color="primary"
-                          variant="elevated"
-                          size="small"
-                          prepend-icon="mdi-download"
-                          @click="useAllTitleValues(index)"
-                        >
-                          Use All from Title
-                        </v-btn>
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center ga-2">
+                          <v-progress-circular
+                            v-if="loadingRecipeMetadata"
+                            indeterminate
+                            size="16"
+                            width="2"
+                            class="mr-2"
+                          />
+                        </div>
+                        <div class="d-flex align-center ga-2">
+                          <v-btn
+                            v-if="existingTitle && hasAnyFieldDifferentFromTitle(index)"
+                            color="primary"
+                            variant="elevated"
+                            size="small"
+                            prepend-icon="mdi-download"
+                            @click="useAllTitleValues(index)"
+                          >
+                            Use All from Title
+                          </v-btn>
+                        </div>
                       </div>
                       <v-row v-if="actionData[index]?.title !== undefined">
                         <v-col cols="12">
@@ -242,12 +250,15 @@
                             />
                             <template #diff-content>
                               <div class="d-flex flex-column flex-grow-1">
-                                <v-img
-                                  :src="getImageDataUrl(existingTitle?.illustration_48x48_at_1)"
-                                  width="48"
-                                  height="48"
-                                  class="rounded border w-100"
-                                />
+                                <template v-if="existingTitle?.illustration_48x48_at_1">
+                                  <v-img
+                                    :src="getImageDataUrl(existingTitle.illustration_48x48_at_1)"
+                                    width="48"
+                                    height="48"
+                                    class="rounded border w-100"
+                                  />
+                                </template>
+                                <strong v-else>(no value)</strong>
                               </div>
                             </template>
                           </MetadataFieldWithDiff>
@@ -472,6 +483,17 @@
       </div>
     </template>
   </ConfirmDialog>
+
+  <RecipeUpdateDialog
+    v-if="recipeOfflinerDefFlag && recipeOfflinerDefSpec"
+    v-model="showRecipeUpdateDialog"
+    :recipe-metadata="recipeMetadata"
+    :actions="actions"
+    :action-data="actionData"
+    :def-flag="recipeOfflinerDefFlag"
+    :def-spec="recipeOfflinerDefSpec"
+    :recipe-link="props.book?.recipe_link"
+  />
 </template>
 
 <script setup lang="ts">
@@ -485,15 +507,22 @@ import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
+import { useNotificationStore } from '@/stores/notification'
+import { useZimfarmRecipeStore } from '@/stores/zimfarm/recipe'
+import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import constants, { TITLE_METADATA_FIELDS, type TitleMetadataFieldKey } from '@/constants'
 import type { Config } from '@/config'
 import type { Book, BookPromotionAction } from '@/types/book'
 import type { CollectionLight } from '@/types/collections'
 import type { Title } from '@/types/title'
+import type { OfflinerDefinitionFlag, OfflinerDefinitionSpec } from '@/types/zimfarm/offliner'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
 import { getImageDataUrl } from '@/utils/image'
+import { extractRecipeMetadataValues } from '@/utils/recipe'
+import httpRequest from '@/utils/httpRequest'
 import DiffViewer from '@/components/DiffViewer.vue'
+import RecipeUpdateDialog from '@/components/RecipeUpdateDialog.vue'
 import { computed, inject, ref, watch } from 'vue'
 
 interface Props {
@@ -512,6 +541,9 @@ const emit = defineEmits<{
 const config = inject<Config>(constants.config)!
 const bookStore = useBookStore()
 const titleStore = useTitleStore()
+const notificationStore = useNotificationStore()
+const recipeStore = useZimfarmRecipeStore()
+const offlinerStore = useZimfarmOfflinerStore()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -532,6 +564,31 @@ const existingTitle = ref<Title | null>(null)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const showConfirmDialog = ref(false)
+const loadingRecipeMetadata = ref(false)
+
+/** Resolved recipe metadata values keyed by CMS field name. */
+const recipeMetadata = ref<Record<string, string | null>>({})
+const recipeOfflinerDefFlag = ref<OfflinerDefinitionFlag | null>(null)
+const recipeOfflinerDefSpec = ref<OfflinerDefinitionSpec | null>(null)
+const showRecipeUpdateDialog = ref(false)
+
+const hasRecipeMetadataDifferences = computed(() => {
+  if (Object.values(recipeMetadata.value).every((v) => v == null)) return false
+
+  const metaAction = actions.value.find((a) => a.kind === 'update_title_metadata')
+  if (!metaAction) return false
+
+  const index = actions.value.indexOf(metaAction)
+  const newData = actionData.value[index]
+  if (!newData) return false
+
+  for (const field of TITLE_METADATA_FIELDS) {
+    if (newData[field] !== undefined && newData[field] !== (recipeMetadata.value[field] ?? null)) {
+      return true
+    }
+  }
+  return false
+})
 
 const hasAnyActionChecked = computed(() => {
   // Allow promoting when all actions are purely informational
@@ -726,6 +783,58 @@ function useAllTitleValues(index: number): void {
   })
 }
 
+async function loadRecipeMetadata(recipeId: string) {
+  const recipe = await recipeStore.fetchRecipe(recipeId)
+  if (!recipe) {
+    console.warn('Failed to fetch recipe:', recipeId)
+    return
+  }
+
+  const [defFlag, defSpec] = await Promise.all([
+    offlinerStore.fetchOfflinerDefinitionFlag(recipe.offliner, recipe.version),
+    offlinerStore.fetchOfflinerDefinitionSpec(recipe.offliner, recipe.version),
+  ])
+
+  if (!defFlag || !defSpec) {
+    console.warn('Failed to fetch offliner definitions for', recipe.offliner, recipe.version)
+    return
+  }
+
+  recipeMetadata.value = extractRecipeMetadataValues(defFlag, defSpec, recipe.config.offliner)
+  recipeOfflinerDefFlag.value = defFlag
+  recipeOfflinerDefSpec.value = defSpec
+
+  // If the illustration is a URL, fetch it upfront and convert to base64. This is
+  // because zimfarm API accepts blobs as bas64 strings and our blob diff viewer
+  // also uses base64 strings when showing comparison
+  const illustrationValue = recipeMetadata.value['illustration_48x48_at_1']
+  if (illustrationValue && illustrationValue.startsWith('http')) {
+    try {
+      const service = httpRequest({})
+      const blob = await service.get<unknown, Blob>(illustrationValue, {
+        responseType: 'blob',
+      })
+      if (blob) {
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(blob)
+        })
+        recipeMetadata.value['illustration_48x48_at_1'] = dataUrl.includes(',')
+          ? dataUrl.split(',')[1]
+          : dataUrl
+      } else {
+        recipeMetadata.value['illustration_48x48_at_1'] = null
+        notificationStore.showError('Failed to fetch recipe illustration')
+      }
+    } catch {
+      recipeMetadata.value['illustration_48x48_at_1'] = null
+      notificationStore.showError('Failed to fetch recipe illustration')
+    }
+  }
+}
+
 watch(isOpen, async (newValue) => {
   if (newValue && props.book) await loadDryRun()
 })
@@ -739,6 +848,7 @@ async function loadDryRun() {
   actions.value = []
   actionChecked.value = {}
   actionData.value = {}
+  recipeMetadata.value = {}
 
   if (props.book.title_id) {
     existingTitle.value = await titleStore.fetchTitleById(props.book.title_id)
@@ -761,6 +871,18 @@ async function loadDryRun() {
     dryRunError.value = 'An unexpected error occurred while analyzing promotion requirements'
   } finally {
     loadingDryRun.value = false
+  }
+
+  // Fetch recipe metadata if we have an update_title_metadata action
+  if (props.book.recipe_id && actions.value.some((a) => a.kind === 'update_title_metadata')) {
+    loadingRecipeMetadata.value = true
+    try {
+      await loadRecipeMetadata(props.book.recipe_id)
+    } catch (err) {
+      console.error('Failed to resolve recipe metadata', err)
+    } finally {
+      loadingRecipeMetadata.value = false
+    }
   }
 }
 
@@ -808,6 +930,10 @@ async function executePromote() {
 
     emit('promoted')
     isOpen.value = false
+
+    if (hasRecipeMetadataDifferences.value && props.book.recipe_id) {
+      showRecipeUpdateDialog.value = true
+    }
   } catch (err) {
     console.error('Failed to promote book', err)
     submitError.value = 'An unexpected error occurred while promoting the book'

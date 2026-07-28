@@ -1,14 +1,15 @@
 import type { Config } from '@/config'
 import type { StoredToken } from '@/types/auth'
+import type { User } from '@/types/user'
+import httpRequest from '@/utils/httpRequest'
 
 export interface OAuthConfig {
   basePath: string
 }
 
 export function getOAuthConfig(config: Config): OAuthConfig {
-  const basePath = config.OAUTH_BASE_URL
   return {
-    basePath: basePath,
+    basePath: config.OAUTH_BASE_URL,
   }
 }
 
@@ -17,6 +18,40 @@ export function getOAuthConfig(config: Config): OAuthConfig {
  * Defines the common interface that all auth providers must implement
  */
 export abstract class AuthProvider {
+  protected readonly apiBaseUrl: string
+  protected _user: User | null = null
+
+  constructor(apiBaseUrl: string) {
+    this.apiBaseUrl = apiBaseUrl
+  }
+
+  /**
+   * Returns the currently authenticated user, if any
+   */
+  get user(): User | null {
+    return this._user
+  }
+
+  /**
+   * Clear the stored user
+   */
+  clearUser(): void {
+    this._user = null
+  }
+
+  /**
+   * Fetches user information from the provider's backend
+   */
+  async fetchUserInfo(accessToken: string): Promise<User> {
+    const service = httpRequest({
+      baseURL: `${this.apiBaseUrl}/auth`,
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const response = (await service.get('/me')) as User
+    this._user = response
+    return response
+  }
+
   /**
    * Initiates the login flow
    */
