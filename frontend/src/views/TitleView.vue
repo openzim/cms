@@ -107,16 +107,6 @@
               <div class="ml-4 mr-4 mt-2 mb-2">
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Id</div>
-                  </v-col>
-                  <v-col cols="12" md="9">
-                    <code>{{ title.id }}</code>
-                  </v-col>
-                </v-row>
-                <v-divider class="my-2"></v-divider>
-
-                <v-row no-gutters class="py-2">
-                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Name</div>
                   </v-col>
                   <v-col cols="12" md="9">
