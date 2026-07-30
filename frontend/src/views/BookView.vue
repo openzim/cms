@@ -198,21 +198,6 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Recipe</div>
-                  </v-col>
-                  <v-col cols="12" md="9">
-                    <span v-if="book.recipe_link">
-                      <a :href="book.recipe_link" target="_blank">
-                        View in Zimfarm <v-icon size="small">mdi-open-in-new</v-icon>
-                      </a>
-                    </span>
-                    <span v-else class="text-grey">None</span>
-                  </v-col>
-                </v-row>
-                <v-divider class="my-2"></v-divider>
-
-                <v-row no-gutters class="py-2">
-                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Status</div>
                   </v-col>
                   <v-col cols="12" md="9">
@@ -220,6 +205,28 @@
                       <BookStatusIndicator :book="book" />
                       <BookLocationChip :book="book" />
                       <BookIssuesIndicator :book="book" />
+                    </div>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">URLs</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <div class="d-flex ga-2 align-center">
+                      <v-btn
+                        v-if="book.recipe_link"
+                        :href="book.recipe_link"
+                        target="_blank"
+                        prepend-icon="mdi-open-in-new"
+                        variant="outlined"
+                        size="small"
+                      >
+                        Zimfarm
+                      </v-btn>
+                      <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" />
                     </div>
                   </v-col>
                 </v-row>
@@ -326,16 +333,6 @@
                   <v-col cols="12" md="9">
                     <span v-if="offlinerName !== 'Unknown'">{{ offlinerName }}</span>
                     <span v-else class="text-grey">-</span>
-                  </v-col>
-                </v-row>
-                <v-divider class="my-2"></v-divider>
-
-                <v-row no-gutters class="py-2">
-                  <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">URLs</div>
-                  </v-col>
-                  <v-col cols="12" md="9">
-                    <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" />
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
