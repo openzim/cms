@@ -9,6 +9,13 @@
     </div>
 
     <div v-if="dataLoaded && book">
+      <v-row>
+        <v-col>
+          <h2 class="text-h6 text-md-h5 mb-2">
+            <code>{{ book.name || book.id }}</code>
+          </h2>
+        </v-col>
+      </v-row>
       <div
         class="d-flex flex-md-row flex-column justify-md-end ga-2"
         v-if="
