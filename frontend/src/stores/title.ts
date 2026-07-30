@@ -109,7 +109,8 @@ export const useTitleStore = defineStore('title', () => {
   }
 
   const savePaginatorLimit = (limit: number) => {
-    localStorage.setItem('limit-table-limit', limit.toString())
+    localStorage.setItem('titles-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   const createTitle = async (titleData: TitleCreate) => {

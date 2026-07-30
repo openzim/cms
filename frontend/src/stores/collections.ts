@@ -138,7 +138,8 @@ export const useCollectionsStore = defineStore('collection', () => {
   }
 
   const savePaginatorLimit = (limit: number) => {
-    localStorage.setItem('colle-table-limit', limit.toString())
+    localStorage.setItem('collections-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   return {

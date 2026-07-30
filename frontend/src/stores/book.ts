@@ -147,6 +147,7 @@ export const useBookStore = defineStore('book', () => {
 
   const savePaginatorLimit = (limit: number) => {
     localStorage.setItem('books-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   const fetchZimUrls = async (zim_ids: string[]) => {

@@ -91,6 +91,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
 
   const savePaginatorLimit = (limit: number) => {
     localStorage.setItem('zimfarm-notifications-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   return {
