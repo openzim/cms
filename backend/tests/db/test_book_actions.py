@@ -664,7 +664,139 @@ def test_promotion_actions_multiple_actions(
     assert "create_title_flavour" in kinds
 
 
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promotion_media_count_issue(
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection_title: Callable[..., CollectionTitle],
+    illustration_48x48_at_1: str,
+):
+    """A book with all media count issue returns media count action"""
+    mock_get_zimcheck_errors.return_value = []
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+        article_count=105,
+        media_count=115,
+    )
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi"],
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    title.maturity = "stable"  # override default "unstable"
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    create_collection_title(
+        title=title,
+        media_count_increase_threshold=0.1,
+        article_count_increase_threshold=0.1,
+        media_count_decrease_threshold=0.1,
+        article_count_decrease_threshold=0.1,
+    )
+
+    # create the latest book with media_count of 100 and article count of 105
+    create_book(
+        article_count=105,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        location_kind="prod",
+    )
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 1
+    assert actions[0].requirement == "information"
+    assert actions[0].kind == "media_count"
+
+
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promotion_article_count_issue(
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection_title: Callable[..., CollectionTitle],
+    illustration_48x48_at_1: str,
+):
+    """A book with article count issue returns article count action"""
+    mock_get_zimcheck_errors.return_value = []
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+        article_count=115,
+        media_count=100,
+    )
+    title = create_title(
+        name="test_en_all",
+        flavours=["maxi"],
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    title.maturity = "stable"  # override default "unstable"
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    create_collection_title(
+        title=title,
+        media_count_increase_threshold=0.1,
+        article_count_increase_threshold=0.1,
+        media_count_decrease_threshold=0.1,
+        article_count_decrease_threshold=0.1,
+    )
+
+    # create the latest book with media_count of 100 and article count of 100
+    create_book(
+        article_count=100,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        location_kind="prod",
+    )
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 1
+    assert actions[0].requirement == "information"
+    assert actions[0].kind == "article_count"
+
+
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_promotion_actions_ready_for_prod(
+    mock_get_zimcheck_errors: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -672,6 +804,7 @@ def test_promotion_actions_ready_for_prod(
     illustration_48x48_at_1: str,
 ):
     """A book with all prerequisites met returns no actions."""
+    mock_get_zimcheck_errors.return_value = []
     book = create_book(
         flavour="maxi",
         zim_metadata={
@@ -707,7 +840,9 @@ def test_promotion_actions_ready_for_prod(
     assert len(actions) == 0
 
 
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_promote_book_with_no_actions_move_directly_to_prod(
+    mock_get_zimcheck_errors: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -718,6 +853,7 @@ def test_promote_book_with_no_actions_move_directly_to_prod(
     account: Account,
 ):
     """Test applying empty actions on a book with no issues simply moves book to prod"""
+    mock_get_zimcheck_errors.return_value = []
     warehouse = create_warehouse()
 
     book = create_book(

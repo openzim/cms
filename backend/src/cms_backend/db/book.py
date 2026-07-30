@@ -797,6 +797,26 @@ def get_book_unsupported_languages(book: Book) -> list[str]:
     return unknown_languages
 
 
+def get_latest_prod_book(session: OrmSession, book: Book):
+    """Get the latest prod book that has the same title and flavour as book.
+
+    If none is found, the book is returned.
+    """
+    latest_book = session.scalars(
+        select(Book)
+        .where(
+            Book.location_kind == "prod",
+            Book.id != book.id,
+            Book.title_id == book.title_id,
+            Book.flavour == book.flavour,
+        )
+        .order_by(Book.created_at.desc())
+    ).first()
+    if latest_book is None:
+        latest_book = book
+    return latest_book
+
+
 def get_book_issues(
     session: OrmSession, book: Book, *, raise_exceptions: bool = False
 ) -> dict[str, list[str]]:
@@ -842,19 +862,7 @@ def get_book_issues(
     if metadata_issues:
         issues["bad metadata"] = metadata_issues
 
-    # Get the latest prod book that isn't the current book
-    latest_book = session.scalars(
-        select(Book)
-        .where(
-            Book.location_kind == "prod",
-            Book.id != book.id,
-            Book.title_id == book.title_id,
-            Book.flavour == book.flavour,
-        )
-        .order_by(Book.created_at.desc())
-    ).first()
-    if latest_book is None:
-        latest_book = book
+    latest_book = get_latest_prod_book(session, book)
 
     article_count_issues = get_book_article_count_issues(
         book=book, latest_book=latest_book

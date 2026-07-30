@@ -413,12 +413,21 @@ def create_collection_title(
         title: Title | None = None,
         collection: Collection | None = None,
         path: str | Path = "/test/path",
+        media_count_increase_threshold: float | None = None,
+        article_count_increase_threshold: float | None = None,
+        media_count_decrease_threshold: float | None = None,
+        article_count_decrease_threshold: float | None = None,
     ) -> CollectionTitle:
         if title is None:
             title = create_title()
 
         if collection is None:
-            collection = create_collection()
+            collection = create_collection(
+                article_count_increase_threshold=article_count_increase_threshold,
+                article_count_decrease_threshold=article_count_decrease_threshold,
+                media_count_increase_threshold=media_count_increase_threshold,
+                media_count_decrease_threshold=media_count_decrease_threshold,
+            )
 
         collection_title = CollectionTitle(
             path=Path(path) if isinstance(path, str) else path

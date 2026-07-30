@@ -10,9 +10,12 @@ from cms_backend.db.book import (
     book_has_flavour_mismatch,
     book_has_recipe_issue,
     get_book,
+    get_book_article_count_issues,
+    get_book_media_count_issues,
     get_book_or_none,
     get_book_unsupported_languages,
     get_differing_metadata_keys,
+    get_latest_prod_book,
     get_zimcheck_errors,
     move_book_to_destination,
 )
@@ -83,13 +86,46 @@ def _get_unknown_languages_action(book: Book) -> BookPromotionAction | None:
 
 def _get_zimcheck_issues_action(book: Book) -> BookPromotionAction | None:
     zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=False)
-    if zimcheck_errors and book.zimcheck_summary:
-        zimcheck_summary = ZimcheckSummarySchema.model_validate(book.zimcheck_summary)
+    if zimcheck_errors:
+        if book.zimcheck_summary:
+            zimcheck_summary = ZimcheckSummarySchema.model_validate(
+                book.zimcheck_summary
+            )
+            return BookPromotionAction(
+                kind="zimcheck_issues",
+                requirement="information",
+                data={},
+                message=f"Book has {zimcheck_summary.error_count} zimcheck error(s). ",
+            )
         return BookPromotionAction(
             kind="zimcheck_issues",
             requirement="information",
             data={},
-            message=f"Book has {zimcheck_summary.error_count} zimcheck error(s). ",
+            message=";".join(zimcheck_errors),
+        )
+
+
+def _get_media_count_issues_action(book: Book, latest_book: Book):
+    media_count_issues = get_book_media_count_issues(book=book, latest_book=latest_book)
+    if media_count_issues:
+        return BookPromotionAction(
+            kind="media_count",
+            requirement="information",
+            data={},
+            message=";".join(media_count_issues),
+        )
+
+
+def _get_article_count_issues_action(book: Book, latest_book: Book):
+    article_count_issues = get_book_article_count_issues(
+        book=book, latest_book=latest_book
+    )
+    if article_count_issues:
+        return BookPromotionAction(
+            kind="article_count",
+            requirement="information",
+            data={},
+            message=";".join(article_count_issues),
         )
 
 
@@ -239,6 +275,13 @@ def get_book_promotion_actions(
         actions.append(action)
 
     if action := _get_zimcheck_issues_action(book):
+        actions.append(action)
+
+    latest_book = get_latest_prod_book(session, book)
+    if action := _get_media_count_issues_action(book, latest_book):
+        actions.append(action)
+
+    if action := _get_article_count_issues_action(book, latest_book):
         actions.append(action)
 
     if action := _get_create_title_action(book):
@@ -456,7 +499,12 @@ def apply_book_promotion_actions(
                 title_update_payload.update(**action.data)
             case "update_flavour_recipe":
                 _apply_update_flavour_recipe_action(session, action, book)
-            case "unknown_languages" | "zimcheck_issues":
+            case (
+                "unknown_languages"
+                | "zimcheck_issues"
+                | "media_count"
+                | "article_count"
+            ):
                 pass
 
     if book.title is None:
