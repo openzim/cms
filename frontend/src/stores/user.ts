@@ -22,6 +22,7 @@ export const useUserStore = defineStore('user', () => {
 
   const savePaginatorLimit = (limit: number) => {
     localStorage.setItem('users-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   const createUser = async (payload: {

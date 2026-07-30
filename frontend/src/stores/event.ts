@@ -48,6 +48,7 @@ export const useEventStore = defineStore('event', () => {
 
   const savePaginatorLimit = (limit: number) => {
     localStorage.setItem('events-table-limit', limit.toString())
+    defaultLimit.value = limit
   }
 
   return {
