@@ -534,6 +534,9 @@ const submitError = ref<string | null>(null)
 const showConfirmDialog = ref(false)
 
 const hasAnyActionChecked = computed(() => {
+  // Allow promoting when all actions are purely informational
+  if (actions.value.length > 0 && actions.value.every((a) => a.requirement === 'information'))
+    return true
   return actions.value.some(
     (action, index) => action.requirement === 'mandatory' || actionChecked.value[index],
   )
@@ -541,7 +544,12 @@ const hasAnyActionChecked = computed(() => {
 
 const selectedActionsForConfirm = computed(() => {
   return actions.value
-    .filter((action, index) => action.requirement === 'mandatory' || actionChecked.value[index])
+    .filter(
+      (action, index) =>
+        action.requirement === 'mandatory' ||
+        action.requirement === 'information' ||
+        actionChecked.value[index],
+    )
     .map((action) => {
       const index = actions.value.indexOf(action)
       return {
@@ -769,7 +777,12 @@ async function executePromote() {
 
   try {
     const selectedActions = actions.value
-      .filter((action, index) => action.requirement === 'mandatory' || actionChecked.value[index])
+      .filter(
+        (action, index) =>
+          action.requirement === 'mandatory' ||
+          action.requirement === 'information' ||
+          actionChecked.value[index],
+      )
       .map((action) => {
         const originalIndex = actions.value.indexOf(action)
         let data = actionData.value[originalIndex] || action.data

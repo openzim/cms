@@ -185,6 +185,8 @@ type BookPromotionActionKind = Literal[
     "create_title_flavour",
     "set_title_collections",
     "update_flavour_recipe",
+    "article_count",
+    "media_count",
 ]
 
 type BookPromotionRequirement = Literal["mandatory", "optional", "information"]
