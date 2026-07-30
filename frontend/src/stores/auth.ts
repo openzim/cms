@@ -23,14 +23,19 @@ export const useAuthStore = defineStore('auth', () => {
     throw new Error('Config is not defined')
   }
 
+  // Zimfarm and CMS ouath needs only one class as we can auth with the same token across
+  // both APIs but we need two local auth providers as they have differen tokens
   let oauthProvider: OAuthSessionProvider | null = null
   let localauthProvider: LocalAuthProvider | null = null
+  let zimfarmLocalAuthProvider: LocalAuthProvider | null = null
 
-  if (config.LOGIN_MODES.includes('local'))
-    localauthProvider = new LocalAuthProvider(config.CMS_API)
+  if (config.LOGIN_MODES.includes('local')) {
+    localauthProvider = new LocalAuthProvider(config.CMS_API, constants.TOKEN_STORAGE_KEY)
+    zimfarmLocalAuthProvider = new LocalAuthProvider(config.ZIMFARM_API, 'zimfarm-auth')
+  }
 
   if (config.LOGIN_MODES.includes('oauth'))
-    oauthProvider = new OAuthSessionProvider(getOAuthConfig(config))
+    oauthProvider = new OAuthSessionProvider(getOAuthConfig(config), config.CMS_API)
 
   const getAuthProvider = (providerType: AuthProviderType): AuthProvider => {
     switch (providerType) {
@@ -49,10 +54,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const getZimfarmAuthProvider = (providerType: AuthProviderType): AuthProvider => {
+    switch (providerType) {
+      case 'oauth':
+        if (!oauthProvider) {
+          throw new Error('OAuth provider not configured')
+        }
+        return oauthProvider
+      case 'local':
+        if (!zimfarmLocalAuthProvider) {
+          throw new Error('Local auth provider not configured')
+        }
+        return zimfarmLocalAuthProvider
+      default:
+        throw new Error(`Unknown auth provider type: ${providerType}`)
+    }
+  }
+
   // Track refresh state to prevent duplicate requests
   const isRefreshFailed = ref(false)
   const refreshPromise = ref<Promise<StoredToken | null> | null>(null)
   const refreshGeneration = ref(0)
+  const zimfarmRefreshPromise = ref<Promise<StoredToken | null> | null>(null)
 
   // Computed properties
   const isLoggedIn = computed(() => {
@@ -135,7 +158,8 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('Invalid authentication token')
       }
       token.value = newToken
-      await fetchUserInfo(newToken.access_token)
+      await provider.fetchUserInfo(newToken.access_token)
+      user.value = provider.user
 
       errors.value = []
       provider.saveToken(newToken)
@@ -166,16 +190,65 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  const fetchUserInfo = async (accessToken: string) => {
+  const loadZimfarmToken = async (): Promise<StoredToken | null> => {
+    if (!tokenType.value) return null
+
+    const provider = getZimfarmAuthProvider(tokenType.value)
+
+    const storedToken = await provider.loadToken()
+    if (!storedToken) return null
+
+    const expiry = new Date(storedToken.expires_time)
+    if (new Date() < expiry) return storedToken
+
+    if (zimfarmRefreshPromise.value) {
+      return await zimfarmRefreshPromise.value
+    }
+
+    if (!storedToken.refresh_token) {
+      console.error('No zimfarm refresh token available')
+      provider.removeToken()
+      return null
+    }
+
+    zimfarmRefreshPromise.value = provider.refreshAuth(storedToken.refresh_token)
+
     try {
-      const apiService = httpRequest({
-        baseURL: `${config.CMS_API}/auth`,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const newToken = await zimfarmRefreshPromise.value
+      if (!newToken) {
+        throw new Error('Unable to refresh zimfarm token')
+      }
+      return newToken
+    } catch (error) {
+      console.error('Zimfarm token refresh failed:', error)
+      provider.removeToken()
+      return null
+    } finally {
+      zimfarmRefreshPromise.value = null
+    }
+  }
+
+  const getZimfarmApiService = async (baseURL: string) => {
+    const zimfarmToken = await loadZimfarmToken()
+    if (!zimfarmToken)
+      return httpRequest({
+        baseURL: `${config.ZIMFARM_API}/${baseURL}`,
       })
-      const response = (await apiService.get('/me')) as User
-      user.value = response
+
+    return httpRequest({
+      baseURL: `${config.ZIMFARM_API}/${baseURL}`,
+      headers: {
+        Authorization: `Bearer ${zimfarmToken.access_token}`,
+      },
+    })
+  }
+
+  const fetchUserInfo = async (accessToken: string) => {
+    if (!token.value?.token_type) return
+    const provider = getAuthProvider(token.value.token_type)
+    try {
+      await provider.fetchUserInfo(accessToken)
+      user.value = provider.user
       errors.value = []
     } catch (error) {
       console.error('Failed to fetch user info:', error)
@@ -231,7 +304,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (!user.value) {
-      await fetchUserInfo(storedToken.access_token)
+      const provider = getAuthProvider(storedToken.token_type)
+      await provider.fetchUserInfo(storedToken.access_token)
+      user.value = provider.user
     }
     token.value = storedToken
     return storedToken
@@ -274,7 +349,8 @@ export const useAuthStore = defineStore('auth', () => {
         return null
       }
 
-      await fetchUserInfo(newToken.access_token)
+      await provider.fetchUserInfo(newToken.access_token)
+      user.value = provider.user
       isRefreshFailed.value = false
       return newToken
     } catch (error) {
@@ -301,6 +377,10 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const provider = getAuthProvider(token.value?.token_type)
         await provider.logout()
+        const zimfarmProvider = getZimfarmAuthProvider(token.value?.token_type)
+        await zimfarmProvider.logout()
+        provider.clearUser()
+        zimfarmProvider.clearUser()
       } catch (error) {
         console.error('Error revoking token:', error)
       }
@@ -317,14 +397,34 @@ export const useAuthStore = defineStore('auth', () => {
     refreshPromise.value = null
   }
 
+  /**
+   * Authenticate with the zimfarm local auth provider.
+   * Runs the full auth flow on the provider without syncing to the
+   * store's user/token — consumers read zimfarmProvider.user directly.
+   */
+  const authenticateZimfarm = async (username: string, password: string) => {
+    if (!zimfarmLocalAuthProvider) {
+      throw new Error('Zimfarm auth provider not configured')
+    }
+    await zimfarmLocalAuthProvider.initiateLogin(username, password)
+    const newToken = await zimfarmLocalAuthProvider.loadToken()
+    if (!newToken) {
+      throw new Error('Invalid zimfarm authentication token')
+    }
+    await zimfarmLocalAuthProvider.fetchUserInfo(newToken.access_token)
+    zimfarmLocalAuthProvider.saveToken(newToken)
+    return zimfarmLocalAuthProvider
+  }
+
   const handleCallBack = async (providerType: AuthProviderType, callbackUrl: string) => {
     try {
       const provider = getAuthProvider(providerType)
       const newToken = await provider.onCallback(callbackUrl)
       token.value = newToken
 
-      // Fetch user info from backend using the Kiwix token
-      await fetchUserInfo(newToken.access_token)
+      // Fetch user info from backend using the provider
+      await provider.fetchUserInfo(newToken.access_token)
+      user.value = provider.user
       if (!user.value) return false
 
       errors.value = []
@@ -362,12 +462,17 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Methods
     loadToken,
+    loadZimfarmToken,
     fetchUserInfo,
     renewToken,
     authenticate,
     logout,
     getApiService,
+    getZimfarmApiService,
+    getZimfarmAuthProvider,
     handleCallBack,
     hasPermission,
+    authenticateZimfarm,
+    zimfarmProvider: zimfarmLocalAuthProvider,
   }
 })

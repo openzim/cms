@@ -8,11 +8,13 @@ import httpRequest from '@/utils/httpRequest'
  * Uses the CMS  API's /auth endpoints
  */
 export class LocalAuthProvider extends AuthProvider {
-  private cmsApiBaseUrl: string
+  private apiBaseUurl: string
+  private storageKey: string
 
-  constructor(cmsApiBaseUrl: string) {
-    super()
-    this.cmsApiBaseUrl = cmsApiBaseUrl
+  constructor(apiBaseUurl: string, storageKey?: string) {
+    super(apiBaseUurl)
+    this.apiBaseUurl = apiBaseUurl
+    this.storageKey = storageKey ?? constants.TOKEN_STORAGE_KEY
   }
 
   /**
@@ -21,7 +23,7 @@ export class LocalAuthProvider extends AuthProvider {
    */
   async initiateLogin(username?: string, password?: string): Promise<void> {
     const service = httpRequest({
-      baseURL: `${this.cmsApiBaseUrl}/auth`,
+      baseURL: `${this.apiBaseUurl}/auth`,
     })
     const response = await service.post<
       { username: string; password: string },
@@ -41,16 +43,16 @@ export class LocalAuthProvider extends AuthProvider {
   }
 
   saveToken(token: StoredToken): null {
-    localStorage.setItem(constants.TOKEN_STORAGE_KEY, JSON.stringify(token))
+    localStorage.setItem(this.storageKey, JSON.stringify(token))
     return null
   }
 
   removeToken(): void {
-    localStorage.removeItem(constants.TOKEN_STORAGE_KEY)
+    localStorage.removeItem(this.storageKey)
   }
 
   async loadToken(): Promise<StoredToken | null> {
-    const storedValue = localStorage.getItem(constants.TOKEN_STORAGE_KEY)
+    const storedValue = localStorage.getItem(this.storageKey)
     if (!storedValue) return null
     let storedToken: StoredToken
     try {
@@ -82,7 +84,7 @@ export class LocalAuthProvider extends AuthProvider {
    */
   async refreshAuth(refreshToken: string): Promise<StoredToken> {
     const service = httpRequest({
-      baseURL: `${this.cmsApiBaseUrl}/auth`,
+      baseURL: `${this.apiBaseUurl}/auth`,
     })
     const response = await service.post<
       { refresh_token: string },

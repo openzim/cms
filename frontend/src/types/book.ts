@@ -72,7 +72,9 @@ export interface Book extends BookLight {
   zimcheck_result_url: string | null
   zimcheck_s3_deleted: boolean
   zimcheck_summary: ZimcheckSummary | null
+  recipe_id: string | null
   recipe_link: string | null
+  recipe_api_link?: string
 }
 
 export interface ZimUrl {

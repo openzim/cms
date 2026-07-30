@@ -27,8 +27,8 @@ export class OAuthSessionProvider extends AuthProvider {
   #token: StoredToken | null = null // in memory reference to token
   #shouldLoadToken: boolean = true // if token should be loaded again
 
-  constructor(config: OAuthConfig) {
-    super()
+  constructor(config: OAuthConfig, cmsApiBaseUrl: string) {
+    super(cmsApiBaseUrl)
     this.config = config
   }
   /**
@@ -67,16 +67,20 @@ export class OAuthSessionProvider extends AuthProvider {
    * Session-based auth typically handles logout via server-side session destruction
    */
   async logout(): Promise<void> {
-    this.#token = null
-    this.#shouldLoadToken = false
+    if (this.#token) {
+      this.#token = null
+      this.#shouldLoadToken = false
 
-    const service = httpRequest({
-      baseURL: `${this.config.basePath}`,
-    })
-    const response = await service.get<null, LogoutSessionResponse>('/self-service/logout/browser')
-    await service.get<null, null>('/self-service/logout', {
-      params: { token: response.logout_token },
-    })
+      const service = httpRequest({
+        baseURL: `${this.config.basePath}`,
+      })
+      const response = await service.get<null, LogoutSessionResponse>(
+        '/self-service/logout/browser',
+      )
+      await service.get<null, null>('/self-service/logout', {
+        params: { token: response.logout_token },
+      })
+    }
   }
 
   /**

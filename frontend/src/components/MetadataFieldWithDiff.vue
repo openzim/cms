@@ -30,7 +30,7 @@
 import { computed, useSlots } from 'vue'
 
 defineProps<{
-  /** Whether to show the diff warning banner */
+  /** Whether to show the diff banner */
   showDiff: boolean
   /** Label text, e.g. "Different from title which has:" */
   diffLabel: string
