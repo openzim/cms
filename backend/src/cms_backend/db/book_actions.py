@@ -368,6 +368,32 @@ def _apply_create_title_flavour_action(
     tf.last_book_added_at = getnow()
 
 
+def _validate_create_title_action(
+    expected_action: BaseBookPromotionAction, provided_action: BaseBookPromotionAction
+):
+    expected_payload = TitleCreateSchema.model_validate(expected_action.data)
+    provided_payload = TitleCreateSchema.model_validate(provided_action.data)
+    if expected_payload.collection_titles:
+        if not provided_payload.collection_titles:
+            raise ValueError(
+                "Expected collection titles for action differ from "
+                "provided collection titles."
+            )
+        expected_collection_titles: set[str] = {
+            f"{entry.collection_name}:{entry.path}"
+            for entry in expected_payload.collection_titles
+        }
+        provided_collection_titles: set[str] = {
+            f"{entry.collection_name}:{entry.path}"
+            for entry in provided_payload.collection_titles
+        }
+        if expected_collection_titles != provided_collection_titles:
+            raise ValueError(
+                "Expected collection titles for action differ from "
+                "provided collection titles."
+            )
+
+
 def _apply_create_title_action(
     session: OrmSession,
     action: BaseBookPromotionAction,
@@ -471,6 +497,14 @@ def apply_book_promotion_actions(
         action = actions_todo.popleft()
         match action.kind:
             case "create_title":
+                _validate_create_title_action(
+                    next(
+                        expected_action
+                        for expected_action in expected_actions
+                        if expected_action.kind == action.kind
+                    ),
+                    action,
+                )
                 _apply_create_title_action(
                     session,
                     action,

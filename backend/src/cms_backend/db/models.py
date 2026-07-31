@@ -153,6 +153,7 @@ class Book(Base):
         back_populates="book"
     )
     recipe_id: Mapped[UUID | None] = mapped_column(default=None)
+    task_id: Mapped[UUID | None] = mapped_column(default=None)
 
     zimcheck_summary: Mapped[dict[str, Any]] = mapped_column(
         default_factory=dict, server_default="{}"
@@ -285,6 +286,9 @@ class Title(Base):
         cascade="all, delete",
         passive_deletes=True,
         default_factory=list,
+    )
+    uploads: Mapped[list["TitleUpload"]] = relationship(
+        back_populates="title", init=False, default_factory=list
     )
 
 
@@ -513,3 +517,29 @@ class Event(Base):
     created_at: Mapped[datetime]
     topic: Mapped[str]
     payload: Mapped[dict[str, Any]]
+
+
+class TitleUpload(Base):
+    __tablename__ = "title_upload"
+    id: Mapped[UUID] = mapped_column(primary_key=True)  # the zimfarm task id
+    recipe_id: Mapped[UUID]
+    s3_key: Mapped[str]
+    status: Mapped[str]
+    requested_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("account.id", ondelete="SET NULL")
+    )
+
+    title_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("title.id", ondelete="SET NULL")
+    )
+    s3_file_deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
+    requested_by: Mapped["Account | None"] = relationship(
+        init=False, foreign_keys=[requested_by_id]
+    )
+    title: Mapped["Title | None"] = relationship(init=False, back_populates="uploads")
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, onupdate=getnow, server_default=func.now()
+    )

@@ -181,7 +181,11 @@
 
     <!-- Collections Section -->
     <div>
-      <TitleCollectionsField v-model="formData.collection_titles" :collections="collections" />
+      <TitleCollectionsField
+        v-model="formData.collection_titles"
+        :collections="collections"
+        :disabled="collectionsDisabled"
+      />
 
       <v-alert
         v-if="isEditMode && hasCollectionChanges"
@@ -220,6 +224,7 @@ interface Props {
   inDialog?: boolean
   latestBook?: Book | null
   collections: CollectionLight[]
+  collectionsDisabled?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -227,6 +232,7 @@ const props = withDefaults(defineProps<Props>(), {
   inDialog: false,
   latestBook: null,
   collections: () => [],
+  collectionsDisabled: false,
 })
 
 const emit = defineEmits<{

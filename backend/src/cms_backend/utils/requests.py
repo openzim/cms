@@ -1,11 +1,16 @@
 from dataclasses import dataclass
+from http import HTTPStatus
 from json import JSONDecodeError
 from typing import Any
+from uuid import UUID
 
 import requests
 
 from cms_backend import logger
 from cms_backend.context import Context
+from cms_backend.db.exceptions import RecordDoesNotExistError
+from cms_backend.db.title_upload import create_zimfarm_task_info
+from cms_backend.schemas.models import TaskInfo
 
 
 @dataclass
@@ -59,3 +64,22 @@ def query_api(
             success=resp.ok if resp else False,
             json={},
         )
+
+
+def fetch_task_from_zimfarm(task_id: UUID) -> TaskInfo:
+    response = query_api(method="GET", url=f"{Context.zimfarm_api_url}/tasks/{task_id}")
+    if response.status_code == HTTPStatus.NOT_FOUND:
+        # if it fails, try to find the requested task
+        response = query_api(
+            method="GET", url=f"{Context.zimfarm_api_url}/requested-tasks/{task_id}"
+        )
+    if response.status_code == HTTPStatus.NOT_FOUND:
+        raise RecordDoesNotExistError(
+            f"Task with ID {task_id} does not exist on Zimfarm"
+        )
+    elif response.status_code != HTTPStatus.OK:
+        raise ValueError(
+            f"Failed to find task on Zimfarm with HTTP {response.status_code}\n",
+            f"{response.json.get('message')}",
+        )
+    return create_zimfarm_task_info(response.json)

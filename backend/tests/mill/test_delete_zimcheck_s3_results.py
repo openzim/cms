@@ -6,7 +6,7 @@ from kiwixstorage import AuthenticationError  # pyright: ignore[reportMissingTyp
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book
-from cms_backend.shuttle.delete_zimcheck_s3_results import delete_zimcheck_s3_results
+from cms_backend.mill.delete_zimcheck_s3_results import delete_zimcheck_s3_results
 
 
 def test_delete_zimcheck_s3_results_authentication_error(
@@ -28,12 +28,10 @@ def test_delete_zimcheck_s3_results_authentication_error(
     }
     dbsession.add(book1)
     monkeypatch.setattr(
-        "cms_backend.shuttle.context.Context.zimcheck_results_s3_bucket_uri",
+        "cms_backend.mill.context.Context.zimcheck_results_s3_bucket_uri",
         "s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks",
     )
-    with patch(
-        "cms_backend.shuttle.delete_zimcheck_s3_results.KiwixStorage"
-    ) as mock_kiwix_storage_cls:
+    with patch("cms_backend.utils.s3.KiwixStorage") as mock_kiwix_storage_cls:
         mock_s3 = MagicMock()
         mock_kiwix_storage_cls.return_value = mock_s3
         mock_s3.check_credentials.return_value = False
@@ -71,11 +69,11 @@ def test_delete_zimcheck_s3_results_processes_eligible_books(
     )
 
     monkeypatch.setattr(
-        "cms_backend.shuttle.context.Context.zimcheck_results_s3_bucket_uri",
+        "cms_backend.mill.context.Context.zimcheck_results_s3_bucket_uri",
         "s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks",
     )
     with patch(
-        "cms_backend.shuttle.delete_zimcheck_s3_results.get_kiwix_storage_client"
+        "cms_backend.mill.delete_zimcheck_s3_results.get_kiwix_storage_client"
     ) as mock_kiwix_storage:
         mock_s3 = MagicMock()
         mock_kiwix_storage.return_value = mock_s3
