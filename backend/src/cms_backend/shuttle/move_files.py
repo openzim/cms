@@ -81,7 +81,7 @@ def move_book_files(session: OrmSession, book: Book):
     source_location = current_locations[0]
 
     current_locations_map = {
-        (loc.warehouse_id, loc.path): loc for loc in current_locations
+        (loc.warehouse_id, loc.path, loc.filename): loc for loc in current_locations
     }
 
     for target_location in target_locations:
@@ -89,7 +89,11 @@ def move_book_files(session: OrmSession, book: Book):
             ShuttleContext.local_warehouse_paths
         )
         matching_current = current_locations_map.get(
-            (target_location.warehouse_id, target_location.path)
+            (
+                target_location.warehouse_id,
+                target_location.path,
+                target_location.filename,
+            )
         )
         if matching_current:
             # This file is already here. Remove redundant target and remove the current
