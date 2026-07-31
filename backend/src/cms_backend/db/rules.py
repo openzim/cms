@@ -20,11 +20,11 @@ def sort_books_by_filename_period(books: list[Book]) -> list[Book]:
     """Sort a list of books by period.
 
     Assumes:
-    - the book's location exists since it contains the filename of the book
+    - the book has a filename
     """
 
     def sort_fn(book: Book) -> tuple[str, int, str]:
-        period, suffix = get_period_and_suffix_from_filename(book.locations[0].filename)
+        period, suffix = get_period_and_suffix_from_filename(book.filename)  # pyright: ignore[reportArgumentType]
         return (period, len(suffix), suffix)
 
     return sorted(
