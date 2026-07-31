@@ -4,9 +4,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
+from cms_backend.db.book import add_book_to_title
 from cms_backend.db.models import Book, Title
 from cms_backend.db.title import get_title_by_name_or_none
-from cms_backend.mill.processors.title import add_book_to_title
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import get_missing_metadata_keys
 

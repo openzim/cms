@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import construct_recipe_link
 from cms_backend.db.book import (
+    add_book_to_title,
     book_has_flavour_mismatch,
     book_has_recipe_issue,
     get_book,
@@ -368,7 +369,6 @@ def _apply_create_title_action(
         payload=payload,
         accessible_collection_ids=accessible_collection_ids,
     )
-    book.title = title
     tf = get_title_flavour_or_none(session, title.id, book.flavour)
     if tf is None:
         tf = create_title_flavour(
@@ -378,6 +378,10 @@ def _apply_create_title_action(
             book.flavour,
         )
     tf.last_book_added_at = getnow()
+    # Set book location kind to prod so that when we re-process, it moves
+    # to prod location despite any issues that may be computed
+    book.location_kind = "prod"
+    add_book_to_title(session, book, title)
 
 
 def _apply_update_flavour_recipe_action(
@@ -456,6 +460,7 @@ def apply_book_promotion_actions(
                     author_id,
                     accessible_collection_ids=accessible_collection_ids,
                 )
+                return
             case "restore_title":
                 _apply_restore_title_action(
                     session,

@@ -15,10 +15,12 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
+from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import (
     Book,
     BookHistory,
     CollectionTitle,
+    Title,
     ZimfarmNotification,
 )
 from cms_backend.db.rules import (
@@ -38,6 +40,7 @@ from cms_backend.schemas.orms import (
     ZimcheckSummarySchema,
 )
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.filename import compute_target_filename
 from cms_backend.utils.requests import query_api
 from cms_backend.utils.zim import (
     get_missing_keys,
@@ -1310,3 +1313,71 @@ def book_has_flavour_mismatch(
         return True
 
     return False
+
+
+def update_title_metadata_from_book(title: Title, book: Book):
+    """Update a title's metadata from book"""
+
+    title.title = book.zim_metadata["Title"]
+    title.creator = book.zim_metadata["Creator"]
+    title.publisher = book.zim_metadata["Publisher"]
+    title.description = book.zim_metadata["Description"]
+    title.language = book.zim_metadata["Language"]
+    title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
+    title.long_description = book.zim_metadata.get("LongDescription")
+    title.license = book.zim_metadata.get("License")
+    title.relation = book.zim_metadata.get("Relation")
+    title.source = book.zim_metadata.get("Source")
+
+
+def add_book_to_title(
+    session: OrmSession, book: Book, title: Title, *, is_new: bool = True
+):
+    try:
+        # Retrieve name from book.name directly
+        if not book.name:
+            raise Exception("book name is missing or invalid")
+
+        # Validate book.date is also present and valid
+        if not book.date:
+            raise Exception("book date is missing or invalid")
+
+        title.books.append(book)
+        book.events.append(f"{getnow()}: book added to title {title.id}")
+        title.events.append(f"{getnow()}: book {book.id} added to title")
+
+        # Update title name should it have changed (e.g. stackexchange domain updated
+        # leading to ZIM name automatically updated as well)
+        if title.name != book.name:
+            title.events.append(f"{getnow()}: updating title name to {book.name}")
+            title.name = book.name
+
+        # Compute target filename once for this book
+        book.filename = compute_target_filename(
+            session,
+            name=title.name,
+            flavour=book.flavour,
+            date=book.date,
+            book_id=book.id,
+        )
+
+        tf = get_title_flavour_or_none(session, title.id, book.flavour)
+        if tf is not None:
+            tf.last_book_added_at = getnow()
+
+        if title_is_missing_mandatory_metadata(title):
+            update_title_metadata_from_book(title, book)
+
+        process_book(session, book, is_new=is_new)
+        if book.location_kind == "prod":
+            apply_retention_rules(session, title)
+
+    except Exception as exc:
+        book.events.append(
+            f"{getnow()}: error encountered while adding to title {title.id}\n{exc}"
+        )
+        title.events.append(
+            f"{getnow()}: error encountered while adding book {book.id}\n{exc}"
+        )
+        book.has_error = True
+        logger.exception(f"Failed to add book {book.id} to title {title.id}")
