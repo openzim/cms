@@ -1,3 +1,5 @@
+import type { MultipartCompleteRequest } from '@/types/s3'
+
 export interface CollectionLight {
   id: string
   name: string
@@ -38,4 +40,8 @@ export interface CollectionHistory {
   name: string
   download_base_url?: string
   view_base_url?: string
+}
+
+export interface TaskCreateRequest {
+  file: MultipartCompleteRequest
 }

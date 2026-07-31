@@ -31,9 +31,7 @@ def test_delete_zimcheck_s3_results_authentication_error(
         "cms_backend.shuttle.context.Context.zimcheck_results_s3_bucket_uri",
         "s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks",
     )
-    with patch(
-        "cms_backend.shuttle.delete_zimcheck_s3_results.KiwixStorage"
-    ) as mock_kiwix_storage_cls:
+    with patch("cms_backend.utils.s3.KiwixStorage") as mock_kiwix_storage_cls:
         mock_s3 = MagicMock()
         mock_kiwix_storage_cls.return_value = mock_s3
         mock_s3.check_credentials.return_value = False

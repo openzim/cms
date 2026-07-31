@@ -57,6 +57,10 @@ services:
       BACKUP_BASE_PATH: backup
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
+      ZIMFARM_AUTH_MODE: local
+      ZIMFARM_USERNAME: admin
+      ZIMFARM_PASSWORD: admin
     command:
       - uvicorn
       - cms_backend.api.main:app
@@ -123,6 +127,7 @@ services:
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
       ZIMCHECK_RESULTS_S3_BUCKET_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
     depends_on:
       postgresdb:
         condition: service_healthy

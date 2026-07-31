@@ -1,7 +1,18 @@
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
-import type { CollectionLight, Collection, CollectionUpdate } from '@/types/collections'
+import type {
+  CollectionLight,
+  Collection,
+  CollectionUpdate,
+  TaskCreateRequest,
+} from '@/types/collections'
 import type { ErrorResponse } from '@/types/errors'
+import type {
+  FileUploadRequest,
+  S3MultipartUpload,
+  MultipartCompleteRequest,
+  PartEtag,
+} from '@/types/s3'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -142,6 +153,63 @@ export const useCollectionsStore = defineStore('collection', () => {
     defaultLimit.value = limit
   }
 
+  const initiateUpload = async (
+    collectionId: string,
+    file: File,
+    chunkSize: number,
+    resumeUploadId?: string,
+  ): Promise<S3MultipartUpload> => {
+    const service = await authStore.getApiService('collections')
+    const payload: FileUploadRequest = {
+      filename: file.name,
+      filesize: file.size,
+      chunk_size: chunkSize,
+    }
+    if (resumeUploadId) {
+      payload.upload_id = resumeUploadId
+    }
+    try {
+      const response = await service.post<FileUploadRequest, S3MultipartUpload>(
+        `/${collectionId}/upload/create`,
+        payload,
+      )
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to initiate upload', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
+  const completeUpload = async (
+    collectionId: string,
+    uploadId: string,
+    key: string,
+    bucket: string,
+    parts: PartEtag[],
+  ): Promise<unknown> => {
+    const service = await authStore.getApiService('collections')
+    const payload: MultipartCompleteRequest = {
+      upload_id: uploadId,
+      key,
+      bucket,
+      parts,
+    }
+    try {
+      const response = await service.post<TaskCreateRequest, unknown>(
+        `/${collectionId}/upload/complete`,
+        { file: payload },
+      )
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to complete upload', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -154,5 +222,7 @@ export const useCollectionsStore = defineStore('collection', () => {
     updateCollection,
     createCollection,
     savePaginatorLimit,
+    initiateUpload,
+    completeUpload,
   }
 })

@@ -42,6 +42,9 @@ class Context:
     delete_files_interval: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("DELETE_FILES_INTERVAL", default="1h"))
     )
+    delete_uploaded_zims_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("DELETE_UPLOADED_ZIMS_INTERVAL", default="1d"))
+    )
 
     local_warehouse_paths: ClassVar[dict[UUID, Path]] = _parse_local_warehouse_paths()
     zimcheck_results_s3_bucket_uri: str = os.getenv(

@@ -18,6 +18,7 @@ from cms_backend.api.routes.config import router as config_router
 from cms_backend.api.routes.events import router as events_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
+from cms_backend.api.routes.requested_task import router as requested_task_router
 from cms_backend.api.routes.staging import router as staging_router
 from cms_backend.api.routes.titles import router as titles_router
 from cms_backend.api.routes.warehouse import router as warehouse_router
@@ -78,6 +79,7 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=account_router)
     main_router.include_router(router=staging_router)
     main_router.include_router(router=warehouse_router)
+    main_router.include_router(router=requested_task_router)
 
     app.include_router(router=main_router)
 

@@ -51,6 +51,32 @@
           <v-icon class="mr-2">mdi-pencil</v-icon>
           Edit
         </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canUploadZim"
+          value="upload"
+          :to="{
+            name: 'collection-detail-tab',
+            params: { id: collection.name, selectedTab: 'upload' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-upload</v-icon>
+          Upload
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
+          v-if="canEditCollection"
+          value="tasks"
+          :to="{
+            name: 'collection-detail-tab',
+            params: { id: collection.name, selectedTab: 'tasks' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-clipboard-text-clock</v-icon>
+          Tasks
+        </v-tab>
       </v-tabs>
 
       <v-window v-model="currentTab">
@@ -257,6 +283,18 @@
             </v-card>
           </div>
         </v-window-item>
+
+        <v-window-item value="upload">
+          <div v-if="canUploadZim" class="pa-4">
+            <ZimUploadZone :collection-id="collection.name" />
+          </div>
+        </v-window-item>
+
+        <v-window-item value="tasks">
+          <div v-if="canEditCollection">
+            <TasksView :collection-id="collection.id" />
+          </div>
+        </v-window-item>
       </v-window>
     </div>
 
@@ -307,6 +345,8 @@ import CollectionHistory from '@/components/CollectionHistory.vue'
 import CollectionForm from '@/components/CollectionForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import TasksView from '@/views/TasksView.vue'
+import ZimUploadZone from '@/components/ZimUploadZone.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useCollectionsStore } from '@/stores/collections'
@@ -346,6 +386,10 @@ const pendingComment = ref('')
 const pendingUpdatePayload = ref<Partial<CollectionUpdate> | null>(null)
 
 const canEditCollection = computed(() => authStore.hasPermission('collection', 'update'))
+const canUploadZim = computed(
+  () =>
+    authStore.hasPermission('collection', 'update') && authStore.hasPermission('book', 'create'),
+)
 
 const canLoadMoreHistory = computed(() => {
   const { skip, limit, count } = collectionHistoryStore.paginator
@@ -512,7 +556,10 @@ onMounted(async () => {
   await loadData(true, props.selectedTab === 'history')
 
   // Redirect to details if trying to access restricted tabs without permission
-  if (props.selectedTab !== 'details' && !canEditCollection.value) {
+  if (
+    props.selectedTab !== 'details' &&
+    (props.selectedTab === 'upload' ? !canUploadZim.value : !canEditCollection.value)
+  ) {
     router.push({ name: 'collection-detail', params: { id: props.id } })
     return
   }

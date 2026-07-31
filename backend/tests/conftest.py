@@ -22,6 +22,7 @@ from cms_backend.db.models import (
     CollectionHistory,
     CollectionTitle,
     Event,
+    RequestedTask,
     Title,
     TitleFlavour,
     TitleHistory,
@@ -84,6 +85,48 @@ def zimfarm_notification(
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
 ) -> ZimfarmNotification:
     return create_zimfarm_notification()
+
+
+@pytest.fixture
+def create_requested_task(
+    dbsession: OrmSession,
+    account: Account,
+    collection: Collection,
+    faker: Faker,
+) -> Callable[..., RequestedTask]:
+    def _create_requested_task(
+        _id: UUID | None = None,
+        s3_url: str | None = None,
+        s3_key: str | None = None,
+        status: str = "requested",
+        requested_by_id: UUID | None = None,
+        collection_id: UUID | None = None,
+        created_at: datetime | None = None,
+    ) -> RequestedTask:
+        requested_task = RequestedTask(
+            id=_id if _id is not None else uuid4(),
+            s3_url=s3_url if s3_url is not None else faker.url(),
+            s3_key=s3_key if s3_key is not None else faker.file_name(),
+            recipe_id=uuid4(),
+            status=status,
+            requested_by_id=requested_by_id
+            if requested_by_id is not None
+            else account.id,
+            collection_id=collection_id if collection_id is not None else collection.id,
+            created_at=created_at if created_at is not None else getnow(),
+        )
+        dbsession.add(requested_task)
+        dbsession.flush()
+        return requested_task
+
+    return _create_requested_task
+
+
+@pytest.fixture
+def requested_task(
+    create_requested_task: Callable[..., RequestedTask],
+) -> RequestedTask:
+    return create_requested_task()
 
 
 @pytest.fixture
