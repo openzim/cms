@@ -81,7 +81,7 @@ def move_book_files(session: OrmSession, book: Book):
     source_location = current_locations[0]
 
     current_locations_map = {
-        (loc.warehouse_id, loc.path): loc for loc in current_locations
+        (loc.warehouse_id, loc.path, loc.filename): loc for loc in current_locations
     }
 
     for target_location in target_locations:
@@ -89,7 +89,11 @@ def move_book_files(session: OrmSession, book: Book):
             ShuttleContext.local_warehouse_paths
         )
         matching_current = current_locations_map.get(
-            (target_location.warehouse_id, target_location.path)
+            (
+                target_location.warehouse_id,
+                target_location.path,
+                target_location.filename,
+            )
         )
         if matching_current:
             # This file is already here. Remove redundant target and remove the current
@@ -121,7 +125,9 @@ def move_book_files(session: OrmSession, book: Book):
             f"{getnow()}: copied book from {source_location.full_str} to "
             f"{target_location.full_str}"
         )
-        target_location.status = "current"
+        # Defer updating the book locations to "current" as this might have been
+        # a file rename operation and setting this location to "current" will cause
+        # a primary key violation error.
 
         # After making one copy, delete one of the current locations
         # that is not the original if this is not a backup operation.
@@ -150,6 +156,10 @@ def move_book_files(session: OrmSession, book: Book):
         book.events.append(f"{getnow()}: deleted book from {current_location.full_str}")
         book.locations.remove(current_location)
         session.delete(current_location)
+
+    session.flush()
+    for location in book.locations:
+        location.status = "current"
 
     book.needs_file_operation = False
     session.flush()
