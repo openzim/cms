@@ -221,7 +221,17 @@
                         variant="outlined"
                         size="small"
                       >
-                        Zimfarm
+                        Recipe
+                      </v-btn>
+                      <v-btn
+                        v-if="book.task_link"
+                        :href="book.task_link"
+                        target="_blank"
+                        prepend-icon="mdi-open-in-new"
+                        variant="outlined"
+                        size="small"
+                      >
+                        Task
                       </v-btn>
                       <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" />
                     </div>

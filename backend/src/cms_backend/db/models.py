@@ -153,6 +153,7 @@ class Book(Base):
         back_populates="book"
     )
     recipe_id: Mapped[UUID | None] = mapped_column(default=None)
+    task_id: Mapped[UUID | None] = mapped_column(default=None)
 
     zimcheck_summary: Mapped[dict[str, Any]] = mapped_column(
         default_factory=dict, server_default="{}"
@@ -372,6 +373,9 @@ class Collection(Base):
         # return the history entries in descending order of created_at
         order_by="CollectionHistory.created_at.desc()",
     )
+    requested_tasks: Mapped[list["RequestedTask"]] = relationship(
+        back_populates="collection", init=False, default_factory=list
+    )
 
 
 class CollectionPermission(Base):
@@ -513,3 +517,31 @@ class Event(Base):
     created_at: Mapped[datetime]
     topic: Mapped[str]
     payload: Mapped[dict[str, Any]]
+
+
+class RequestedTask(Base):
+    __tablename__ = "requested_task"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    recipe_id: Mapped[UUID]
+    s3_url: Mapped[str]
+    s3_key: Mapped[str]
+    status: Mapped[str]
+    requested_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("account.id", ondelete="SET NULL")
+    )
+    collection_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("collection.id", ondelete="SET NULL")
+    )
+    requested_by: Mapped["Account | None"] = relationship(
+        init=False, foreign_keys=[requested_by_id]
+    )
+    collection: Mapped["Collection | None"] = relationship(
+        init=False, back_populates="requested_tasks"
+    )
+    collection_path: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, onupdate=getnow, server_default=func.now()
+    )

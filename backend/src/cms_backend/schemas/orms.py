@@ -3,9 +3,14 @@ from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
 
-from pydantic import computed_field
+from pydantic import Field, computed_field
 
-from cms_backend import construct_recipe_api_link, construct_recipe_link
+from cms_backend import (
+    construct_recipe_api_link,
+    construct_recipe_link,
+    construct_task_api_link,
+    construct_task_link,
+)
 from cms_backend.context import Context
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import NotEmptyString
@@ -108,13 +113,10 @@ class CollectionLightSchema(BaseModel):
     is_private: bool
 
 
-class CollectionFullSchema(BaseModel):
+class CollectionFullSchema(CollectionLightSchema):
     """Schema for reading a collection with all the fileds inlcuding warehouse."""
 
-    id: UUID
-    name: str
     warehouse: str
-    is_private: bool
     download_base_url: str | None = None
     view_base_url: str | None = None
     article_count_increase_threshold: float | None = None
@@ -195,6 +197,7 @@ class BookFullSchema(BookLightSchema):
     zimcheck_summary: ZimcheckSummarySchema | None
     zimcheck_s3_deleted: bool
     recipe_id: UUID | None
+    task_id: UUID | None = Field(exclude=None)
 
     @computed_field
     @property
@@ -205,6 +208,16 @@ class BookFullSchema(BookLightSchema):
     @property
     def recipe_api_link(self) -> str | None:
         return construct_recipe_api_link(self.recipe_id)
+
+    @computed_field
+    @property
+    def task_link(self) -> str | None:
+        return construct_task_link(self.task_id)
+
+    @computed_field
+    @property
+    def task_api_link(self) -> str | None:
+        return construct_task_api_link(self.task_id)
 
 
 class BookHistorySchema(BaseModel):
@@ -272,3 +285,15 @@ class EventLightSchema(BaseModel):
     id: UUID
     created_at: datetime
     topic: str
+
+
+class RequestedTaskLightSchema(BaseModel):
+    id: UUID
+    status: str
+    requested_by: str | None
+    created_at: datetime
+    collection_path: str = Field(exclude=True)
+    s3_url: str = Field(exclude=True)
+    s3_key: str = Field(exclude=True)
+    recipe_id: UUID = Field(exclude=True)
+    collection_id: UUID | None = Field(exclude=True)

@@ -148,3 +148,4 @@ class Context:
             seconds=parse_timespan(os.getenv("ROTTEN_FLAVOUR_THRESHOLD", default="56w"))
         )
     )
+    zim_upload_s3_bucket_uri: str = os.getenv("ZIM_UPLOAD_S3_BUCKET_URI", default="")

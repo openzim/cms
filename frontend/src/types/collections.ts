@@ -1,3 +1,5 @@
+import type { MultipartCompleteRequest } from '@/types/s3'
+
 export interface CollectionLight {
   id: string
   name: string
@@ -5,9 +7,7 @@ export interface CollectionLight {
   is_private: boolean
 }
 
-export interface Collection {
-  id: string
-  name: string
+export interface Collection extends CollectionLight {
   warehouse: string
   download_base_url?: string
   view_base_url?: string
@@ -15,7 +15,6 @@ export interface Collection {
   article_count_decrease_threshold?: number | null
   media_count_increase_threshold?: number | null
   media_count_decrease_threshold?: number | null
-  is_private: boolean
 }
 
 export interface CollectionUpdate {
@@ -38,4 +37,8 @@ export interface CollectionHistory {
   name: string
   download_base_url?: string
   view_base_url?: string
+}
+
+export interface TaskCreateRequest {
+  file: MultipartCompleteRequest
 }

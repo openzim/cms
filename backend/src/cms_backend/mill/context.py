@@ -51,3 +51,9 @@ class Context:
             os.getenv("STAGING_BOOKS_DELETION_GRACE_PERIOD", default="7d")
         )
     )
+
+    update_zimfarm_task_status_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("UPDATE_ZIMFARM_TASK_STATUS_INTERVAL", default="1h")
+        )
+    )

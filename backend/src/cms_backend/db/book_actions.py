@@ -20,6 +20,7 @@ from cms_backend.db.book import (
     get_zimcheck_errors,
     move_book_to_destination,
 )
+from cms_backend.db.collection import get_collection_by_id
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import (
     create_title_flavour,
@@ -27,6 +28,7 @@ from cms_backend.db.flavour import (
     get_title_flavour_or_none,
 )
 from cms_backend.db.models import Book
+from cms_backend.db.requested_task import get_requested_tasks
 from cms_backend.db.title import create_title, restore_title, update_title
 from cms_backend.schemas.models import (
     BaseBookPromotionAction,
@@ -130,8 +132,37 @@ def _get_article_count_issues_action(book: Book, latest_book: Book):
         )
 
 
-def _get_create_title_action(book: Book) -> BookPromotionAction | None:
+def _get_create_title_action(
+    session: OrmSession, book: Book
+) -> BookPromotionAction | None:
     if book.title is None:
+        # if a book is created from a manually uploaded zim, we want to ensure we
+        # stick to the collection and path the person who uploaded the zim set
+        collection_titles: list[dict[str, Any]] = []
+        if book.recipe_id:
+            requested_tasks = get_requested_tasks(
+                session, recipe_id=book.recipe_id
+            ).records
+            for requested_task in requested_tasks:
+                if requested_task.collection_id:
+                    collection = get_collection_by_id(
+                        session, requested_task.collection_id
+                    )
+                    collection_titles.append(
+                        {
+                            "collection_name": collection.name,
+                            "path": requested_task.collection_path,
+                        }
+                    )
+
+        if collection_titles:
+            message = (
+                "Create new title. Do not modify the collection titles as they have "
+                "been set by editor who uploaed ZIM that produced this book."
+            )
+        else:
+            message = "Create new title. Please configure title collection(s)."
+
         return BookPromotionAction(
             kind="create_title",
             requirement="mandatory",
@@ -150,9 +181,9 @@ def _get_create_title_action(book: Book) -> BookPromotionAction | None:
                         "recipe_link": construct_recipe_link(book.recipe_id),
                     }
                 ],
-                "collection_titles": [],
+                "collection_titles": collection_titles,
             },
-            message="Create new title. Please configure title collection(s).",
+            message=message,
         )
 
 
@@ -285,7 +316,7 @@ def get_book_promotion_actions(
     if action := _get_article_count_issues_action(book, latest_book):
         actions.append(action)
 
-    if action := _get_create_title_action(book):
+    if action := _get_create_title_action(session, book):
         actions.append(action)
         return actions
 
@@ -351,6 +382,32 @@ def _apply_create_title_flavour_action(
             flavour=action.data["flavour"],
         )
     tf.last_book_added_at = getnow()
+
+
+def _validate_create_title_action(
+    expected_action: BaseBookPromotionAction, provided_action: BaseBookPromotionAction
+):
+    expected_payload = TitleCreateSchema.model_validate(expected_action.data)
+    provided_payload = TitleCreateSchema.model_validate(provided_action.data)
+    if expected_payload.collection_titles:
+        if not provided_payload.collection_titles:
+            raise ValueError(
+                "Expected collection titles for action differ from "
+                "provided collection titles."
+            )
+        expected_collection_titles: set[str] = {
+            f"{entry.collection_name}:{entry.path}"
+            for entry in expected_payload.collection_titles
+        }
+        provided_collection_titles: set[str] = {
+            f"{entry.collection_name}:{entry.path}"
+            for entry in provided_payload.collection_titles
+        }
+        if expected_collection_titles != provided_collection_titles:
+            raise ValueError(
+                "Expected collection titles for action differ from "
+                "provided collection titles."
+            )
 
 
 def _apply_create_title_action(
@@ -453,6 +510,14 @@ def apply_book_promotion_actions(
         action = actions_todo.popleft()
         match action.kind:
             case "create_title":
+                _validate_create_title_action(
+                    next(
+                        expected_action
+                        for expected_action in expected_actions
+                        if expected_action.kind == action.kind
+                    ),
+                    action,
+                )
                 _apply_create_title_action(
                     session,
                     action,

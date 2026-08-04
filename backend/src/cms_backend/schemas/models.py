@@ -200,3 +200,78 @@ class BaseBookPromotionAction(BaseModel):
 
 class BookPromotionAction(BaseBookPromotionAction):
     message: str
+
+
+class PresignedUrlPart(BaseModel):
+    part_number: int
+    url: str
+
+
+class PartEtag(BaseModel):
+    part_number: int
+    etag: str
+
+
+class S3MultipartUpload(BaseModel):
+    upload_id: str
+    key: str
+    bucket: str
+    num_parts: int
+    presigned_urls: list[PresignedUrlPart]
+
+
+class ZimfarmTaskConfig(BaseModel):
+    warehouse_path: str
+    offliner: dict[str, Any]
+
+
+class ZimfarmTaskFile(BaseModel):
+    created_timestamp: str
+    size: int
+    name: str
+
+
+class ZimfarmTaskNotificationConfig(BaseModel):
+    webhook: list[str] | None = None
+
+
+class ZimfarmTaskNotification(BaseModel):
+    ended: ZimfarmTaskNotificationConfig | None = None
+
+
+class ZimfarmTaskContainerProgress(BaseModel):
+    partial_zim: bool | None = None
+    overall: int | None = None
+
+
+class ZimfarmTaskContainer(BaseModel):
+    progress: ZimfarmTaskContainerProgress | None = None
+
+
+class ZimfarmTask(BaseModel):
+    id: str
+    status: str
+    config: ZimfarmTaskConfig
+    files: dict[str, ZimfarmTaskFile] | None = None
+    notification: ZimfarmTaskNotification | None = None
+    container: ZimfarmTaskContainer | None = None
+    # rank is populated only on GET /requested_tasks/{id}, and not on any of
+    # other endpoint and not on the webhook calls
+    rank: int | None = None
+    version: str
+
+
+class TaskInfoFlag(BaseModel):
+    name: str
+    value: Any
+
+
+class TaskInfo(BaseModel):
+    id: str
+    has_email: bool
+    partial_zim: bool
+    status: str
+    flags: list[TaskInfoFlag]
+    progress: int | None
+    rank: int | None
+    offliner_definition_version: str
