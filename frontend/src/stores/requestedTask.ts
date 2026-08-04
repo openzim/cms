@@ -23,7 +23,7 @@ export const useRequestedTaskStore = defineStore('requestedTask', () => {
     limit: number,
     skip: number,
     collection_id?: string,
-    status?: string[],
+    status?: string[] | null,
   ) => {
     const service = await authStore.getApiService('tasks')
     const cleanedParams = Object.fromEntries(
