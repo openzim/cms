@@ -19,6 +19,7 @@ from cms_backend.db.models import (
     BookLocation,
     Collection,
     CollectionTitle,
+    RequestedTask,
     Title,
     Warehouse,
 )
@@ -186,7 +187,59 @@ def test_promotion_actions_no_title(
     assert actions[0].data["name"] == "test_en_all"
     assert actions[0].data["maturity"] == "stable"
     assert len(actions[0].data["flavours"]) != 0
-    assert "Create new title" in actions[0].message
+    assert len(actions[0].data["collection_titles"]) == 0
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promotion_actions_no_title_fixed_collection_titles(
+    mock_get_book_unsupported_languages: MagicMock,
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
+    requested_task: RequestedTask,
+):
+    """
+    Book without a title from a requested task produces a create_title action
+    with fixed collection titles
+    """
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+    book = create_book(
+        name="test_en_all",
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+    )
+    book.recipe_id = requested_task.recipe_id
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+
+    assert len(actions) == 1
+    assert actions[0].kind == "create_title"
+    assert actions[0].requirement == "mandatory"
+    assert actions[0].data["name"] == "test_en_all"
+    assert actions[0].data["maturity"] == "stable"
+    assert len(actions[0].data["flavours"]) != 0
+    assert len(actions[0].data["collection_titles"]) == 1
+    assert (
+        actions[0].data["collection_titles"][0]["path"]
+        == requested_task.collection_path
+    )
+    assert (
+        actions[0].data["collection_titles"][0]["collection_name"]
+        == requested_task.collection.name  # pyright: ignore[reportOptionalMemberAccess]
+    )
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
@@ -1239,6 +1292,133 @@ def test_apply_actions_create_title(
     assert book.needs_file_operation
     assert len(title.flavours) == 1
     assert title.flavours[0].last_book_added_at is not None
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_apply_actions_create_title_fixed_collection_titles(
+    mock_get_zimcheck_errors: MagicMock,
+    mock_get_book_unsupported_languages: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_warehouse: Callable[..., Warehouse],
+    create_book_location: Callable[..., BookLocation],
+    illustration_48x48_at_1: str,
+    account: Account,
+    requested_task: RequestedTask,
+):
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+
+    warehouse = create_warehouse()
+    book = create_book(
+        name="test_en_all",
+        flavour="maxi",
+        zim_metadata=_make_metadata(illustration_48x48_at_1),
+        location_kind="quarantine",
+    )
+    book.recipe_id = requested_task.recipe_id
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 1
+    assert actions[0].kind == "create_title"
+
+    apply_book_promotion_actions(
+        dbsession,
+        book_id=book.id,
+        actions=[
+            BaseBookPromotionAction(
+                kind="create_title",
+                data=actions[0].data,
+                requirement="mandatory",
+            ),
+        ],
+        author_id=account.id,
+    )
+
+    # Verify the title was created
+    title = dbsession.query(Title).filter(Title.name == "test_en_all").one_or_none()
+    assert title is not None
+    assert title.title == "Test Article"
+    assert title.maturity == "stable"
+    assert len(title.collections) == 1
+    assert str(title.collections[0].path) == requested_task.collection_path
+    dbsession.refresh(book)
+    assert book.title_id == title.id
+    assert book.location_kind == "prod"
+    assert book.needs_file_operation
+    assert len(title.flavours) == 1
+    assert title.flavours[0].last_book_added_at is not None
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_apply_actions_create_title_modify_fixed_collection_titles(
+    mock_get_zimcheck_errors: MagicMock,
+    mock_get_book_unsupported_languages: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_warehouse: Callable[..., Warehouse],
+    create_book_location: Callable[..., BookLocation],
+    create_collection: Callable[..., Collection],
+    illustration_48x48_at_1: str,
+    account: Account,
+    requested_task: RequestedTask,
+):
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+
+    warehouse = create_warehouse()
+    book = create_book(
+        name="test_en_all",
+        flavour="maxi",
+        zim_metadata=_make_metadata(illustration_48x48_at_1),
+        location_kind="quarantine",
+    )
+    book.recipe_id = requested_task.recipe_id
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    collection = create_collection(name="mycollection")
+    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    assert len(actions) == 1
+    assert actions[0].kind == "create_title"
+
+    # Fill in the collection details with different collection information
+    apply_data = dict(actions[0].data)
+    apply_data["collection_titles"] = [
+        {"collection_name": collection.name, "path": "/test/path"}
+    ]
+
+    with pytest.raises(
+        ValueError, match="Expected collection titles for action differ"
+    ):
+        apply_book_promotion_actions(
+            dbsession,
+            book_id=book.id,
+            actions=[
+                BaseBookPromotionAction(
+                    kind="create_title",
+                    data=apply_data,
+                    requirement="mandatory",
+                ),
+            ],
+            author_id=account.id,
+        )
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")

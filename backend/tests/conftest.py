@@ -107,6 +107,7 @@ def create_requested_task(
             id=_id if _id is not None else uuid4(),
             s3_url=s3_url if s3_url is not None else faker.url(),
             s3_key=s3_key if s3_key is not None else faker.file_name(),
+            collection_path="/other",
             recipe_id=uuid4(),
             status=status,
             requested_by_id=requested_by_id
@@ -124,9 +125,10 @@ def create_requested_task(
 
 @pytest.fixture
 def requested_task(
+    collection: Collection,
     create_requested_task: Callable[..., RequestedTask],
 ) -> RequestedTask:
-    return create_requested_task()
+    return create_requested_task(collection_id=collection.id)
 
 
 @pytest.fixture

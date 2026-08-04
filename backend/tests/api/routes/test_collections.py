@@ -351,7 +351,8 @@ def test_complete_upload_recipe_creation_bad_request(
                 "upload_id": "test-upload-id",
                 "key": "uploads/test-collection/test.zim",
                 "parts": [{"part_number": 1, "etag": "etag1"}],
-            }
+            },
+            "collection_path": "/other",
         }
 
         response = client.post(
@@ -398,7 +399,8 @@ def test_complete_upload_recipe_creation_server_error(
                 "upload_id": "test-upload-id",
                 "key": "uploads/test-collection/test.zim",
                 "parts": [{"part_number": 1, "etag": "etag1"}],
-            }
+            },
+            "collection_path": "/other",
         }
 
         response = client.post(
@@ -452,7 +454,8 @@ def test_complete_upload_missing_task_id(
                 "upload_id": "test-upload-id",
                 "key": "uploads/test-collection/test.zim",
                 "parts": [{"part_number": 1, "etag": "etag1"}],
-            }
+            },
+            "collection_path": "/other",
         }
 
         response = client.post(
@@ -511,7 +514,8 @@ def test_complete_upload_persists_requested_task(
                 "upload_id": "test-upload-id",
                 "key": "uploads/test-collection/test.zim",
                 "parts": [{"part_number": 1, "etag": "etag1"}],
-            }
+            },
+            "collection_path": "/other",
         }
 
         response = client.post(

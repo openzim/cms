@@ -25,6 +25,7 @@ def upgrade():
         sa.Column("s3_url", sa.String(), nullable=False),
         sa.Column("s3_key", sa.String(), nullable=False),
         sa.Column("status", sa.String(), nullable=False),
+        sa.Column("collection_path", sa.String(), nullable=False),
         sa.Column("requested_by_id", sa.Uuid(), nullable=True),
         sa.Column("collection_id", sa.Uuid(), nullable=True),
         sa.Column(

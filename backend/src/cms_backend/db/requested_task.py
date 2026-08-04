@@ -22,6 +22,7 @@ def create_requested_task(
     recipe_id: UUID,
     requested_by: UUID,
     collection_id: UUID,
+    collection_path: str,
 ) -> RequestedTask:
     """Create a requested task in DB"""
     requested_task = RequestedTask(
@@ -31,6 +32,7 @@ def create_requested_task(
         s3_key=s3_key,
         requested_by_id=requested_by,
         collection_id=collection_id,
+        collection_path=collection_path,
         status="requested",
     )
     session.add(requested_task)
@@ -102,6 +104,8 @@ def create_requested_task_schema(
         else None,
         s3_key=requested_task.s3_key,
         s3_url=requested_task.s3_url,
+        collection_path=requested_task.collection_path,
+        collection_id=requested_task.collection_id,
     )
 
 
@@ -113,6 +117,7 @@ def get_requested_tasks(
     omit_task_ids: list[UUID] | None = None,
     status: list[str] | None = None,
     collection_id: UUID | None = None,
+    recipe_id: UUID | None = None,
     accessible_collection_ids: Sequence[UUID] | None = None,
     sort_order: Literal["asc", "desc"] = "asc",
 ) -> ListResult[RequestedTaskLightSchema]:
@@ -124,6 +129,7 @@ def get_requested_tasks(
             RequestedTask.status.in_(status or []) | (status is None),
             RequestedTask.id.not_in(omit_task_ids or []) | (omit_task_ids is None),
             (RequestedTask.collection_id == collection_id) | (collection_id is None),
+            (RequestedTask.recipe_id == recipe_id) | (recipe_id is None),
         )
         .options(selectinload(RequestedTask.requested_by))
     )

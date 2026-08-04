@@ -32,6 +32,7 @@ def test_create_requested_task(
         s3_url=s3_url,
         s3_key=s3_key,
         requested_by=account.id,
+        collection_path="/other",
         collection_id=collection.id,
     )
 

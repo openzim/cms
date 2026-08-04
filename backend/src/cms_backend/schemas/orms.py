@@ -113,13 +113,10 @@ class CollectionLightSchema(BaseModel):
     is_private: bool
 
 
-class CollectionFullSchema(BaseModel):
+class CollectionFullSchema(CollectionLightSchema):
     """Schema for reading a collection with all the fileds inlcuding warehouse."""
 
-    id: UUID
-    name: str
     warehouse: str
-    is_private: bool
     download_base_url: str | None = None
     view_base_url: str | None = None
     article_count_increase_threshold: float | None = None
@@ -295,6 +292,8 @@ class RequestedTaskLightSchema(BaseModel):
     status: str
     requested_by: str | None
     created_at: datetime
+    collection_path: str = Field(exclude=True)
     s3_url: str = Field(exclude=True)
     s3_key: str = Field(exclude=True)
     recipe_id: UUID = Field(exclude=True)
+    collection_id: UUID | None = Field(exclude=True)

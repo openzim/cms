@@ -395,6 +395,7 @@ class MultipartCompleteRequest(BaseModel):
 
 class TaskCreateRequest(BaseModel):
     file: MultipartCompleteRequest
+    collection_path: str
 
 
 @router.post(
@@ -542,6 +543,7 @@ def compelete_zim_upload(
         s3_key=request.file.key,
         requested_by=current_account.id,
         collection_id=collection.id,
+        collection_path=request.collection_path,
     )
     return db_requested_task.create_requested_task_schema(
         db_requested_task.get_requested_task(session, UUID(task_id))

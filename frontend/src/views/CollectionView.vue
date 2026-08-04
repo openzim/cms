@@ -286,7 +286,7 @@
 
         <v-window-item value="upload">
           <div v-if="canUploadZim" class="pa-4">
-            <ZimUploadZone :collection-id="collection.name" />
+            <ZimUploadZone :collection-id="collection.name" :paths="collection.paths || []" />
           </div>
         </v-window-item>
 

@@ -98,12 +98,24 @@
       </div>
     </v-sheet>
 
+    <div v-if="state === 'ready' || state === 'paused'" class="mt-3">
+      <v-select
+        v-model="selectedPath"
+        :items="props.paths"
+        label="Collection path"
+        placeholder="Select a collection path"
+        variant="outlined"
+        density="comfortable"
+        hide-details
+      />
+    </div>
+
     <div v-if="state === 'ready' || state === 'paused'" class="d-flex ga-2 mt-3 justify-end">
       <v-btn variant="outlined" @click="handleReset">
         <v-icon class="mr-1">mdi-close</v-icon>
         Cancel
       </v-btn>
-      <v-btn variant="elevated" color="primary" @click="handleStartUpload">
+      <v-btn variant="elevated" color="primary" :disabled="!canUpload" @click="handleStartUpload">
         <v-icon class="mr-1">mdi-upload</v-icon>
         {{ state === 'paused' ? 'Resume Upload' : 'Upload' }}
       </v-btn>
@@ -134,6 +146,7 @@ import type { UploadProgress } from '@/types/s3'
 
 interface Props {
   collectionId: string
+  paths: string[]
 }
 
 const props = defineProps<Props>()
@@ -149,6 +162,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const state = ref<UploadState>('idle')
 const selectedFile = ref<File | null>(null)
+const selectedPath = ref<string>('')
 const errorMessage = ref('')
 
 const uploadInstance = ref<S3MultipartUpload | null>(null)
@@ -156,6 +170,10 @@ const completedParts = ref(0)
 const totalParts = computed(() => {
   if (!selectedFile.value) return 0
   return Math.ceil(selectedFile.value.size / CHUNK_SIZE)
+})
+
+const canUpload = computed(() => {
+  return selectedFile.value !== null && selectedPath.value !== ''
 })
 
 const uploadProgressPercent = computed(() => {
@@ -166,6 +184,7 @@ const uploadProgressPercent = computed(() => {
 function selectFile(file: File): boolean {
   if (!file.name.endsWith('.zim')) return false
   selectedFile.value = file
+  selectedPath.value = ''
   errorMessage.value = ''
   state.value = 'ready'
   return true
@@ -234,10 +253,13 @@ async function handleStartUpload() {
     state.value = 'completing'
     await collectionStore.completeUpload(
       props.collectionId,
-      uploadInstance.value.uploadId,
-      uploadInstance.value.key,
-      uploadInstance.value.bucket,
-      uploadInstance.value.getPartETags(),
+      {
+        upload_id: uploadInstance.value.uploadId,
+        key: uploadInstance.value.key,
+        bucket: uploadInstance.value.bucket,
+        parts: uploadInstance.value.getPartETags(),
+      },
+      selectedPath.value,
     )
 
     uploadInstance.value.clearProgress()
@@ -284,6 +306,7 @@ function handleReset() {
   uploadInstance.value?.clearProgress()
   uploadInstance.value = null
   selectedFile.value = null
+  selectedPath.value = ''
   completedParts.value = 0
   errorMessage.value = ''
   state.value = 'idle'

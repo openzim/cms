@@ -538,6 +538,7 @@ class RequestedTask(Base):
     collection: Mapped["Collection | None"] = relationship(
         init=False, back_populates="requested_tasks"
     )
+    collection_path: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )

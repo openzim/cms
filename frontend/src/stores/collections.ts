@@ -7,12 +7,7 @@ import type {
   TaskCreateRequest,
 } from '@/types/collections'
 import type { ErrorResponse } from '@/types/errors'
-import type {
-  FileUploadRequest,
-  S3MultipartUpload,
-  MultipartCompleteRequest,
-  PartEtag,
-} from '@/types/s3'
+import type { FileUploadRequest, S3MultipartUpload, MultipartCompleteRequest } from '@/types/s3'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -184,22 +179,14 @@ export const useCollectionsStore = defineStore('collection', () => {
 
   const completeUpload = async (
     collectionId: string,
-    uploadId: string,
-    key: string,
-    bucket: string,
-    parts: PartEtag[],
+    file: MultipartCompleteRequest,
+    collectionPath: string,
   ): Promise<unknown> => {
     const service = await authStore.getApiService('collections')
-    const payload: MultipartCompleteRequest = {
-      upload_id: uploadId,
-      key,
-      bucket,
-      parts,
-    }
     try {
       const response = await service.post<TaskCreateRequest, unknown>(
         `/${collectionId}/upload/complete`,
-        { file: payload },
+        { file, collection_path: collectionPath },
       )
       errors.value = []
       return response
