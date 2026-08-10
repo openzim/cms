@@ -1,3 +1,4 @@
+import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -66,7 +67,8 @@ async def check_books_need_deletion() -> Result[PendingBooksNeedOperation]:
     """Check that no book with location_kind delete needs file operation."""
 
     check_name = "cms-need-book-delete"
-    updated_before = getnow() - Context.books_pending_delete_delay
+    now = getnow()
+    updated_before = now - Context.books_pending_delete_delay
 
     response = await query_api(
         f"{Context.cms_api_url}/books",
@@ -86,7 +88,17 @@ async def check_books_need_deletion() -> Result[PendingBooksNeedOperation]:
             data=None,
         )
 
-    items = response.json.get("items", [])
+    items = [
+        item
+        for item in response.json.get("items", [])
+        if (
+            now
+            - datetime.datetime.fromisoformat(item["deletion_date"]).replace(
+                tzinfo=None
+            )
+        )
+        > Context.books_pending_delete_delay
+    ]
     if not items:
         logger.info(
             "No books need delete operation.",
