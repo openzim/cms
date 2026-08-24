@@ -278,6 +278,12 @@ watch(isOpen, async (open) => {
 })
 
 async function checkAuthAndPermissions(showPermissionWarning = false) {
+  if (allDiffs.value.length === 0) {
+    canShow.value = false
+    isOpen.value = false
+    return
+  }
+
   checkingAuth.value = true
   loadingMessage.value = 'Checking authentication...'
   error.value = null
@@ -287,12 +293,7 @@ async function checkAuthAndPermissions(showPermissionWarning = false) {
     const isLocal = authStore.tokenType == 'local'
 
     if (isLocal && !authStore.zimfarmProvider?.user) {
-      if (allDiffs.value.length > 0) {
-        showAuthConfirm.value = true
-      } else {
-        needsAuth.value = true
-        canShow.value = true
-      }
+      showAuthConfirm.value = true
       return
     }
 

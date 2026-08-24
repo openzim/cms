@@ -583,9 +583,14 @@ const hasRecipeMetadataDifferences = computed(() => {
   if (!newData) return false
 
   for (const field of TITLE_METADATA_FIELDS) {
-    if (newData[field] !== undefined && newData[field] !== (recipeMetadata.value[field] ?? null)) {
-      return true
-    }
+    if (newData[field] === undefined) continue
+
+    // A null recipe value means the scraper auto-computes this flag, so it is
+    // not a real difference
+    const oldValue = recipeMetadata.value[field] ?? null
+    if (oldValue === null) continue
+
+    if (newData[field] !== oldValue) return true
   }
   return false
 })
