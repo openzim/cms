@@ -1304,15 +1304,7 @@ def book_has_flavour_mismatch(
 
     title_flavours = [tf.flavour for tf in book.title.flavours]
 
-    # Title has flavours but book has no flavour or flavour not in book flavours
-    if title_flavours and book.flavour not in title_flavours:
-        return True
-
-    # Book has flavour but title has no flavours
-    if book.flavour and not title_flavours:
-        return True
-
-    return False
+    return book.flavour not in title_flavours
 
 
 def update_title_metadata_from_book(title: Title, book: Book):

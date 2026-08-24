@@ -359,12 +359,11 @@ def test_update_book_flavour_mismatch_issues(
 @pytest.mark.parametrize(
     "book_flavour, title_flavours, expected",
     [
-        pytest.param(None, ["maxi"], True),
+        pytest.param("", ["maxi"], True),
         pytest.param("maxi", ["maxi", "mini"], False),
         pytest.param("maxi", ["mini", "nopic"], True),
-        pytest.param(None, [], False),
+        pytest.param("", [], True),
         pytest.param("maxi", [], True),
-        pytest.param("", [], False),
         pytest.param("", ["maxi"], True),
         pytest.param("", ["maxi", ""], False),
     ],

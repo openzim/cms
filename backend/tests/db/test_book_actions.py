@@ -20,6 +20,7 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleFlavour,
     Warehouse,
 )
 from cms_backend.schemas.models import BaseBookPromotionAction
@@ -1009,11 +1010,13 @@ def test_apply_actions_required_mismatch_raises_error(
         )
 
 
+@patch("cms_backend.db.book_actions.book_has_flavour_mismatch")
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_apply_actions_restore_title_wrong_name_raises_error(
     mock_get_zimcheck_errors: MagicMock,
     mock_get_book_unsupported_languages: MagicMock,
+    mock_book_has_flavour_mismatch: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_collection_title: Callable[..., CollectionTitle],
@@ -1023,6 +1026,7 @@ def test_apply_actions_restore_title_wrong_name_raises_error(
     """Restoring with a title name different from the book's title raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
+    mock_book_has_flavour_mismatch.return_value = False
 
     book = _create_valid_book(create_book, illustration_48x48_at_1)
     title = create_title(
@@ -1062,11 +1066,13 @@ def test_apply_actions_restore_title_wrong_name_raises_error(
         pytest.param({"collection_titles": []}, id="empty-collection-titles"),
     ],
 )
+@patch("cms_backend.db.book_actions.book_has_flavour_mismatch")
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_apply_actions_update_collections_without_entries_raises_error(
     mock_get_zimcheck_errors: MagicMock,
     mock_get_book_unsupported_languages: MagicMock,
+    mock_book_has_flavour_mismatch: MagicMock,
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -1076,6 +1082,7 @@ def test_apply_actions_update_collections_without_entries_raises_error(
     """Applying set_title_collections with empty entries raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
+    mock_book_has_flavour_mismatch.return_value = False
 
     book = _create_valid_book(create_book, illustration_48x48_at_1)
     title = _create_valid_title(create_title, illustration_48x48_at_1)
@@ -1281,6 +1288,12 @@ def test_apply_actions_restore_title(
     create_collection_title(title=title)
     book.title = title
     dbsession.add(book)
+    tf = TitleFlavour(
+        flavour=book.flavour,
+        recipe_id=book.recipe_id,
+    )
+    tf.title = title
+    dbsession.add(tf)
     dbsession.flush()
 
     actions = get_book_promotion_actions(dbsession, book_id=book.id)
