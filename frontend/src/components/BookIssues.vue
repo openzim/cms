@@ -12,8 +12,13 @@
       No issues found for this book.
     </div>
 
-    <v-expansion-panels v-else variant="accordion">
-      <v-expansion-panel v-for="(reasons, issueKey) in issues" :key="issueKey" :title="issueKey">
+    <v-expansion-panels v-else v-model="openPanels" multiple variant="accordion">
+      <v-expansion-panel
+        v-for="(reasons, issueKey) in issues"
+        :key="issueKey"
+        :title="issueKey"
+        :value="issueKey"
+      >
         <template #text>
           <v-list
             v-if="issueKey !== 'metadata mismatch'"
@@ -51,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { diff } from 'deep-diff'
 import type { Book } from '@/types/book'
 import type { Title } from '@/types/title'
@@ -66,6 +71,15 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const openPanels = ref<string[]>([])
+watch(
+  () => props.issues,
+  (issues) => {
+    openPanels.value = issues ? Object.keys(issues) : []
+  },
+  { immediate: true },
+)
 
 const METADATA_KEYS = [
   'Title',
