@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import pycountry
 import pytest
 from pytest import MonkeyPatch
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import update_language_codes
@@ -26,6 +27,7 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleFlavour,
     Warehouse,
     ZimfarmNotification,
 )
@@ -527,6 +529,13 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False
+        title_flavour = dbsession.scalars(
+            select(TitleFlavour).where(
+                TitleFlavour.flavour == book.flavour,
+                TitleFlavour.title_id == book.title_id,
+            )
+        ).one_or_none()
+        assert title_flavour is not None
 
     @patch("cms_backend.db.book.get_zimcheck_errors")
     @patch("cms_backend.db.book.book_has_recipe_issue")

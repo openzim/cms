@@ -15,7 +15,7 @@ from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.flavour import get_title_flavour_or_none
+from cms_backend.db.flavour import create_title_flavour, get_title_flavour_or_none
 from cms_backend.db.models import (
     Book,
     BookHistory,
@@ -1362,8 +1362,9 @@ def add_book_to_title(
         )
 
         tf = get_title_flavour_or_none(session, title.id, book.flavour)
-        if tf is not None:
-            tf.last_book_added_at = getnow()
+        if tf is None:
+            tf = create_title_flavour(session, title, book.recipe_id, book.flavour)
+        tf.last_book_added_at = getnow()
 
         if title_is_missing_mandatory_metadata(title):
             update_title_metadata_from_book(title, book)
