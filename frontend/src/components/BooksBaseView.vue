@@ -23,21 +23,10 @@
       @load-data="loadData"
     />
     <div v-if="!hasBackup && canAccessBackups" class="pa-0 mt-4">
-      <v-tooltip location="top">
-        <template #activator="{ props: tooltipProps }">
-          <v-btn
-            v-bind="tooltipProps"
-            variant="outlined"
-            size="small"
-            :loading="loadingBackupCount"
-            @click="navigateToBackups"
-          >
-            <v-icon size="small" class="mr-2">mdi-content-copy</v-icon>
-            {{ backupCountText }}
-          </v-btn>
-        </template>
-        <span>{{ backupTooltipText }}</span>
-      </v-tooltip>
+      <v-btn variant="outlined" size="small" @click="navigateToBackups">
+        <v-icon size="small" class="mr-2">mdi-content-copy</v-icon>
+        BACKUPS
+      </v-btn>
     </div>
   </div>
 </template>
@@ -74,8 +63,6 @@ const offlinerStore = useZimfarmOfflinerStore()
 
 const flavours = ref<string[]>([])
 const loadingFlavours = ref(false)
-const backupCount = ref(0)
-const loadingBackupCount = ref(false)
 
 // Define headers for the table
 const headers = [
@@ -126,19 +113,6 @@ const bookFilters = computed(() => {
 const intervalId = ref<number | null>(null)
 
 const canAccessBackups = computed(() => authStore.hasPermission('book', 'update'))
-
-const backupCountText = computed(() => {
-  if (loadingBackupCount.value) {
-    return 'Loading...'
-  }
-  const count = backupCount.value
-  return `BACKUPS (${count})`
-})
-
-const backupTooltipText = computed(() => {
-  const count = backupCount.value
-  return count === 1 ? '1 matching backup book' : `${count} matching backup books`
-})
 
 function statusToLocationKinds(status: string): string[] | undefined {
   switch (status) {
@@ -253,40 +227,16 @@ async function handleBookFiltersChange(newFilters: typeof bookFilters.value) {
   updateUrlFilters(newFilters)
 }
 
-async function fetchBackupCount() {
-  if (!canAccessBackups.value || props.hasBackup) return
-
-  loadingBackupCount.value = true
-  try {
-    const currentFilters = bookFilters.value
-    backupCount.value = await bookStore.countBooks(
-      undefined,
-      undefined,
-      statusToLocationKinds(currentFilters.status),
-      undefined,
-      currentFilters.name || undefined,
-      currentFilters.flavour || undefined,
-      true,
-    )
-  } catch (error) {
-    console.error('Failed to fetch backup count', error)
-    backupCount.value = 0
-  } finally {
-    loadingBackupCount.value = false
-  }
-}
-
 function navigateToBackups() {
   const currentFilters = bookFilters.value
-  const query: Record<string, string> = { needs_attention: 'all' }
+  const query: Record<string, string> = { status: 'all' }
 
   if (currentFilters.name) query.name = currentFilters.name
   if (currentFilters.flavour) query.flavour = currentFilters.flavour
-  if (currentFilters.status !== 'active') query.status = currentFilters.status
 
   router.push({
     name: 'backup-books',
-    query: Object.keys(query).length > 0 ? query : undefined,
+    query,
   })
 }
 
@@ -303,10 +253,6 @@ watch(
     }
     const newSkip = (page - 1) * paginator.value.limit
     await loadData(paginator.value.limit, newSkip)
-    // Fetch backup count when filters change
-    if (!props.hasBackup) {
-      await fetchBackupCount()
-    }
   },
   { deep: true, immediate: true },
 )
@@ -320,9 +266,6 @@ onMounted(async () => {
   loadingFlavours.value = false
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, true)
-    if (!props.hasBackup) {
-      await fetchBackupCount()
-    }
   }, 60000)
   await offlinerStore.fetchOffliners()
 })
