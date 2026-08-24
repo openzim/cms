@@ -148,23 +148,25 @@ const statusOptions = [
   { title: 'To Be Deleted', value: 'to_delete' },
   { title: 'Deleted', value: 'deleted' },
   { title: 'All', value: 'all' },
-]
+].sort((a, b) => a.title.localeCompare(b.title))
 
 const flagOptions = [
   { title: 'Needs File Operation', value: 'needs_file_operation' },
   { title: 'Needs Processing', value: 'needs_processing' },
   { title: 'Has Error', value: 'has_error' },
   { title: 'Pending Title', value: 'no_title' },
-]
+].sort((a, b) => a.title.localeCompare(b.title))
 
 const issueOptions = [
+  { title: 'Metadata Mismatch', value: 'metadata mismatch' },
+  { title: 'Recipe Issue', value: 'recipe issue' },
   { title: 'Bad Metadata', value: 'bad metadata' },
   { title: 'Article Count', value: 'article count' },
   { title: 'Media Count', value: 'media count' },
   { title: 'Invalid Language Code', value: 'invalid language code' },
   { title: 'Flavour Mismatch', value: 'flavour mismatch' },
   { title: 'Zimcheck Error', value: 'zimcheck error' },
-]
+].sort((a, b) => a.title.localeCompare(b.title))
 
 const hasActiveFilters = computed(() => {
   return (
