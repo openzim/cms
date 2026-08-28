@@ -2,6 +2,7 @@ import type { Config } from '@/config'
 import type { InjectionKey } from 'vue'
 
 export const TITLE_METADATA_FIELDS = [
+  'name',
   'title',
   'creator',
   'publisher',

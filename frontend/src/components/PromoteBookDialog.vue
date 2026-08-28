@@ -155,6 +155,21 @@
                           </v-btn>
                         </div>
                       </div>
+                      <v-row v-if="actionData[index]?.name !== undefined">
+                        <v-col cols="12">
+                          <MetadataFieldWithDiff
+                            :show-diff="isFieldDifferentFromTitle(index, 'name')"
+                            diff-label="Different from title which has:"
+                            :diff-value="existingTitle?.name"
+                            @use="useTitleValue(index, 'name')"
+                          >
+                            <TitleNameField
+                              :model-value="actionData[index].name"
+                              @update:model-value="actionData[index].name = $event"
+                            />
+                          </MetadataFieldWithDiff>
+                        </v-col>
+                      </v-row>
                       <v-row v-if="actionData[index]?.title !== undefined">
                         <v-col cols="12">
                           <MetadataFieldWithDiff
@@ -502,6 +517,7 @@ import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
 import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
 import TitleMaturityField from '@/components/TitleMaturityField.vue'
+import TitleNameField from '@/components/TitleNameField.vue'
 import TitleForm from '@/components/TitleForm.vue'
 import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'

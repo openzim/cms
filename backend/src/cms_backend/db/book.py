@@ -480,6 +480,7 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         raise ValueError("Book has no associated title.")
 
     book_metadata = {
+        "Name": book.name,
         "Title": book.zim_metadata["Title"],
         "Creator": book.zim_metadata["Creator"],
         "Publisher": book.zim_metadata["Publisher"],
@@ -493,6 +494,7 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
     }
 
     title_metadata = {
+        "Name": book.title.name,
         "Title": book.title.title,
         "Creator": book.title.creator,
         "Publisher": book.title.publisher,
@@ -1337,12 +1339,6 @@ def add_book_to_title(
         title.books.append(book)
         book.events.append(f"{getnow()}: book added to title {title.id}")
         title.events.append(f"{getnow()}: book {book.id} added to title")
-
-        # Update title name should it have changed (e.g. stackexchange domain updated
-        # leading to ZIM name automatically updated as well)
-        if title.name != book.name:
-            title.events.append(f"{getnow()}: updating title name to {book.name}")
-            title.name = book.name
 
         # Compute target filename once for this book
         book.filename = compute_target_filename(

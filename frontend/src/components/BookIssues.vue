@@ -82,6 +82,7 @@ watch(
 )
 
 const METADATA_KEYS = [
+  'Name',
   'Title',
   'Creator',
   'Publisher',
@@ -103,6 +104,7 @@ const metadataDifferences = computed(() => {
   }
 
   const titleMetadata: Record<MetadataKey, unknown> = {
+    Name: props.title.name,
     Title: props.title.title,
     Creator: props.title.creator,
     Publisher: props.title.publisher,

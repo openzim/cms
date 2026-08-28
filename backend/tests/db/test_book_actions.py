@@ -23,12 +23,14 @@ from cms_backend.db.models import (
     TitleFlavour,
     Warehouse,
 )
+from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import BaseBookPromotionAction
 
 
 def test_promotion_actions_book_not_eligible_raises_error(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    account: Account,
 ):
     """A book with errors or in 'prod' should raise RecordDoesNotExistError."""
     book = create_book(location_kind="prod")
@@ -36,12 +38,13 @@ def test_promotion_actions_book_not_eligible_raises_error(
     with pytest.raises(
         RecordDoesNotExistError, match=r"does not meet criteria to be validated"
     ):
-        get_book_promotion_actions(dbsession, book_id=book.id)
+        get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
 
 def test_promotion_actions_missing_metadata_keys_raises_error(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    account: Account,
 ):
     """Book missing mandatory ZIM metadata keys should raise ValueError."""
     book = create_book(
@@ -50,7 +53,7 @@ def test_promotion_actions_missing_metadata_keys_raises_error(
     )
 
     with pytest.raises(ValueError, match=r"missing mandatory metadata keys"):
-        get_book_promotion_actions(dbsession, book_id=book.id)
+        get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
 
 def test_promotion_actions_unsupported_languages(
@@ -58,6 +61,7 @@ def test_promotion_actions_unsupported_languages(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """
     Book with unsupported language codes produces a whitelist_language_codes  action
@@ -87,7 +91,7 @@ def test_promotion_actions_unsupported_languages(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     lang_actions = [action for action in actions if action.kind == "unknown_languages"]
     assert len(lang_actions) == 1
@@ -102,6 +106,7 @@ def test_promotion_actions_zimcheck_errors(
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
     monkeypatch: pytest.MonkeyPatch,
+    account: Account,
 ):
     """Book with ZIMcheck errors produces a zimcheck_issues action."""
     monkeypatch.setattr(
@@ -140,7 +145,7 @@ def test_promotion_actions_zimcheck_errors(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     zimcheck_actions = [
         action for action in actions if action.kind == "zimcheck_issues"
@@ -159,6 +164,7 @@ def test_promotion_actions_no_title(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Book without a title produces a create_title action"""
     mock_get_zimcheck_errors.return_value = []
@@ -179,7 +185,7 @@ def test_promotion_actions_no_title(
         location_kind="quarantine",
     )
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     assert len(actions) == 1
     assert actions[0].kind == "create_title"
@@ -199,6 +205,7 @@ def test_promotion_actions_archived_title(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Book with an archived title produces a restore_title action."""
     mock_get_zimcheck_errors.return_value = []
@@ -230,7 +237,7 @@ def test_promotion_actions_archived_title(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     restore_actions = [a for a in actions if a.kind == "restore_title"]
     assert len(restore_actions) == 1
@@ -239,6 +246,14 @@ def test_promotion_actions_archived_title(
     assert "Restore title" in restore_actions[0].message
 
 
+@pytest.mark.parametrize(
+    "permission,expected_metadata",
+    [
+        pytest.param(RoleEnum.GLOBAL_EDITOR, {"illustration_48x48_at_1", "name"}),
+        pytest.param(RoleEnum.ADMIN, {"illustration_48x48_at_1", "name"}),
+        pytest.param(RoleEnum.COLLECTION_EDITOR, {"illustration_48x48_at_1"}),
+    ],
+)
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_promotion_actions_missing_mandatory_title_metadata(
@@ -247,9 +262,13 @@ def test_promotion_actions_missing_mandatory_title_metadata(
     dbsession: OrmSession,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
     illustration_48x48_at_1: str,
+    permission: RoleEnum,
+    expected_metadata: set[str],
 ):
     """Title missing mandatory metadata produces an update_title_metadata action."""
+    account = create_account(permission=permission)
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
     book = create_book(
@@ -265,9 +284,9 @@ def test_promotion_actions_missing_mandatory_title_metadata(
         },
         location_kind="quarantine",
     )
-    # Create title with missing illustration (mandatory metadata)
+    # Create title with missing illustration (mandatory metadata) and different name
     title = create_title(
-        name="test_en_all",
+        name="test_en_bll",
         title="Test Article",
         creator="Test Creator",
         publisher="Test Publisher",
@@ -279,17 +298,19 @@ def test_promotion_actions_missing_mandatory_title_metadata(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     metadata_actions = [
         action for action in actions if action.kind == "update_title_metadata"
     ]
     assert len(metadata_actions) == 1
     assert metadata_actions[0].requirement == "optional"
-    assert list(metadata_actions[0].data.keys()) == ["illustration_48x48_at_1"]
+    assert set(metadata_actions[0].data.keys()) == expected_metadata
     assert (
         metadata_actions[0].data["illustration_48x48_at_1"] == illustration_48x48_at_1
     )
+    if "name" in expected_metadata:
+        assert metadata_actions[0].data["name"] == book.zim_metadata["Name"]
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
@@ -301,6 +322,7 @@ def test_promotion_actions_differing_metadata(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """
     Book with different metadata than its title produces an update_title_metadata
@@ -334,7 +356,7 @@ def test_promotion_actions_differing_metadata(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     metadata_actions = [a for a in actions if a.kind == "update_title_metadata"]
     assert len(metadata_actions) == 1
@@ -353,6 +375,7 @@ def test_promotion_actions_maturity_not_stable(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Title with non-stable maturity produces an update_title_maturity action."""
     mock_get_zimcheck_errors.return_value = []
@@ -383,7 +406,7 @@ def test_promotion_actions_maturity_not_stable(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     maturity_actions = [
         action for action in actions if action.kind == "update_title_maturity"
@@ -402,6 +425,7 @@ def test_promotion_actions_no_collections(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Title without collection entries produces an set_title_collections action."""
     mock_get_zimcheck_errors.return_value = []
@@ -432,7 +456,7 @@ def test_promotion_actions_no_collections(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     collection_actions = [a for a in actions if a.kind == "set_title_collections"]
     assert len(collection_actions) == 1
@@ -449,6 +473,7 @@ def test_promotion_actions_flavour_mismatch_no_book_flavour(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """
     Book with no flavour and title with flavours produces action to add empty flavour
@@ -483,7 +508,7 @@ def test_promotion_actions_flavour_mismatch_no_book_flavour(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     flavour_actions = [
         action for action in actions if action.kind == "create_title_flavour"
@@ -502,6 +527,7 @@ def test_promotion_actions_recipe_issue(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """
     Book with different recipe from title flavour produces action to update title
@@ -541,7 +567,7 @@ def test_promotion_actions_recipe_issue(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     recipe_actions = [
         action for action in actions if action.kind == "update_flavour_recipe"
@@ -560,6 +586,7 @@ def test_promotion_actions_flavour_mismatch_add_flavour(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Book with a flavour not in title produces create_title_flavour action
     with book flavour in title flavours
@@ -594,7 +621,7 @@ def test_promotion_actions_flavour_mismatch_add_flavour(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     flavour_actions = [
         action for action in actions if action.kind == "create_title_flavour"
@@ -610,6 +637,7 @@ def test_promotion_actions_multiple_actions(
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
     monkeypatch: pytest.MonkeyPatch,
+    account: Account,
 ):
     """Book requiring multiple fixes produces all relevant actions."""
     # Ensure scraper is NOT whitelisted
@@ -653,7 +681,7 @@ def test_promotion_actions_multiple_actions(
     dbsession.add(book)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
     kinds = {action.kind for action in actions}
     assert "unknown_languages" in kinds
@@ -672,6 +700,7 @@ def test_promotion_media_count_issue(
     create_title: Callable[..., Title],
     create_collection_title: Callable[..., CollectionTitle],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """A book with all media count issue returns media count action"""
     mock_get_zimcheck_errors.return_value = []
@@ -723,7 +752,7 @@ def test_promotion_media_count_issue(
         location_kind="prod",
     )
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 1
     assert actions[0].requirement == "information"
     assert actions[0].kind == "media_count"
@@ -737,6 +766,7 @@ def test_promotion_article_count_issue(
     create_title: Callable[..., Title],
     create_collection_title: Callable[..., CollectionTitle],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """A book with article count issue returns article count action"""
     mock_get_zimcheck_errors.return_value = []
@@ -788,7 +818,7 @@ def test_promotion_article_count_issue(
         location_kind="prod",
     )
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 1
     assert actions[0].requirement == "information"
     assert actions[0].kind == "article_count"
@@ -802,6 +832,7 @@ def test_promotion_actions_ready_for_prod(
     create_title: Callable[..., Title],
     create_collection_title: Callable[..., CollectionTitle],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """A book with all prerequisites met returns no actions."""
     mock_get_zimcheck_errors.return_value = []
@@ -836,7 +867,7 @@ def test_promotion_actions_ready_for_prod(
 
     create_collection_title(title=title)
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 0
 
 
@@ -894,12 +925,12 @@ def test_promote_book_with_no_actions_move_directly_to_prod(
 
     create_collection_title(title=title)
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 0
     assert book.location_kind == "quarantine"
 
     apply_book_promotion_actions(
-        dbsession, book_id=book.id, actions=[], author_id=account.id
+        dbsession, book_id=book.id, actions=[], account=account
     )
     assert book.location_kind == "prod"
 
@@ -909,6 +940,7 @@ def test_apply_actions_duplicate_actions_raises_error(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Providing duplicate action kinds raises ValueError."""
     book = _create_valid_book(create_book, illustration_48x48_at_1)
@@ -933,7 +965,7 @@ def test_apply_actions_duplicate_actions_raises_error(
                     requirement="optional",
                 ),
             ],
-            author_id=uuid4(),
+            account=account,
         )
 
 
@@ -947,6 +979,7 @@ def test_apply_actions_unknown_action_raises_error(
     create_title: Callable[..., Title],
     create_collection_title: Callable[..., CollectionTitle],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Providing an action not in expected actions raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
@@ -971,7 +1004,7 @@ def test_apply_actions_unknown_action_raises_error(
                     requirement="mandatory",
                 ),
             ],
-            author_id=uuid4(),
+            account=account,
         )
 
 
@@ -984,6 +1017,7 @@ def test_apply_actions_required_mismatch_raises_error(
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Marking an optional action as required raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
@@ -1006,7 +1040,7 @@ def test_apply_actions_required_mismatch_raises_error(
                     requirement="mandatory",  # should be "optional"
                 ),
             ],
-            author_id=uuid4(),
+            account=account,
         )
 
 
@@ -1022,6 +1056,7 @@ def test_apply_actions_restore_title_wrong_name_raises_error(
     create_collection_title: Callable[..., CollectionTitle],
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
+    account: Account,
 ):
     """Restoring with a title name different from the book's title raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
@@ -1055,7 +1090,7 @@ def test_apply_actions_restore_title_wrong_name_raises_error(
                     requirement="mandatory",
                 ),
             ],
-            author_id=uuid4(),
+            account=account,
         )
 
 
@@ -1078,6 +1113,7 @@ def test_apply_actions_update_collections_without_entries_raises_error(
     create_title: Callable[..., Title],
     illustration_48x48_at_1: str,
     collection_titles: dict[str, Any],
+    account: Account,
 ):
     """Applying set_title_collections with empty entries raises ValueError."""
     mock_get_zimcheck_errors.return_value = []
@@ -1102,7 +1138,7 @@ def test_apply_actions_update_collections_without_entries_raises_error(
                     requirement="mandatory",
                 ),
             ],
-            author_id=uuid4(),
+            account=account,
         )
 
 
@@ -1159,7 +1195,7 @@ def test_apply_action_update_recipe_flavour(
         status="current",
     )
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 1
     assert actions[0].kind == "update_flavour_recipe"
 
@@ -1167,7 +1203,7 @@ def test_apply_action_update_recipe_flavour(
     apply_book_promotion_actions(
         dbsession,
         book_id=book.id,
-        author_id=account.id,
+        account=account,
         actions=[
             BaseBookPromotionAction(
                 kind=action.kind, data=action.data, requirement=action.requirement
@@ -1211,7 +1247,7 @@ def test_apply_actions_create_title(
     )
     collection = create_collection(name="mycollection")
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 1
     assert actions[0].kind == "create_title"
 
@@ -1231,7 +1267,7 @@ def test_apply_actions_create_title(
                 requirement="mandatory",
             ),
         ],
-        author_id=account.id,
+        account=account,
     )
 
     # Verify the title was created
@@ -1296,7 +1332,7 @@ def test_apply_actions_restore_title(
     dbsession.add(tf)
     dbsession.flush()
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     restore_actions = [a for a in actions if a.kind == "restore_title"]
     assert len(restore_actions) == 1
 
@@ -1310,7 +1346,7 @@ def test_apply_actions_restore_title(
                 requirement="mandatory",
             ),
         ],
-        author_id=account.id,
+        account=account,
     )
 
     dbsession.refresh(title)
@@ -1373,7 +1409,7 @@ def test_apply_actions_batched_updates(
     dbsession.flush()
     collection = create_collection(name="mycollection")
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     kinds = {a.kind for a in actions}
     assert "update_title_metadata" in kinds  # creator differs/missing
     assert "update_title_maturity" in kinds  # default "unstable"
@@ -1400,7 +1436,7 @@ def test_apply_actions_batched_updates(
         dbsession,
         book_id=book.id,
         actions=apply_actions,
-        author_id=account.id,
+        account=account,
     )
 
     dbsession.refresh(title)
