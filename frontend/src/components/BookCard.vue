@@ -143,7 +143,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const displayName = computed(() => {
-  return props.book.title_name || props.book.name || props.book.id
+  return props.book.name || props.book.id
 })
 
 const isErrored = computed(() => props.book.has_error)
