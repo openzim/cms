@@ -1205,23 +1205,20 @@ const handleBookPromoted = async () => {
   await loadData(true)
 }
 
-const handleTitleSelected = async (titleName: string) => {
-  if (!book.value || !book.value.name) return
+const handleTitleSelected = async (titleId: string) => {
+  if (!book.value?.id) return
 
-  loadingStore.startLoading('Updating title name...')
+  loadingStore.startLoading('Adding book to title...')
 
-  const response = await titleStore.updateTitle(titleName, {
-    name: book.value.name,
-    comment: `Updated title name to "${book.value.name}" from book`,
-  })
+  const response = await bookStore.addBookToTitle(book.value.id, titleId)
 
   loadingStore.stopLoading()
 
   if (response) {
-    notificationStore.showSuccess(`Title name updated to "${book.value.name}" successfully`)
+    notificationStore.showSuccess('Book added to title successfully')
     await loadData(true, currentTab.value == 'history', currentTab.value == 'info')
   } else {
-    for (const error of titleStore.errors) {
+    for (const error of bookStore.errors) {
       notificationStore.showError(error)
     }
   }

@@ -96,6 +96,10 @@ def get_book(
     book_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    locations: list[str] | None = None,
+    needs_file_operation: bool | None = None,
+    needs_processing: bool | None = None,
+    has_error: bool | None = None,
 ) -> Book:
     """Get a book by ID if possible else raise an exception"""
     if (
@@ -103,6 +107,10 @@ def get_book(
             session,
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,
+            locations=locations,
+            needs_file_operation=needs_file_operation,
+            needs_processing=needs_processing,
+            has_error=has_error,
         )
     ) is None:
         raise RecordDoesNotExistError(

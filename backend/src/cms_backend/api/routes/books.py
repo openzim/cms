@@ -13,11 +13,13 @@ from cms_backend.api.routes.dependencies import (
     get_current_account,
     require_permission,
 )
+from cms_backend.api.routes.http_errors import BadRequestError
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import book as db_book
 from cms_backend.db import book_actions as db_book_actions
 from cms_backend.db import books as db_books
 from cms_backend.db import gen_dbsession
+from cms_backend.db import title as db_title
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
@@ -390,3 +392,38 @@ def remove_book_backup(
             accessible_collection_ids=accessible_collection_ids,
         )
     )
+
+
+@router.patch(
+    "/{book_id}/add-to-title/{title_id}",
+    dependencies=[
+        Depends(require_permission(namespace="title", name="update")),
+        Depends(require_permission(namespace="book", name="update")),
+    ],
+)
+def add_book_to_title(
+    book_id: Annotated[UUID, Path()],
+    title_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+) -> BookFullSchema:
+    """Associate a book in quarantine without a title to title"""
+    title = db_title.get_title_by_id(
+        session, title_id=title_id, accessible_collection_ids=accessible_collection_ids
+    )
+    book = db_book.get_book(
+        session,
+        book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
+        locations=["quarantine"],
+        needs_file_operation=False,
+        has_error=False,
+        needs_processing=False,
+    )
+    if book.title_id:
+        raise BadRequestError("Book is already associated with a title")
+
+    db_book.add_book_to_title(session, book, title, is_new=False)
+    return db_book.create_book_full_schema(book)

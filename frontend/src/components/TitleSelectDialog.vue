@@ -23,14 +23,14 @@
             :disabled="!selectedTitleData"
             @click="confirmSelection"
           >
-            Update Title Name
+            Add Book to Title
           </v-btn>
         </div>
         <v-alert v-if="selectedTitleData" type="info" variant="tonal" class="mt-4">
           <div class="font-weight-bold mb-1">Selected Title</div>
           <div>{{ selectedTitleData.name }}</div>
           <div class="mt-2 text-caption">
-            This will update the title name to: <strong>{{ bookName }}</strong>
+            This will add the book <strong>{{ bookName }}</strong> to the selected title.
           </div>
         </v-alert>
 
@@ -56,7 +56,7 @@
           <div class="font-weight-bold mb-1">Selected Title</div>
           <div>{{ selectedTitleData.name }}</div>
           <div class="mt-2 text-caption">
-            This will update the title name to: <strong>{{ bookName }}</strong>
+            This will add the book <strong>{{ bookName }}</strong> to the selected title.
           </div>
         </v-alert>
       </v-card-text>
@@ -72,7 +72,7 @@
           :disabled="!selectedTitleData"
           @click="confirmSelection"
         >
-          Update Title Name
+          Add Book to Title
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -99,7 +99,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  titleSelected: [titleName: string]
+  titleSelected: [titleId: string]
 }>()
 
 const headers = [
@@ -210,7 +210,7 @@ function closeDialog() {
 
 function confirmSelection() {
   if (selectedTitleData.value) {
-    emit('titleSelected', selectedTitleData.value.name)
+    emit('titleSelected', selectedTitleData.value.id)
     closeDialog()
   }
 }
