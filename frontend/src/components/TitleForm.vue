@@ -266,6 +266,7 @@ const bookMetadata = computed<BookMetadataFields | null>(() => {
   if (!props.latestBook?.zim_metadata) return null
   const metadata = props.latestBook.zim_metadata
   return {
+    name: metadata.Name as string | undefined,
     title: metadata.Title as string | undefined,
     creator: metadata.Creator as string | undefined,
     publisher: metadata.Publisher as string | undefined,

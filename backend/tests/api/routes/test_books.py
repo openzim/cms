@@ -1002,7 +1002,7 @@ def test_promote_book_permissions(
     dbsession.flush()
     collection = create_collection(name="mycollection")
 
-    actions = get_book_promotion_actions(dbsession, book_id=book.id)
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     kinds = {a.kind for a in actions}
     assert "update_title_metadata" in kinds  # creator differs/missing
     assert "update_title_maturity" in kinds  # default "unstable"

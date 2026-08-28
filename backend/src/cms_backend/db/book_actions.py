@@ -26,8 +26,9 @@ from cms_backend.db.flavour import (
     get_title_flavour,
     get_title_flavour_or_none,
 )
-from cms_backend.db.models import Book
+from cms_backend.db.models import Account, Book
 from cms_backend.db.title import create_title, restore_title, update_title
+from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import (
     BaseBookPromotionAction,
     BookPromotionAction,
@@ -45,20 +46,33 @@ from cms_backend.utils.zim import (
 )
 
 
-def _get_update_title_metadata_action(book: Book) -> BookPromotionAction | None:
-    if differing_metadata_keys := get_differing_metadata_keys(book):
-        metadata_to_identifier_map = {
-            "Title": "title",
-            "Creator": "creator",
-            "Publisher": "publisher",
-            "Description": "description",
-            "Language": "language",
-            "Illustration_48x48@1": "illustration_48x48_at_1",
-            "LongDescription": "long_description",
-            "License": "license",
-            "Relation": "relation",
-            "Source": "source",
-        }
+def _get_update_title_metadata_action(
+    book: Book, account: Account
+) -> BookPromotionAction | None:
+    differing_metadata_keys = get_differing_metadata_keys(book)
+    # Mapping of metadata fields to identifiers in TitleUpdatePayload
+    metadata_to_identifier_map = {
+        "Name": "name",
+        "Title": "title",
+        "Creator": "creator",
+        "Publisher": "publisher",
+        "Description": "description",
+        "Language": "language",
+        "Illustration_48x48@1": "illustration_48x48_at_1",
+        "LongDescription": "long_description",
+        "License": "license",
+        "Relation": "relation",
+        "Source": "source",
+    }
+
+    # Only accounts with sufficient permissions can update the Name metadata
+    if (
+        account.role not in [RoleEnum.GLOBAL_EDITOR, RoleEnum.ADMIN]
+        and "Name" in differing_metadata_keys
+    ):
+        differing_metadata_keys.remove("Name")
+
+    if differing_metadata_keys:
         return BookPromotionAction(
             kind="update_title_metadata",
             requirement="optional",
@@ -246,6 +260,7 @@ def get_book_promotion_actions(
     *,
     book_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    account: Account,
 ) -> list[BookPromotionAction]:
     """Get actions required to promote a book to 'prod'."""
     book = get_book_or_none(
@@ -292,7 +307,7 @@ def get_book_promotion_actions(
     if action := _get_restore_title_action(book):
         actions.append(action)
 
-    if action := _get_update_title_metadata_action(book):
+    if action := _get_update_title_metadata_action(book, account):
         actions.append(action)
 
     if action := _get_update_title_maturity_action(book):
@@ -407,7 +422,7 @@ def apply_book_promotion_actions(
     *,
     book_id: UUID,
     actions: list[BaseBookPromotionAction],
-    author_id: UUID,
+    account: Account,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """Apply a list of actions to book so that it can be promoted to 'prod'"""
@@ -419,7 +434,10 @@ def apply_book_promotion_actions(
         session, book_id=book_id, accessible_collection_ids=accessible_collection_ids
     )
     expected_actions = get_book_promotion_actions(
-        session, book_id=book_id, accessible_collection_ids=accessible_collection_ids
+        session,
+        book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
+        account=account,
     )
 
     expected_actions_set = {action.kind for action in expected_actions}
@@ -457,7 +475,7 @@ def apply_book_promotion_actions(
                     session,
                     action,
                     book,
-                    author_id,
+                    account.id,
                     accessible_collection_ids=accessible_collection_ids,
                 )
                 return
@@ -466,7 +484,7 @@ def apply_book_promotion_actions(
                     session,
                     action,
                     book,
-                    author_id,
+                    account.id,
                     accessible_collection_ids=accessible_collection_ids,
                 )
             case "update_title_metadata":
@@ -520,7 +538,7 @@ def apply_book_promotion_actions(
         book.title = update_title(
             session,
             title_identifier=book.title.name,
-            author_id=author_id,
+            author_id=account.id,
             payload=payload,
             accessible_collection_ids=accessible_collection_ids,
             create_event=False,

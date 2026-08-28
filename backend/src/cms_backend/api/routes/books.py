@@ -271,6 +271,7 @@ def promote_book(
             session,
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,
+            account=current_account,
         )
         return JSONResponse(
             content={"actions": [action.model_dump(mode="json") for action in actions]},
@@ -280,7 +281,7 @@ def promote_book(
         db_book_actions.apply_book_promotion_actions(
             session,
             book_id=book_id,
-            author_id=current_account.id,
+            account=current_account,
             actions=request.actions,
             accessible_collection_ids=accessible_collection_ids,
         )
