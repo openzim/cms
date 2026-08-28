@@ -18,6 +18,7 @@ from cms_backend.db.models import (
     Book,
     BookLocation,
     Collection,
+    CollectionTitle,
     Title,
     TitleFlavour,
     Warehouse,
@@ -1032,5 +1033,72 @@ def test_promote_book_permissions(
             if parse_bool(dry_run)
             else [action.model_dump(mode="json") for action in apply_actions]
         },
+    )
+    assert response.status_code == expected_status_code
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(
+            RoleEnum.GLOBAL_EDITOR,
+            HTTPStatus.OK,
+        ),
+        pytest.param(
+            RoleEnum.VIEWER,
+            HTTPStatus.UNAUTHORIZED,
+        ),
+    ],
+)
+def test_add_book_to_title_permissions(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    illustration_48x48_at_1: str,
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test permissions required to add book to title"""
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    book = create_book(
+        flavour="nopic",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator 2",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        location_kind="quarantine",
+    )
+    title = create_title(
+        name="test_en_all",
+        title="Test Article",
+        creator=None,  # missing
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    dbsession.add(book)
+    dbsession.flush()
+
+    collection = create_collection(name="mycollection")
+
+    create_collection_title(title, collection)
+
+    response = client.patch(
+        f"/v1/books/{book.id}/add-to-title/{title.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code

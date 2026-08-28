@@ -307,6 +307,19 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const addBookToTitle = async (bookId: string, titleId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.patch<null, Book>(`/${bookId}/add-to-title/${titleId}`)
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to add book to title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   return {
     // State
     defaultLimit,
@@ -330,5 +343,6 @@ export const useBookStore = defineStore('book', () => {
     countBooks,
     fetchBookIssues,
     promoteBook,
+    addBookToTitle,
   }
 })
