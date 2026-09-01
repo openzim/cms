@@ -409,9 +409,9 @@ function handleSelectionChanged(newSelection: string[]) {
   selectedTitles.value = newSelection
 }
 
-async function handleTitleCreated() {
+async function handleTitleCreated(titleId: string) {
   notificationStore.showSuccess('Title created successfully')
-  await loadData(paginator.value.limit, paginator.value.skip)
+  router.push({ name: 'title-detail', params: { id: titleId } })
 }
 
 async function fetchFlavours() {
