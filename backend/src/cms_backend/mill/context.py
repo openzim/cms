@@ -51,3 +51,20 @@ class Context:
             os.getenv("STAGING_BOOKS_DELETION_GRACE_PERIOD", default="7d")
         )
     )
+
+    update_title_upload_status_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("UPDATE_TITLE_UPLOAD_STATUS_INTERVAL", default="1m")
+        )
+    )
+    delete_uploaded_zims_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("DELETE_UPLOADED_ZIMS_INTERVAL", default="1d"))
+    )
+    zimcheck_results_s3_bucket_uri: str = os.getenv(
+        "ZIMCHECK_RESULTS_S3_BUCKET_URI", default=""
+    )
+    delete_zimcheck_files_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("DELETE_ZIMCHECK_FILES_INTERVAL", default="1h")
+        )
+    )

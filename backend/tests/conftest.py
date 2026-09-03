@@ -25,6 +25,7 @@ from cms_backend.db.models import (
     Title,
     TitleFlavour,
     TitleHistory,
+    TitleUpload,
     Warehouse,
     ZimfarmNotification,
 )
@@ -84,6 +85,45 @@ def zimfarm_notification(
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
 ) -> ZimfarmNotification:
     return create_zimfarm_notification()
+
+
+@pytest.fixture
+def create_title_upload(
+    dbsession: OrmSession,
+    account: Account,
+    faker: Faker,
+) -> Callable[..., TitleUpload]:
+    def _create_title_upload(
+        _id: UUID | None = None,
+        s3_key: str | None = None,
+        status: str = "requested",
+        requested_by_id: UUID | None = None,
+        title_id: UUID | None = None,
+        created_at: datetime | None = None,
+    ) -> TitleUpload:
+        upload = TitleUpload(
+            id=_id if _id is not None else uuid4(),
+            s3_key=s3_key if s3_key is not None else faker.file_name(),
+            title_id=title_id,
+            recipe_id=uuid4(),
+            status=status,
+            requested_by_id=requested_by_id
+            if requested_by_id is not None
+            else account.id,
+            created_at=created_at if created_at is not None else getnow(),
+        )
+        dbsession.add(upload)
+        dbsession.flush()
+        return upload
+
+    return _create_title_upload
+
+
+@pytest.fixture
+def title_upload(
+    create_title_upload: Callable[..., TitleUpload],
+) -> TitleUpload:
+    return create_title_upload()
 
 
 @pytest.fixture

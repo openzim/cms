@@ -40,13 +40,15 @@ def get_collection_by_id_or_none(
 ) -> Collection | None:
     """Get a collection by ID if possible else None"""
     return session.scalars(
-        select(Collection).where(
+        select(Collection)
+        .where(
             Collection.id == collection_id,
             (
                 Collection.id.in_(accessible_collection_ids or [])
                 | (accessible_collection_ids is None)
             ),
         )
+        .options(selectinload(Collection.titles))
     ).one_or_none()
 
 
@@ -77,11 +79,13 @@ def get_collection_by_name_or_none(
 ) -> Collection | None:
     """Get a collection by name if possible else None"""
     return session.scalars(
-        select(Collection).where(
+        select(Collection)
+        .where(
             Collection.name == collection_name,
             Collection.id.in_(accessible_collection_ids or [])
             | (accessible_collection_ids is None),
         )
+        .options(selectinload(Collection.titles))
     ).one_or_none()
 
 
@@ -291,6 +295,7 @@ def create_collection_full_schema(collection: Collection) -> CollectionFullSchem
         article_count_decrease_threshold=collection.article_count_decrease_threshold,
         media_count_decrease_threshold=collection.media_count_decrease_threshold,
         is_private=collection.is_private,
+        paths=[ct.path for ct in collection.titles],
     )
 
 

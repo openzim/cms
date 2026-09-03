@@ -75,6 +75,7 @@ export interface Book extends BookLight {
   recipe_id: string | null
   recipe_link: string | null
   recipe_api_link?: string
+  task_link?: string | null
 }
 
 export interface ZimUrl {

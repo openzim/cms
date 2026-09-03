@@ -155,7 +155,7 @@ def create_notifications():
         raise ValueError(
             f"invalid upload URI: `{ZIMCHECK_RESULTS_S3_BUCKET_URI}`"
         ) from exc
-    s3_client = get_kiwix_storage_client(upload_uri)
+    s3_client = get_kiwix_storage_client(ZIMCHECK_RESULTS_S3_BUCKET_URI)
 
     created_notifications = []
 

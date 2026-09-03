@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session as ORMSession
 from cms_backend import logger
 from cms_backend.db.book import add_book_to_title
 from cms_backend.db.models import Book, Title
-from cms_backend.db.title import get_title_by_name_or_none
+from cms_backend.db.title import get_title_by_id, get_title_by_name_or_none
+from cms_backend.db.title_upload import get_last_title_upload_for_recipe
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import get_missing_metadata_keys
 
@@ -73,6 +74,22 @@ def get_matching_title(
             )
             book.has_error = True
             return None
+
+        # if a book is created from a manually uploaded zim, we want to attach book
+        # to the title
+        if book.recipe_id:
+            title_upload = get_last_title_upload_for_recipe(session, book.recipe_id)
+            if title_upload and title_upload.title_id:
+                title = get_title_by_id(
+                    session,
+                    title_id=title_upload.title_id,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
+                book.events.append(
+                    f"{getnow()}: found matching title {title.id} from requested "
+                    "task {requested_task.id}"
+                )
+                return title
 
         title = get_title_by_name_or_none(
             session,

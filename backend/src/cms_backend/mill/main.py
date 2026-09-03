@@ -12,12 +12,15 @@ from cms_backend.__about__ import __version__
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.mill.context import Context as MillContext
+from cms_backend.mill.delete_uploaded_zims import delete_uploaded_zims
+from cms_backend.mill.delete_zimcheck_s3_results import delete_zimcheck_s3_results
 from cms_backend.mill.mark_staging_books_for_deletion import (
     mark_staging_books_for_deletion,
 )
 from cms_backend.mill.process_retention_rules import process_retention_rules
 from cms_backend.mill.process_title_modifications import process_title_modifications
 from cms_backend.mill.process_zimfarm_notifications import process_zimfarm_notifications
+from cms_backend.mill.update_zimfarm_task_status import update_title_uploads_status
 from cms_backend.utils.database import upgrade_db_schema
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.task_config import TaskConfig
@@ -39,6 +42,18 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=mark_staging_books_for_deletion,
         interval=MillContext.mark_staging_books_for_deletion_interval,
+    ),
+    TaskConfig(
+        func=update_title_uploads_status,
+        interval=MillContext.update_title_upload_status_interval,
+    ),
+    TaskConfig(
+        func=delete_uploaded_zims,
+        interval=MillContext.delete_uploaded_zims_interval,
+    ),
+    TaskConfig(
+        func=delete_zimcheck_s3_results,
+        interval=MillContext.delete_zimcheck_files_interval,
     ),
 ]
 

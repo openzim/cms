@@ -37,4 +37,16 @@ def construct_recipe_api_link(recipe_id: UUID | None) -> str | None:
     return f"{Context.zimfarm_api_url}/recipes/{recipe_id}"
 
 
+def construct_task_link(task_id: UUID | None) -> str | None:
+    if task_id is None:
+        return None
+    return f"{Context.zimfarm_url}/pipeline/{task_id}"
+
+
+def construct_task_api_link(task_id: UUID | None) -> str | None:
+    if task_id is None:
+        return None
+    return f"{Context.zimfarm_api_url}/tasks/{task_id}"
+
+
 update_language_codes()

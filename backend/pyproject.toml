@@ -28,6 +28,7 @@ dependencies = [
     "xxhash == 3.7.0",
     "pycountry == 26.2.16",
     "requests == 2.34.2",
+    "kiwixstorage == 0.10.1",
 ]
 dynamic = ["version"]
 
@@ -37,9 +38,7 @@ api = [
     "PyJWT == 2.11.0",
     "cryptography == 46.0.4",
 ]
-shuttle = [
-    "kiwixstorage == 0.10.1",
-]
+shuttle = []
 scripts = [
     "invoke == 2.2.0",
 ]

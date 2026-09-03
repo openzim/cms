@@ -140,3 +140,4 @@ scripts/*csv
 # Editors & Dev
 *.vim
 docker-compose.override.yml
+id_ed25519*

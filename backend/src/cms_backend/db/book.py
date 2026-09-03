@@ -177,6 +177,7 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         else None,
         offliner=book.zim_metadata.get("Scraper"),
         recipe_id=book.recipe_id,
+        task_id=book.task_id,
     )
 
 

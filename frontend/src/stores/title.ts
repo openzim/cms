@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth'
+import type { FileUploadRequest, S3MultipartUpload, MultipartCompleteRequest } from '@/types/s3'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import type { Title, TitleCreate, TitleLight, TitleUpdate, TitleFlavour } from '@/types/title'
@@ -230,6 +231,54 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const initiateUpload = async (
+    titleId: string,
+    file: File,
+    partSize: number,
+    resumeUploadId?: string,
+  ): Promise<S3MultipartUpload> => {
+    const service = await authStore.getApiService('titles')
+    const payload: FileUploadRequest = {
+      filename: file.name,
+      filesize: file.size,
+      part_size: partSize,
+    }
+    if (resumeUploadId) {
+      payload.upload_id = resumeUploadId
+    }
+    try {
+      const response = await service.post<FileUploadRequest, S3MultipartUpload>(
+        `/${titleId}/upload/create-or-resume`,
+        payload,
+      )
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to initiate upload', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
+  const completeUpload = async (
+    titleId: string,
+    file: MultipartCompleteRequest,
+  ): Promise<unknown> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.post<MultipartCompleteRequest, unknown>(
+        `/${titleId}/upload/complete`,
+        file,
+      )
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to complete upload', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
   return {
     // State
     title,
@@ -251,5 +300,7 @@ export const useTitleStore = defineStore('title', () => {
     mergeTitles,
     deleteTitleFlavour,
     fetchTitleFlavours,
+    initiateUpload,
+    completeUpload,
   }
 })

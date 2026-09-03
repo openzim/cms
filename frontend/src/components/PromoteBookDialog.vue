@@ -102,6 +102,7 @@
                         :title="getSyntheticTitle(index)"
                         :in-dialog="true"
                         :collections="collections"
+                        :collections-disabled="!!actionData[index].collection_titles?.length"
                       />
                       <div v-if="actionData[index].flavours?.length">
                         <v-divider class="my-4" />
@@ -756,7 +757,12 @@ function getSyntheticTitle(index: number): Title {
     flavours: [],
     events: [],
     books: [],
-    collections: [],
+    collections:
+      data.collection_titles?.map((ct: { collection_name: string; path: string }) => ({
+        collection_name: ct.collection_name,
+        path: ct.path,
+        collection_id: '',
+      })) || [],
   }
 }
 

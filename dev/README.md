@@ -212,3 +212,31 @@ docker exec -it cms_postgresdb dropdb -e -U cms cmstest
 docker exec -it cms_postgresdb psql -e -U cms -c "CREATE DATABASE cmstest;"
 docker exec -it cms_postgresdb psql -e -d cmstest -U cms -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 ```
+
+### Running end to end with Zimfarm
+
+To run the CMS along with Zimfarm, you will need to use the `zimfarm` profile
+
+```sh
+docker compose -p cms --profile zimfarm up -d
+```
+
+On initial set up, you will need to populate the CMS database with offliner definitions.
+
+```sh
+./contrib/create_offliners.sh
+```
+
+To register a worker account
+
+```sh
+cd contrib
+./create_worker.sh
+```
+
+To run with a zimfarm worker for processing manually uploaded ZIMs from the CMS, you will
+need to run with the `zimfarm-worker` profile
+
+```sh
+docker compose -p cms --profile zimfarm --profile zimfarm-worker up -d
+```

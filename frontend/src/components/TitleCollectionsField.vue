@@ -3,6 +3,7 @@
     <div class="d-flex align-center justify-space-between mb-4">
       <h3 class="text-h6">Collections</h3>
       <v-btn
+        v-if="!disabled"
         color="primary"
         variant="text"
         size="small"
@@ -22,6 +23,7 @@
       <div class="d-flex align-center mb-2">
         <span class="text-subtitle-2 flex-grow-1">Collection #{{ Number(index) + 1 }}</span>
         <v-btn
+          v-if="!disabled"
           icon="mdi-delete"
           size="x-small"
           variant="text"
@@ -39,6 +41,7 @@
         density="comfortable"
         class="mb-2"
         :loading="loading"
+        :disabled="disabled"
         @update:model-value="handleCollectionChange(Number(index))"
       />
 
@@ -49,7 +52,7 @@
         :rules="[rules.required]"
         variant="outlined"
         density="comfortable"
-        :disabled="!ct.collection_name"
+        :disabled="disabled || !ct.collection_name"
         :hint="!ct.collection_name ? 'Please select a collection first' : ''"
         persistent-hint
       />
@@ -66,9 +69,12 @@ interface Props {
   modelValue: BaseTitleCollection[]
   collections: CollectionLight[]
   loading?: boolean
+  disabled?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  disabled: false,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: BaseTitleCollection[]]

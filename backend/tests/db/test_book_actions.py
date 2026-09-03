@@ -193,7 +193,7 @@ def test_promotion_actions_no_title(
     assert actions[0].data["name"] == "test_en_all"
     assert actions[0].data["maturity"] == "stable"
     assert len(actions[0].data["flavours"]) != 0
-    assert "Create new title" in actions[0].message
+    assert len(actions[0].data["collection_titles"]) == 0
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")

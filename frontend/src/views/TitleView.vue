@@ -85,6 +85,19 @@
 
         <v-tab
           base-color="primary"
+          v-if="canUploadZim"
+          value="upload"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.name, selectedTab: 'upload' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-upload</v-icon>
+          Upload
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
           v-if="canArchiveTitle"
           value="archive"
           :to="{
@@ -425,6 +438,24 @@
           </div>
         </v-window-item>
 
+        <!-- Upload Tab -->
+        <v-window-item value="upload">
+          <div v-if="canUploadZim" class="pa-4">
+            <v-card flat>
+              <v-card-text>
+                <ZimUploadZone :title-id="title.id" @upload-complete="handleUploadComplete" />
+              </v-card-text>
+            </v-card>
+
+            <div class="d-flex align-center mt-4 mb-4 ga-3">
+              <h3 class="text-h6 mb-0">Uploads</h3>
+              <v-divider class="flex-grow-1" />
+            </div>
+
+            <TitleUploadsView ref="titleUploadsViewRef" :title-id="title.id" />
+          </div>
+        </v-window-item>
+
         <!-- Archive Tab -->
         <v-window-item value="archive">
           <div v-if="canArchiveTitle" class="pa-4">
@@ -486,6 +517,7 @@ import BookCard from '@/components/BookCard.vue'
 import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import TitleForm from '@/components/TitleForm.vue'
+import ZimUploadZone from '@/components/ZimUploadZone.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { useLoadingStore } from '@/stores/loading'
@@ -507,6 +539,7 @@ import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import TitleHistory from '@/components/TitleHistory.vue'
 import TitleFlavourItem from '@/components/TitleFlavourItem.vue'
+import TitleUploadsView from '@/views/TitleUploadsView.vue'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
 import type { TitleFlavour } from '@/types/title'
@@ -646,6 +679,17 @@ const canEditTitle = computed(
 )
 
 const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive'))
+
+const canUploadZim = computed(
+  () =>
+    authStore.hasPermission('collection', 'update') && authStore.hasPermission('book', 'create'),
+)
+
+const titleUploadsViewRef = ref<InstanceType<typeof TitleUploadsView>>()
+
+const handleUploadComplete = () => {
+  titleUploadsViewRef.value?.refresh()
+}
 
 // History-related computed properties
 const canLoadMoreHistory = computed(() => {
@@ -938,7 +982,12 @@ onMounted(async () => {
   }
 
   // Redirect to details if trying to access restricted tabs without permission
-  if (props.selectedTab !== 'details' && props.selectedTab !== 'flavours' && !canEditTitle.value) {
+  const canAccessSelectedTab =
+    props.selectedTab === 'details' ||
+    props.selectedTab === 'flavours' ||
+    (props.selectedTab === 'upload' ? canUploadZim.value : canEditTitle.value)
+
+  if (!canAccessSelectedTab) {
     router.push({ name: 'title-detail', params: { id: props.id } })
     return
   }

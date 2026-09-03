@@ -57,6 +57,16 @@ services:
       BACKUP_BASE_PATH: backup
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
+      ZIMFARM_AUTH_MODE: local
+      ZIMFARM_USERNAME: admin
+      ZIMFARM_PASSWORD: admin_pass
+      ZIMFARM_API_URL: http://zimfarm-api:80/v2
+      ZIMFARM_URL: http://localhost:37609
+      ZIMWRIGHT_IMAGE: openzim/zimwright:dev
+      ZIMTASK_CPU: 2
+      ZIMTASK_MEMORY: 1Gb
+      ZIMTASK_DISK: 1Gb
     command:
       - uvicorn
       - cms_backend.api.main:app
@@ -94,6 +104,9 @@ services:
       BACKUP_BASE_PATH: backup
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
+      ZIMFARM_API_URL: http://zimfarm-api:80/v2
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
+      ZIMCHECK_RESULTS_S3_BUCKET_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks
     depends_on:
       postgresdb:
         condition: service_healthy
@@ -123,6 +136,8 @@ services:
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
       ZIMCHECK_RESULTS_S3_BUCKET_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
+      ZIMFARM_API_URL: http://zimfarm-api:80/v2
     depends_on:
       postgresdb:
         condition: service_healthy
@@ -152,6 +167,7 @@ services:
       BACKUP_BASE_PATH: backup
       BACKUP_DOWNLOAD_BASE_URL: https://download.backup.acme.org/
       BACKUP_VIEW_BASE_URL: https://library.backup.acme.org/viewer#
+      ZIM_UPLOAD_S3_BUCKET_URI: s3+https://s3.us-west-1.wasabisys.com/?keyId=xxxxxxxxxxxxxxxxxxxx&secretAccessKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&bucketName=xxxxxxxxxxxxxxxxxx
     depends_on:
       - postgresdb
   frontend:
@@ -239,6 +255,150 @@ services:
       - ./contrib/setup-buckets.sh:/setup-buckets.sh
     entrypoint: ["/bin/sh", "/setup-buckets.sh"]
 
+  zimfarm-db:
+    image: postgres:18.0-trixie
+    container_name: zimfarm-postgresdb
+    ports:
+      - 127.0.0.1:37607:5432
+    volumes:
+      - zimfarm_data_cms:/var/lib/postgresql
+      - ./postgres-initdb:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_DB=zimfarm
+      - POSTGRES_USER=zimfarm
+      - POSTGRES_PASSWORD=zimpass
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "dbname=zimfarm user=zimfarm"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - zimfarm
+
+  zimfarm-api:
+    image: ghcr.io/openzim/zimfarm-backend:latest
+    pull_policy: always
+    container_name: zimfarm-api
+    ports:
+      - 127.0.0.1:37608:80
+    environment:
+      JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
+      POSTGRES_URI: postgresql+psycopg://zimfarm:zimpass@zimfarm-db:5432/zimfarm
+      ALEMBIC_UPGRADE_HEAD_ON_START: true
+      DEBUG: true
+      INIT_USERNAME: admin
+      INIT_PASSWORD: admin_pass
+      ALLOWED_ORIGINS: http://localhost:37609,http://localhost:37600
+      ARTIFACTS_UPLOAD_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-artifacts
+      LOGS_UPLOAD_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-logs
+      ZIM_UPLOAD_URI: sftp://uploader@zimfarm-receiver:22/zim/
+      ZIMCHECK_RESULTS_UPLOAD_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-zimchecks
+      ZIMCHECK_OPTION: --all
+      OAUTH_JWKS_URI: https://ory.login-staging.kiwix.org/.well-known/jwks.json
+      OAUTH_ISSUER: https://ory.login-staging.kiwix.org
+      OAUTH_OIDC_CLIENT_ID: 38302485-7f3d-4e88-b1b3-ec02fb92ec8c
+      OAUTH_OIDC_LOGIN_REQUIRE_2FA: true
+      OAUTH_SESSION_AUDIENCE_ID: 309693e7-ad5e-4379-bf93-ba89314230fd
+      OAUTH_SESSION_LOGIN_REQUIRE_2FA: true
+      CREATE_NEW_OAUTH_ACCOUNT: false
+      AUTH_MODES: local,oauth-session
+      INFORM_CMS: true
+      CMS_USERNAME: admin
+      CMS_PASSWORD: admin_pass
+      CMS_BASE_URL: http://api:80/v1
+      DISABLE_WAREHOUSE_PATH: true
+    depends_on:
+      zimfarm-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    profiles:
+      - zimfarm
+
+  zimfarm-background-tasks:
+    image: ghcr.io/openzim/zimfarm-background-tasks:latest
+    pull_policy: always
+    container_name: zimfarm-background-tasks
+    environment:
+      DEBUG: true
+      JWT_SECRET: DH8kSxcflUVfNRdkEiJJCn2dOOKI3qfw
+      POSTGRES_URI: postgresql+psycopg://zimfarm:zimpass@zimfarm-db:5432/zimfarm
+      ALEMBIC_UPGRADE_HEAD_ON_START: true
+      INFORM_CMS: true
+      ARTIFACTS_UPLOAD_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-artifacts
+      LOGS_UPLOAD_URI: s3+http://minio:9000/?keyId=minio_key&secretAccessKey=minio_secret&bucketName=zimfarm-logs
+      ZIM_UPLOAD_URI: sftp://uploader@zimfarm-receiver:22/zim/
+      ZIMCHECK_OPTION: --all
+      INIT_USERNAME: admin
+      INIT_PASSWORD: admin_pass
+      CMS_NOTIFICATIONS_INTERVAL: 1m
+      CMS_AUTH_MODE: local
+      CMS_BASE_URL: http://api:80/v1
+      CMS_USERNAME: admin
+      CMS_PASSWORD: admin_pass
+      API_ENDPOINT: http://zimfarm-api:80/v2
+    depends_on:
+      zimfarm-api:
+        condition: service_healthy
+    profiles:
+      - zimfarm
+
+  zimfarm-ui:
+    image: ghcr.io/openzim/zimfarm-ui:latest
+    pull_policy: always
+    container_name: zimfarm-ui
+    ports:
+      - 127.0.0.1:37609:80
+    volumes:
+      - ./zimfarm-ui/config.json:/usr/share/nginx/html/config.json:ro
+    depends_on:
+      zimfarm-api:
+        condition: service_healthy
+    profiles:
+      - zimfarm
+
+  zimfarm-worker-manager:
+    image: ghcr.io/openzim/zimfarm-worker-manager:latest
+    pull_policy: always
+    container_name: zimfarm-worker-manager
+    depends_on:
+      zimfarm-api:
+        condition: service_healthy
+    command: worker-manager --webapi-uri 'http://zimfarm-api:80/v2' --name test-worker --name test-worker
+    environment:
+      - DEBUG=true
+      - TASK_WORKER_IMAGE=ghcr.io/openzim/zimfarm-task-worker:latest
+      - ENVIRONMENT=development
+      - ZIMFARM_DISK=20Gb
+      - ZIMFARM_MEMORY=20Gb
+      - ZIMFARM_CPU=3
+      - POLL_INTERVAL=10
+      - OFFLINERS=zimwright
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./contrib/id_ed25519:/etc/ssh/keys/zimfarm
+    profiles:
+      - zimfarm-worker
+
+  zimfarm-receiver:
+    image: ghcr.io/openzim/zimfarm-receiver:latest
+    pull_policy: always
+    container_name: zimfarm-receiver
+    ports:
+      - 127.0.0.1:37610:22
+    volumes:
+      - ./contrib/create-warehouse-paths.sh:/contrib/create-warehouse-paths.sh
+      - ./warehouses/dev-hidden/quarantine:/mnt/quarantine
+      - ./warehouses/dev-hidden/quarantine:/mnt/zim
+    environment:
+      - ZIMFARM_WEBAPI=http://zimfarm-api:80/v2
+    depends_on:
+      zimfarm-worker-manager:
+        condition: service_started
+    profiles:
+      - zimfarm-worker
+
 volumes:
   pg_data_cms:
   minio_data_cms:
+  zimfarm_data_cms:
