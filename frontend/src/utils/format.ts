@@ -1,6 +1,6 @@
 import { filesize } from 'filesize'
 
-import { DateTime } from 'luxon'
+import { DateTime, Duration } from 'luxon'
 
 export function fromNow(value: string) {
   if (!value) return ''
@@ -15,6 +15,28 @@ export function formatDt(value?: string, format: string = 'fff') {
   const dt = DateTime.fromISO(value)
   if (!dt.isValid) return value
   return dt.toFormat(format)
+}
+
+/**
+ * Format a duration in seconds as a human-readable estimate
+ */
+export function formatEta(totalSeconds: number): string {
+  const seconds = Math.round(totalSeconds)
+  if (seconds < 1) return 'less than a minute'
+
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  const duration = Duration.fromObject({
+    ...(days ? { days } : {}),
+    ...(hours ? { hours } : {}),
+    ...(minutes ? { minutes } : {}),
+    ...(secs ? { seconds: secs } : {}),
+  })
+
+  return `~${duration.toHuman({ unitDisplay: 'long', listStyle: 'long' })}`
 }
 
 export function formattedBytesSize(value: number) {
