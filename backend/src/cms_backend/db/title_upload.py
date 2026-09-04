@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import exists, select
@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import CollectionTitle, TitleUpload
-from cms_backend.schemas.models import TaskInfo, TaskInfoFlag, ZimfarmTask
 from cms_backend.schemas.orms import ListResult, TitleUploadLightSchema
 
 
@@ -30,6 +29,7 @@ def create_title_upload(
         s3_key=s3_key,
         requested_by_id=requested_by,
         status="requested",
+        book_id=None,
     )
     session.add(upload)
     session.flush()
@@ -120,6 +120,7 @@ def create_title_upload_schema(
         s3_key=title_upload.s3_key,
         title_id=title_upload.title_id,
         updated_at=title_upload.updated_at,
+        book_id=title_upload.book_id,
     )
 
 
@@ -167,52 +168,4 @@ def get_title_uploads(
                 stmt.offset(skip).limit(limit).order_by(*order_clauses)
             ).all()
         ],
-    )
-
-
-def create_zimfarm_task_info(task: dict[str, Any]) -> TaskInfo:
-    """Transforms a task object(dict) returned by Zimfarm API
-
-    The final object is ready to be consumed by the frontend, with most checks for
-    consistency and complex computation already done.
-    """
-
-    # parse object (dict) as pydantic object
-    zimfarm_task = ZimfarmTask.model_validate(task)
-
-    # transform into object ready to be returned by the BFF
-    return TaskInfo(
-        id=zimfarm_task.id,
-        has_email=bool(
-            zimfarm_task.notification
-            and zimfarm_task.notification.ended
-            and zimfarm_task.notification.ended.webhook
-        ),
-        partial_zim=bool(
-            zimfarm_task.container
-            and zimfarm_task.container.progress
-            and zimfarm_task.container.progress.partial_zim
-        ),
-        status=zimfarm_task.status,
-        flags=(
-            sorted(
-                [
-                    TaskInfoFlag(name=key, value=value)
-                    for (key, value) in zimfarm_task.config.offliner.items()
-                    if key != "offliner_id"
-                ],
-                key=lambda flag: flag.name,
-            )
-        ),
-        progress=(
-            int(zimfarm_task.container.progress.overall)
-            if (
-                zimfarm_task.container
-                and zimfarm_task.container.progress
-                and zimfarm_task.container.progress.overall
-            )
-            else 0
-        ),
-        rank=zimfarm_task.rank,
-        offliner_definition_version=zimfarm_task.version,
     )

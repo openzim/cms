@@ -33,6 +33,17 @@
           />
         </template>
 
+        <template #[`item.book_id`]="{ item }">
+          <router-link
+            v-if="item.book_id"
+            :to="{ name: 'book-detail', params: { id: item.book_id } }"
+            @click.stop
+          >
+            View
+          </router-link>
+          <span v-else>—</span>
+        </template>
+
         <template #[`item.requested_by`]="{ item }">
           <span>{{ item.requested_by || '—' }}</span>
         </template>

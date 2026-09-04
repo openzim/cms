@@ -297,6 +297,7 @@ class TitleUploadLightSchema(BaseModel):
     updated_at: datetime
     s3_key: str = Field(exclude=True)
     recipe_id: UUID = Field(exclude=True)
+    book_id: UUID | None
 
     @computed_field
     @property

@@ -532,6 +532,9 @@ class TitleUpload(Base):
     title_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("title.id", ondelete="SET NULL")
     )
+    book_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("book.id", ondelete="CASCADE")
+    )
     s3_file_deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
     requested_by: Mapped["Account | None"] = relationship(
         init=False, foreign_keys=[requested_by_id]

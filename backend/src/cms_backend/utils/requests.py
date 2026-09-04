@@ -9,8 +9,7 @@ import requests
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.title_upload import create_zimfarm_task_info
-from cms_backend.schemas.models import TaskInfo
+from cms_backend.schemas.models import TaskInfo, TaskInfoFlag, ZimfarmTask
 
 
 @dataclass
@@ -64,6 +63,54 @@ def query_api(
             success=resp.ok if resp else False,
             json={},
         )
+
+
+def create_zimfarm_task_info(task: dict[str, Any]) -> TaskInfo:
+    """Transforms a task object(dict) returned by Zimfarm API
+
+    The final object is ready to be consumed by the frontend, with most checks for
+    consistency and complex computation already done.
+    """
+
+    # parse object (dict) as pydantic object
+    zimfarm_task = ZimfarmTask.model_validate(task)
+
+    # transform into object ready to be returned by the BFF
+    return TaskInfo(
+        id=zimfarm_task.id,
+        has_email=bool(
+            zimfarm_task.notification
+            and zimfarm_task.notification.ended
+            and zimfarm_task.notification.ended.webhook
+        ),
+        partial_zim=bool(
+            zimfarm_task.container
+            and zimfarm_task.container.progress
+            and zimfarm_task.container.progress.partial_zim
+        ),
+        status=zimfarm_task.status,
+        flags=(
+            sorted(
+                [
+                    TaskInfoFlag(name=key, value=value)
+                    for (key, value) in zimfarm_task.config.offliner.items()
+                    if key != "offliner_id"
+                ],
+                key=lambda flag: flag.name,
+            )
+        ),
+        progress=(
+            int(zimfarm_task.container.progress.overall)
+            if (
+                zimfarm_task.container
+                and zimfarm_task.container.progress
+                and zimfarm_task.container.progress.overall
+            )
+            else 0
+        ),
+        rank=zimfarm_task.rank,
+        offliner_definition_version=zimfarm_task.version,
+    )
 
 
 def fetch_task_from_zimfarm(task_id: UUID) -> TaskInfo:

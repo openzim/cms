@@ -99,6 +99,7 @@ def create_title_upload(
         status: str = "requested",
         requested_by_id: UUID | None = None,
         title_id: UUID | None = None,
+        book_id: UUID | None = None,
         created_at: datetime | None = None,
     ) -> TitleUpload:
         upload = TitleUpload(
@@ -111,6 +112,7 @@ def create_title_upload(
             if requested_by_id is not None
             else account.id,
             created_at=created_at if created_at is not None else getnow(),
+            book_id=book_id,
         )
         dbsession.add(upload)
         dbsession.flush()

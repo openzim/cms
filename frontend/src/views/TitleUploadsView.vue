@@ -77,6 +77,7 @@ const paginator = ref({
 
 const headers = [
   { title: 'Upload', key: 'id', sortable: false },
+  { title: 'Book', key: 'book_id', sortable: false },
   { title: 'Requested By', key: 'requested_by', sortable: false },
 ]
 
