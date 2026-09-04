@@ -85,9 +85,10 @@ def get_matching_title(
                     title_id=title_upload.title_id,
                     accessible_collection_ids=accessible_collection_ids,
                 )
+                title_upload.book_id = book.id
                 book.events.append(
-                    f"{getnow()}: found matching title {title.id} from requested "
-                    "task {requested_task.id}"
+                    f"{getnow()}: found matching title {title.id} from title "
+                    f"upload {title_upload.id}"
                 )
                 return title
 

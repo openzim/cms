@@ -5,4 +5,5 @@ export interface TitleUploadLight {
   created_at: string
   updated_at: string
   zimfarm_link?: string | null
+  book_id: string | null
 }
