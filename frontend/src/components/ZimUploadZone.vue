@@ -53,6 +53,11 @@
             {{ uploadProgressPercent }}%
           </v-progress-circular>
           <p class="text-body-1 mt-3 mb-0 text-center">Uploading {{ selectedFile!.name }}</p>
+          <p v-if="uploadSpeedText || uploadEtaText" class="text-body-2 text-grey mt-2 mb-0">
+            <template v-if="uploadSpeedText">{{ uploadSpeedText }}</template>
+            <template v-if="uploadSpeedText && uploadEtaText"> · </template>
+            <template v-if="uploadEtaText">{{ uploadEtaText }}</template>
+          </p>
           <v-btn variant="text" color="warning" size="small" class="mt-2" @click.stop="handlePause">
             <v-icon class="mr-1">mdi-pause</v-icon>
             Pause
@@ -132,7 +137,7 @@ import axios from 'axios'
 import { useTitleStore } from '@/stores/title'
 import { useNotificationStore } from '@/stores/notification'
 import { S3MultipartUpload } from '@/utils/s3'
-import { formattedBytesSize } from '@/utils/format'
+import { formattedBytesSize, formatEta } from '@/utils/format'
 import type { UploadProgress } from '@/types/s3'
 
 interface Props {
@@ -160,6 +165,10 @@ const errorMessage = ref('')
 
 const uploadInstance = ref<S3MultipartUpload | null>(null)
 const completedParts = ref(0)
+
+const uploadSpeedBps = ref(0)
+const uploadEtaSeconds = ref(0)
+let currentPartStartedAt = 0
 const totalParts = computed(() => {
   if (!selectedFile.value) return 0
   return Math.ceil(selectedFile.value.size / PART_SIZE)
@@ -172,6 +181,16 @@ const canUpload = computed(() => {
 const uploadProgressPercent = computed(() => {
   if (totalParts.value === 0) return 0
   return Math.round((completedParts.value / totalParts.value) * 100)
+})
+
+const uploadSpeedText = computed(() => {
+  if (uploadSpeedBps.value <= 0) return ''
+  return `${formattedBytesSize(uploadSpeedBps.value)}/s`
+})
+
+const uploadEtaText = computed(() => {
+  if (uploadEtaSeconds.value <= 0) return ''
+  return formatEta(uploadEtaSeconds.value)
 })
 
 function selectFile(file: File): boolean {
@@ -217,6 +236,9 @@ async function handleStartUpload() {
 
   state.value = 'uploading'
   errorMessage.value = ''
+  uploadSpeedBps.value = 0
+  uploadEtaSeconds.value = 0
+  currentPartStartedAt = 0
 
   try {
     if (!uploadInstance.value) {
@@ -236,6 +258,26 @@ async function handleStartUpload() {
 
     await uploadInstance.value.uploadAll((progress: UploadProgress) => {
       completedParts.value = progress.completed
+
+      if (progress.status === 'started') {
+        currentPartStartedAt = performance.now()
+      }
+
+      if (progress.status === 'completed') {
+        const chunkStart = (progress.partNumber - 1) * PART_SIZE
+        const chunkEnd = Math.min(chunkStart + PART_SIZE, selectedFile.value!.size)
+        const chunkBytes = chunkEnd - chunkStart
+
+        if (currentPartStartedAt > 0) {
+          const elapsedMs = performance.now() - currentPartStartedAt
+          const speedBps = (chunkBytes / elapsedMs) * 1000
+          if (Number.isFinite(speedBps) && speedBps > 0) {
+            uploadSpeedBps.value = speedBps
+            const remainingBytes = selectedFile.value!.size - chunkEnd
+            uploadEtaSeconds.value = remainingBytes / speedBps
+          }
+        }
+      }
     })
 
     state.value = 'completing'
@@ -300,6 +342,9 @@ function handleReset() {
   uploadInstance.value = null
   selectedFile.value = null
   completedParts.value = 0
+  uploadSpeedBps.value = 0
+  uploadEtaSeconds.value = 0
+  currentPartStartedAt = 0
   errorMessage.value = ''
   state.value = 'idle'
 }
