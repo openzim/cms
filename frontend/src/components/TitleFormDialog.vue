@@ -53,7 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  created: []
+  created: [titleId: string]
   updated: [updatedTitle: { id: string; name: string }]
 }>()
 
@@ -83,9 +83,9 @@ async function handleSubmit() {
       notificationStore.showErrors(titleStore.errors)
       return
     }
-    emit('created')
-    titleFormRef.value.resetForm()
     isOpen.value = false
+    titleFormRef.value.resetForm()
+    emit('created', response.id)
   } catch (err) {
     notificationStore.showError('Failed to create title')
     console.error(`Failed to create title`, err)
