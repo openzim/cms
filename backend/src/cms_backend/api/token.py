@@ -26,6 +26,28 @@ class JWTClaims(BaseModel):
     name: str | None = Field(exclude=True, default=None)
 
 
+def oauth_token_is_from_human(decoded_token: dict[str, Any]) -> bool:
+    # detect if token is coming from a human or from a machine
+
+    # session JWT from humans have no "client_id" claim
+    # OIDC JWT from humans have "openid" in their "scp" claim
+    is_human = not decoded_token.get("client_id") or "openid" in decoded_token.get(
+        "scp", []
+    )
+
+    # check machine requirements are met (sub == client_id)
+    if not is_human:
+        sub = decoded_token.get("sub")
+        client_id = decoded_token.get("client_id")
+        if not client_id:
+            raise ValueError("Oauth client ID should not be empty for a machine.")
+        if client_id != sub:
+            raise ValueError(
+                "Oauth client ID does not match sub, while it should for a machine."
+            )
+    return is_human
+
+
 class TokenDecoder(abc.ABC):
     """Abstract base class for token decoders."""
 
@@ -92,8 +114,8 @@ class LocalTokenDecoder(TokenDecoder):
         return True
 
 
-class OAuthTokenDecoder(TokenDecoder):
-    """Decoder for OAuth JWT tokens."""
+class OAuthSessionTokenDecoder(TokenDecoder):
+    """Decoder for OAuth Session JWT tokens."""
 
     def __init__(self):
         """Initialize OAuth token decoder."""
@@ -113,21 +135,15 @@ class OAuthTokenDecoder(TokenDecoder):
             signing_key.key,
             algorithms=[signing_key.algorithm_name],
             issuer=ApiContext.oauth_issuer,
-            audience=ApiContext.oauth_session_audience_id,
+            audience=ApiContext.oauth_session_audience,
             options={
                 "require": ["exp", "iat", "iss", "sub", "aud"],
             },
         )
 
+        # Check for 2FA requirement for human accounts.
         if (
-            client_id := decoded_token.get("client_id")
-        ) and client_id != decoded_token.get("sub"):
-            raise ValueError("Oauth client ID does not match.")
-
-        # Check for 2FA requirement only if client_id is not present in the token
-        # as those come from oauth2 clients and not real accounts
-        if (
-            not decoded_token.get("client_id")
+            oauth_token_is_from_human(decoded_token)
             and ApiContext.oauth_session_login_require_2fa
             and decoded_token.get("aal") != "aal2"
         ):
@@ -140,10 +156,10 @@ class OAuthTokenDecoder(TokenDecoder):
 
     @property
     def name(self) -> str:
-        return "oauth"
+        return "oauth-session"
 
     def can_decode(self, token: str) -> bool:
-        if "oauth" not in ApiContext.auth_modes:
+        if "oauth-session" not in ApiContext.auth_modes:
             return False
         try:
             payload = jwt.decode(
@@ -160,9 +176,83 @@ class OAuthTokenDecoder(TokenDecoder):
 
         if (
             payload.get("iss") != ApiContext.oauth_issuer
-            or ApiContext.oauth_session_audience_id not in payload.get("aud", [])
+            or ApiContext.oauth_session_audience not in payload.get("aud", [])
         ):
             return False
+        return True
+
+
+class OAuthOIDCTokenDecoder(TokenDecoder):
+    """Decoder for OAuth OIDC JWT tokens."""
+
+    def __init__(self):
+        """Initialize OAuth token decoder."""
+        self._jwks_client = PyJWKClient(
+            ApiContext.oauth_jwks_uri,
+            cache_keys=True,
+            headers={"User-Agent": "PyJWT/2.11.0"},
+        )
+
+    def decode(
+        self,
+        token: str,
+    ) -> JWTClaims:
+        """
+        Decode and validate an OAuth OIDC token.
+        """
+        signing_key = self._jwks_client.get_signing_key_from_jwt(token)
+        decoded_token = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=[signing_key.algorithm_name],
+            issuer=ApiContext.oauth_issuer,
+            audience=ApiContext.oauth_oidc_audience,
+            options={
+                "require": ["exp", "iat", "iss", "sub", "aud"],
+            },
+        )
+
+        # Check for 2FA requirement for human accounts.
+        if (
+            oauth_token_is_from_human(decoded_token)
+            and ApiContext.oauth_oidc_login_require_2fa
+            and decoded_token.get("ext", {}).get("kiwix-aal") != "aal2"
+        ):
+            raise ValueError(
+                "2FA authentication is mandatory on CMS but it looks like you only "
+                "have one setup on Ory. Please, configure a second one on Ory at "
+                f"{ApiContext.oauth_issuer}/settings"
+            )
+        claims = JWTClaims.model_validate(decoded_token)
+        claims.name = decoded_token.get("ext", {}).get("kiwix-name")
+        return claims
+
+    @property
+    def name(self) -> str:
+        return "oauth-oidc"
+
+    def can_decode(self, token: str) -> bool:
+        if "oauth-oidc" not in ApiContext.auth_modes:
+            return False
+        try:
+            payload = jwt.decode(
+                token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": False,
+                    "verify_aud": False,
+                    "verify_iss": False,
+                },
+            )
+        except Exception:
+            return False
+
+        if (
+            payload.get("iss") != ApiContext.oauth_issuer
+            or ApiContext.oauth_oidc_audience not in payload.get("aud", [])
+        ):
+            return False
+
         return True
 
 
@@ -216,7 +306,8 @@ class TokenDecoderChain:
 
 token_decoder = TokenDecoderChain(
     decoders=[
-        OAuthTokenDecoder(),
+        OAuthOIDCTokenDecoder(),
+        OAuthSessionTokenDecoder(),
         LocalTokenDecoder(),
     ]
 )

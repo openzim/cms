@@ -10,8 +10,11 @@ export interface Config {
   MATOMO_HOST: string
   MATOMO_SITE_ID: number
   MATOMO_TRACKER_FILE_NAME: string
+  OAUTH_AUDIENCE: string
+  OAUTH_CLIENT_ID: string
   OAUTH_BASE_URL: string
   LOGIN_MODES: Array<string>
+  OAUTH_MODE: 'oidc' | 'session'
   MEDIA_COUNT_INCREASE_THRESHOLD: number | undefined
   MEDIA_COUNT_DECREASE_THRESHOLD: number | undefined
   ARTICLE_COUNT_INCREASE_THRESHOLD: number | undefined

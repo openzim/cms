@@ -1,0 +1,9 @@
+{
+  "CMS_API": "http://localhost:37601/v1",
+  "ZIMFARM_API": "http://localhost:37608/v2",
+  "LOGIN_MODES": ["oauth"],
+  "OAUTH_MODE": "oidc",
+  "OAUTH_BASE_URL": "https://ory.login-staging.kiwix.org",
+  "OAUTH_CLIENT_ID": "1fec40e6-df3b-4633-9545-7a41612cb0d0",
+  "OAUTH_AUDIENCE": "c688aac9-df70-400b-9c1c-a08d6ae3d287"
+}

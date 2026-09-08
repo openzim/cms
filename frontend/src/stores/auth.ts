@@ -8,6 +8,7 @@ import { inject, ref, computed } from 'vue'
 import type { StoredToken, AuthProviderType } from '@/types/auth'
 import { getOAuthConfig } from '@/services/auth/base'
 import { OAuthSessionProvider } from '@/services/auth/OAuthSessionProvider'
+import { OAuthOIDCProvider } from '@/services/auth/OAuthOIDCProvider'
 import { LocalAuthProvider } from '@/services/auth/LocalAuthProvider'
 import type { AuthProvider } from '@/services/auth/base'
 import type { User } from '@/types/user'
@@ -25,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Zimfarm and CMS ouath needs only one class as we can auth with the same token across
   // both APIs but we need two local auth providers as they have differen tokens
-  let oauthProvider: OAuthSessionProvider | null = null
+  let oauthProvider: OAuthSessionProvider | OAuthOIDCProvider | null = null
   let localauthProvider: LocalAuthProvider | null = null
   let zimfarmLocalAuthProvider: LocalAuthProvider | null = null
 
@@ -34,8 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
     zimfarmLocalAuthProvider = new LocalAuthProvider(config.ZIMFARM_API, 'zimfarm-auth')
   }
 
-  if (config.LOGIN_MODES.includes('oauth'))
-    oauthProvider = new OAuthSessionProvider(getOAuthConfig(config), config.CMS_API)
+  if (config.LOGIN_MODES.includes('oauth')) {
+    if (config.OAUTH_MODE == 'oidc') {
+      oauthProvider = new OAuthOIDCProvider(getOAuthConfig(config), config.CMS_API)
+    } else if (config.OAUTH_MODE == 'session') {
+      oauthProvider = new OAuthSessionProvider(getOAuthConfig(config), config.CMS_API)
+    }
+  }
 
   const getAuthProvider = (providerType: AuthProviderType): AuthProvider => {
     switch (providerType) {
@@ -84,6 +90,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const username = computed(() => {
     return user.value?.username || null
+  })
+
+  const displayName = computed(() => {
+    return user.value?.display_name || ''
   })
 
   const accessToken = computed(() => {
@@ -376,7 +386,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (token.value?.token_type) {
       try {
         const provider = getAuthProvider(token.value?.token_type)
-        await provider.logout()
+        await provider.logout(token.value?.access_token)
         const zimfarmProvider = getZimfarmAuthProvider(token.value?.token_type)
         await zimfarmProvider.logout()
         provider.clearUser()
@@ -455,6 +465,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Computed
     isLoggedIn,
     username,
+    displayName,
     accessToken,
     refreshToken,
     tokenExpiryDate,

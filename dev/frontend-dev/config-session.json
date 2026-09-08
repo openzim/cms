@@ -1,0 +1,7 @@
+{
+  "CMS_API": "http://localhost:37601/v1",
+  "ZIMFARM_API": "http://localhost:37608/v2",
+  "LOGIN_MODES": ["oauth"],
+  "OAUTH_MODE": "session",
+  "OAUTH_BASE_URL": "https://ory.login-staging.kiwix.org"
+}

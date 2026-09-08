@@ -16,7 +16,7 @@
           size="small"
           prepend-icon="mdi-account-circle"
         >
-          {{ username }}
+          {{ displayName }}
         </v-btn>
       </template>
 
@@ -70,7 +70,7 @@ defineOptions({
 })
 
 const props = defineProps<{
-  username: string | null
+  displayName: string
   isLoggedIn: boolean
   accessToken: string | null
   tokenType: AuthProviderType | null

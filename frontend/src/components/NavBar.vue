@@ -45,7 +45,7 @@
     <!-- User Button -->
     <div class="user-button-container">
       <UserButton
-        :username="username"
+        :display-name="displayName"
         :is-logged-in="isLoggedIn"
         :access-token="accessToken"
         :token-type="tokenType"
@@ -100,7 +100,7 @@ export interface NavigationItem {
 
 const props = defineProps<{
   navigationItems: NavigationItem[]
-  username: string | null
+  displayName: string
   isLoggedIn: boolean
   accessToken: string | null
   isLoading: boolean

@@ -69,8 +69,8 @@ const navigationItems = computed<NavigationItem[]>(() => [
   },
 ])
 
-const handleSignOut = () => {
-  authStore.logout()
+const handleSignOut = async () => {
+  await authStore.logout()
   router.push({ name: 'home' })
 }
 </script>
@@ -81,7 +81,7 @@ const handleSignOut = () => {
     <header>
       <NavBar
         :navigation-items="navigationItems"
-        :username="authStore.username"
+        :display-name="authStore.displayName"
         :is-logged-in="authStore.isLoggedIn"
         :access-token="authStore.accessToken"
         :is-loading="loadingStore.isLoading"
