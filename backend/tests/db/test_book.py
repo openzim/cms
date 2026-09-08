@@ -1004,7 +1004,7 @@ def test_book_has_bad_metadata(
     issues = get_book_metadata_issues(book)
     assert bool(issues) is expected
     if expected:
-        assert any(re.search(event_regex, issue) for issue in issues)
+        assert any(re.search(event_regex, issue.message) for issue in issues)
 
 
 @pytest.mark.parametrize(

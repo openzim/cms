@@ -93,7 +93,7 @@ def _get_unknown_languages_action(book: Book) -> BookPromotionAction | None:
             data={},
             message=(
                 "Book has unknown language code(s): "
-                f"{','.join(unknown_languages)}. "
+                f"{','.join([language.code for language in unknown_languages])}. "
                 "Please contact a CMS admin if code(s) look legit to you."
             ),
         )
@@ -116,31 +116,33 @@ def _get_zimcheck_issues_action(book: Book) -> BookPromotionAction | None:
             kind="zimcheck_issues",
             requirement="information",
             data={},
-            message=";".join(zimcheck_errors),
+            message=";".join([error.message for error in zimcheck_errors]),
         )
 
 
-def _get_media_count_issues_action(book: Book, latest_book: Book):
-    media_count_issues = get_book_media_count_issues(book=book, latest_book=latest_book)
+def _get_media_count_issues_action(book: Book, previous_book: Book):
+    media_count_issues = get_book_media_count_issues(
+        book=book, previous_book=previous_book
+    )
     if media_count_issues:
         return BookPromotionAction(
             kind="media_count",
             requirement="information",
             data={},
-            message=";".join(media_count_issues),
+            message=";".join([issue.message for issue in media_count_issues]),
         )
 
 
-def _get_article_count_issues_action(book: Book, latest_book: Book):
+def _get_article_count_issues_action(book: Book, previous_book: Book):
     article_count_issues = get_book_article_count_issues(
-        book=book, latest_book=latest_book
+        book=book, previous_book=previous_book
     )
     if article_count_issues:
         return BookPromotionAction(
             kind="article_count",
             requirement="information",
             data={},
-            message=";".join(article_count_issues),
+            message=";".join([issue.message for issue in article_count_issues]),
         )
 
 
@@ -293,11 +295,11 @@ def get_book_promotion_actions(
     if action := _get_zimcheck_issues_action(book):
         actions.append(action)
 
-    latest_book = get_latest_prod_book(session, book)
-    if action := _get_media_count_issues_action(book, latest_book):
+    previous_book = get_latest_prod_book(session, book)
+    if action := _get_media_count_issues_action(book, previous_book):
         actions.append(action)
 
-    if action := _get_article_count_issues_action(book, latest_book):
+    if action := _get_article_count_issues_action(book, previous_book):
         actions.append(action)
 
     if action := _get_create_title_action(book):

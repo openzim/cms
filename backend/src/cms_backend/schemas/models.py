@@ -2,11 +2,12 @@ import datetime
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self, TypeVar
 from uuid import UUID
 
-from pydantic import AfterValidator, AnyUrl, Field, model_validator
+from pydantic import AfterValidator, AnyUrl, Field, computed_field, model_validator
 
+from cms_backend import construct_recipe_api_link, construct_recipe_link
 from cms_backend.context import Context
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
@@ -275,3 +276,82 @@ class TaskInfo(BaseModel):
     progress: int | None
     rank: int | None
     offliner_definition_version: str
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class BookIssue[T](BaseModel):
+    issues: list[T]
+
+
+class InvalidLanguageCode(BaseModel):
+    code: str
+
+
+class MetadataMismatch(BaseModel):
+    name: str
+    book_value: str | None
+    title_value: str | None
+
+
+class FlavourMismatch(BaseModel):
+    book_flavour: str
+    title_flavours: list[str]
+
+
+class RecipeMismatch(BaseModel):
+    book_recipe_id: UUID | None
+    flavour_recipe_id: UUID | None
+
+    @computed_field
+    @property
+    def book_recipe_api_link(self) -> str | None:
+        return construct_recipe_api_link(self.book_recipe_id)
+
+    @computed_field
+    @property
+    def book_recipe_link(self) -> str | None:
+        return construct_recipe_link(self.book_recipe_id)
+
+    @computed_field
+    @property
+    def flavour_recipe_api_link(self) -> str | None:
+        return construct_recipe_api_link(self.flavour_recipe_id)
+
+    @computed_field
+    @property
+    def flavour_recipe_link(self) -> str | None:
+        return construct_recipe_link(self.flavour_recipe_id)
+
+
+class BadMetadata(BaseModel):
+    message: str
+
+
+class EntryCountIssue(BaseModel):
+    previous_book_id: UUID
+    current_book_id: UUID
+    alert_threshold: float
+    previous_book_count: int
+    current_book_count: int
+    change_ratio: float
+
+    @computed_field
+    @property
+    def message(self) -> str:
+        direction = (
+            "increases over"
+            if self.current_book_count > self.previous_book_count
+            else "decreases from"
+        )
+        return (
+            f"book media count ({self.current_book_count}) {direction} previous book "
+            f"(id={self.previous_book_id}) media count ({self.previous_book_count}) "
+            f"by {self.change_ratio * 100}%; "
+            f"alert threshold={self.alert_threshold * 100}%"
+        )
+
+
+class ZimcheckIssue(BaseModel):
+    message: str

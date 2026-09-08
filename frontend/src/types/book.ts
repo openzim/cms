@@ -18,6 +18,16 @@ export type BookPromotionActionKind =
 
 export type BookPromotionRequirement = 'mandatory' | 'optional' | 'information'
 
+export type KnownIssueKey =
+  | 'invalid language code'
+  | 'metadata mismatch'
+  | 'flavour mismatch'
+  | 'recipe issue'
+  | 'article count'
+  | 'media count'
+  | 'zimcheck error'
+  | 'bad metadata'
+
 export interface Producer {
   display_name: string
   display_url: string
@@ -113,4 +123,64 @@ export interface BasePromoteBook {
 
 export interface PromoteBook {
   actions: BookPromotionAction[]
+}
+
+export interface BookIssue<T> {
+  issues: T[]
+}
+
+export interface InvalidLanguageCode {
+  code: string
+}
+
+export interface MetadaMismatch {
+  name: string
+  book_value: string | null
+  title_value: string | null
+}
+
+export interface FlavourMismatch {
+  book_flavour: string
+  title_flavours: string[]
+}
+
+export interface RecipeMismatch {
+  book_recipe_id: string | null
+  flavour_recipe_id: string | null
+  book_recipe_api_link: string | null
+  book_recipe_link: string | null
+  flavour_recipe_api_link: string | null
+  flavour_recipe_link: string | null
+}
+
+export interface BadMetadata {
+  message: string
+}
+
+export interface EntryCountIssue {
+  previous_book_id: string
+  current_book_id: string
+  alert_threshold: number
+  previous_book_count: number
+  current_book_count: number
+  change_ratio: number
+  message: string
+}
+
+export interface ZimcheckIssue {
+  message: string
+}
+
+export type KnownIssues =
+  | InvalidLanguageCode
+  | MetadaMismatch
+  | FlavourMismatch
+  | BadMetadata
+  | RecipeMismatch
+  | EntryCountIssue
+  | ZimcheckIssue
+
+export interface BookIssueResponse {
+  previous_book_id: string | null
+  issues: Record<KnownIssueKey, BookIssue<KnownIssues>>
 }
