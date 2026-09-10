@@ -1,7 +1,7 @@
 import datetime
 import re
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 from uuid import UUID
 
 import pycountry
@@ -29,8 +29,16 @@ from cms_backend.db.rules import (
 )
 from cms_backend.schemas.models import (
     ZIM_TITLE_NAME_REGEX,
+    BadMetadata,
+    BookIssue,
     BookUpdateSchema,
+    EntryCountIssue,
     FileLocation,
+    FlavourMismatch,
+    InvalidLanguageCode,
+    MetadataMismatch,
+    RecipeMismatch,
+    ZimcheckIssue,
 )
 from cms_backend.schemas.orms import (
     BookFullSchema,
@@ -478,31 +486,34 @@ def recover_book(
     return book
 
 
-def get_differing_metadata_keys(book: Book) -> list[str]:
-    """Get the list of metadata keys that are different between book and it's title.
+MetadataKey = Literal[
+    "Name",
+    "Title",
+    "Creator",
+    "Publisher",
+    "Description",
+    "Language",
+    "Illustration_48x48@1",
+    "LongDescription",
+    "License",
+    "Relation",
+    "Source",
+]
 
-    Assumes book has mandatory metadata set.
-    Assumes that the book name and title name already match, thus aren't checked.
-    """
+
+def get_book_metadata(book: Book, key: MetadataKey) -> str | None:
+    """Get the value of a metadata in book"""
+    if key == "Name":
+        return book.name
+    return book.zim_metadata.get(key)
+
+
+def get_book_title_metadata(book: Book, key: MetadataKey) -> str | None:
 
     if book.title is None:
         raise ValueError("Book has no associated title.")
 
-    book_metadata = {
-        "Name": book.name,
-        "Title": book.zim_metadata["Title"],
-        "Creator": book.zim_metadata["Creator"],
-        "Publisher": book.zim_metadata["Publisher"],
-        "Description": book.zim_metadata["Description"],
-        "Language": book.zim_metadata["Language"],
-        "Illustration_48x48@1": book.zim_metadata["Illustration_48x48@1"],
-        "LongDescription": book.zim_metadata.get("LongDescription"),
-        "License": book.zim_metadata.get("License"),
-        "Relation": book.zim_metadata.get("Relation"),
-        "Source": book.zim_metadata.get("Source"),
-    }
-
-    title_metadata = {
+    title_metadata: dict[MetadataKey, str | None] = {
         "Name": book.title.name,
         "Title": book.title.title,
         "Creator": book.title.creator,
@@ -515,8 +526,24 @@ def get_differing_metadata_keys(book: Book) -> list[str]:
         "Relation": book.title.relation,
         "Source": book.title.source,
     }
+    return title_metadata[key]
 
-    return [key for key in book_metadata if book_metadata[key] != title_metadata[key]]
+
+def get_differing_metadata_keys(book: Book) -> list[MetadataKey]:
+    """Get the list of metadata keys that are different between book and it's title.
+
+    Assumes book has mandatory metadata set.
+    Assumes that the book name and title name already match, thus aren't checked.
+    """
+
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    return [
+        key
+        for key in get_args(MetadataKey)
+        if get_book_metadata(book, key) != get_book_title_metadata(book, key)
+    ]
 
 
 def create_book_history_entry(
@@ -676,41 +703,56 @@ def revert_book(
     return book
 
 
-def get_book_metadata_issues(book: Book) -> list[str]:
-    issues: list[str] = []
+def get_book_metadata_issues(book: Book) -> list[BadMetadata]:
+    issues: list[BadMetadata] = []
     name = book.zim_metadata["Name"]
 
     if not re.match(ZIM_TITLE_NAME_REGEX, name):
-        issues.append(f"book Name metadata ({name}) does not meet naming conventions")
+        issues.append(
+            BadMetadata(
+                message=f"book Name metadata ({name}) does not meet naming conventions"
+            )
+        )
 
     title_length = len(regex.findall(r"\X", book.zim_metadata["Title"]))
 
     if title_length > Context.zim_title_max_length:
         issues.append(
-            f"book Title metadata is {title_length} characters long, "
-            f"maximum length: {Context.zim_title_max_length}"
+            BadMetadata(
+                message=f"book Title metadata is {title_length} characters long, "
+                f"maximum length: {Context.zim_title_max_length}"
+            )
         )
 
     description_length = len(regex.findall(r"\X", book.zim_metadata["Description"]))
     if description_length > Context.zim_description_max_length:
         issues.append(
-            f"book Description metadata is {description_length} characters long, "
-            f"maximum length: {Context.zim_description_max_length}"
+            BadMetadata(
+                message=f"book Description metadata is {description_length} characters "
+                f"long, maximum length: {Context.zim_description_max_length}"
+            )
         )
     flavour = book.zim_metadata.get("Flavour")
     if flavour and not flavour.isalpha():
         issues.append(
-            f"book Flavour metadata ({flavour}) contains non-alphabetic characters"
+            BadMetadata(
+                message=(
+                    f"book Flavour metadata ({flavour}) contains non-alphabetic "
+                    "characters"
+                )
+            )
         )
 
     return issues
 
 
-def get_book_article_count_issues(*, book: Book, latest_book: Book) -> list[str]:
+def get_book_article_count_issues(
+    *, book: Book, previous_book: Book
+) -> list[EntryCountIssue]:
 
-    if book.article_count == latest_book.article_count:
+    if book.article_count == previous_book.article_count:
         return []
-    elif book.article_count > latest_book.article_count:
+    elif book.article_count > previous_book.article_count:
         collection_article_count_change_threshold = min(
             [
                 Context.article_count_increase_threshold
@@ -733,32 +775,34 @@ def get_book_article_count_issues(*, book: Book, latest_book: Book) -> list[str]
 
     try:
         article_count_diff = (
-            abs(book.article_count - latest_book.article_count)
-        ) / latest_book.article_count
+            abs(book.article_count - previous_book.article_count)
+        ) / previous_book.article_count
     except ZeroDivisionError:
-        # At this point, latest book had an article count of zero whereas book does not
+        # At this point, previous book had an article count of zero whereas book
+        # does not
         article_count_diff = 1.0
 
     if article_count_diff > collection_article_count_change_threshold:
-        direction = (
-            "increases over"
-            if book.article_count > latest_book.article_count
-            else "decreases from"
-        )
         return [
-            f"book article count ({book.article_count}) {direction} latest book "
-            f"(id={latest_book.id}) article count ({latest_book.article_count}) "
-            f"by {article_count_diff * 100}%; "
-            f"alert threshold={collection_article_count_change_threshold * 100}%"
+            EntryCountIssue(
+                previous_book_id=previous_book.id,
+                current_book_id=book.id,
+                alert_threshold=collection_article_count_change_threshold,
+                previous_book_count=previous_book.article_count,
+                current_book_count=book.article_count,
+                change_ratio=article_count_diff,
+            )
         ]
     return []
 
 
-def get_book_media_count_issues(*, book: Book, latest_book: Book) -> list[str]:
+def get_book_media_count_issues(
+    *, book: Book, previous_book: Book
+) -> list[EntryCountIssue]:
 
-    if book.media_count == latest_book.media_count:
+    if book.media_count == previous_book.media_count:
         return []
-    elif book.media_count > latest_book.media_count:
+    elif book.media_count > previous_book.media_count:
         collection_media_count_change_threshold = min(
             [
                 Context.media_count_increase_threshold
@@ -781,33 +825,32 @@ def get_book_media_count_issues(*, book: Book, latest_book: Book) -> list[str]:
 
     try:
         media_count_diff = (
-            abs(book.media_count - latest_book.media_count)
-        ) / latest_book.media_count
+            abs(book.media_count - previous_book.media_count)
+        ) / previous_book.media_count
     except ZeroDivisionError:
-        # At this point, latest book had a media count of zero whereas book does not
+        # At this point, previous book had a media count of zero whereas book does not
         media_count_diff = 1.0
 
     if media_count_diff > collection_media_count_change_threshold:
-        direction = (
-            "increases over"
-            if book.media_count > latest_book.media_count
-            else "decreases from"
-        )
         return [
-            f"book media count ({book.media_count}) {direction} latest book "
-            f"(id={latest_book.id}) media count ({latest_book.media_count}) "
-            f"by {media_count_diff * 100}%; "
-            f"alert threshold={collection_media_count_change_threshold * 100}%"
+            EntryCountIssue(
+                previous_book_id=previous_book.id,
+                current_book_id=book.id,
+                alert_threshold=collection_media_count_change_threshold,
+                previous_book_count=previous_book.media_count,
+                current_book_count=book.media_count,
+                change_ratio=media_count_diff,
+            )
         ]
     return []
 
 
-def get_book_unsupported_languages(book: Book) -> list[str]:
+def get_book_unsupported_languages(book: Book) -> list[InvalidLanguageCode]:
 
-    unknown_languages: list[str] = []
+    unknown_languages: list[InvalidLanguageCode] = []
     for language_code in book.zim_metadata["Language"].split(","):
         if pycountry.languages.get(alpha_3=language_code) is None:  # pyright: ignore[reportUnknownMemberType]
-            unknown_languages.append(language_code)
+            unknown_languages.append(InvalidLanguageCode(code=language_code))
     return unknown_languages
 
 
@@ -831,9 +874,20 @@ def get_latest_prod_book(session: OrmSession, book: Book):
     return latest_book
 
 
+KnownIssues = (
+    BookIssue[InvalidLanguageCode]
+    | BookIssue[MetadataMismatch]
+    | BookIssue[FlavourMismatch]
+    | BookIssue[RecipeMismatch]
+    | BookIssue[BadMetadata]
+    | BookIssue[ZimcheckIssue]
+    | BookIssue[EntryCountIssue]
+)
+
+
 def get_book_issues(
     session: OrmSession, book: Book, *, raise_exceptions: bool = False
-) -> dict[str, list[str]]:
+) -> dict[str, KnownIssues]:
     """
     Compute book issues based on it's associated title
 
@@ -841,56 +895,72 @@ def get_book_issues(
     """
     if book.title is None:
         raise ValueError("Book must have a title in order to compute issues")
-    issues: dict[str, list[str]] = {}
+    issues: dict[str, KnownIssues] = {}
     unknown_languages = get_book_unsupported_languages(book)
     if unknown_languages:
-        issues["invalid language code"] = [
-            f"book has unknown language code(s) {','.join(unknown_languages)}"
-        ]
+        issues["invalid language code"] = BookIssue[InvalidLanguageCode](
+            issues=unknown_languages
+        )
 
     different_metadata_keys = get_differing_metadata_keys(book)
     if different_metadata_keys:
-        issues["metadata mismatch"] = [
-            "book metadata is different from title metadata: "
-            f"{','.join(different_metadata_keys)}"
-        ]
+        issues["metadata mismatch"] = BookIssue[MetadataMismatch](
+            issues=[
+                MetadataMismatch(
+                    name=key,
+                    book_value=get_book_metadata(book, key),
+                    title_value=get_book_title_metadata(book, key),
+                )
+                for key in different_metadata_keys
+            ]
+        )
 
     if book_has_flavour_mismatch(book):
         title_flavours = [tf.flavour for tf in book.title.flavours]
-        issues["flavour mismatch"] = [
-            f"book flavour {book.flavour} is not in list of "
-            f"title flavours: {','.join(title_flavours)}"
-        ]
+        issues["flavour mismatch"] = BookIssue[FlavourMismatch](
+            issues=[
+                FlavourMismatch(
+                    book_flavour=book.flavour, title_flavours=title_flavours
+                )
+            ]
+        )
 
     if book.zimfarm_notification and book_has_recipe_issue(book):
         matching_flavour = next(
             (tf for tf in book.title.flavours if tf.flavour == book.flavour), None
         )
         if matching_flavour:
-            issues["recipe issue"] = [
-                f"book recipe {book.recipe_id} is different from title flavour recipe "
-                f"{matching_flavour.recipe_id}"
-            ]
-
+            issues["recipe issue"] = BookIssue[RecipeMismatch](
+                issues=[
+                    RecipeMismatch(
+                        book_recipe_id=book.recipe_id,
+                        flavour_recipe_id=matching_flavour.recipe_id,
+                    )
+                ]
+            )
     metadata_issues = get_book_metadata_issues(book)
     if metadata_issues:
-        issues["bad metadata"] = metadata_issues
+        issues["bad metadata"] = BookIssue[BadMetadata](issues=metadata_issues)
 
-    latest_book = get_latest_prod_book(session, book)
+    previous_book = get_latest_prod_book(session, book)
 
     article_count_issues = get_book_article_count_issues(
-        book=book, latest_book=latest_book
+        book=book, previous_book=previous_book
     )
     if article_count_issues:
-        issues["article count"] = article_count_issues
+        issues["article count"] = BookIssue[EntryCountIssue](
+            issues=article_count_issues
+        )
 
-    media_count_issues = get_book_media_count_issues(book=book, latest_book=latest_book)
+    media_count_issues = get_book_media_count_issues(
+        book=book, previous_book=previous_book
+    )
     if media_count_issues:
-        issues["media count"] = media_count_issues
+        issues["media count"] = BookIssue[EntryCountIssue](issues=media_count_issues)
 
     zimcheck_errors = get_zimcheck_errors(book, raise_exceptions=raise_exceptions)
     if zimcheck_errors:
-        issues["zimcheck error"] = zimcheck_errors
+        issues["zimcheck error"] = BookIssue[ZimcheckIssue](issues=zimcheck_errors)
 
     return issues
 
@@ -929,7 +999,7 @@ def update_book_issues(
     *,
     update_events: bool = False,
     raise_exceptions: bool = False,
-) -> dict[str, list[str]]:
+) -> dict[str, KnownIssues]:
     """
     Update book issues based on it's associated title and optionally update book events.
 
@@ -955,12 +1025,14 @@ def update_book_issues(
     return issues
 
 
-def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[str]:
+def get_zimcheck_errors(
+    book: Book, *, raise_exceptions: bool = False
+) -> list[ZimcheckIssue]:
     """Run checks for zimcheck quality if scraper is not whitelisted.
 
     If book is missing zimcheck summary, results will be downloaded from URL and set.
     """
-    issues: list[str] = []
+    issues: list[ZimcheckIssue] = []
     # Determine whether we need to fetch zimcheck results or not
     missing_summary_keys = get_missing_keys(
         book.zimcheck_summary,
@@ -974,7 +1046,7 @@ def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[s
     zimcheck_summary: ZimcheckSummarySchema
     if missing_summary_keys:
         if not book.zimcheck_result_url:
-            issues.append("book has no zimcheck url")
+            issues.append(ZimcheckIssue(message="book has no zimcheck url"))
             return issues
 
         zimcheck_response = query_api(book.zimcheck_result_url)
@@ -983,7 +1055,12 @@ def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[s
             book.zimcheck_summary = zimcheck_summary.model_dump(mode="json")
         else:
             issues.append(
-                f"unable to retrieve zimcheck results from {book.zimcheck_result_url}"
+                ZimcheckIssue(
+                    message=(
+                        f"unable to retrieve zimcheck results from "
+                        f"{book.zimcheck_result_url}"
+                    )
+                )
             )
             message = (
                 "Unable to retrieve zimcheck results from "
@@ -1001,7 +1078,9 @@ def get_zimcheck_errors(book: Book, *, raise_exceptions: bool = False) -> list[s
 
     if zimcheck_summary.error_count is not None and zimcheck_summary.error_count > 0:
         issues.append(
-            f"{getnow()}: book has {zimcheck_summary.error_count} error(s) in zimcheck"
+            ZimcheckIssue(
+                message=f"book has {zimcheck_summary.error_count} error(s) in zimcheck"
+            )
         )
     return issues
 

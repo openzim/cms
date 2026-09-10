@@ -589,7 +589,7 @@
 
         <!-- Issues Tab -->
         <v-window-item value="issues">
-          <BookIssues :issues="issues" :loading="loadingIssues" :book="book" :title="title" />
+          <BookIssues :issue="issue" :loading="loadingIssues" :book="book" />
         </v-window-item>
 
         <!-- History Tab -->
@@ -736,7 +736,7 @@ import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
 import { useBookHistoryStore } from '@/stores/bookHistory'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
-import type { Book, ZimUrl } from '@/types/book'
+import type { Book, BookIssueResponse, ZimUrl } from '@/types/book'
 import type { Title } from '@/types/title'
 import { formatDt, fromNow, matchOffliner } from '@/utils/format'
 import { useCollectionsStore } from '@/stores/collections'
@@ -780,7 +780,7 @@ const collections = ref<CollectionLight[]>([])
 const loadingFlavours = ref(false)
 const loadingHistory = ref(false)
 const loadingIssues = ref(false)
-const issues = ref<Record<string, string[]> | null>(null)
+const issue = ref<BookIssueResponse | null>(null)
 
 const showConfirmDialog = ref(false)
 const pendingComment = ref('')
@@ -1047,7 +1047,7 @@ const loadIssues = async () => {
   if (!book.value) return
   const data = await bookStore.fetchBookIssues(book.value.id)
   if (data) {
-    issues.value = data
+    issue.value = data
   } else {
     notificationStore.showErrors(bookStore.errors)
   }

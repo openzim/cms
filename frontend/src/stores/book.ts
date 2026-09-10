@@ -1,6 +1,13 @@
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
-import type { BasePromoteBook, Book, BookLight, PromoteBook, ZimUrls } from '@/types/book'
+import type {
+  BasePromoteBook,
+  Book,
+  BookLight,
+  PromoteBook,
+  ZimUrls,
+  BookIssueResponse,
+} from '@/types/book'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
@@ -275,7 +282,7 @@ export const useBookStore = defineStore('book', () => {
     const service = await authStore.getApiService('books')
     try {
       errors.value = []
-      const response = await service.get<null, Record<string, string[]>>(`/${bookId}/issues`)
+      const response = await service.get<null, BookIssueResponse>(`/${bookId}/issues`)
       return response
     } catch (_error) {
       console.error('Failed to load book', _error)
