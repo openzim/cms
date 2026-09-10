@@ -74,7 +74,7 @@ function formatPercent(value: number): string {
 const delta = computed(() => props.issue.current_book_count - props.issue.previous_book_count)
 
 const signedDelta = computed(() => {
-  const sign = delta.value > 0 ? '+' : '-'
+  const sign = delta.value > 0 ? '+' : ''
   return `${sign}${delta.value.toLocaleString()}`
 })
 
