@@ -212,7 +212,10 @@
                     <div class="text-subtitle-2">URLs</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <div class="d-flex ga-2 align-center">
+                    <div
+                      class="d-flex ga-2 align-center"
+                      v-if="book.recipe_link || zimUrls.length > 0"
+                    >
                       <v-btn
                         v-if="book.recipe_link"
                         :href="book.recipe_link"
@@ -233,8 +236,9 @@
                       >
                         Task
                       </v-btn>
-                      <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" />
+                      <ZimUrlButtons :urls="zimUrls" :loading="loadingUrls" empty-text="" />
                     </div>
+                    <span v-else class="text-grey">No URLs available</span>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
