@@ -303,25 +303,33 @@
                       class="my-3 my-md-0 mb-md-3"
                       style="max-width: 250px"
                     />
-                    <v-row v-if="filteredBooks.length > 0">
-                      <v-col
-                        v-for="book in filteredBooks"
-                        :key="book.id"
-                        cols="12"
-                        sm="12"
-                        md="6"
-                        lg="4"
-                        xl="3"
-                      >
-                        <BookCard
-                          :book="book"
-                          :show-urls="true"
-                          :zim-urls="zimUrls"
-                          :loading-urls="loadingUrls"
-                          :offliners="offlinerStore.offliners"
-                        />
-                      </v-col>
-                    </v-row>
+                    <template v-if="filteredBooks.length > 0">
+                      <template v-for="group in groupedBooks" :key="group.flavour">
+                        <v-divider class="my-3" color="primary" thickness="2">
+                          <span class="text-primary text-body-1">{{ group.flavour }}</span>
+                        </v-divider>
+                        <v-row>
+                          <v-col
+                            v-for="book in group.books"
+                            :key="book.id"
+                            cols="12"
+                            sm="12"
+                            md="6"
+                            lg="4"
+                            xl="3"
+                          >
+                            <BookCard
+                              :book="book"
+                              :show-urls="true"
+                              :show-flavour="false"
+                              :zim-urls="zimUrls"
+                              :loading-urls="loadingUrls"
+                              :offliners="offlinerStore.offliners"
+                            />
+                          </v-col>
+                        </v-row>
+                      </template>
+                    </template>
                     <span v-else class="text-grey">No books</span>
                   </v-col>
                 </v-row>
@@ -531,7 +539,7 @@ import { useTitleHistoryStore } from '@/stores/titleHistory'
 import { useEventStore } from '@/stores/event'
 import constants from '@/constants'
 import type { Title, TitleUpdate } from '@/types/title'
-import type { Book, BookStatus, ZimUrl } from '@/types/book'
+import type { Book, BookLight, BookStatus, ZimUrl } from '@/types/book'
 import type { CollectionLight } from '@/types/collections'
 import type { EventLight } from '@/types/event'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -729,13 +737,29 @@ const filteredBooks = computed(() => {
   return sortedBooks.value.filter((b) => !['deleted', 'to_delete'].includes(b.location_kind))
 })
 
+const groupedBooks = computed(() => {
+  const groups = new Map<string, BookLight[]>()
+  for (const book of filteredBooks.value) {
+    const flavour = book.flavour || 'empty'
+    const group = groups.get(flavour)
+    if (group) {
+      group.push(book)
+    } else {
+      groups.set(flavour, [book])
+    }
+  }
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([flavour, books]) => ({ flavour, books }))
+})
+
 const loadLatestBook = async () => {
   if (!title.value?.books || title.value.books.length === 0) {
     latestBook.value = null
     return
   }
 
-  const latestBookId = filteredBooks.value[0]?.id
+  const latestBookId = sortedBooks.value[0]?.id
   if (!latestBookId) {
     latestBook.value = null
     return
