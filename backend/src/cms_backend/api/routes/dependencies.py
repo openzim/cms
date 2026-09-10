@@ -57,13 +57,11 @@ def get_current_account_or_none_with_session(
         if claims is None:
             return None
         account = db_account.get_account_by_id_or_none(session, account_id=claims.sub)
-        # If this claim has a "name" property, we create a new account account
-        if account is None and Context.create_new_oauth_account:
-            if not claims.name:
-                raise UnauthorizedError("Token is missing 'profile' scope")
+        # If this is token for a new account, consider creating it
+        if account is None and Context.oauth_create_new_account:
             db_account.create_account(
                 session,
-                display_name=claims.name,
+                display_name=claims.name or str(claims.sub),
                 role=RoleEnum.VIEWER,
                 idp_sub=claims.sub,
             )

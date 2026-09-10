@@ -19,24 +19,32 @@ class Context:
     )
     oauth_issuer = os.getenv("OAUTH_ISSUER", default="https://ory.login.kiwix.org")
 
-    oauth_session_audience_id = os.getenv(
-        "OAUTH_SESSION_AUDIENCE_ID", default="d87a31d2-874e-44c4-9dc2-63fad523bf1b"
+    oauth_session_audience = os.getenv(
+        "OAUTH_SESSION_AUDIENCE", default="d87a31d2-874e-44c4-9dc2-63fad523bf1b"
     )
+
     oauth_session_login_require_2fa = parse_bool(
         os.getenv("OAUTH_SESSION_LOGIN_REQUIRE_2FA", default="true")
+    )
+    oauth_oidc_audience = os.getenv(
+        "OAUTH_OIDC_AUDIENCE", default="d87a31d2-874e-44c4-9dc2-63fad523bf1b"
+    )
+    oauth_oidc_login_require_2fa = parse_bool(
+        os.getenv("OAUTH_OIDC_LOGIN_REQUIRE_2FA", default="true")
     )
     oauth_client_id = os.getenv(
         "OAUTH_CLIENT_ID", default="310c5189-ce06-463c-9c55-46e822b5d642"
     )
-    create_new_oauth_account = parse_bool(
-        os.getenv("CREATE_NEW_OAUTH_ACCOUNT", default="true")
+    oauth_create_new_account = parse_bool(
+        os.getenv("OAUTH_CREATE_NEW_ACCOUNT", default="true")
     )
     # List of authentication modes. Allowed values are
     # - local
-    # - oauth
+    # - oauth-session
+    # - oauth-oidc
     auth_modes: list[str] = os.getenv(
         "AUTH_MODES",
-        default="oauth",
+        default="oauth-session",
     ).split(",")
 
     # Local Authentication JWT settings

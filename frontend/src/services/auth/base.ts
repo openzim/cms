@@ -4,12 +4,25 @@ import type { User } from '@/types/user'
 import httpRequest from '@/utils/httpRequest'
 
 export interface OAuthConfig {
+  clientId: string
+  audience: string
+  authorizeUrl: string
+  tokenUrl: string
+  userInfoUrl: string
+  revocationUrl: string
   basePath: string
 }
 
 export function getOAuthConfig(config: Config): OAuthConfig {
+  const basePath = config.OAUTH_BASE_URL
   return {
-    basePath: config.OAUTH_BASE_URL,
+    clientId: config.OAUTH_CLIENT_ID,
+    audience: config.OAUTH_AUDIENCE,
+    authorizeUrl: `${basePath}/oauth2/auth`,
+    tokenUrl: `${basePath}/oauth2/token`,
+    userInfoUrl: `${basePath}/userinfo`,
+    revocationUrl: `${basePath}/oauth2/revoke`,
+    basePath: basePath,
   }
 }
 
