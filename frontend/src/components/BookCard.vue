@@ -8,7 +8,7 @@
       </div>
 
       <div class="d-flex align-center flex-wrap mt-2 ga-2">
-        <v-chip v-if="book.flavour" size="small" variant="tonal" color="primary">
+        <v-chip v-if="showFlavour && book.flavour" size="small" variant="tonal" color="primary">
           {{ book.flavour }}
         </v-chip>
 
@@ -130,6 +130,7 @@ const authStore = useAuthStore()
 interface Props {
   book: BookLight
   showUrls?: boolean
+  showFlavour?: boolean
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
   offliners?: string[]
@@ -137,6 +138,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showUrls: false,
+  showFlavour: true,
   zimUrls: undefined,
   loadingUrls: false,
   offliners: () => [],
