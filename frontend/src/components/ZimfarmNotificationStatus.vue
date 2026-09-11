@@ -11,6 +11,10 @@
     <v-icon size="small" color="warning" icon="mdi-alert-circle-outline"></v-icon>
     <span class="text-caption ml-1">Bad Notification</span>
   </span>
+  <span v-else-if="zimfarmNotification.status === 'duplicate_book_id'" class="d-flex align-center">
+    <v-icon size="small" color="warning" icon="mdi-alert-circle-outline"></v-icon>
+    <span class="text-caption ml-1">Duplicate Notification for Book</span>
+  </span>
   <span v-else-if="zimfarmNotification.status === 'processed'" class="d-flex align-center">
     <v-icon size="small" color="success" icon="mdi-check"></v-icon>
     <span class="text-caption ml-1">Processed</span>

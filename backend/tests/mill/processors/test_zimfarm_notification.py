@@ -729,36 +729,19 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         )
         dbsession.flush()
 
-        # Because we do not commit while running tests in order to avoid contaminating
-        # DB for other unit tests, when error is raised due to processing notification
-        # with existing zim ID, the rollbakck operation will undo the book added by the
-        # first notification. This is not the case in production where the mill
-        # background task calls session.commit() after processing one notification
-        with (
-            patch(
-                "cms_backend.mill.processors.zimfarm_notification.get_book"
-            ) as mock_get_book,
-            patch(
-                "cms_backend.mill.processors.zimfarm_notification.get_title_upload_or_none"
-            ) as mock_get_title_upload_or_none,
-            patch(
-                "cms_backend.mill.processors.zimfarm_notification.update_title_upload_status"
-            ) as mock_update_title_status,
-        ):
-            process_notification(dbsession, second_notification)
-            assert second_notification.status == "bad_notification"
-            assert len(second_notification.events) == 1
-            assert (
-                "has already been created by notification"
-                in second_notification.events[0]
-            )
-            mock_get_book.assert_called_once_with(dbsession, second_notification.id)
-            mock_get_title_upload_or_none.assert_called_once_with(
-                dbsession, second_notification.task_id
-            )
-            mock_update_title_status.assert_called_once_with(
-                dbsession, second_notification.task_id, "failed"
-            )
+        process_notification(dbsession, second_notification)
+        assert second_notification.status == "duplicate_book_id"
+        assert len(second_notification.events) == 1
+        assert (
+            "has already been created by notification" in second_notification.events[0]
+        )
+        title_upload = (
+            dbsession.query(TitleUpload)
+            .filter_by(id=second_notification.task_id)
+            .first()
+        )
+        assert title_upload is not None
+        assert title_upload.status == "duplicate_upload"
 
     @patch("cms_backend.db.book.book_has_flavour_mismatch")
     @patch("cms_backend.db.book.get_zimcheck_errors")

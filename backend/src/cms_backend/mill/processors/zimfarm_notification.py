@@ -1,10 +1,9 @@
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as ORMSession
 
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db.account import get_account_by_username
-from cms_backend.db.book import create_book, get_book
+from cms_backend.db.book import create_book, get_book_or_none
 from cms_backend.db.book_location import create_book_location
 from cms_backend.db.models import ZimfarmNotification
 from cms_backend.db.title_upload import (
@@ -80,37 +79,37 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
 
         account = get_account_by_username(session, username="maint-scripts")
 
-        try:
-            book = create_book(
-                session=session,
-                book_id=notification.id,
-                author_id=account.id,
-                article_count=notification.content["article_count"],
-                media_count=notification.content["media_count"],
-                size=notification.content["size"],
-                zim_metadata=notification.content["metadata"],
-                zimcheck_result_url=zimcheck_url,
-                zimfarm_notification=notification,
-            )
-        except IntegrityError:
-            session.rollback()
-            existing_book = get_book(session, notification.id)
-
+        if existing_book := get_book_or_none(session, notification.id):
             if existing_book.zimfarm_notification:
                 notification_id = existing_book.zimfarm_notification.id
                 task_id = existing_book.zimfarm_notification.task_id
             else:
                 notification_id = None
                 task_id = None
+
             notification.events.append(
                 f"{getnow()}: book {existing_book.id} has already been created by "
                 f"notification (id={notification_id}, task_id={task_id})"
             )
             # If zimfarm notification came because of a title upload mark it as failed
             if get_title_upload_or_none(session, notification.task_id) is not None:
-                update_title_upload_status(session, notification.task_id, "failed")
-            notification.status = "bad_notification"
+                update_title_upload_status(
+                    session, notification.task_id, "duplicate_upload"
+                )
+            notification.status = "duplicate_book_id"
             return
+
+        book = create_book(
+            session=session,
+            book_id=notification.id,
+            author_id=account.id,
+            article_count=notification.content["article_count"],
+            media_count=notification.content["media_count"],
+            size=notification.content["size"],
+            zim_metadata=notification.content["metadata"],
+            zimcheck_result_url=zimcheck_url,
+            zimfarm_notification=notification,
+        )
 
         # Create current book location
         create_book_location(
