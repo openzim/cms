@@ -26,6 +26,7 @@ from cms_backend.db.models import (
     Collection,
     CollectionTitle,
     Title,
+    TitleUpload,
     Warehouse,
     ZimfarmNotification,
 )
@@ -670,6 +671,94 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         assert book.has_error is False
         assert book.needs_file_operation is True
         assert book.needs_processing is False
+
+    @patch("cms_backend.db.book.book_has_flavour_mismatch")
+    @patch("cms_backend.db.book.get_zimcheck_errors")
+    @patch("cms_backend.db.book.book_has_recipe_issue")
+    def test_process_different_notifications_with_same_zim_id(
+        self,
+        mock_book_has_recipe_issue: MagicMock,
+        mock_get_zimcheck_errors: MagicMock,
+        mock_book_has_flavour_mismatch: MagicMock,
+        dbsession: OrmSession,
+        warehouse: Warehouse,  # noqa: ARG002
+        create_zimfarm_notification: Callable[..., ZimfarmNotification],
+        create_title: Callable[..., Title],
+        create_collection: Callable[..., Collection],
+        create_warehouse: Callable[..., Warehouse],
+        create_title_upload: Callable[..., TitleUpload],
+    ):
+        """
+        Test that processing notifications with same ZIM id and different task_id  fails
+        """
+        mock_book_has_recipe_issue.return_value = False
+        mock_get_zimcheck_errors.return_value = []
+        mock_book_has_flavour_mismatch.return_value = False
+
+        title = create_title(name="test_en_all")
+        title.maturity = "stable"
+
+        prod = create_warehouse(
+            name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
+        )
+        collection = create_collection(warehouse=prod)
+
+        ct = CollectionTitle(path=Path("wikipedia"))
+        ct.title = title
+        ct.collection = collection
+        dbsession.add(ct)
+        dbsession.flush()
+
+        first_notification = create_zimfarm_notification(
+            content=VALID_NOTIFICATION_CONTENT
+        )
+        dbsession.flush()
+
+        process_notification(dbsession, first_notification)
+
+        assert first_notification.status == "processed"
+        book = dbsession.query(Book).filter_by(id=first_notification.id).first()
+        assert book is not None
+
+        second_notification = create_zimfarm_notification(
+            first_notification.id,
+            content=VALID_NOTIFICATION_CONTENT,
+        )
+        create_title_upload(
+            second_notification.task_id,
+        )
+        dbsession.flush()
+
+        # Because we do not commit while running tests in order to avoid contaminating
+        # DB for other unit tests, when error is raised due to processing notification
+        # with existing zim ID, the rollbakck operation will undo the book added by the
+        # first notification. This is not the case in production where the mill
+        # background task calls session.commit() after processing one notification
+        with (
+            patch(
+                "cms_backend.mill.processors.zimfarm_notification.get_book"
+            ) as mock_get_book,
+            patch(
+                "cms_backend.mill.processors.zimfarm_notification.get_title_upload_or_none"
+            ) as mock_get_title_upload_or_none,
+            patch(
+                "cms_backend.mill.processors.zimfarm_notification.update_title_upload_status"
+            ) as mock_update_title_status,
+        ):
+            process_notification(dbsession, second_notification)
+            assert second_notification.status == "bad_notification"
+            assert len(second_notification.events) == 1
+            assert (
+                "has already been created by notification"
+                in second_notification.events[0]
+            )
+            mock_get_book.assert_called_once_with(dbsession, second_notification.id)
+            mock_get_title_upload_or_none.assert_called_once_with(
+                dbsession, second_notification.task_id
+            )
+            mock_update_title_status.assert_called_once_with(
+                dbsession, second_notification.task_id, "failed"
+            )
 
     @patch("cms_backend.db.book.book_has_flavour_mismatch")
     @patch("cms_backend.db.book.get_zimcheck_errors")

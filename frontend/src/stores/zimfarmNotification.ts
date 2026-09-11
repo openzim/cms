@@ -24,6 +24,7 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
 
   const fetchZimfarmNotification = async (
     zimfarmNotificationId: string,
+    taskId: string,
     forceReload: boolean = false,
   ) => {
     const service = await authStore.getApiService('zimfarm-notifications')
@@ -31,7 +32,8 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
     if (
       !forceReload &&
       zimfarmNotification.value &&
-      zimfarmNotification.value.id === zimfarmNotificationId
+      zimfarmNotification.value.id === zimfarmNotificationId &&
+      zimfarmNotification.value.task_id == taskId
     ) {
       return zimfarmNotification.value
     }
@@ -41,7 +43,9 @@ export const useZimfarmNotificationStore = defineStore('zimfarm-notification', (
       // Clear current zimfarm notification until we receive the right one
       zimfarmNotification.value = null
 
-      const response = await service.get<null, ZimfarmNotification>(`/${zimfarmNotificationId}`)
+      const response = await service.get<null, ZimfarmNotification>(
+        `/${zimfarmNotificationId}/${taskId}`,
+      )
       zimfarmNotification.value = response
     } catch (_error) {
       console.error('Failed to load zimfarm notification', _error)

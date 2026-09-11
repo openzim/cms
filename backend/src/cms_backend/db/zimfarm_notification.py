@@ -16,12 +16,19 @@ from cms_backend.utils.datetime import getnow
 
 
 def create_zimfarm_notification(
-    session: OrmSession, *, notification_id: UUID, content: dict[str, Any]
+    session: OrmSession,
+    *,
+    notification_id: UUID,
+    content: dict[str, Any],
+    task_id: UUID,
 ) -> ZimfarmNotification:
     """Create a new Zimfarm notification"""
 
     zimfarm_notification = ZimfarmNotification(
-        id=notification_id, received_at=getnow(), content=content
+        id=notification_id,
+        received_at=getnow(),
+        content=content,
+        task_id=task_id,
     )
 
     session.add(zimfarm_notification)
@@ -31,23 +38,31 @@ def create_zimfarm_notification(
 
 
 def get_zimfarm_notification_or_none(
-    session: OrmSession, notification_id: UUID
+    session: OrmSession,
+    *,
+    notification_id: UUID,
+    task_id: UUID,
 ) -> ZimfarmNotification | None:
-    """Get a zimfarm notification by ID if possible else None"""
+    """Get a zimfarm notification by ID and task ID if possible else None"""
     return session.scalars(
         select(ZimfarmNotification)
-        .where(ZimfarmNotification.id == notification_id)
+        .where(
+            ZimfarmNotification.id == notification_id,
+            ZimfarmNotification.task_id == task_id,
+        )
         .options(selectinload(ZimfarmNotification.book))
     ).one_or_none()
 
 
 def get_zimfarm_notification(
-    session: OrmSession, notification_id: UUID
+    session: OrmSession, *, notification_id: UUID, task_id: UUID
 ) -> ZimfarmNotification:
-    """Get a zimfarm notification by ID if possible else raise an exception"""
+    """
+    Get a zimfarm notification by ID and task ID if possible else raise an exception
+    """
     if (
         schedule := get_zimfarm_notification_or_none(
-            session, notification_id=notification_id
+            session, notification_id=notification_id, task_id=task_id
         )
     ) is None:
         raise RecordDoesNotExistError(
@@ -85,6 +100,7 @@ def get_zimfarm_notifications(
         ZimfarmNotification.book_id,
         ZimfarmNotification.status,
         ZimfarmNotification.received_at,
+        ZimfarmNotification.task_id,
     ).order_by(ZimfarmNotification.received_at)
 
     if notification_id is not None:
@@ -115,12 +131,14 @@ def get_zimfarm_notifications(
                 book_id=notif_book_id,
                 status=notif_status,
                 received_at=notif_received_at,
+                task_id=notif_task_id,
             )
             for (
                 notif_id,
                 notif_book_id,
                 notif_status,
                 notif_received_at,
+                notif_task_id,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )

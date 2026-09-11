@@ -111,7 +111,7 @@ const routes = [
     },
   },
   {
-    path: '/zimfarm-notification/:id',
+    path: '/zimfarm-notification/:id/:taskId',
     name: 'zimfarm-notification-detail',
     component: ZimfarmNotificationView,
     props: true,

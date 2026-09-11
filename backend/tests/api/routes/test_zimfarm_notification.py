@@ -39,6 +39,7 @@ from cms_backend.utils.datetime import getnow
                 "id": "2f154ad6-a9e6-4fe1-8f36-3764fbad3d9b",
                 "foo": "bar",
                 "bar": "baz",
+                "task_id": "2f154ad6-a9e6-4fe1-8f36-3764fbad3d9b",
             },
             HTTPStatus.ACCEPTED,
             id="valid-id",
@@ -60,7 +61,9 @@ def test_create_zimfarm_notification(
     )
     assert response.status_code == expected_status_code
     if expected_status_code == HTTPStatus.ACCEPTED:
-        response = client.get(f"/v1/zimfarm-notifications/{payload['id']}")
+        response = client.get(
+            f"/v1/zimfarm-notifications/{payload['id']}/{payload['task_id']}"
+        )
         response_doc = response.json()
         assert "id" in response_doc
         assert response_doc["id"] == payload["id"]
@@ -74,7 +77,7 @@ def test_create_zimfarm_notification(
         assert response_doc["status"] == "pending"
         assert "content" in response_doc
         for key, value in payload.items():
-            if key == "id":
+            if key in ("id", "task_id"):
                 assert key not in response_doc["content"]
             else:
                 assert key in response_doc["content"]
@@ -89,7 +92,7 @@ def test_create_zimfarm_notification_is_idempotent(
     """Test create zimfarm_notification endpoint"""
 
     response = client.get(
-        f"/v1/zimfarm-notifications/{zimfarm_notification.id}",
+        f"/v1/zimfarm-notifications/{zimfarm_notification.id}/{zimfarm_notification.task_id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
@@ -100,6 +103,7 @@ def test_create_zimfarm_notification_is_idempotent(
         "id": str(zimfarm_notification.id),
         "foo": "bar",
         "bar": "baz",
+        "task_id": str(zimfarm_notification.task_id),
     }
 
     response = client.post(
@@ -110,7 +114,9 @@ def test_create_zimfarm_notification_is_idempotent(
 
     assert response.status_code == HTTPStatus.ACCEPTED
 
-    response = client.get(f"/v1/zimfarm-notifications/{zimfarm_notification.id}")
+    response = client.get(
+        f"/v1/zimfarm-notifications/{zimfarm_notification.id}/{zimfarm_notification.task_id}"
+    )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
     assert "content" in response_doc
