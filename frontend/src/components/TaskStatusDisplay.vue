@@ -20,6 +20,24 @@
         {{ fromNow(computedTimestamp) }}
       </span>
     </span>
+
+    <v-tooltip v-if="isDuplicateUpload" location="top">
+      <template #activator="{ props: tooltipProps }">
+        <v-btn
+          v-bind="tooltipProps"
+          icon
+          size="small"
+          variant="text"
+          aria-label="Duplicate upload explanation"
+        >
+          <v-icon>mdi-help-circle-outline</v-icon>
+        </v-btn>
+      </template>
+      <span
+        >This book wasn't added to CMS because it has already been created by another
+        notification.</span
+      >
+    </v-tooltip>
   </div>
 </template>
 
@@ -61,6 +79,9 @@ const statusClass = computed(() => {
   if (status === 'succeeded') return 'text-success'
   if (['failed', 'canceled', 'cancel_requested', 'canceling'].includes(status))
     return 'text-pink-accent-2'
+  if (status === 'duplicate_upload') return 'text-info'
   return 'text-warning'
 })
+
+const isDuplicateUpload = computed(() => props.status.toLowerCase() === 'duplicate_upload')
 </script>

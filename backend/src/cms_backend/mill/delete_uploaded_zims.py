@@ -24,7 +24,7 @@ def delete_uploaded_zims(session: OrmSession):
     while True:
         results = get_title_uploads(
             session,
-            status=["failed", "canceled", "succeeded"],
+            status=["failed", "canceled", "succeeded", "duplicate_upload"],
             omit_task_ids=omit_task_ids,
             s3_file_deleted=False,
         )

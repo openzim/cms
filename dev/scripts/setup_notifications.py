@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Development zimfarm notifications setup script.
 
@@ -13,7 +14,7 @@ from uuid import uuid4
 from cms_backend.context import get_mandatory_env
 from cms_backend.db import Session
 from cms_backend.db.models import ZimfarmNotification
-from cms_backend.shuttle.delete_zimcheck_s3_results import get_kiwix_storage_client
+from cms_backend.utils.s3 import get_kiwix_storage_client
 
 
 # Base directory where warehouse folders are located (inside container)
@@ -174,8 +175,9 @@ def create_notifications():
                 print(f"  - File already exists at {file_path} (skipping)")
                 continue
 
-            # Generate random notification ID
+            # Generate random notification ID and task ID
             notification_id = uuid4()
+            task_id = uuid4()
 
             key = f"zimcheck_{notification_id}.json"
             s3_client.upload_file(zimcheck_results_file, key=key)
@@ -188,6 +190,7 @@ def create_notifications():
                 id=notification_id,
                 received_at=datetime.now(),
                 content=content,
+                task_id=task_id,
             )
             session.add(notification)
             session.flush()

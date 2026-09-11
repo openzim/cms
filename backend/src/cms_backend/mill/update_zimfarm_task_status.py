@@ -29,7 +29,7 @@ def update_title_uploads_status(session: OrmSession):
         results = get_title_uploads(
             session,
             omit_task_ids=omit_task_ids,
-            exclude_status=["failed", "canceled", "succeeded"],
+            exclude_status=["failed", "canceled", "succeeded", "duplicate_upload"],
         )
         if not results.records:
             logger.info("No more title uploads meet criteria to be updated")
