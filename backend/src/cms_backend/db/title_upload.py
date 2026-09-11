@@ -60,31 +60,18 @@ def get_title_upload_or_none(
     ).one_or_none()
 
 
-def get_last_title_upload_for_recipe(
-    session: OrmSession, recipe_id: UUID
-) -> TitleUpload | None:
-    """Get the most recent title upload for a recipe if one exists"""
-    return session.scalars(
-        select(TitleUpload)
-        .where(TitleUpload.recipe_id == recipe_id)
-        .order_by(TitleUpload.created_at.desc())
-    ).first()
-
-
 def get_title_upload(
     session: OrmSession,
-    title_upload_id: UUID,
+    task_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleUpload:
     """Get a title upload if one exists, otherwise raise RecordDoesNotExistError"""
     if title_upload := get_title_upload_or_none(
-        session, title_upload_id, accessible_collection_ids=accessible_collection_ids
+        session, task_id, accessible_collection_ids=accessible_collection_ids
     ):
         return title_upload
-    raise RecordDoesNotExistError(
-        f"Title upload with ID {title_upload_id} does not exist"
-    )
+    raise RecordDoesNotExistError(f"Title upload with ID {task_id} does not exist")
 
 
 def update_title_upload_status(

@@ -46,12 +46,12 @@ def create_book_location(
         filename=filename,
     )
     location.is_backup = is_backup
-    session.add(location)
     book.locations.append(location)
     book.events.append(
         f"{getnow()}: added {status} location: {filename} in {warehouse_name}: "
         f"{path} ({warehouse_id})"
     )
+    session.flush()
 
     return location
 

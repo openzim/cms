@@ -63,12 +63,14 @@ def create_zimfarm_notification(
 ) -> Callable[..., ZimfarmNotification]:
     def _create_zimfarm_notification(
         _id: UUID | None = None,
+        task_id: UUID | None = None,
         received_at: datetime | None = None,
         content: dict[str, Any] | None = None,
         events: list[str] | None = None,
     ) -> ZimfarmNotification:
         zimfarm_notification = ZimfarmNotification(
             id=_id if _id is not None else uuid4(),
+            task_id=task_id if task_id is not None else uuid4(),
             received_at=received_at if received_at is not None else getnow(),
             content=content if content is not None else {"key": "value"},
         )

@@ -90,6 +90,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
 class ZimfarmNotification(Base):
     __tablename__ = "zimfarm_notification"
     id: Mapped[UUID] = mapped_column(primary_key=True)
+    task_id: Mapped[UUID] = mapped_column(primary_key=True)
     received_at: Mapped[datetime]
     content: Mapped[dict[str, Any]]
     status: Mapped[str] = mapped_column(default="pending", server_default="pending")

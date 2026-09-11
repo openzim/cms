@@ -62,12 +62,12 @@ def test_get_title_upload_not_found(
 ):
     """Raises RecordDoesNotExistError if requested task does not exist"""
     with pytest.raises(RecordDoesNotExistError):
-        get_title_upload(dbsession, title_upload_id=uuid4())
+        get_title_upload(dbsession, task_id=uuid4())
 
 
 def test_get_title_upload_exists(dbsession: OrmSession, title_upload: TitleUpload):
     """Returns the requested task if it exists"""
-    result = get_title_upload(dbsession, title_upload_id=title_upload.id)
+    result = get_title_upload(dbsession, task_id=title_upload.id)
     assert result is not None
     assert result.id == title_upload.id
     assert result.status == title_upload.status
@@ -118,9 +118,7 @@ def test_get_title_upload_not_accessible_raises(
     dbsession.flush()
 
     with pytest.raises(RecordDoesNotExistError):
-        get_title_upload(
-            dbsession, title_upload_id=task.id, accessible_collection_ids=[]
-        )
+        get_title_upload(dbsession, task_id=task.id, accessible_collection_ids=[])
 
 
 def test_update_title_upload_status(dbsession: OrmSession, title_upload: TitleUpload):

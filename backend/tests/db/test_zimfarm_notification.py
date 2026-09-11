@@ -31,7 +31,9 @@ def test_get_zimfarm_notification_or_none_(
     zimfarm_notification: ZimfarmNotification,  # noqa: ARG001 - needed for conftest
 ):
     """Returns None if the notification does not exists"""
-    result = get_zimfarm_notification_or_none(dbsession, notification_id=uuid4())
+    result = get_zimfarm_notification_or_none(
+        dbsession, notification_id=uuid4(), task_id=uuid4()
+    )
     assert result is None
 
 
@@ -41,7 +43,7 @@ def test_get_zimfarm_notification_not_found(
 ):
     """Raises an exception if the notification does not exist"""
     with pytest.raises(RecordDoesNotExistError):
-        get_zimfarm_notification(dbsession, notification_id=uuid4())
+        get_zimfarm_notification(dbsession, notification_id=uuid4(), task_id=uuid4())
 
 
 def test_get_zimfarm_notification_exist(
@@ -49,7 +51,9 @@ def test_get_zimfarm_notification_exist(
 ):
     """Returns the notification if it exists"""
     result = get_zimfarm_notification(
-        dbsession, notification_id=zimfarm_notification.id
+        dbsession,
+        notification_id=zimfarm_notification.id,
+        task_id=zimfarm_notification.task_id,
     )
     assert result is not None
     assert result == zimfarm_notification
@@ -58,9 +62,13 @@ def test_get_zimfarm_notification_exist(
 def test_create_zimfarm_notification(dbsession: OrmSession, faker: Faker):
     """Create a notification"""
     notification_id = uuid4()
+    task_id = uuid4()
     content = {"foo": " ".join(faker.words())}
     created_notification = db_create_zimfarm_notification(
-        dbsession, notification_id=notification_id, content=content
+        dbsession,
+        notification_id=notification_id,
+        content=content,
+        task_id=task_id,
     )
     assert created_notification is not None
     assert created_notification.id == notification_id

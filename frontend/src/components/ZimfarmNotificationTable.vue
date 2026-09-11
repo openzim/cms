@@ -27,7 +27,12 @@
         </template>
 
         <template #[`item.id`]="{ item }">
-          <router-link :to="{ name: 'zimfarm-notification-detail', params: { id: item.id } }">
+          <router-link
+            :to="{
+              name: 'zimfarm-notification-detail',
+              params: { id: item.id, taskId: item.task_id },
+            }"
+          >
             <span class="d-flex align-center">
               {{ item.id }}
             </span>

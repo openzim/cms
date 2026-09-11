@@ -131,6 +131,7 @@ class ZimfarmNotificationLightSchema(BaseModel):
     """
 
     id: UUID
+    task_id: UUID
     book_id: UUID | None
     status: str
     received_at: datetime
