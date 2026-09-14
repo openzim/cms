@@ -31,10 +31,12 @@ class ZimfarmNotificationsGetSchema(BaseModel):
     received_before: datetime | None = None
 
 
-# only thing we wanna validate from the Zimfarm notification is that it has an ID
-# which is an UUID and we do not already received it
+# only things we wanna validate from the Zimfarm notification is that it has
+# - an ID and which is an UUID and we do not already received it
+# - a task ID which is the ID of the task that produced the ZIM
 class ZimfarmNotificationCreateSchema(WithExtraModel):
     id: UUID
+    task_id: UUID
 
 
 @router.get("")
@@ -79,15 +81,20 @@ async def create_zimfarm_notification(
     """Create a zimfarm notification"""
 
     if db_zimfarm_notification.get_zimfarm_notification_or_none(
-        session=session, notification_id=request.id
+        session=session, notification_id=request.id, task_id=request.task_id
     ):
-        logger.warning(f"Ignoring duplicate Zimfarm notification for id {request.id}")
+        logger.warning(
+            f"Ignoring duplicate Zimfarm notification for id {request.id} "
+            f"and task {request.task_id}"
+        )
         return Response(status_code=HTTPStatus.ACCEPTED)
 
     content = request.model_dump()
     content.pop("id")
+    content.pop("task_id")
     db_zimfarm_notification.create_zimfarm_notification(
         session,
+        task_id=request.task_id,
         notification_id=request.id,
         content=content,
     )
@@ -95,15 +102,16 @@ async def create_zimfarm_notification(
     return Response(status_code=HTTPStatus.ACCEPTED)
 
 
-@router.get("/{notification_id}")
+@router.get("/{notification_id}/{task_id}")
 async def get_zimfarm_notification(
     notification_id: Annotated[UUID, Path()],
+    task_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ZimfarmNotificationFullSchema:
     """Create a zimfarm notification"""
 
     db_notification = db_zimfarm_notification.get_zimfarm_notification(
-        session=session, notification_id=notification_id
+        session=session, notification_id=notification_id, task_id=task_id
     )
 
     return ZimfarmNotificationFullSchema(
@@ -113,4 +121,5 @@ async def get_zimfarm_notification(
         received_at=db_notification.received_at,
         content=db_notification.content,
         events=db_notification.events,
+        task_id=db_notification.task_id,
     )

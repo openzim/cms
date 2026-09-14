@@ -225,11 +225,15 @@ def create_book(
         else None,
     )
     session.add(book)
-    zimfarm_notification.events.append(
-        f"{getnow()}: notification transformed into book"
-    )
+
     book.events.append(
         f"{getnow()}: created from Zimfarm notification {zimfarm_notification.id}"
+    )
+
+    session.flush()
+
+    zimfarm_notification.events.append(
+        f"{getnow()}: notification transformed into book"
     )
 
     create_book_history_entry(
