@@ -238,6 +238,7 @@ def get_collections(
             Collection.id,
             Collection.name,
             Collection.is_private,
+            Collection.retain_old_books,
             func.coalesce(
                 func.array_agg(func.distinct(CollectionTitle.path)).filter(
                     CollectionTitle.path.is_not(None)
@@ -274,11 +275,16 @@ def get_collections(
                 id=collection_id,
                 name=collection_name,
                 is_private=is_private,
+                retain_old_books=retain_old_books,
                 paths=paths,
             )
-            for collection_id, collection_name, is_private, paths in session.execute(
-                stmt.offset(skip).limit(limit)
-            ).all()
+            for (
+                collection_id,
+                collection_name,
+                is_private,
+                retain_old_books,
+                paths,
+            ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )
 
@@ -296,6 +302,7 @@ def create_collection_full_schema(collection: Collection) -> CollectionFullSchem
         media_count_decrease_threshold=collection.media_count_decrease_threshold,
         is_private=collection.is_private,
         paths=[ct.path for ct in collection.titles],
+        retain_old_books=collection.retain_old_books,
     )
 
 
@@ -315,6 +322,7 @@ def create_collection_history_entry(
         article_count_decrease_threshold=collection.article_count_decrease_threshold,
         media_count_decrease_threshold=collection.media_count_decrease_threshold,
         is_private=collection.is_private,
+        retain_old_books=collection.retain_old_books,
     )
     history_entry.collection = collection
     history_entry.author_id = author_id
@@ -329,6 +337,7 @@ def create_collection(
     author_id: UUID,
     warehouse_name: str,
     is_private: bool,
+    retain_old_books: bool,
     download_base_url: str | None = None,
     view_base_url: str | None = None,
     article_count_increase_threshold: float | None = None,
@@ -347,6 +356,7 @@ def create_collection(
         media_count_increase_threshold=media_count_increase_threshold,
         media_count_decrease_threshold=media_count_decrease_threshold,
         is_private=is_private,
+        retain_old_books=retain_old_books,
     )
     session.add(collection)
     try:
@@ -416,6 +426,7 @@ def create_collection_history_schema(
         media_count_increase_threshold=entry.media_count_increase_threshold,
         media_count_decrease_threshold=entry.media_count_decrease_threshold,
         is_private=entry.is_private,
+        retain_old_books=entry.retain_old_books,
     )
 
 

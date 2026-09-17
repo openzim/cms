@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy import String, and_, case, exists, or_, select
+from sqlalchemy import String, and_, case, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
@@ -52,14 +52,15 @@ def get_books(
             Book.zim_metadata["Scraper"].astext.label("scraper"),
         )
         .join(Title, Book.title_id == Title.id, isouter=True)
-        .where(
-            exists().where(
-                CollectionTitle.title_id == Book.title_id,
-                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
-            )
-            | (accessible_collection_ids is None)
-        )
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
+        .join(Collection, Collection.id == CollectionTitle.collection_id, isouter=True)
     )
+
+    if accessible_collection_ids is not None:
+        stmt = stmt.where(CollectionTitle.collection_id.in_(accessible_collection_ids))
+
+    if params.collection is not None:
+        stmt = stmt.where(Collection.name == params.collection)
 
     if params.id is not None:
         stmt = stmt.where(Book.id.cast(String).ilike(f"%{params.id}%"))
@@ -96,6 +97,9 @@ def get_books(
 
     if params.created_before is not None:
         stmt = stmt.where(Book.created_at < params.created_before)
+
+    if params.created_after is not None:
+        stmt = stmt.where(Book.created_at > params.created_after)
 
     if params.omit_book_ids is not None:
         stmt = stmt.where(Book.id.not_in(params.omit_book_ids))

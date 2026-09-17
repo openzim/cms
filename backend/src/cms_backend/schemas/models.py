@@ -56,9 +56,11 @@ class GetBooksSchema(BaseModel):
     updated_before: datetime.datetime | None = None
     updated_after: datetime.datetime | None = None
     created_before: datetime.datetime | None = None
+    created_after: datetime.datetime | None = None
     omit_book_ids: list[UUID] | None = None
     offliner: NotEmptyString | None = None
     issue: NotEmptyString | None = None
+    collection: NotEmptyString | None = None
 
 
 class BookLanguagesSchema(BaseModel):
@@ -113,6 +115,7 @@ class CollectionUpdateSchema(BaseModel):
     media_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
     article_count_decrease_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
     media_count_decrease_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
+    retain_old_books: bool | None = None
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):

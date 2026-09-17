@@ -1,6 +1,11 @@
 import { useAuthStore } from '@/stores/auth'
 import type { ListResponse, Paginator } from '@/types/base'
-import type { CollectionLight, Collection, CollectionUpdate } from '@/types/collections'
+import type {
+  CollectionLight,
+  Collection,
+  CollectionUpdate,
+  CollectionCreateSchema,
+} from '@/types/collections'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
@@ -82,33 +87,10 @@ export const useCollectionsStore = defineStore('collection', () => {
     return collection.value
   }
 
-  const createCollection = async (payload: {
-    name: string
-    warehouse_name: string
-    download_base_url?: string
-    view_base_url?: string
-    article_count_increase_threshold?: number
-    article_count_decrease_threshold?: number
-    media_count_increase_threshold?: number
-    media_count_decrease_threshold?: number
-    is_private?: boolean
-  }) => {
+  const createCollection = async (payload: CollectionCreateSchema) => {
     const service = await authStore.getApiService('collections')
     try {
-      const response = await service.post<
-        {
-          name: string
-          warehouse_name: string
-          download_base_url?: string
-          view_base_url?: string
-          article_count_increase_threshold?: number
-          article_count_decrease_threshold?: number
-          media_count_increase_threshold?: number
-          media_count_decrease_threshold?: number
-          is_private?: boolean
-        },
-        Collection
-      >('', payload)
+      const response = await service.post<CollectionCreateSchema, Collection>('', payload)
       errors.value = []
       return response
     } catch (error) {

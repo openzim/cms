@@ -49,6 +49,19 @@
           </v-chip>
         </template>
 
+        <template #[`item.retain_old_books`]="{ item }">
+          <v-tooltip
+            :text="item.retain_old_books ? 'Retains old books' : 'Does not retain old books'"
+            location="top"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <v-icon v-bind="tooltipProps" :color="item.retain_old_books ? 'success' : 'grey'">
+                {{ item.retain_old_books ? 'mdi-check-circle' : 'mdi-close-circle' }}
+              </v-icon>
+            </template>
+          </v-tooltip>
+        </template>
+
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="large" class="mb-2">mdi-folder-multiple-outline</v-icon>

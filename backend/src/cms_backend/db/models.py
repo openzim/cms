@@ -357,6 +357,9 @@ class Collection(Base):
     media_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
 
     is_private: Mapped[bool] = mapped_column(default=False, server_default="false")
+    retain_old_books: Mapped[bool] = mapped_column(
+        default=False, server_default="false"
+    )
 
     titles: Mapped[list["CollectionTitle"]] = relationship(
         back_populates="collection",
@@ -410,6 +413,9 @@ class CollectionHistory(Base):
     media_count_increase_threshold: Mapped[float | None] = mapped_column(default=None)
     article_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
     media_count_decrease_threshold: Mapped[float | None] = mapped_column(default=None)
+    retain_old_books: Mapped[bool] = mapped_column(
+        default=False, server_default="false"
+    )
 
     collection: Mapped["Collection"] = relationship(
         back_populates="history_entries", init=False

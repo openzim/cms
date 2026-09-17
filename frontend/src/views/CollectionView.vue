@@ -168,6 +168,18 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
+                <div class="text-subtitle-2">Retains Books</div>
+              </v-col>
+              <v-col cols="12" md="9">
+                <v-icon :color="collection.retain_old_books ? 'success' : 'grey'">
+                  {{ collection.retain_old_books ? 'mdi-check-circle' : 'mdi-close-circle' }}
+                </v-icon>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2"></v-divider>
+
+            <v-row no-gutters class="py-2">
+              <v-col cols="12" md="3">
                 <div class="text-subtitle-2">Titles</div>
               </v-col>
               <v-col cols="12" md="9">

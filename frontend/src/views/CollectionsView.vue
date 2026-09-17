@@ -108,6 +108,7 @@ const headers = [
   { title: 'Name', key: 'name', sortable: false },
   { title: 'Paths', key: 'paths', sortable: false },
   { title: 'Private', key: 'is_private', sortable: false },
+  { title: 'Retains Books', key: 'retain_old_books', sortable: false },
 ]
 
 // Methods

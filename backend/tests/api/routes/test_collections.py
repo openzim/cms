@@ -96,6 +96,7 @@ def test_create_collection_required_permissions(
         "name": "wikipedia_en_test",
         "warehouse_name": warehouse.name,
         "is_private": True,
+        "retain_old_books": False,
     }
 
     account = create_account(permission=permission)
