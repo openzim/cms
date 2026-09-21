@@ -2,7 +2,7 @@
   <v-text-field
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event ?? null)"
-    label="Title Name"
+    :label="label"
     variant="outlined"
     density="comfortable"
     :rules="[rules.required, rules.name]"
@@ -22,9 +22,12 @@ const TITLE_NAME_PATTERN = '^[a-z0-9\\-\\.]+?_[a-z]{2,3}(?:-[a-z]{2,10})?_[a-z0-
 
 interface Props {
   modelValue: string | null | undefined
+  label?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  label: 'Title Name',
+})
 
 defineEmits<{
   'update:modelValue': [value: string | null]
