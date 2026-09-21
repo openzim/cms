@@ -257,17 +257,10 @@
                               label="New Illustration"
                             />
                             <template #diff-content>
-                              <div class="d-flex flex-column flex-grow-1">
-                                <template v-if="existingTitle?.illustration_48x48_at_1">
-                                  <v-img
-                                    :src="getImageDataUrl(existingTitle.illustration_48x48_at_1)"
-                                    width="48"
-                                    height="48"
-                                    class="rounded border w-100"
-                                  />
-                                </template>
-                                <strong v-else>(no value)</strong>
-                              </div>
+                              <IllustrationPreview
+                                :illustration="existingTitle?.illustration_48x48_at_1"
+                                empty-text="(no value)"
+                              />
                             </template>
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -516,6 +509,7 @@ import TitleMaturityField from '@/components/TitleMaturityField.vue'
 import TitleNameField from '@/components/TitleNameField.vue'
 import TitleForm from '@/components/TitleForm.vue'
 import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
+import IllustrationPreview from '@/components/IllustrationPreview.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useBookStore } from '@/stores/book'
 import { useTitleStore } from '@/stores/title'
@@ -530,7 +524,6 @@ import type { Title } from '@/types/title'
 import type { OfflinerDefinitionFlag, OfflinerDefinitionSpec } from '@/types/zimfarm/offliner'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
-import { getImageDataUrl } from '@/utils/image'
 import { extractRecipeMetadataValues } from '@/utils/recipe'
 import httpRequest from '@/utils/httpRequest'
 import DiffViewer from '@/components/DiffViewer.vue'
