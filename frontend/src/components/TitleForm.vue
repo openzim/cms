@@ -314,10 +314,31 @@ const useAllBookValues = () => {
   })
 }
 
+const bookIllustrationDimensions = ref<{ width: number; height: number } | null>(null)
+
+watch(
+  () => bookMetadata.value?.illustration_48x48_at_1,
+  (illustration) => {
+    bookIllustrationDimensions.value = null
+    if (!illustration) return
+    const src = getImageDataUrl(illustration)
+    if (!src) return
+    const image = new Image()
+    image.onload = () => {
+      bookIllustrationDimensions.value = { width: image.width, height: image.height }
+    }
+    image.src = src
+  },
+  { immediate: true },
+)
+
 const bookIllustrationSize = computed(() => {
   const illustration = bookMetadata.value?.illustration_48x48_at_1
   if (!illustration) return ''
-  return `${base64ByteSize(illustration)} bytes`
+  const size = `${base64ByteSize(illustration)} bytes`
+  const dimensions = bookIllustrationDimensions.value
+  if (!dimensions) return size
+  return `${size} (${dimensions.width} × ${dimensions.height} px)`
 })
 
 const hasCollectionChanges = computed(() => {

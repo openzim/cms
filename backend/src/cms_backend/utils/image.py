@@ -16,6 +16,8 @@ def images_differ(
     """
     a = np.array(Image.open(io.BytesIO(base64.b64decode(b64_a))).convert("RGBA"))
     b = np.array(Image.open(io.BytesIO(base64.b64decode(b64_b))).convert("RGBA"))
+    if a.shape != b.shape:
+        return True, 1.0
 
     changed_fraction = float(np.any(a != b, axis=-1).mean())
     return changed_fraction > max_changed_fraction, changed_fraction
