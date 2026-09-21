@@ -18,6 +18,7 @@ from cms_backend.db.models import (
     Book,
     BookLocation,
     Collection,
+    CollectionPermission,
     CollectionTitle,
     Title,
     TitleFlavour,
@@ -305,6 +306,89 @@ def test_get_books_filter_by_id(
     assert response_doc["items"][0]["id"] == str(book1.id)
 
 
+@pytest.mark.parametrize(
+    "collection_name,expected_nb_records",
+    [
+        pytest.param(None, 2, id="no-collection"),
+        pytest.param("mycollection", 1, id="mycollection"),
+    ],
+)
+def test_get_books_filter_by_collection_name(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    access_token: str,
+    collection_name: str | None,
+    expected_nb_records: int,
+):
+    """Test get books endpoint passes collection name filter to database layer"""
+
+    title = create_title()
+    collection = create_collection(name="mycollection")
+    create_collection_title(title, collection)
+    # Create two books with one associated with title belonging to collection
+    create_book(title_id=title.id)
+    create_book()
+    # Test that id parameter is passed through and filters correctly
+    url = "/v1/books"
+    if collection_name:
+        url += f"?collection={collection_name}"
+
+    response = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == expected_nb_records
+
+
+@pytest.mark.parametrize(
+    "permission,expected_nb_records",
+    [
+        pytest.param(RoleEnum.ADMIN, 2, id="admin"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, 2, id="global-editor"),
+        pytest.param(RoleEnum.COLLECTION_EDITOR, 1, id="collection-editor"),
+        pytest.param(RoleEnum.VIEWER, 0, id="viewer"),
+    ],
+)
+def test_get_books_filter_by_account_permissions(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_nb_records: int,
+):
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        issue_time=getnow(), account_id=str(account.id)
+    )
+
+    title = create_title()
+    collection = create_collection(name="mycollection", is_private=True)
+    if permission == RoleEnum.COLLECTION_EDITOR:
+        collection_permission = CollectionPermission(
+            collection_id=collection.id,
+            account_id=account.id,
+        )
+        dbsession.add(collection_permission)
+        dbsession.flush()
+
+    create_collection_title(title, collection)
+    # Create two books with one associated with title belonging to collection
+    create_book(title_id=title.id)
+    create_book()
+    url = "/v1/books"
+
+    response = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == expected_nb_records
+
+
 def test_get_books_filter_by_offliner(
     client: TestClient,
     create_book: Callable[..., Book],
@@ -519,10 +603,68 @@ def test_get_book_by_id_invalid_uuid(
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
+@pytest.mark.parametrize(
+    "updated_after,updated_before,created_after,created_before,expected_nb_records",
+    [
+        pytest.param(
+            datetime.timedelta(days=2),
+            None,
+            None,
+            None,
+            2,
+            id="updated-after-two-days-ago",
+        ),
+        pytest.param(
+            None,
+            datetime.timedelta(days=1),
+            None,
+            None,
+            2,
+            id="updated-before-yesterday",
+        ),
+        pytest.param(
+            datetime.timedelta(days=3),
+            datetime.timedelta(days=1),
+            None,
+            None,
+            1,
+            id="updated-only-two-days-ago",
+        ),
+        pytest.param(
+            None,
+            None,
+            datetime.timedelta(days=1),
+            None,
+            1,
+            id="created-after-yesterday",
+        ),
+        pytest.param(
+            None,
+            None,
+            None,
+            datetime.timedelta(days=2),
+            1,
+            id="created-before-two-days-ago",
+        ),
+        pytest.param(
+            datetime.timedelta(days=1),
+            None,
+            datetime.timedelta(days=2),
+            None,
+            1,
+            id="created-two-days-ago-updated-yesterday",
+        ),
+    ],
+)
 def test_get_books_filter_by_date_range(
     client: TestClient,
     create_book: Callable[..., Book],
     access_token: str,
+    updated_after: datetime.timedelta | None,
+    updated_before: datetime.timedelta | None,
+    created_after: datetime.timedelta | None,
+    created_before: datetime.timedelta | None,
+    expected_nb_records: int,
 ):
     """Test get books endpoint filtering by updated_after/before"""
 
@@ -532,37 +674,36 @@ def test_get_books_filter_by_date_range(
     three_days_ago = now - datetime.timedelta(days=3)
 
     # Create books at different times
-    create_book(updated_at=three_days_ago)
-    create_book(updated_at=two_days_ago)
-    create_book(updated_at=yesterday)
-    create_book(updated_at=now)
+    create_book(created_at=yesterday, updated_at=three_days_ago)
+    create_book(created_at=three_days_ago, updated_at=two_days_ago)
+    create_book(created_at=two_days_ago, updated_at=yesterday)
+    create_book(created_at=now, updated_at=now)
 
     # Filter for books received after two days ago
-    response = client.get(
-        f"/v1/books?updated_after={two_days_ago.isoformat()}",
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
-    assert response.status_code == HTTPStatus.OK
-    response_doc = response.json()
-    assert response_doc["meta"]["count"] == 2  # yesterday and today
+    url = "/v1/books"
+    query: dict[str, str] = {}
+    if updated_after:
+        query["updated_after"] = (now - updated_after).isoformat()
 
-    # Filter for books received before yesterday
-    response = client.get(
-        f"/v1/books?updated_before={yesterday.isoformat()}",
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
-    assert response.status_code == HTTPStatus.OK
-    response_doc = response.json()
-    assert response_doc["meta"]["count"] == 2  # three days ago and two days ago
+    if updated_before:
+        query["updated_before"] = (now - updated_before).isoformat()
 
-    # Filter for books in a specific range
+    if created_after:
+        query["created_after"] = (now - created_after).isoformat()
+
+    if created_before:
+        query["created_before"] = (now - created_before).isoformat()
+
+    if query:
+        url += "?" + "&".join(f"{k}={v}" for k, v in query.items())
+
     response = client.get(
-        f"/v1/books?updated_after={three_days_ago.isoformat()}&updated_before={yesterday.isoformat()}",
+        url,
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.OK
     response_doc = response.json()
-    assert response_doc["meta"]["count"] == 1  # only two days ago
+    assert response_doc["meta"]["count"] == expected_nb_records
 
 
 @pytest.mark.parametrize(

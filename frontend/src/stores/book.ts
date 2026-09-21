@@ -61,6 +61,9 @@ export const useBookStore = defineStore('book', () => {
     has_backup: boolean | undefined = undefined,
     offliner: string | undefined = undefined,
     issue: string | undefined = undefined,
+    collection: string | undefined = undefined,
+    created_before: string | undefined = undefined,
+    created_after: string | undefined = undefined,
   ) => {
     const service = await authStore.getApiService('books')
 
@@ -86,6 +89,9 @@ export const useBookStore = defineStore('book', () => {
         has_backup,
         offliner,
         issue,
+        collection,
+        created_before,
+        created_after,
       }).filter(
         ([name, value]) => !!value || (!['limit', 'skip'].includes(name) && value !== undefined),
       ),

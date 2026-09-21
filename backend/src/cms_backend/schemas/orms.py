@@ -111,6 +111,7 @@ class CollectionLightSchema(BaseModel):
     name: str
     paths: list[Path]
     is_private: bool
+    retain_old_books: bool
 
 
 class CollectionFullSchema(CollectionLightSchema):
@@ -247,6 +248,7 @@ class CollectionHistorySchema(BaseModel):
     download_base_url: str | None
     view_base_url: str | None
     is_private: bool
+    retain_old_books: bool
     article_count_increase_threshold: float | None = None
     media_count_increase_threshold: float | None = None
     article_count_decrease_threshold: float | None = None

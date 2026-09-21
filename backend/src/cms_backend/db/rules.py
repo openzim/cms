@@ -42,7 +42,25 @@ def apply_retention_rules(session: OrmSession, title: Title):
         if we have `2024-04`, `2024-04a`, `2024-06`, `2024-06a`, `2024-06b`,
         then we keep `2024-04a` and `2024-06b`)
     - AND keep every version which is 30 days old or less.
+
+    NOTE:
+        Rule is ignored if title is associated with a collection that retains old books
     """
+
+    if collection := next(
+        (
+            collection_title.collection
+            for collection_title in title.collections
+            if collection_title.collection.retain_old_books
+        ),
+        None,
+    ):
+        logger.debug(
+            f"Skipping retention rule application for title '{title.name}' "
+            f"because associated collection '{collection.name}' retains old "
+            f"books"
+        )
+        return
 
     now = getnow()
     thirty_days_ago = (now - datetime.timedelta(days=30)).date()

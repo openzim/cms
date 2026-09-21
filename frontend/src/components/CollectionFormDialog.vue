@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import CollectionForm from '@/components/CollectionForm.vue'
 import { useCollectionsStore } from '@/stores/collections'
-import type { Collection } from '@/types/collections'
+import type { Collection, CollectionCreateSchema } from '@/types/collections'
 import { computed, ref, watch } from 'vue'
 
 interface Props {
@@ -119,16 +119,17 @@ async function handleSubmit() {
     } else {
       // Create mode
       const formData = collectionFormRef.value.getFormData()
-      const createPayload = {
+      const createPayload: CollectionCreateSchema = {
         name: formData.name,
         warehouse_name: formData.warehouse_name!,
-        download_base_url: formData.download_base_url || undefined,
-        view_base_url: formData.view_base_url || undefined,
-        article_count_increase_threshold: formData.article_count_increase_threshold || undefined,
-        article_count_decrease_threshold: formData.article_count_decrease_threshold || undefined,
-        media_count_increase_threshold: formData.media_count_increase_threshold || undefined,
-        media_count_decrease_threshold: formData.media_count_decrease_threshold || undefined,
+        download_base_url: formData.download_base_url || null,
+        view_base_url: formData.view_base_url || null,
+        article_count_increase_threshold: formData.article_count_increase_threshold ?? null,
+        article_count_decrease_threshold: formData.article_count_decrease_threshold ?? null,
+        media_count_increase_threshold: formData.media_count_increase_threshold ?? null,
+        media_count_decrease_threshold: formData.media_count_decrease_threshold ?? null,
         is_private: formData.is_private,
+        retain_old_books: formData.retain_old_books,
       }
       const response = await collectionsStore.createCollection(createPayload)
       if (response) {

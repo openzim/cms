@@ -4,6 +4,8 @@
       :filters="bookFilters"
       :flavour-options="flavours"
       :loading-flavours="loadingFlavours"
+      :collection-options="collectionOptions"
+      :loading-collections="loadingCollections"
       @filters-changed="handleBookFiltersChange"
       @clear-filters="clearFilters"
     />
@@ -36,12 +38,14 @@ import BooksViewFilters from '@/components/BooksViewFilters.vue'
 import BookTable from '@/components/BookTable.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useBookStore } from '@/stores/book'
+import { useCollectionsStore } from '@/stores/collections'
 import { useAuthStore } from '@/stores/auth'
 import { useZimfarmOfflinerStore } from '@/stores/zimfarm/offliner'
 import type { BookLight, ZimUrl } from '@/types/book'
 import type { Paginator } from '@/types/base'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import type { CollectionLight } from '@/types/collections'
 
 interface Props {
   routeName: string
@@ -57,12 +61,16 @@ const router = useRouter()
 const route = useRoute()
 
 const bookStore = useBookStore()
+const collectionsStore = useCollectionsStore()
 const loadingStore = useLoadingStore()
 const authStore = useAuthStore()
 const offlinerStore = useZimfarmOfflinerStore()
 
 const flavours = ref<string[]>([])
+const collections = ref<CollectionLight[]>([])
 const loadingFlavours = ref(false)
+const loadingCollections = ref(false)
+const collectionOptions = computed(() => collections.value.map((c) => c.name))
 
 // Define headers for the table
 const headers = [
@@ -93,6 +101,9 @@ const bookFilters = computed(() => {
     name: '',
     flavour: '',
     status: 'active',
+    collection: '',
+    before: '',
+    after: '',
   }
 
   if (query.name && typeof query.name === 'string') {
@@ -105,6 +116,18 @@ const bookFilters = computed(() => {
 
   if (query.status && typeof query.status === 'string') {
     derived.status = query.status
+  }
+
+  if (query.collection && typeof query.collection === 'string') {
+    derived.collection = query.collection
+  }
+
+  if (query.before && typeof query.before === 'string') {
+    derived.before = query.before
+  }
+
+  if (query.after && typeof query.after === 'string') {
+    derived.after = query.after
   }
 
   return derived
@@ -153,6 +176,11 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
     bookFilters.value.name || undefined,
     bookFilters.value.flavour || undefined,
     props.hasBackup, // pass the hasBackup prop to filter by backup status
+    undefined, // offliner not used in this view
+    undefined, // issue not used in this view
+    bookFilters.value.collection || undefined,
+    bookFilters.value.before || undefined,
+    bookFilters.value.after || undefined,
   )
 
   books.value = bookStore.books
@@ -213,6 +241,18 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
     query.status = sourceFilters.status
   }
 
+  if (sourceFilters.collection) {
+    query.collection = sourceFilters.collection
+  }
+
+  if (sourceFilters.before) {
+    query.before = sourceFilters.before
+  }
+
+  if (sourceFilters.after) {
+    query.after = sourceFilters.after
+  }
+
   router.push({
     name: props.routeName,
     query: Object.keys(query).length > 0 ? query : undefined,
@@ -220,7 +260,14 @@ function updateUrlFilters(sourceFilters: typeof bookFilters.value) {
 }
 
 async function clearFilters() {
-  updateUrlFilters({ name: '', flavour: '', status: 'active' })
+  updateUrlFilters({
+    name: '',
+    flavour: '',
+    status: 'active',
+    collection: '',
+    before: '',
+    after: '',
+  })
 }
 
 async function handleBookFiltersChange(newFilters: typeof bookFilters.value) {
@@ -259,11 +306,22 @@ watch(
 
 onMounted(async () => {
   loadingFlavours.value = true
-  const fetchedFlavours = await bookStore.fetchBookFlavours()
+  loadingCollections.value = true
+
+  const [fetchedFlavours, fetchedCollections] = await Promise.all([
+    bookStore.fetchBookFlavours(),
+    collectionsStore.fetchCollections(100),
+  ])
+
   if (fetchedFlavours) {
     flavours.value = fetchedFlavours
   }
+  if (fetchedCollections) {
+    collections.value = fetchedCollections
+  }
   loadingFlavours.value = false
+  loadingCollections.value = false
+
   intervalId.value = window.setInterval(async () => {
     await loadData(paginator.value.limit, paginator.value.skip, true)
   }, 60000)

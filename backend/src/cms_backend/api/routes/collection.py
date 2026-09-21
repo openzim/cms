@@ -79,6 +79,7 @@ class CollectionCreateSchema(BaseModel):
     name: NotEmptyString = Field(min_length=3)
     warehouse_name: NotEmptyString = Field(min_length=3)
     is_private: bool
+    retain_old_books: bool
     download_base_url: AnyUrl | None = None
     view_base_url: AnyUrl | None = None
     article_count_increase_threshold: float | None = Field(ge=0.0, le=1.0, default=None)
@@ -118,6 +119,7 @@ def create_collection(
             media_count_increase_threshold=request.media_count_increase_threshold,
             media_count_decrease_threshold=request.media_count_decrease_threshold,
             is_private=request.is_private,
+            retain_old_books=request.retain_old_books,
         )
     )
 

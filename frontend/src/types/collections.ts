@@ -3,18 +3,31 @@ export interface CollectionLight {
   name: string
   paths: string[]
   is_private: boolean
+  retain_old_books: boolean
 }
 
 export interface Collection extends CollectionLight {
   warehouse: string
-  download_base_url?: string
-  view_base_url?: string
+  download_base_url: string | null
+  view_base_url: string | null
+  article_count_increase_threshold: number | null
+  article_count_decrease_threshold: number | null
+  media_count_increase_threshold: number | null
+  media_count_decrease_threshold: number | null
+}
+
+export interface CollectionCreateSchema {
+  name: string
+  warehouse_name: string
+  is_private: boolean
+  retain_old_books: boolean
+  download_base_url?: string | null
+  view_base_url?: string | null
   article_count_increase_threshold?: number | null
   article_count_decrease_threshold?: number | null
   media_count_increase_threshold?: number | null
   media_count_decrease_threshold?: number | null
 }
-
 export interface CollectionUpdate {
   name?: string
   download_base_url?: string | null
@@ -25,6 +38,7 @@ export interface CollectionUpdate {
   media_count_increase_threshold?: number | null
   media_count_decrease_threshold?: number | null
   is_private?: boolean
+  retain_old_books?: boolean
 }
 
 export interface CollectionHistory {
@@ -33,6 +47,8 @@ export interface CollectionHistory {
   author: string
   created_at: string
   name: string
-  download_base_url?: string
-  view_base_url?: string
+  is_private: boolean
+  retain_old_books: boolean
+  download_base_url: string | null
+  view_base_url: string | null
 }

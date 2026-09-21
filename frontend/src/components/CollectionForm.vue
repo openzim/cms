@@ -40,6 +40,15 @@
       hide-details
     />
 
+    <v-switch
+      v-model="formData.retain_old_books"
+      label="Retain Old Books"
+      color="primary"
+      density="comfortable"
+      class="mb-2"
+      hide-details
+    />
+
     <v-text-field
       v-model="formData.download_base_url"
       label="Download Base URL (Optional)"
@@ -152,6 +161,7 @@ interface FormData {
   media_count_increase_threshold?: number
   media_count_decrease_threshold?: number
   is_private: boolean
+  retain_old_books: boolean
 }
 
 const defaultArticleCountIncreaseThreshold = computed(() =>
@@ -177,6 +187,7 @@ const formData = ref<FormData>({
   media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
   media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
   is_private: false,
+  retain_old_books: false,
 })
 
 const isEditMode = computed(() => props.collection !== null)
@@ -207,6 +218,8 @@ const hasChanges = computed(() => {
     (props.collection.media_count_decrease_threshold || null)
 
   const isPrivateChanged = formData.value.is_private !== props.collection.is_private
+  const retainOldBooksChanged =
+    formData.value.retain_old_books !== props.collection.retain_old_books
 
   return (
     nameChanged ||
@@ -216,7 +229,8 @@ const hasChanges = computed(() => {
     articleCountDecreaseChanged ||
     mediaCountIncreaseChanged ||
     mediaCountDecreaseChanged ||
-    isPrivateChanged
+    isPrivateChanged ||
+    retainOldBooksChanged
   )
 })
 
@@ -289,6 +303,7 @@ function resetFormToCollection(collection: Collection) {
     media_count_increase_threshold: collection.media_count_increase_threshold || undefined,
     media_count_decrease_threshold: collection.media_count_decrease_threshold || undefined,
     is_private: collection.is_private,
+    retain_old_books: collection.retain_old_books,
   }
   formRef.value?.resetValidation()
 }
@@ -307,6 +322,7 @@ function resetForm() {
       media_count_increase_threshold: defaultMediaCountIncreaseThreshold.value,
       media_count_decrease_threshold: defaultMediaCountDecreaseThreshold.value,
       is_private: false,
+      retain_old_books: false,
     }
     formRef.value?.resetValidation()
   }
@@ -365,6 +381,10 @@ function getUpdatePayload(): Partial<CollectionUpdate> | null {
 
   if (formData.value.is_private !== props.collection.is_private) {
     updatePayload.is_private = formData.value.is_private
+  }
+
+  if (formData.value.retain_old_books !== props.collection.retain_old_books) {
+    updatePayload.retain_old_books = formData.value.retain_old_books
   }
 
   return updatePayload

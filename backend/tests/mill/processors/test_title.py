@@ -2,12 +2,12 @@
 
 import datetime
 from collections.abc import Callable
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.db.models import Book, BookLocation, Title
+from cms_backend.db.models import Book, BookLocation, Collection, Title
 from cms_backend.db.rules import (
     apply_retention_rules,
     sort_books_by_filename_period,
@@ -364,3 +364,78 @@ def test_apply_retention_rules_all_older_than_30_days(
     assert book_mar1.location_kind == "to_delete"
     assert book_feb1.location_kind == "to_delete"
     assert book_jan.location_kind == "to_delete"
+
+
+@patch("cms_backend.db.rules.logger")
+def test_apply_retention_rules_skip_for_collections_that_retain_books(
+    mock_logger: MagicMock,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_book_location: Callable[..., BookLocation],
+):
+    title = create_title(name="test_wiki_en_all")
+    # Title belongs to two collections with different policies for old books
+    create_collection(
+        name="collection1",
+        retain_old_books=True,
+        title_ids_with_paths=[(title.id, "other")],
+    )
+    create_collection(
+        name="collection2",
+        retain_old_books=False,
+        title_ids_with_paths=[(title.id, "wikis")],
+    )
+    now = getnow()
+
+    # Create books with "nopic" flavour: two in january and one in february
+    book_nopic_jan = create_book(
+        name="test_wiki",
+        date="2024-01-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_nopic_jan.location_kind = "prod"
+    book_nopic_jan.title = title
+    create_book_location(book=book_nopic_jan, filename="test_wiki_nopic_2024-01.zim")
+
+    book_nopic_jan_b = create_book(
+        name="test_wiki",
+        date="2024-01-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_nopic_jan_b.location_kind = "prod"
+    book_nopic_jan_b.title = title
+    create_book_location(book=book_nopic_jan_b, filename="test_wiki_nopic_2024-01a.zim")
+
+    book_nopic_feb = create_book(
+        name="test_wiki",
+        date="2024-02-01",
+        flavour="nopic",
+        created_at=now,
+    )
+    book_nopic_feb.location_kind = "prod"
+    book_nopic_feb.title = title
+    create_book_location(book=book_nopic_feb, filename="test_wiki_nopic_2024-02.zim")
+
+    dbsession.flush()
+
+    with patch(
+        "cms_backend.db.rules.getnow",
+        return_value=datetime.datetime(2024, 2, 1),
+    ):
+        apply_retention_rules(dbsession, title)
+
+    dbsession.flush()
+
+    expected_message = (
+        f"Skipping retention rule application for title '{title.name}' because "
+        "associated collection 'collection1' retains old books"
+    )
+    mock_logger.debug.assert_called_once_with(expected_message)
+    # No books should be marked for deletion
+    assert book_nopic_jan.location_kind == "prod"
+    assert book_nopic_jan_b.location_kind == "prod"
+    assert book_nopic_feb.location_kind == "prod"

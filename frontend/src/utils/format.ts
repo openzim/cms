@@ -17,6 +17,13 @@ export function formatDt(value?: string, format: string = 'fff') {
   return dt.toFormat(format)
 }
 
+export function toISODate(value: Date | string | null | undefined): string {
+  // convert a Date (or an existing date string) to an ISO 8601 date string (YYYY-MM-DD)
+  if (!value) return ''
+  const dt = typeof value === 'string' ? DateTime.fromISO(value) : DateTime.fromJSDate(value)
+  return dt.isValid ? (dt.toISODate() ?? '') : ''
+}
+
 /**
  * Format a duration in seconds as a human-readable estimate
  */
