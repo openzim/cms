@@ -2,7 +2,7 @@
   <v-text-field
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event ?? null)"
-    label="Language"
+    :label="label"
     variant="outlined"
     density="comfortable"
     :rules="[langCodeRule]"
@@ -21,9 +21,12 @@ import { computed } from 'vue'
 
 interface Props {
   modelValue: string | null | undefined
+  label?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  label: 'Language',
+})
 
 defineEmits<{
   'update:modelValue': [value: string | null]

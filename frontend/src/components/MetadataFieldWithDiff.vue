@@ -19,7 +19,7 @@
         </template>
 
         <v-btn size="small" variant="outlined" color="warning" class="ml-3" @click="$emit('use')">
-          Use this
+          Keep this
         </v-btn>
       </div>
     </div>
@@ -39,7 +39,7 @@ defineProps<{
 }>()
 
 defineEmits<{
-  /** Emitted when the user clicks "Use this" */
+  /** Emitted when the user clicks "Keep this" */
   use: []
 }>()
 

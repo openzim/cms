@@ -83,7 +83,8 @@
               <template #text>
                 <div class="pb-2">
                   <v-alert
-                    :type="action.requirement !== 'information' ? 'warning' : 'info'"
+                    v-if="action.requirement === 'information'"
+                    type="info"
                     variant="tonal"
                     density="compact"
                     class="mb-4"
@@ -143,30 +144,19 @@
                             class="mr-2"
                           />
                         </div>
-                        <div class="d-flex align-center ga-2">
-                          <v-btn
-                            v-if="existingTitle && hasAnyFieldDifferentFromTitle(index)"
-                            color="primary"
-                            variant="elevated"
-                            size="small"
-                            prepend-icon="mdi-download"
-                            @click="useAllTitleValues(index)"
-                          >
-                            Use All from Title
-                          </v-btn>
-                        </div>
                       </div>
                       <v-row v-if="actionData[index]?.name !== undefined">
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'name')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Name:"
                             :diff-value="existingTitle?.name"
                             @use="useTitleValue(index, 'name')"
                           >
                             <TitleNameField
                               :model-value="actionData[index].name"
                               @update:model-value="actionData[index].name = $event"
+                              label="New Name"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -175,14 +165,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'title')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Title:"
                             :diff-value="existingTitle?.title"
                             @use="useTitleValue(index, 'title')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].title"
                               @update:model-value="actionData[index].title = $event"
-                              label="Title"
+                              label="New Title"
                               :max-graphemes="titleMaxLength"
                             />
                           </MetadataFieldWithDiff>
@@ -192,14 +182,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'creator')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Creator:"
                             :diff-value="existingTitle?.creator"
                             @use="useTitleValue(index, 'creator')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].creator"
                               @update:model-value="actionData[index].creator = $event"
-                              label="Creator"
+                              label="New Creator"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -208,14 +198,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'publisher')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Publisher:"
                             :diff-value="existingTitle?.publisher"
                             @use="useTitleValue(index, 'publisher')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].publisher"
                               @update:model-value="actionData[index].publisher = $event"
-                              label="Publisher"
+                              label="New Publisher"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -224,14 +214,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'license')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current License:"
                             :diff-value="existingTitle?.license"
                             @use="useTitleValue(index, 'license')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].license"
                               @update:model-value="actionData[index].license = $event"
-                              label="License"
+                              label="New License"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -240,13 +230,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'language')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Language:"
                             :diff-value="existingTitle?.language"
                             @use="useTitleValue(index, 'language')"
                           >
                             <TitleLanguageField
                               :model-value="actionData[index].language"
                               @update:model-value="actionData[index].language = $event"
+                              label="New Language"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -255,7 +246,7 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'illustration_48x48_at_1')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Illustration:"
                             @use="useTitleValue(index, 'illustration_48x48_at_1')"
                           >
                             <TitleIllustrationField
@@ -263,6 +254,7 @@
                               @update:model-value="
                                 actionData[index].illustration_48x48_at_1 = $event
                               "
+                              label="New Illustration"
                             />
                             <template #diff-content>
                               <div class="d-flex flex-column flex-grow-1">
@@ -284,14 +276,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'description')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Description:"
                             :diff-value="existingTitle?.description"
                             @use="useTitleValue(index, 'description')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].description"
                               @update:model-value="actionData[index].description = $event"
-                              label="Description"
+                              label="New Description"
                               textarea
                               :max-graphemes="descriptionMaxLength"
                             />
@@ -302,14 +294,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'long_description')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Long Description:"
                             :diff-value="existingTitle?.long_description"
                             @use="useTitleValue(index, 'long_description')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].long_description"
                               @update:model-value="actionData[index].long_description = $event"
-                              label="Long Description"
+                              label="New Long Description"
                               textarea
                               :rows="5"
                             />
@@ -320,14 +312,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'relation')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Relation:"
                             :diff-value="existingTitle?.relation"
                             @use="useTitleValue(index, 'relation')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].relation"
                               @update:model-value="actionData[index].relation = $event"
-                              label="Relation"
+                              label="New Relation"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -336,14 +328,14 @@
                         <v-col cols="12">
                           <MetadataFieldWithDiff
                             :show-diff="isFieldDifferentFromTitle(index, 'source')"
-                            diff-label="Different from title which has:"
+                            diff-label="Current Source:"
                             :diff-value="existingTitle?.source"
                             @use="useTitleValue(index, 'source')"
                           >
                             <TitleTextField
                               :model-value="actionData[index].source"
                               @update:model-value="actionData[index].source = $event"
-                              label="Source"
+                              label="New Source"
                             />
                           </MetadataFieldWithDiff>
                         </v-col>
@@ -786,22 +778,6 @@ function useTitleValue(index: number, field: keyof TitleMetadataFields): void {
   if (value !== undefined) {
     actionData.value[index][field] = value
   }
-}
-
-const hasAnyFieldDifferentFromTitle = (index: number): boolean => {
-  if (!existingTitle.value) return false
-  return TITLE_METADATA_FIELDS.some(
-    (field) =>
-      actionData.value[index]?.[field] !== undefined && isFieldDifferentFromTitle(index, field),
-  )
-}
-
-function useAllTitleValues(index: number): void {
-  TITLE_METADATA_FIELDS.forEach((field) => {
-    if (actionData.value[index]?.[field] !== undefined && isFieldDifferentFromTitle(index, field)) {
-      useTitleValue(index, field)
-    }
-  })
 }
 
 async function loadRecipeMetadata(recipeId: string) {
