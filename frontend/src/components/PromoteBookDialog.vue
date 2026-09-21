@@ -77,6 +77,15 @@
                   >
                     {{ action.requirement }}
                   </v-chip>
+                  <v-chip
+                    v-if="invalidMetadataActionIndexes.includes(index)"
+                    size="x-small"
+                    class="ml-2 flex-grow-0"
+                    color="error"
+                    variant="flat"
+                  >
+                    Invalid fields
+                  </v-chip>
                 </div>
               </template>
 
@@ -144,6 +153,17 @@
                             class="mr-2"
                           />
                         </div>
+                        <v-alert
+                          v-if="hasInvalidActionData"
+                          type="error"
+                          variant="tonal"
+                          density="compact"
+                          icon="mdi-alert-circle"
+                          class="mt-4"
+                        >
+                          Some metadata fields do not meet the validation requirements. Fix the
+                          highlighted fields or uncheck the action to continue.
+                        </v-alert>
                       </div>
                       <v-row v-if="actionData[index]?.name !== undefined">
                         <v-col cols="12">
@@ -433,7 +453,7 @@
           variant="elevated"
           @click="actions.length > 0 ? handleSubmit() : executePromote()"
           :loading="submitting"
-          :disabled="submitting"
+          :disabled="submitting || hasInvalidActionData"
         >
           Promote Book
         </v-btn>
@@ -526,6 +546,7 @@ import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
 import { extractRecipeMetadataValues } from '@/utils/recipe'
 import httpRequest from '@/utils/httpRequest'
+import { isLanguageValid, isTitleNameValid, isWithinGraphemeLimit } from '@/utils/validation'
 import DiffViewer from '@/components/DiffViewer.vue'
 import RecipeUpdateDialog from '@/components/RecipeUpdateDialog.vue'
 import { computed, inject, ref, watch } from 'vue'
@@ -599,6 +620,35 @@ const hasRecipeMetadataDifferences = computed(() => {
   }
   return false
 })
+
+/**
+ * Index of active `update_title_metadata` action whose fields do not meet the
+ * validation constraints. Promotion is blocked until these fields are fixed or
+ * the action is unchecked.
+ */
+const invalidMetadataActionIndexes = computed(() => {
+  return actions.value.reduce<number[]>((indexes, action, index) => {
+    if (action.kind !== 'update_title_metadata') return indexes
+
+    const isActive = action.requirement === 'mandatory' || actionChecked.value[index]
+    if (!isActive) return indexes
+
+    const data = actionData.value[index]
+    if (!data) return indexes
+
+    const invalid =
+      (data.name !== undefined && !isTitleNameValid(data.name)) ||
+      (data.title !== undefined && !isWithinGraphemeLimit(data.title, titleMaxLength)) ||
+      (data.description !== undefined &&
+        !isWithinGraphemeLimit(data.description, descriptionMaxLength)) ||
+      (data.language !== undefined && !isLanguageValid(data.language))
+
+    if (invalid) indexes.push(index)
+    return indexes
+  }, [])
+})
+
+const hasInvalidActionData = computed(() => invalidMetadataActionIndexes.value.length > 0)
 
 const selectedActionsForConfirm = computed(() => {
   return actions.value
@@ -878,6 +928,7 @@ async function loadDryRun() {
 
 function handleSubmit() {
   if (!props.book) return
+  if (hasInvalidActionData.value) return
   showConfirmDialog.value = true
 }
 

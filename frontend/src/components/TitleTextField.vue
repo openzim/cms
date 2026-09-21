@@ -8,12 +8,11 @@
     density="comfortable"
     :rules="allRules"
     clearable
-    :color="invalid ? 'warning' : undefined"
-    :base-color="invalid ? 'warning' : undefined"
+    :error="invalid"
   >
     <template v-if="maxGraphemes" #counter> {{ graphemeCount }}/{{ maxGraphemes }} </template>
     <template v-if="invalid" #append-inner>
-      <v-icon color="warning" icon="mdi-alert-circle" />
+      <v-icon color="error" icon="mdi-alert-circle" />
     </template>
   </v-text-field>
   <v-textarea
@@ -26,12 +25,11 @@
     :rules="allRules"
     :rows="rows ?? 3"
     clearable
-    :color="invalid ? 'warning' : undefined"
-    :base-color="invalid ? 'warning' : undefined"
+    :error="invalid"
   >
     <template v-if="maxGraphemes" #counter> {{ graphemeCount }}/{{ maxGraphemes }} </template>
     <template v-if="invalid" #append-inner>
-      <v-icon color="warning" icon="mdi-alert-circle" />
+      <v-icon color="error" icon="mdi-alert-circle" />
     </template>
   </v-textarea>
 </template>
@@ -39,6 +37,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { byGrapheme } from 'split-by-grapheme'
+import { graphemeLengthRule } from '@/utils/validation'
 
 interface Props {
   modelValue: string | null | undefined
@@ -66,15 +65,7 @@ const graphemeCount = computed(() => {
 
 const lengthRule = computed(() => {
   if (!props.maxGraphemes) return []
-  return [
-    (value: unknown) => {
-      if (!value) return true
-      if (String(value).split(byGrapheme).length > props.maxGraphemes!) {
-        return `Maximum length is ${props.maxGraphemes} characters.`
-      }
-      return true
-    },
-  ]
+  return [graphemeLengthRule(props.maxGraphemes)]
 })
 
 const allRules = computed(() => [...props.rules, ...lengthRule.value])
