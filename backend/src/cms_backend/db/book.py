@@ -729,22 +729,29 @@ def get_book_metadata_issues(book: Book) -> list[BadMetadata]:
             )
         )
 
-    title_length = len(regex.findall(r"\X", book.zim_metadata["Title"]))
+    title = book.zim_metadata["Title"]
+    title_length = len(regex.findall(r"\X", title))
 
     if title_length > Context.zim_title_max_length:
         issues.append(
             BadMetadata(
-                message=f"book Title metadata is {title_length} characters long, "
-                f"maximum length: {Context.zim_title_max_length}"
+                message=(
+                    f"book Title metadata ({title}) is {title_length} characters long, "
+                    f"maximum length: {Context.zim_title_max_length}"
+                )
             )
         )
 
-    description_length = len(regex.findall(r"\X", book.zim_metadata["Description"]))
+    description = book.zim_metadata["Description"]
+    description_length = len(regex.findall(r"\X", description))
     if description_length > Context.zim_description_max_length:
         issues.append(
             BadMetadata(
-                message=f"book Description metadata is {description_length} characters "
-                f"long, maximum length: {Context.zim_description_max_length}"
+                message=(
+                    f"book Description metadata ({description}) is "
+                    f"{description_length} characters "
+                    f"long, maximum length: {Context.zim_description_max_length}"
+                )
             )
         )
     flavour = book.zim_metadata.get("Flavour")
