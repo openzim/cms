@@ -49,6 +49,7 @@ from cms_backend.schemas.orms import (
 )
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import compute_target_filename
+from cms_backend.utils.image import images_differ
 from cms_backend.utils.requests import query_api
 from cms_backend.utils.zim import (
     get_missing_keys,
@@ -543,11 +544,21 @@ def get_differing_metadata_keys(book: Book) -> list[MetadataKey]:
     if book.title is None:
         raise ValueError("Book has no associated title.")
 
-    return [
-        key
-        for key in get_args(MetadataKey)
-        if get_book_metadata(book, key) != get_book_title_metadata(book, key)
-    ]
+    keys: list[MetadataKey] = []
+    for key in get_args(MetadataKey):
+        book_value = get_book_metadata(book, key)
+        title_value = get_book_title_metadata(book, key)
+        if key == "Illustration_48x48@1":
+            # If only one is None, then, no need for comparsion
+            if bool(book_value is None) ^ bool(title_value is None):
+                keys.append(key)
+                continue
+
+            if book_value and title_value and images_differ(book_value, title_value)[0]:
+                keys.append(key)
+        elif book_value != title_value:
+            keys.append(key)
+    return keys
 
 
 def create_book_history_entry(

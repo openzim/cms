@@ -29,6 +29,8 @@ dependencies = [
     "pycountry == 26.2.16",
     "requests == 2.34.2",
     "kiwixstorage == 0.10.1",
+    "numpy == 2.5.3",
+    "pillow == 12.3.0",
 ]
 dynamic = ["version"]
 
