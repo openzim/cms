@@ -11,8 +11,15 @@
     <div v-if="dataLoaded && book">
       <v-row>
         <v-col>
-          <h2 class="text-h6 text-md-h5 mb-2">
+          <h2 class="text-h6 text-md-h5 mb-2 d-flex flex-wrap align-center ga-2">
             <code>{{ book.name || book.id }}</code>
+            <v-chip v-if="book.flavour" size="small" variant="tonal" color="primary">
+              {{ book.flavour }}
+            </v-chip>
+            <v-chip v-if="book.date" size="small" variant="outlined">
+              <v-icon start size="small">mdi-calendar</v-icon>
+              {{ book.date }}
+            </v-chip>
           </h2>
         </v-col>
       </v-row>
