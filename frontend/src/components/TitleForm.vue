@@ -126,15 +126,7 @@
           >
             <TitleIllustrationField v-model="formData.illustration_48x48_at_1" />
             <template #diff-content>
-              <div class="d-flex flex-column flex-grow-1">
-                <v-img
-                  :src="getImageDataUrl(bookMetadata?.illustration_48x48_at_1)"
-                  width="48"
-                  height="48"
-                  class="rounded border w-100"
-                />
-                <span class="text-caption text-grey-darken-1 mt-1">{{ bookIllustrationSize }}</span>
-              </div>
+              <IllustrationPreview :illustration="bookMetadata?.illustration_48x48_at_1" />
             </template>
           </MetadataFieldWithDiff>
         </v-col>
@@ -210,14 +202,13 @@ import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
 import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
 import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
+import IllustrationPreview from '@/components/IllustrationPreview.vue'
 import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
 import type { CollectionLight } from '@/types/collections'
 import type { Book } from '@/types/book'
 import { computed, inject, ref, watch } from 'vue'
 import constants, { TITLE_METADATA_FIELDS, type TitleMetadataFieldKey } from '@/constants'
 import type { Config } from '@/config'
-import { base64ByteSize } from '@/utils/format'
-import { getImageDataUrl } from '@/utils/image'
 
 interface Props {
   title?: Title | null
@@ -313,33 +304,6 @@ const useAllBookValues = () => {
     if (isFieldDifferent(field)) useBookValue(field)
   })
 }
-
-const bookIllustrationDimensions = ref<{ width: number; height: number } | null>(null)
-
-watch(
-  () => bookMetadata.value?.illustration_48x48_at_1,
-  (illustration) => {
-    bookIllustrationDimensions.value = null
-    if (!illustration) return
-    const src = getImageDataUrl(illustration)
-    if (!src) return
-    const image = new Image()
-    image.onload = () => {
-      bookIllustrationDimensions.value = { width: image.width, height: image.height }
-    }
-    image.src = src
-  },
-  { immediate: true },
-)
-
-const bookIllustrationSize = computed(() => {
-  const illustration = bookMetadata.value?.illustration_48x48_at_1
-  if (!illustration) return ''
-  const size = `${base64ByteSize(illustration)} bytes`
-  const dimensions = bookIllustrationDimensions.value
-  if (!dimensions) return size
-  return `${size} (${dimensions.width} × ${dimensions.height} px)`
-})
 
 const hasCollectionChanges = computed(() => {
   if (!isEditMode.value) return false
