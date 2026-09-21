@@ -33,7 +33,7 @@
 
             <div v-else-if="issueKey === 'metadata mismatch'" class="border pa-2 rounded mt-0">
               <template v-if="metadataDifferences">
-                <div class="text-subtitle-2 mb-2">Book Metadata vs Title Metadata:</div>
+                <div class="text-subtitle-2 mb-2">Title Metadata vs Book Metadata:</div>
                 <DiffViewer :differences="metadataDifferences" />
               </template>
               <div v-else class="text-center pa-2 text-body-2 text-medium-emphasis">
@@ -192,7 +192,7 @@ const metadataDifferences = computed(() => {
     titleMetadata[item.name] = item.title_value ?? null
   }
 
-  const differences = diff(bookMetadata, titleMetadata)
+  const differences = diff(titleMetadata, bookMetadata)
   if (!differences) return undefined
 
   // Enhance differences with blob metadata

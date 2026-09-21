@@ -448,7 +448,7 @@
           variant="elevated"
           @click="actions.length > 0 ? handleSubmit() : executePromote()"
           :loading="submitting"
-          :disabled="submitting || (actions.length > 0 && !hasAnyActionChecked)"
+          :disabled="submitting"
         >
           Promote Book
         </v-btn>
@@ -467,7 +467,10 @@
     @confirm="executePromote"
   >
     <template #content>
-      <p class="mb-3">
+      <p v-if="selectedActionsForConfirm.length === 0" class="text-body-2 text-medium-emphasis">
+        No additional actions will be performed. The book will simply be moved to prod.
+      </p>
+      <p v-else class="mb-3">
         Are you sure you want to promote this book? The following actions will be performed so that
         book can be moved to prod:
       </p>
@@ -610,15 +613,6 @@ const hasRecipeMetadataDifferences = computed(() => {
     if (newData[field] !== oldValue) return true
   }
   return false
-})
-
-const hasAnyActionChecked = computed(() => {
-  // Allow promoting when all actions are purely informational
-  if (actions.value.length > 0 && actions.value.every((a) => a.requirement === 'information'))
-    return true
-  return actions.value.some(
-    (action, index) => action.requirement === 'mandatory' || actionChecked.value[index],
-  )
 })
 
 const selectedActionsForConfirm = computed(() => {
