@@ -93,7 +93,7 @@
                 />
               </v-col>
 
-              <v-col cols="12" v-if="form.role === 'collection-editor'">
+              <v-col cols="12" v-if="isCollectionScopedRole(form.role)">
                 <v-autocomplete
                   v-model="form.collections"
                   :items="collectionNames"
@@ -210,6 +210,7 @@ import { useUserStore } from '@/stores/user'
 import { useCollectionsStore } from '@/stores/collections'
 import type { User } from '@/types/user'
 import { generatePassword } from '@/utils/browsers'
+import { isCollectionScopedRole } from '@/utils/roles'
 
 const roles = constants.ROLES
 
@@ -340,7 +341,7 @@ const createUser = async () => {
     display_name: form.value.display_name,
     role: form.value.role,
   }
-  if (form.value.role === 'collection-editor') {
+  if (isCollectionScopedRole(form.value.role)) {
     payload.collections = form.value.collections
   }
   if (showLocalLogin.value) {
@@ -481,11 +482,11 @@ watch(showCreateDialog, (newValue) => {
   }
 })
 
-// Clear collections when switching away from collection-editor role
+// Clear collections when switching away from a collection-scoped role
 watch(
   () => form.value.role,
   (newRole) => {
-    if (newRole !== 'collection-editor') {
+    if (!isCollectionScopedRole(newRole)) {
       form.value.collections = []
     }
   },

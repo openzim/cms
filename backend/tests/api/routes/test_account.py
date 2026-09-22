@@ -152,7 +152,7 @@ def test_update_account_role(client: TestClient, account: Account):
     response = client.patch(
         url,
         headers={"Authorization": f"Bearer {access_token}"},
-        json={"role": "viewer"},
+        json={"role": "public-viewer"},
     )
     assert response.status_code == HTTPStatus.NO_CONTENT
 
@@ -160,7 +160,7 @@ def test_update_account_role(client: TestClient, account: Account):
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert data["username"] == account.username
-    assert data["role"] == "viewer"
+    assert data["role"] == "public-viewer"
 
 
 def test_create_account(client: TestClient, account: Account):
@@ -176,7 +176,7 @@ def test_create_account(client: TestClient, account: Account):
             "username": "test",
             "display_name": "test",
             "password": "testpassword",
-            "role": "viewer",
+            "role": "public-viewer",
         },
     )
     assert response.status_code == HTTPStatus.OK
@@ -195,7 +195,7 @@ def test_create_account_duplicate(client: TestClient, account: Account):
             "username": account.username,
             "display_name": "test",
             "password": "testpassword",
-            "role": "viewer",
+            "role": "global-viewer",
         },
     )
     assert response.status_code == HTTPStatus.CONFLICT

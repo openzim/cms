@@ -108,10 +108,12 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
 const getRoleColor = (role: string): string => {
   const colorMap: Record<string, string> = {
     admin: 'error',
-    'global-editor': 'primary',
-    viewer: 'default',
+    'public-viewer': 'default',
     zimfarm: 'secondary',
+    'collection-viewer': 'teal',
     'collection-editor': 'info',
+    'global-viewer': 'indigo',
+    'global-editor': 'primary',
   }
   return colorMap[role] || 'default'
 }

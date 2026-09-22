@@ -62,7 +62,7 @@ def get_current_account_or_none_with_session(
             db_account.create_account(
                 session,
                 display_name=claims.name or str(claims.sub),
-                role=RoleEnum.VIEWER,
+                role=RoleEnum.PUBLIC_VIEWER,
                 idp_sub=claims.sub,
             )
             account = db_account.get_account_by_id_or_none(

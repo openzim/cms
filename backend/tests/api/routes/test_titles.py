@@ -146,7 +146,12 @@ def test_get_titles(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_create_title_required_permissions(
@@ -490,7 +495,12 @@ def test_get_title_by_id_not_found(client: TestClient):
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_update_title_required_permissions(
@@ -637,7 +647,12 @@ def test_update_title_metadata(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_archive_title_required_permissions(
@@ -664,7 +679,12 @@ def test_archive_title_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NO_CONTENT, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_archive_multiple_titles_required_permissions(
@@ -694,7 +714,12 @@ def test_archive_multiple_titles_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_restore_archived_title_required_permissions(
@@ -721,7 +746,12 @@ def test_restore_archived_title_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NO_CONTENT, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_restore_multiple_titles_required_permissions(
@@ -796,7 +826,12 @@ def test_get_title_history(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="globa-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_get_title_history_required_permissions(
@@ -839,7 +874,12 @@ def test_get_title_history_entry(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_revert_title_required_permissions(
@@ -879,7 +919,12 @@ def test_revert_title_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_merge_titles_required_permissions(
@@ -1019,7 +1064,12 @@ def test_get_title_flavours_pagination(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_delete_title_flavour_required_permissions(

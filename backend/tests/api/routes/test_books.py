@@ -348,7 +348,8 @@ def test_get_books_filter_by_collection_name(
         pytest.param(RoleEnum.ADMIN, 2, id="admin"),
         pytest.param(RoleEnum.GLOBAL_EDITOR, 2, id="global-editor"),
         pytest.param(RoleEnum.COLLECTION_EDITOR, 1, id="collection-editor"),
-        pytest.param(RoleEnum.VIEWER, 0, id="viewer"),
+        pytest.param(RoleEnum.PUBLIC_VIEWER, 0, id="public-viewer"),
+        pytest.param(RoleEnum.GLOBAL_VIEWER, 2, id="global-viewer"),
     ],
 )
 def test_get_books_filter_by_account_permissions(
@@ -446,6 +447,144 @@ def test_get_books_filter_by_issues(
     response_doc = response.json()
     assert response_doc["meta"]["count"] == 1
     assert response_doc["items"][0]["id"] == str(book1.id)
+
+
+@pytest.mark.parametrize(
+    "permission,expected_nb_records",
+    [
+        pytest.param(RoleEnum.ADMIN, 4, id="admin"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, 4, id="global-editor"),
+        pytest.param(RoleEnum.GLOBAL_VIEWER, 4, id="global-viewer"),
+        pytest.param(RoleEnum.COLLECTION_EDITOR, 2, id="collection-editor"),
+        pytest.param(RoleEnum.COLLECTION_VIEWER, 2, id="collection-viewer"),
+        pytest.param(RoleEnum.PUBLIC_VIEWER, 1, id="public-viewer"),
+    ],
+)
+def test_get_zim_urls(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_book_location: Callable[..., BookLocation],
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_nb_records: int,
+):
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        issue_time=getnow(), account_id=str(account.id)
+    )
+
+    warehouse = create_warehouse()
+    title1 = create_title(name="test_en_all")
+    # Collection 1 is a private collection with 1 book
+    collection1 = create_collection(warehouse=warehouse, is_private=True)
+    create_collection_title(title=title1, collection=collection1, path=Path(""))
+    book1 = create_book(
+        zim_metadata={"Name": title1.name},
+        flavour="all",
+        date="2023-01-01",
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
+    )
+    book1.title = title1
+    book1.location_kind = "prod"
+    title1.books.append(book1)
+
+    create_book_location(
+        book=book1,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_en_all.zim",
+        status="current",
+    )
+
+    # Collection 2 is a private collection with 2 books and associated permission
+    title2 = create_title(name="test_fr_all")
+    collection2 = create_collection(warehouse=warehouse, is_private=True)
+    create_collection_title(title=title2, collection=collection2, path=Path(""))
+
+    if permission in (RoleEnum.COLLECTION_EDITOR, RoleEnum.COLLECTION_VIEWER):
+        collection_permission = CollectionPermission(
+            collection_id=collection2.id,
+            account_id=account.id,
+        )
+        dbsession.add(collection_permission)
+
+    book2 = create_book(
+        zim_metadata={"Name": title2.name},
+        flavour="maxi",
+        date="2023-01-01",
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
+    )
+    book2.title = title2
+    book2.location_kind = "prod"
+    title2.books.append(book2)
+
+    create_book_location(
+        book=book2,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_fr_maxi.zim",
+        status="current",
+    )
+
+    book2b = create_book(
+        zim_metadata={"Name": title2.name},
+        flavour="mini",
+        date="2023-01-01",
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
+    )
+    book2b.title = title2
+    book2b.location_kind = "prod"
+    title2.books.append(book2b)
+
+    create_book_location(
+        book=book2b,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_fr_mini.zim",
+        status="current",
+    )
+
+    # Collection 3 is a public collection with 1 book
+    title3 = create_title(name="test_de_all")
+    collection3 = create_collection(warehouse=warehouse, is_private=False)
+    create_collection_title(title=title3, collection=collection3, path=Path(""))
+    book3 = create_book(
+        zim_metadata={"Name": title3.name},
+        flavour="all",
+        date="2023-01-01",
+        zimcheck_result_url="https://www.example.com/zimcheck.json",
+    )
+    book3.title = title3
+    book3.location_kind = "prod"
+    title3.books.append(book3)
+
+    create_book_location(
+        book=book3,
+        warehouse_id=warehouse.id,
+        path=Path(""),
+        filename="test_de_all.zim",
+        status="current",
+    )
+
+    dbsession.flush()
+
+    response = client.get(
+        (
+            f"/v1/books/zims?zim_ids={book1.id}&zim_ids={book2.id}&zim_ids={book2b.id}"
+            f"&zim_ids={book3.id}"
+        ),
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    data = response.json()
+    assert "urls" in data
+    assert (
+        sum(1 for zim_id in data["urls"] if data["urls"][zim_id]) == expected_nb_records
+    )
 
 
 def test_get_book_languages(
@@ -710,7 +849,12 @@ def test_get_books_filter_by_date_range(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_update_book_required_permissions(
@@ -784,7 +928,12 @@ def test_get_book_history(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_get_title_history_required_permissions(
@@ -827,7 +976,12 @@ def test_get_title_history_entry(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_revert_book_required_permissions(
@@ -867,7 +1021,12 @@ def test_revert_book_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_backup_book_required_permissions(
@@ -922,7 +1081,12 @@ def test_backup_book_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_remove_book_backup_required_permissions(
@@ -988,7 +1152,12 @@ def test_remove_book_backup_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_get_book_issues(
@@ -1086,10 +1255,28 @@ def test_get_book_issues(
             RoleEnum.GLOBAL_EDITOR, "false", HTTPStatus.OK, id="global-editor-apply"
         ),
         pytest.param(
-            RoleEnum.VIEWER, "true", HTTPStatus.UNAUTHORIZED, id="viewer-dry-run"
+            RoleEnum.GLOBAL_VIEWER,
+            "true",
+            HTTPStatus.UNAUTHORIZED,
+            id="global-viewer-dry-run",
         ),
         pytest.param(
-            RoleEnum.VIEWER, "false", HTTPStatus.UNAUTHORIZED, id="viewer-apply"
+            RoleEnum.GLOBAL_VIEWER,
+            "false",
+            HTTPStatus.UNAUTHORIZED,
+            id="global-viewer-apply",
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER,
+            "true",
+            HTTPStatus.UNAUTHORIZED,
+            id="public-viewer-dry-run",
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER,
+            "false",
+            HTTPStatus.UNAUTHORIZED,
+            id="public-viewer-apply",
         ),
     ],
 )
@@ -1186,7 +1373,11 @@ def test_promote_book_permissions(
             HTTPStatus.OK,
         ),
         pytest.param(
-            RoleEnum.VIEWER,
+            RoleEnum.GLOBAL_VIEWER,
+            HTTPStatus.UNAUTHORIZED,
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER,
             HTTPStatus.UNAUTHORIZED,
         ),
     ],

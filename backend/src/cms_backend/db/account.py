@@ -116,7 +116,7 @@ def create_account(
     display_name: str,
     username: str | None = None,
     password_hash: str | None = None,
-    role: RoleEnum = RoleEnum.VIEWER,
+    role: RoleEnum = RoleEnum.PUBLIC_VIEWER,
     idp_sub: UUID | None = None,
     collections: list[NotEmptyString] | None = None,
 ) -> Account:
@@ -134,7 +134,10 @@ def create_account(
         session.flush()
     except IntegrityError as exc:
         raise RecordAlreadyExistsError("Account already exists") from exc
-    if account.role == RoleEnum.COLLECTION_EDITOR and collections:
+    if (
+        account.role in (RoleEnum.COLLECTION_EDITOR, RoleEnum.COLLECTION_VIEWER)
+        and collections
+    ):
         for collection_name in set(collections):
             collection = get_collection_by_name(session, collection_name)
             create_collection_permission(session, collection.id, account.id)
@@ -170,7 +173,7 @@ def get_accounts(
         .where(
             Account.deleted.is_(False),
             (Account.role != RoleEnum.ZIMFARM) | (show_zimfarmers is True),
-            (Account.role != RoleEnum.VIEWER) | (show_viewers is True),
+            (Account.role != RoleEnum.PUBLIC_VIEWER) | (show_viewers is True),
             (
                 Account.display_name.ilike(
                     f"%{username if username is not None else ''}%"
@@ -237,7 +240,10 @@ def update_account(
     if request.role is not None:
         delete_collection_permissions(session, account_id=account.id)
 
-    if request.collections and account.role == RoleEnum.COLLECTION_EDITOR:
+    if request.collections and account.role in (
+        RoleEnum.COLLECTION_EDITOR,
+        RoleEnum.COLLECTION_VIEWER,
+    ):
         for collection_name in set(request.collections):
             collection = get_collection_by_name(session, collection_name)
             create_collection_permission(session, collection.id, account.id)

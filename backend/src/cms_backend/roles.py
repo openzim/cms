@@ -25,13 +25,21 @@ class TitlePermissions(ResourcePermissions):
 class RoleEnum(StrEnum):
     GLOBAL_EDITOR = "global-editor"
     COLLECTION_EDITOR = "collection-editor"
-    VIEWER = "viewer"
+    COLLECTION_VIEWER = "collection-viewer"
+    PUBLIC_VIEWER = "public-viewer"
+    GLOBAL_VIEWER = "global-viewer"
     ZIMFARM = "zimfarm"
     ADMIN = "admin"
 
 
 ROLES: dict[str, dict[str, dict[str, bool]]] = {
-    RoleEnum.VIEWER: {},
+    RoleEnum.PUBLIC_VIEWER: {},
+    RoleEnum.GLOBAL_VIEWER: {
+        "book": ResourcePermissions.get(read=True),
+        "title": TitlePermissions.get(read=True),
+        "collection": ResourcePermissions.get(read=True),
+        "account": ResourcePermissions.get(read=True),
+    },
     RoleEnum.ADMIN: {
         "book": ResourcePermissions.get_all(),
         "title": TitlePermissions.get_all(),
@@ -49,6 +57,11 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "book": ResourcePermissions.get_all(),
         "title": TitlePermissions.get(read=True, update=True),
         "collection": ResourcePermissions.get(read=True, update=True),
+    },
+    RoleEnum.COLLECTION_VIEWER: {
+        "book": ResourcePermissions.get(read=True),
+        "title": TitlePermissions.get(read=True),
+        "collection": ResourcePermissions.get(read=True),
     },
     RoleEnum.ZIMFARM: {
         "zimfarm_notification": ResourcePermissions.get(read=True, create=True),

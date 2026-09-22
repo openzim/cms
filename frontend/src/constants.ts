@@ -22,7 +22,16 @@ export default {
   COOKIE_LIFETIME_EXPIRY: '10y', // 10 years
   TOKEN_STORAGE_KEY: 'cms-auth',
   // User roles
-  ROLES: ['viewer', 'collection-editor', 'global-editor', 'admin'] as const,
+  ROLES: [
+    'public-viewer',
+    'collection-viewer',
+    'collection-editor',
+    'global-viewer',
+    'global-editor',
+    'admin',
+  ] as const,
+  // Roles whose access is scoped to a selected set of collections
+  COLLECTION_SCOPED_ROLES: ['collection-viewer', 'collection-editor'] as const,
   // Notification constants
   NOTIFICATION_DEFAULT_DURATION: 5000, // 5 seconds
   NOTIFICATION_ERROR_DURATION: 8000, // 8 seconds for errors

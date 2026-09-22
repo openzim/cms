@@ -83,17 +83,21 @@ class BaseAccountCreateUpdateSchema(BaseModel):
     idp_sub: UUID | None = None
 
     @model_validator(mode="after")
-    def restrict_collections_to_collection_editor(self) -> Self:
-        if self.role == RoleEnum.COLLECTION_EDITOR and self.collections is None:
+    def restrict_collections_to_collection_editor_or_viewer(self) -> Self:
+        if (
+            self.role in (RoleEnum.COLLECTION_EDITOR, RoleEnum.COLLECTION_VIEWER)
+            and self.collections is None
+        ):
             raise ValueError(
-                f"Collections must be specified when setting role to "
-                f"{RoleEnum.COLLECTION_EDITOR}"
+                f"Collections must be specified when setting role to {self.role}"
             )
 
-        if self.role != RoleEnum.COLLECTION_EDITOR and self.collections:
+        if (
+            self.role not in (RoleEnum.COLLECTION_EDITOR, RoleEnum.COLLECTION_VIEWER)
+            and self.collections
+        ):
             raise ValueError(
-                f"Collections must not be specified when role is not"
-                f"{RoleEnum.COLLECTION_EDITOR}"
+                f"Collections must not be specified when role is {self.role}"
             )
 
         return self
