@@ -208,7 +208,12 @@ def get_books(
     )
 
 
-def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
+def get_zim_urls_prod(
+    session: OrmSession,
+    zim_ids: list[UUID],
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> ZimUrlsSchema:
     """
     Get view and download URLs for a list of ZIM IDs (Book IDs) in prod locations.
     """
@@ -240,14 +245,14 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
             ),
         )
         .where(
-            and_(
-                # Get all books for the related titles so we can determine the latest
-                Book.title_id.in_(select(Book.title_id).where(Book.id.in_(zim_ids))),
-                Book.needs_processing.is_(False),
-                Book.has_error.is_(False),
-                Book.needs_file_operation.is_(False),
-                Book.location_kind == "prod",
-            )
+            # Get all books for the related titles so we can determine the latest
+            Book.title_id.in_(select(Book.title_id).where(Book.id.in_(zim_ids))),
+            Book.needs_processing.is_(False),
+            Book.has_error.is_(False),
+            Book.needs_file_operation.is_(False),
+            Book.location_kind == "prod",
+            CollectionTitle.collection_id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
         )
         .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
@@ -303,7 +308,12 @@ def get_zim_urls_prod(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema
     return result
 
 
-def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
+def get_zim_urls_staging(
+    session: OrmSession,
+    zim_ids: list[UUID],
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> ZimUrlsSchema:
     """
     Get view and download URLs for a list of ZIM IDs (Book IDs) in staging locations.
     """
@@ -316,8 +326,11 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             BookLocation.filename,
+            Book.date,
+            Book.created_at,
         )
         .join(Title, Book.title_id == Title.id)
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(
             BookLocation,
             and_(
@@ -328,14 +341,15 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
                 BookLocation.is_backup.isnot(True),
             ),
         )
+        .distinct()
         .where(
-            and_(
-                Book.id.in_(zim_ids),
-                Book.needs_processing.is_(False),
-                Book.has_error.is_(False),
-                Book.needs_file_operation.is_(False),
-                Book.location_kind == "staging",
-            )
+            Book.id.in_(zim_ids),
+            Book.needs_processing.is_(False),
+            Book.has_error.is_(False),
+            Book.needs_file_operation.is_(False),
+            Book.location_kind == "staging",
+            CollectionTitle.collection_id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
         )
         .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
@@ -379,7 +393,12 @@ def get_zim_urls_staging(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSch
     return result
 
 
-def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
+def get_zim_urls_backup(
+    session: OrmSession,
+    zim_ids: list[UUID],
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> ZimUrlsSchema:
     """
     Get view and download URLs for a list of ZIM IDs (Book IDs) in backup locations.
     """
@@ -392,8 +411,11 @@ def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSche
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             BookLocation.filename,
+            Book.date,
+            Book.created_at,
         )
         .join(Title, Book.title_id == Title.id)
+        .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(
             BookLocation,
             and_(
@@ -404,14 +426,15 @@ def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSche
                 BookLocation.is_backup.is_(True),
             ),
         )
+        .distinct()
         .where(
-            and_(
-                Book.id.in_(zim_ids),
-                Book.needs_processing.is_(False),
-                Book.has_error.is_(False),
-                Book.needs_file_operation.is_(False),
-                BookLocation.is_backup.is_(True),
-            )
+            Book.id.in_(zim_ids),
+            Book.needs_processing.is_(False),
+            Book.has_error.is_(False),
+            Book.needs_file_operation.is_(False),
+            BookLocation.is_backup.is_(True),
+            CollectionTitle.collection_id.in_(accessible_collection_ids or [])
+            | (accessible_collection_ids is None),
         )
         .order_by(Title.id, Book.flavour, Book.date.desc(), Book.created_at.desc())
     )
@@ -460,10 +483,21 @@ def get_zim_urls_backup(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSche
     return result
 
 
-def get_zim_urls(session: OrmSession, zim_ids: list[UUID]) -> ZimUrlsSchema:
-    prod_urls = get_zim_urls_prod(session, zim_ids).urls
-    staging_urls = get_zim_urls_staging(session, zim_ids).urls
-    backup_urls = get_zim_urls_backup(session, zim_ids).urls
+def get_zim_urls(
+    session: OrmSession,
+    zim_ids: list[UUID],
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> ZimUrlsSchema:
+    prod_urls = get_zim_urls_prod(
+        session, zim_ids, accessible_collection_ids=accessible_collection_ids
+    ).urls
+    staging_urls = get_zim_urls_staging(
+        session, zim_ids, accessible_collection_ids=accessible_collection_ids
+    ).urls
+    backup_urls = get_zim_urls_backup(
+        session, zim_ids, accessible_collection_ids=accessible_collection_ids
+    ).urls
+
     return ZimUrlsSchema(
         urls={
             zim_id: prod_urls[zim_id] + staging_urls[zim_id] + backup_urls[zim_id]

@@ -232,6 +232,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { useCollectionsStore } from '@/stores/collections'
 import type { User } from '@/types/user'
+import { isCollectionScopedRole } from '@/utils/roles'
 
 // Props
 interface Props {
@@ -394,7 +395,7 @@ const loadUser = async () => {
 }
 
 const loadUserCollections = async () => {
-  if (user.value?.role === 'collection-editor') {
+  if (isCollectionScopedRole(user.value?.role)) {
     const accessibleCollections = await collectionsStore.fetchCollections(
       200,
       0,

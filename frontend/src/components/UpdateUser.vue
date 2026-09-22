@@ -27,7 +27,7 @@
             />
           </v-col>
 
-          <v-col cols="12" v-if="form.role === 'collection-editor'">
+          <v-col cols="12" v-if="isCollectionScopedRole(form.role)">
             <v-autocomplete
               v-model="form.collections"
               :items="collectionNames"
@@ -116,6 +116,7 @@ import { computed, inject, onMounted, ref, watch } from 'vue'
 import type { Config } from '@/config'
 import constants from '@/constants'
 import { generatePassword } from '@/utils/browsers'
+import { isCollectionScopedRole } from '@/utils/roles'
 import type { User } from '@/types/user'
 
 // Props
@@ -206,9 +207,9 @@ const payload = computed(() => {
     result.idp_sub = form.value.idp_sub.trim() ? form.value.idp_sub : null
   }
 
-  // Include collections if role is collection-editor and they differ from initial,
-  // or if the role has just been changed to collection-editor
-  if (form.value.role === 'collection-editor') {
+  // Include collections if the role is collection-scoped and they differ from initial,
+  // or if the role has just been changed to a collection-scoped role
+  if (isCollectionScopedRole(form.value.role)) {
     const roleChanged = form.value.role !== props.user.role
     const initial = props.initialCollections
     const current = form.value.collections
@@ -217,7 +218,7 @@ const payload = computed(() => {
     if (roleChanged || collectionsChanged) {
       result.collections = current
     }
-  } else if (form.value.role !== props.user.role && props.user.role === 'collection-editor') {
+  } else if (form.value.role !== props.user.role && isCollectionScopedRole(props.user.role)) {
     result.collections = null
   }
 
@@ -272,7 +273,7 @@ const initializeForm = () => {
     role,
     password: props.user.has_password ? PASSWORD_PLACEHOLDER : '',
     idp_sub: props.user.idp_sub || '',
-    collections: role === 'collection-editor' ? [...props.initialCollections] : [],
+    collections: isCollectionScopedRole(role) ? [...props.initialCollections] : [],
   }
 }
 
@@ -288,7 +289,7 @@ watch(
 watch(
   () => form.value.role,
   (newRole) => {
-    if (newRole !== 'collection-editor') {
+    if (!isCollectionScopedRole(newRole)) {
       form.value.collections = []
     }
   },
@@ -297,7 +298,7 @@ watch(
 watch(
   () => props.initialCollections,
   (newCollections) => {
-    if (form.value.role === 'collection-editor') {
+    if (isCollectionScopedRole(form.value.role)) {
       form.value.collections = [...newCollections]
     }
   },

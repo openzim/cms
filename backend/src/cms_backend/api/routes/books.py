@@ -72,8 +72,13 @@ def get_books(
 def get_zim_urls(
     zim_ids: Annotated[list[UUID], Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
 ) -> ZimUrlsSchema:
-    return db_books.get_zim_urls(session, zim_ids)
+    return db_books.get_zim_urls(
+        session, zim_ids, accessible_collection_ids=accessible_collection_ids
+    )
 
 
 @router.get("/languages")

@@ -81,7 +81,12 @@ def test_get_collections_pagination(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.ADMIN, HTTPStatus.OK, id="admin"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_create_collection_required_permissions(
@@ -115,7 +120,12 @@ def test_create_collection_required_permissions(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_updating_collection_required_permissions(
@@ -208,7 +218,12 @@ def test_get_collection_history(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_get_collection_history_required_permissions(
@@ -251,7 +266,12 @@ def test_get_collection_history_entry(
     "permission,expected_status_code",
     [
         pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
-        pytest.param(RoleEnum.VIEWER, HTTPStatus.UNAUTHORIZED, id="viewer"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
     ],
 )
 def test_revert_collection_required_permissions(

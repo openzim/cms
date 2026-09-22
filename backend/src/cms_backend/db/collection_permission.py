@@ -26,11 +26,11 @@ def get_accessible_collection_ids(
         return _get_public_collection_ids(session)
 
     match RoleEnum(account.role):
-        case RoleEnum.VIEWER | RoleEnum.ZIMFARM:
+        case RoleEnum.PUBLIC_VIEWER | RoleEnum.ZIMFARM:
             return _get_public_collection_ids(session)
-        case RoleEnum.GLOBAL_EDITOR | RoleEnum.ADMIN:
+        case RoleEnum.GLOBAL_EDITOR | RoleEnum.ADMIN | RoleEnum.GLOBAL_VIEWER:
             return None
-        case RoleEnum.COLLECTION_EDITOR:
+        case RoleEnum.COLLECTION_EDITOR | RoleEnum.COLLECTION_VIEWER:
             return session.scalars(
                 select(Collection.id)
                 .join(
