@@ -1141,7 +1141,7 @@ def test_complete_upload_recipe_creation_bad_request(
         }
 
         response = client.post(
-            f"/v1/titles/{title.name}/upload/complete",
+            f"/v1/titles/{title.name}/upload/file/complete",
             json=payload,
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -1193,7 +1193,7 @@ def test_complete_upload_recipe_creation_server_error(
         }
 
         response = client.post(
-            f"/v1/titles/{title.name}/upload/complete",
+            f"/v1/titles/{title.name}/upload/file/complete",
             json=payload,
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -1253,7 +1253,7 @@ def test_complete_upload_missing_task_id(
         }
 
         response = client.post(
-            f"/v1/titles/{title.name}/upload/complete",
+            f"/v1/titles/{title.name}/upload/file/complete",
             json=payload,
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -1261,7 +1261,7 @@ def test_complete_upload_missing_task_id(
         assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-def test_complete_upload_persists_title_upload(
+def test_complete_upload_by_file_success(
     dbsession: OrmSession,
     client: TestClient,
     title: Title,
@@ -1307,8 +1307,6 @@ def test_complete_upload_persists_title_upload(
                 status_code=HTTPStatus.CREATED,
                 json_data={"requested": [str(task_id)]},
             ),
-            # DELETE /recipes/{name} - delete recipe
-            _mock_query_api_response(status_code=HTTPStatus.OK),
         ]
 
         payload = {
@@ -1318,7 +1316,7 @@ def test_complete_upload_persists_title_upload(
         }
 
         response = client.post(
-            f"/v1/titles/{title.id}/upload/complete",
+            f"/v1/titles/{title.id}/upload/file/complete",
             json=payload,
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -1328,5 +1326,62 @@ def test_complete_upload_persists_title_upload(
         title_upload = dbsession.get(TitleUpload, task_id)
         assert title_upload is not None
         assert title_upload.s3_key == "uploads/test-collection/test.zim"
+        assert title_upload.requested_by_id == account.id
+        assert title_upload.status == "requested"
+
+
+def test_complete_upload_by_url_success(
+    dbsession: OrmSession,
+    client: TestClient,
+    title: Title,
+    create_collection: Callable[..., Title],
+    account: Account,
+    access_token: str,
+):
+    """Test that a TitleUpload record is created in the database."""
+    task_id = uuid4()
+    create_collection(title_ids_with_paths=[(title.id, "other")])
+
+    with (
+        patch("cms_backend.api.routes.titles.query_api") as mock_query_api,
+        patch(
+            "cms_backend.api.routes.titles.zimfarm_client_token_provider.get_authorization_header"
+        ) as mock_auth_header,
+    ):
+        mock_auth_header.return_value = {"Authorization": "Bearer access-token"}
+        mock_query_api.side_effect = [
+            # Retrieiving recipe fails
+            _mock_query_api_response(
+                status_code=404, json_data={"error": "Not Found"}, success=False
+            ),
+            # POST /recipes - create recipe
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            # POST /requested-tasks - request task
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"requested": [str(task_id)]},
+            ),
+        ]
+
+        payload = {"url": "https://example.com/my-file.zim"}
+
+        response = client.post(
+            f"/v1/titles/{title.id}/upload/url/complete",
+            json=payload,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        title_upload = dbsession.get(TitleUpload, task_id)
+        assert title_upload is not None
+        assert title_upload.s3_key is None
         assert title_upload.requested_by_id == account.id
         assert title_upload.status == "requested"

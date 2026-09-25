@@ -2,6 +2,7 @@ from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
+from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.exceptions import RecordDoesNotExistError
@@ -164,32 +165,30 @@ def test_get_title_uploads_pagination(
 
 
 @pytest.mark.parametrize(
-    "status_filter,expected_count",
+    "has_s3_key,expected_count",
     [
-        pytest.param(None, 8, id="no-filter"),
-        pytest.param(["requested"], 3, id="requested-only"),
-        pytest.param(["canceled"], 3, id="canceled-only"),
-        pytest.param(["completed"], 2, id="completed-only"),
-        pytest.param(["requested", "canceled"], 6, id="requested-or-canceled"),
+        pytest.param(None, 6, id="no-filter"),
+        pytest.param(True, 3, id="has-s3-key"),
+        pytest.param(False, 3, id="no-s3-key"),
     ],
 )
-def test_get_title_uploads_filter_by_status(
+def test_get_title_uploads_filter_by_has_s3_key(
     dbsession: OrmSession,
     create_title_upload: Callable[..., TitleUpload],
-    status_filter: list[str] | None,
+    faker: Faker,
+    *,
+    has_s3_key: bool,
     expected_count: int,
 ):
-    """Test that get_title_uploads filters by status correctly"""
-    # Create tasks with different statuses
+    """Test that get_title_uploads filters by has_s3_key parameter"""
+    # Create tasks with different s3_key settings
     for _ in range(3):
-        create_title_upload(status="requested")
+        create_title_upload(status="requested", s3_key=faker.file_name())
     for _ in range(3):
-        create_title_upload(status="canceled")
-    for _ in range(2):
-        create_title_upload(status="completed")
+        create_title_upload(status="canceled", s3_key=None)
 
     dbsession.flush()
 
-    results = get_title_uploads(dbsession, skip=0, limit=20, status=status_filter)
+    results = get_title_uploads(dbsession, skip=0, limit=20, has_s3_key=has_s3_key)
     assert results.nb_records == expected_count
     assert len(results.records) == expected_count
