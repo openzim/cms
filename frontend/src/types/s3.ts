@@ -29,6 +29,10 @@ export interface MultipartCompleteRequest {
   parts: PartEtag[]
 }
 
+export interface URLUploadRequest {
+  url: string
+}
+
 /** Saved upload progress in localStorage for resume capability. */
 export interface S3UploadProgress {
   uploadId: string

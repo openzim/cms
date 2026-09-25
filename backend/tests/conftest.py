@@ -97,7 +97,7 @@ def create_title_upload(
 ) -> Callable[..., TitleUpload]:
     def _create_title_upload(
         _id: UUID | None = None,
-        s3_key: str | None = None,
+        s3_key: str | None = faker.file_name(),
         status: str = "requested",
         requested_by_id: UUID | None = None,
         title_id: UUID | None = None,
@@ -106,7 +106,7 @@ def create_title_upload(
     ) -> TitleUpload:
         upload = TitleUpload(
             id=_id if _id is not None else uuid4(),
-            s3_key=s3_key if s3_key is not None else faker.file_name(),
+            s3_key=s3_key,
             title_id=title_id,
             recipe_id=uuid4(),
             status=status,

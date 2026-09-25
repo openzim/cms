@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import axios from 'axios'
 import { useTitleStore } from '@/stores/title'
 import { useNotificationStore } from '@/stores/notification'
@@ -148,6 +148,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'upload-complete'): void
+  (e: 'upload-active', active: boolean): void
 }>()
 
 type UploadState = 'idle' | 'ready' | 'uploading' | 'paused' | 'completing' | 'done' | 'error'
@@ -165,6 +166,10 @@ const errorMessage = ref('')
 
 const uploadInstance = ref<S3MultipartUpload | null>(null)
 const completedParts = ref(0)
+
+watch(state, (value) => {
+  emit('upload-active', value === 'uploading' || value === 'paused' || value === 'completing')
+})
 
 const uploadSpeedBps = ref(0)
 const uploadEtaSeconds = ref(0)
@@ -242,7 +247,11 @@ async function handleStartUpload() {
 
   try {
     if (!uploadInstance.value) {
-      const init = await titleStore.initiateUpload(props.titleId, selectedFile.value, PART_SIZE)
+      const init = await titleStore.initiateZimUploadByFile(
+        props.titleId,
+        selectedFile.value,
+        PART_SIZE,
+      )
 
       uploadInstance.value = new S3MultipartUpload({
         uploadId: init.upload_id,
@@ -281,7 +290,7 @@ async function handleStartUpload() {
     })
 
     state.value = 'completing'
-    await titleStore.completeUpload(props.titleId, {
+    await titleStore.completeZimUploadByFile(props.titleId, {
       upload_id: uploadInstance.value.uploadId,
       key: uploadInstance.value.key,
       bucket: uploadInstance.value.bucket,
