@@ -57,7 +57,7 @@ def test_delete_title_flavour(
     dbsession.add(tf)
     dbsession.flush()
     create_book(flavour="maxi", title_id=title.id)
-    db_flavour.delete_title_flavour(dbsession, title.id, tf.flavour)
+    db_flavour.delete_title_flavour(dbsession, title, tf.flavour)
     mock_delete_book.assert_called_once()
     assert (
         dbsession.scalars(

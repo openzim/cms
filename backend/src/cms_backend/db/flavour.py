@@ -54,7 +54,6 @@ def create_title_flavour(
         recipe_id=recipe_id,
     )
     title.flavours.append(title_flavour)
-    session.add(title_flavour)
     session.flush()
     return title_flavour
 
@@ -96,7 +95,7 @@ def get_title_flavour(
 
 def delete_title_flavour(
     session: OrmSession,
-    title_id: UUID,
+    title: Title,
     flavour: str,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
@@ -108,17 +107,17 @@ def delete_title_flavour(
     """
     tf = get_title_flavour_or_none(
         session,
-        title_id=title_id,
+        title_id=title.id,
         flavour=flavour,
         accessible_collection_ids=accessible_collection_ids,
     )
     if tf is None:
         raise RecordDoesNotExistError(
-            f"Title flavour '{flavour}' for title {title_id} does not exist"
+            f"Title flavour '{flavour}' for title {title.id} does not exist"
         )
     book_ids_to_delete = session.scalars(
         select(Book.id).where(
-            Book.needs_processing.is_(False),
+            Book.needs_file_operation.is_(False),
             Book.needs_processing.is_(False),
             Book.location_kind.in_(["staging", "prod", "quarantine"]),
             Book.title_id == tf.title_id,
@@ -131,5 +130,6 @@ def delete_title_flavour(
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,
         )
+    title.flavours.remove(tf)
     session.delete(tf)
     session.flush()
