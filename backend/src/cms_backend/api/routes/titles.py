@@ -29,7 +29,6 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.api.token import zimfarm_client_token_provider
 from cms_backend.context import Context
 from cms_backend.db import account as db_account
-from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
 from cms_backend.db import title_upload as db_title_upload
@@ -39,7 +38,6 @@ from cms_backend.schemas.fields import (
     LimitFieldMax200,
     NotEmptyString,
     SkipField,
-    ZimFlavour,
 )
 from cms_backend.schemas.models import (
     PartEtag,
@@ -49,7 +47,6 @@ from cms_backend.schemas.models import (
     TitleUpdateSchema,
 )
 from cms_backend.schemas.orms import (
-    TitleFlavourSchema,
     TitleFullSchema,
     TitleHistorySchema,
     TitleLightSchema,
@@ -319,41 +316,6 @@ def get_title_history(
     results = db_title.get_title_history(
         session,
         title_identifier=title_identifier,
-        skip=skip,
-        limit=limit,
-        accessible_collection_ids=accessible_collection_ids,
-    )
-    return ListResponse(
-        items=results.records,
-        meta=calculate_pagination_metadata(
-            nb_records=results.nb_records,
-            skip=skip,
-            limit=limit,
-            page_size=len(results.records),
-        ),
-    )
-
-
-@router.get(
-    "/{title_identifier}/flavours",
-)
-def get_title_flavours(
-    title_identifier: Annotated[NotEmptyString, Path()],
-    accessible_collection_ids: Annotated[
-        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
-    ],
-    session: OrmSession = Depends(gen_dbsession),
-    skip: Annotated[SkipField, Query()] = 0,
-    limit: Annotated[LimitFieldMax200, Query()] = 200,
-) -> ListResponse[TitleFlavourSchema]:
-    title = db_title.get_title(
-        session,
-        title_identifier=title_identifier,
-        accessible_collection_ids=accessible_collection_ids,
-    )
-    results = db_flavour.get_title_flavours(
-        session,
-        title_id=title.id,
         skip=skip,
         limit=limit,
         accessible_collection_ids=accessible_collection_ids,
@@ -646,42 +608,6 @@ def compelete_zim_upload_by_file(
 
     url = generate_view_presigned_url(s3, request.key)
     return _create_zimwright_recipe(session, title, current_account, url, request.key)
-
-
-@router.delete(
-    "/{title_identifier}/flavours/{flavour}",
-    dependencies=[
-        Depends(require_permission(namespace="title", name="update")),
-        Depends(require_permission(namespace="book", name="delete")),
-    ],
-)
-def delete_title_flavour(
-    title_identifier: Annotated[NotEmptyString, Path()],
-    flavour: Annotated[ZimFlavour, Path()],
-    accessible_collection_ids: Annotated[
-        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
-    ],
-    session: OrmSession = Depends(gen_dbsession),
-) -> JSONResponse:
-    title = db_title.get_title(
-        session,
-        title_identifier=title_identifier,
-        accessible_collection_ids=accessible_collection_ids,
-    )
-    db_flavour.delete_title_flavour(
-        session,
-        title_id=title.id,
-        flavour=flavour,
-        accessible_collection_ids=accessible_collection_ids,
-    )
-    return JSONResponse(
-        content={
-            "message": (
-                f"title flavour '{flavour}' for title '{title.name}' has been deleted"
-            )
-        },
-        status_code=HTTPStatus.OK,
-    )
 
 
 @router.get(

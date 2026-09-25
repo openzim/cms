@@ -23,7 +23,11 @@ from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
-from cms_backend.db.flavour import create_title_flavour_schema
+from cms_backend.db.flavour import (
+    create_title_flavour,
+    create_title_flavour_schema,
+    delete_title_flavour,
+)
 from cms_backend.db.models import (
     Collection,
     CollectionTitle,
@@ -188,7 +192,11 @@ def get_title_by_name_or_none(
 
     return session.scalars(
         select(Title)
-        .options(selectinload(Title.books), selectinload(Title.collections))
+        .options(
+            selectinload(Title.books),
+            selectinload(Title.collections),
+            selectinload(Title.flavours),
+        )
         .where(
             Title.name == name,
             exists().where(
@@ -409,6 +417,13 @@ def create_title(
 
             session.add(collection_title)
 
+    if payload.flavours:
+        # Create the title flavours for the title
+        for entry in payload.flavours:
+            create_title_flavour(
+                session, title, recipe_id=entry.recipe_id, flavour=entry.flavour
+            )
+
     create_title_history_entry(
         session, title, author_id, comment="Create initial history"
     )
@@ -524,6 +539,28 @@ def update_title(
             raise RecordAlreadyExistsError(
                 f"Title with name '{payload.name}' already exists"
             ) from exc
+
+    # Create new title flavours and delete outdated ones
+    existing_flavour_map = {tf.flavour: tf for tf in title.flavours}
+    existing_flavours = set(existing_flavour_map.keys())
+    if payload.flavours is not None:
+        new_flavours = {tf.flavour for tf in payload.flavours}
+        flavours_to_delete = existing_flavours - new_flavours
+        flavours_to_create = new_flavours - existing_flavours
+        retained_flavours = existing_flavours & new_flavours
+
+        for flavour in flavours_to_delete:
+            delete_title_flavour(
+                session,
+                title,
+                flavour=flavour,
+            )
+
+        for tf in payload.flavours:
+            if tf.flavour in flavours_to_create:
+                create_title_flavour(session, title, tf.recipe_id, tf.flavour)
+            elif tf.flavour in retained_flavours:
+                existing_flavour_map[tf.flavour].recipe_id = tf.recipe_id
 
     # Determine if collection titles changed
     collection_titles_changed = False
