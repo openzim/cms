@@ -24,6 +24,11 @@ export interface TitleFlavour {
   is_rotten: boolean
 }
 
+export interface TitleFlavourCreate {
+  flavour: string
+  recipe_id: string | null
+}
+
 export interface TitleLight {
   id: string
   name: string
@@ -77,6 +82,7 @@ export interface TitleUpdate {
   name?: string
   maturity: string
   collection_titles: BaseTitleCollection[]
+  flavours?: TitleFlavourCreate[]
   title?: string | null
   creator?: string | null
   publisher?: string | null

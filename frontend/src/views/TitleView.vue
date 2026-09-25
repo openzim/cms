@@ -47,14 +47,14 @@
 
         <v-tab
           base-color="primary"
-          value="flavours"
+          value="books"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'flavours' },
+            params: { id: title.name, selectedTab: 'books' },
           }"
         >
-          <v-icon class="mr-2">mdi-tag-multiple</v-icon>
-          Flavours
+          <v-icon class="mr-2">mdi-book-multiple</v-icon>
+          Books
         </v-tab>
 
         <v-tab
@@ -287,85 +287,40 @@
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
-
-                <v-row no-gutters class="py-2">
-                  <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Books</div>
-                  </v-col>
-                  <v-col cols="12" md="9">
-                    <v-select
-                      v-model="bookStatusFilter"
-                      label="Book Status"
-                      :items="bookStatusOptions"
-                      variant="outlined"
-                      density="compact"
-                      hide-details
-                      class="my-3 my-md-0 mb-md-3"
-                      style="max-width: 250px"
-                    />
-                    <template v-if="filteredBooks.length > 0">
-                      <template v-for="group in groupedBooks" :key="group.flavour">
-                        <v-divider class="my-3" color="primary" thickness="2">
-                          <span class="text-primary text-body-1">{{ group.flavour }}</span>
-                        </v-divider>
-                        <v-row>
-                          <v-col
-                            v-for="book in group.books"
-                            :key="book.id"
-                            cols="12"
-                            sm="12"
-                            md="6"
-                            lg="4"
-                            xl="3"
-                          >
-                            <BookCard
-                              :book="book"
-                              :show-urls="true"
-                              :show-flavour="false"
-                              :zim-urls="zimUrls"
-                              :loading-urls="loadingUrls"
-                              :offliners="offlinerStore.offliners"
-                            />
-                          </v-col>
-                        </v-row>
-                      </template>
-                    </template>
-                    <span v-else class="text-grey">No books</span>
-                  </v-col>
-                </v-row>
               </div>
             </v-card-text>
           </v-card>
         </v-window-item>
 
-        <!-- Flavours Tab -->
-        <v-window-item value="flavours">
+        <!-- Books Tab -->
+        <v-window-item value="books">
           <v-card flat>
             <v-card-text class="pa-0">
-              <div v-if="loadingFlavours" class="text-center pa-8">
-                <v-progress-circular indeterminate size="24" class="mr-2" />
-                <span>Loading flavours...</span>
-              </div>
-              <div v-else class="ml-4 mr-4 mt-2 mb-2">
-                <v-row v-if="titleFlavours && titleFlavours.length > 0">
-                  <v-col
-                    v-for="tf in titleFlavours"
-                    :key="tf.flavour"
-                    cols="12"
-                    sm="6"
-                    md="6"
-                    lg="4"
-                    xl="3"
-                  >
-                    <TitleFlavourItem
-                      :flavour="tf"
-                      :can-delete="!!canEditTitle"
-                      :disabled="deletingFlavour"
-                      @delete="handleDeleteFlavour"
-                    />
-                  </v-col>
-                </v-row>
-                <div v-else class="py-4 text-center text-grey">No flavours set</div>
+              <div class="ml-4 mr-4 mt-2 mb-2">
+                <v-select
+                  v-model="bookStatusFilter"
+                  label="Book Status"
+                  :items="bookStatusOptions"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="my-3"
+                  style="max-width: 250px"
+                />
+                <template v-if="flavourGroups.length > 0">
+                  <TitleFlavourSection
+                    v-for="group in flavourGroups"
+                    :key="group.flavour"
+                    :flavour="group.flavour"
+                    :flavour-info="group.flavourInfo"
+                    :books="group.books"
+                    :show-header="!hideFlavourHeaders"
+                    :zim-urls="zimUrls"
+                    :loading-urls="loadingUrls"
+                    :offliners="offlinerStore.offliners"
+                  />
+                </template>
+                <span v-else class="text-grey">No books</span>
               </div>
             </v-card-text>
           </v-card>
@@ -416,6 +371,7 @@
                   :title="title"
                   :latest-book="latestBook"
                   :collections="collections"
+                  :flavours="title.flavours"
                   @update:valid="formValid = $event"
                   @update:has-changes="hasChanges = $event"
                 />
@@ -549,7 +505,6 @@
 </template>
 
 <script setup lang="ts">
-import BookCard from '@/components/BookCard.vue'
 import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import TitleForm from '@/components/TitleForm.vue'
@@ -575,7 +530,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import TitleHistory from '@/components/TitleHistory.vue'
-import TitleFlavourItem from '@/components/TitleFlavourItem.vue'
+import TitleFlavourSection from '@/components/TitleFlavourSection.vue'
 import TitleUploadsView from '@/views/TitleUploadsView.vue'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
@@ -676,15 +631,19 @@ const bookStatusOptions = [
   { title: 'To Be Deleted', value: 'to_delete' },
   { title: 'All', value: 'all' },
 ]
-const titleFlavours = ref<TitleFlavour[]>([])
-const loadingFlavours = ref(false)
-const deletingFlavour = ref(false)
 
 const titleDifferences = computed(() => {
   if (!(title.value && pendingUpdatePayload.value)) return undefined
 
   const currentTitle = JSON.parse(JSON.stringify(title.value))
   const updatedTitle = JSON.parse(JSON.stringify({ ...title.value, ...pendingUpdatePayload.value }))
+
+  // When flavours are part of the update, compare only the flavour names so the
+  // recipe identifiers don't pollute the diff.
+  if (pendingUpdatePayload.value.flavours) {
+    currentTitle.flavours = (title.value.flavours ?? []).map((f) => f.flavour)
+    updatedTitle.flavours = pendingUpdatePayload.value.flavours.map((f) => f.flavour)
+  }
 
   return diff(currentTitle, updatedTitle)
 })
@@ -778,10 +737,22 @@ const filteredBooks = computed(() => {
   return sortedBooks.value.filter((b) => !['deleted', 'to_delete'].includes(b.location_kind))
 })
 
-const groupedBooks = computed(() => {
+// Map of every flavour known for the title, keyed by flavour name
+const flavourMap = computed(() => {
+  const map = new Map<string, TitleFlavour>()
+  for (const flavour of title.value?.flavours ?? []) {
+    map.set(flavour.flavour, flavour)
+  }
+  return map
+})
+
+const flavourGroups = computed(() => {
   const groups = new Map<string, BookLight[]>()
+  for (const flavour of flavourMap.value.keys()) {
+    groups.set(flavour, [])
+  }
   for (const book of filteredBooks.value) {
-    const flavour = book.flavour || 'empty'
+    const flavour = book.flavour || ''
     const group = groups.get(flavour)
     if (group) {
       group.push(book)
@@ -791,8 +762,17 @@ const groupedBooks = computed(() => {
   }
   return Array.from(groups.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([flavour, books]) => ({ flavour, books }))
+    .map(([flavour, books]) => ({
+      flavour,
+      flavourInfo: flavourMap.value.get(flavour) ?? null,
+      books,
+    }))
 })
+
+// Hide the flavour header when there is only a single, empty flavour
+const hideFlavourHeaders = computed(
+  () => flavourGroups.value.length === 1 && flavourGroups.value[0].flavour === '',
+)
 
 const loadLatestBook = async () => {
   if (!title.value?.books || title.value.books.length === 0) {
@@ -1001,46 +981,8 @@ async function fetchCollections() {
   }
 }
 
-const loadFlavours = async () => {
-  if (!title.value) return
-
-  loadingFlavours.value = true
-  try {
-    const flavours = await titleStore.fetchTitleFlavours(title.value.name)
-    if (flavours) {
-      titleFlavours.value = flavours
-    }
-  } catch (err) {
-    console.error('Failed to load flavours', err)
-  } finally {
-    loadingFlavours.value = false
-  }
-}
-
-const handleDeleteFlavour = async (flavour: string) => {
-  if (!title.value) return
-
-  deletingFlavour.value = true
-  try {
-    const response = await titleStore.deleteTitleFlavour(title.value.name, flavour)
-    if (response) {
-      notificationStore.showSuccess(
-        `Flavour <code>${flavour === '' ? 'Empty' : flavour}</code> has been deleted.`,
-      )
-      await loadFlavours()
-    } else {
-      notificationStore.showErrors(titleStore.errors)
-    }
-  } catch (err) {
-    console.error('Failed to delete flavour', err)
-    notificationStore.showError('Failed to delete flavour')
-  } finally {
-    deletingFlavour.value = false
-  }
-}
-
 onMounted(async () => {
-  await loadData(true, props.selectedTab === 'history', props.selectedTab === 'details')
+  await loadData(true, props.selectedTab === 'history', props.selectedTab === 'books')
 
   if (title.value) {
     startBackgroundEventPolling()
@@ -1049,16 +991,12 @@ onMounted(async () => {
   // Redirect to details if trying to access restricted tabs without permission
   const canAccessSelectedTab =
     props.selectedTab === 'details' ||
-    props.selectedTab === 'flavours' ||
+    props.selectedTab === 'books' ||
     (props.selectedTab === 'upload' ? canUploadZim.value : canEditTitle.value)
 
   if (!canAccessSelectedTab) {
     router.push({ name: 'title-detail', params: { id: props.id } })
     return
-  }
-
-  if (props.selectedTab === 'flavours' && title.value) {
-    await loadFlavours()
   }
 
   if (props.selectedTab === 'edit' && title.value) {
@@ -1083,11 +1021,7 @@ watch(
   async (newTab) => {
     currentTab.value = newTab
 
-    await loadData(newTab == 'edit', newTab === 'history', newTab === 'details')
-
-    if (newTab === 'flavours' && title.value) {
-      await loadFlavours()
-    }
+    await loadData(newTab == 'edit', newTab === 'history', newTab === 'books')
 
     if (newTab === 'edit' && title.value) {
       if (collections.value.length == 0) {
