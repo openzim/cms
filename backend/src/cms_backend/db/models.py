@@ -530,7 +530,7 @@ class TitleUpload(Base):
     __tablename__ = "title_upload"
     id: Mapped[UUID] = mapped_column(primary_key=True)  # the zimfarm task id
     recipe_id: Mapped[UUID]
-    s3_key: Mapped[str]
+    s3_key: Mapped[str | None]
     status: Mapped[str]
     requested_by_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("account.id", ondelete="SET NULL")

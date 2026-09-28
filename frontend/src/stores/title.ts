@@ -1,8 +1,14 @@
 import { useAuthStore } from '@/stores/auth'
-import type { FileUploadRequest, S3MultipartUpload, MultipartCompleteRequest } from '@/types/s3'
+import type {
+  FileUploadRequest,
+  S3MultipartUpload,
+  MultipartCompleteRequest,
+  URLUploadRequest,
+} from '@/types/s3'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import type { Title, TitleCreate, TitleLight, TitleUpdate, TitleFlavour } from '@/types/title'
+import type { TitleUploadLight } from '@/types/titleUpload'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -231,7 +237,7 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const initiateUpload = async (
+  const initiateZimUploadByFile = async (
     titleId: string,
     file: File,
     partSize: number,
@@ -248,7 +254,7 @@ export const useTitleStore = defineStore('title', () => {
     }
     try {
       const response = await service.post<FileUploadRequest, S3MultipartUpload>(
-        `/${titleId}/upload/create-or-resume`,
+        `/${titleId}/upload/file`,
         payload,
       )
       errors.value = []
@@ -260,15 +266,34 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const completeUpload = async (
+  const completeZimUploadByFile = async (
     titleId: string,
     file: MultipartCompleteRequest,
-  ): Promise<unknown> => {
+  ): Promise<TitleUploadLight> => {
     const service = await authStore.getApiService('titles')
     try {
-      const response = await service.post<MultipartCompleteRequest, unknown>(
-        `/${titleId}/upload/complete`,
+      const response = await service.post<MultipartCompleteRequest, TitleUploadLight>(
+        `/${titleId}/upload/file/complete`,
         file,
+      )
+      errors.value = []
+      return response
+    } catch (_error) {
+      console.error('Failed to complete upload', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      throw _error
+    }
+  }
+
+  const completeZimUploadByUrl = async (
+    titleId: string,
+    payload: URLUploadRequest,
+  ): Promise<TitleUploadLight> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.post<URLUploadRequest, TitleUploadLight>(
+        `/${titleId}/upload/url/complete`,
+        payload,
       )
       errors.value = []
       return response
@@ -300,7 +325,8 @@ export const useTitleStore = defineStore('title', () => {
     mergeTitles,
     deleteTitleFlavour,
     fetchTitleFlavours,
-    initiateUpload,
-    completeUpload,
+    initiateZimUploadByFile,
+    completeZimUploadByFile,
+    completeZimUploadByUrl,
   }
 })

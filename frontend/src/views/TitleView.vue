@@ -449,9 +449,37 @@
         <!-- Upload Tab -->
         <v-window-item value="upload">
           <div v-if="canUploadZim" class="pa-4">
+            <v-btn-toggle v-model="uploadMode" mandatory divided variant="outlined" class="mb-4">
+              <v-btn
+                value="file"
+                prepend-icon="mdi-file-upload-outline"
+                :disabled="uploadMode === 'url' && urlUploadActive"
+              >
+                File
+              </v-btn>
+              <v-btn
+                value="url"
+                prepend-icon="mdi-link-variant"
+                :disabled="uploadMode === 'file' && fileUploadActive"
+              >
+                URL
+              </v-btn>
+            </v-btn-toggle>
+
             <v-card flat>
               <v-card-text>
-                <ZimUploadZone :title-id="title.id" @upload-complete="handleUploadComplete" />
+                <ZimUploadZone
+                  v-show="uploadMode === 'file'"
+                  :title-id="title.id"
+                  @upload-complete="handleUploadComplete"
+                  @upload-active="handleFileUploadActive"
+                />
+                <ZimUrlUploadForm
+                  v-show="uploadMode === 'url'"
+                  :title-id="title.id"
+                  @upload-complete="handleUploadComplete"
+                  @upload-active="handleUrlUploadActive"
+                />
               </v-card-text>
             </v-card>
 
@@ -526,6 +554,7 @@ import EventsList from '@/components/EventsList.vue'
 import ArchiveTitle from '@/components/ArchiveTitle.vue'
 import TitleForm from '@/components/TitleForm.vue'
 import ZimUploadZone from '@/components/ZimUploadZone.vue'
+import ZimUrlUploadForm from '@/components/ZimUrlUploadForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { useLoadingStore } from '@/stores/loading'
@@ -694,6 +723,18 @@ const canUploadZim = computed(
 )
 
 const titleUploadsViewRef = ref<InstanceType<typeof TitleUploadsView>>()
+
+const uploadMode = ref<'file' | 'url'>('file')
+const fileUploadActive = ref(false)
+const urlUploadActive = ref(false)
+
+const handleFileUploadActive = (active: boolean) => {
+  fileUploadActive.value = active
+}
+
+const handleUrlUploadActive = (active: boolean) => {
+  urlUploadActive.value = active
+}
 
 const handleUploadComplete = () => {
   titleUploadsViewRef.value?.refresh()

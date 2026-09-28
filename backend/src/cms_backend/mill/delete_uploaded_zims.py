@@ -27,6 +27,7 @@ def delete_uploaded_zims(session: OrmSession):
             status=["failed", "canceled", "succeeded", "duplicate_upload"],
             omit_task_ids=omit_task_ids,
             s3_file_deleted=False,
+            has_s3_key=True,
         )
         if not results.nb_records:
             logger.info("No more title uploads meet criteria for files to be deleted.")
@@ -34,6 +35,11 @@ def delete_uploaded_zims(session: OrmSession):
 
         for title_upload in results.records:
             omit_task_ids.append(title_upload.id)
+
+            if title_upload.s3_key is None:
+                # This should never happen because of the has_s3_key=True flag
+                logger.warning("Title uploads returned do not have s3 key.")
+                continue
 
             try:
                 s3 = get_kiwix_storage_client(Context.zim_upload_s3_bucket_uri)

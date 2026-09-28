@@ -16,7 +16,7 @@ def create_title_upload(
     session: OrmSession,
     *,
     task_id: UUID,
-    s3_key: str,
+    s3_key: str | None,
     recipe_id: UUID,
     title_id: UUID,
     requested_by: UUID,
@@ -124,6 +124,7 @@ def get_title_uploads(
     sort_order: Literal["asc", "desc"] = "asc",
     exclude_status: list[str] | None = None,
     s3_file_deleted: bool | None = None,
+    has_s3_key: bool | None = None,
 ) -> ListResult[TitleUploadLightSchema]:
     stmt = (
         select(TitleUpload)
@@ -143,6 +144,13 @@ def get_title_uploads(
         )
         .options(selectinload(TitleUpload.requested_by))
     )
+
+    if has_s3_key is not None:
+        if has_s3_key:
+            stmt = stmt.where(TitleUpload.s3_key.is_not(None))
+        else:
+            stmt = stmt.where(TitleUpload.s3_key.is_(None))
+
     if sort_order == "asc":
         order_clauses = [TitleUpload.created_at]
     else:

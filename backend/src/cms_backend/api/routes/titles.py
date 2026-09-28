@@ -8,7 +8,7 @@ from botocore.exceptions import (  # pyright: ignore[reportMissingTypeStubs]
 )
 from fastapi import APIRouter, Depends, Path, Query, Response
 from fastapi.responses import JSONResponse
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
@@ -33,7 +33,7 @@ from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
 from cms_backend.db import title_upload as db_title_upload
-from cms_backend.db.models import Account
+from cms_backend.db.models import Account, Title
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import (
     LimitFieldMax200,
@@ -377,7 +377,7 @@ class FileUploadRequest(BaseModel):
 
 
 @router.post(
-    "/{title_identifier}/upload/create-or-resume",
+    "/{title_identifier}/upload/file",
     dependencies=[
         Depends(require_permission(namespace="book", name="create")),
     ],
@@ -529,43 +529,15 @@ def create_or_update_zimwright_recipe(
     return response.json
 
 
-@router.post(
-    "/{title_identifier}/upload/complete",
-    dependencies=[
-        Depends(require_permission(namespace="book", name="create")),
-    ],
-)
-def compelete_zim_upload(
-    title_identifier: Annotated[str, Path()],
-    session: Annotated[OrmSession, Depends(gen_dbsession)],
-    current_account: Annotated[Account, Depends(get_current_account)],
-    accessible_collection_ids: Annotated[
-        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
-    ],
-    request: MultipartCompleteRequest,
+def _create_zimwright_recipe(
+    session: OrmSession,
+    title: Title,
+    account: Account,
+    url: str,
+    s3_key: str | None = None,
 ) -> TitleUploadLightSchema:
-    """Complete ZIM upload and create task on zimfarm to process ZIM file"""
-    title = db_title.get_title(
-        session,
-        title_identifier=title_identifier,
-        accessible_collection_ids=accessible_collection_ids,
-    )
-    s3 = get_kiwix_storage_client(Context.zim_upload_s3_bucket_uri)
-    try:
-        complete_multipart_upload(
-            s3,
-            key=request.key,
-            upload_id=request.upload_id,
-            parts=request.parts,
-        )
-    except S3ClientError as exc:  # pyright: ignore[reportUnknownVariableType]
-        if exc.response["Error"]["Code"] == "NoSuchUpload":
-            raise ConflictError(exc.response["Error"]["Message"]) from exc
-        raise exc
 
-    recipe = create_or_update_zimwright_recipe(
-        f"zimwright_{title.name}", generate_view_presigned_url(s3, request.key)
-    )
+    recipe = create_or_update_zimwright_recipe(f"zimwright_{title.name}", url)
 
     # request a task for that newly created recipe
     response = query_api(
@@ -601,12 +573,79 @@ def compelete_zim_upload(
         recipe_id=UUID(recipe["id"]),
         task_id=UUID(task_id),
         title_id=title.id,
-        s3_key=request.key,
-        requested_by=current_account.id,
+        s3_key=s3_key,
+        requested_by=account.id,
     )
     return db_title_upload.create_title_upload_schema(
         db_title_upload.get_title_upload(session, UUID(task_id))
     )
+
+
+class URLUploadRequest(BaseModel):
+    url: HttpUrl
+
+
+@router.post(
+    "/{title_identifier}/upload/url/complete",
+    dependencies=[
+        Depends(require_permission(namespace="book", name="create")),
+    ],
+)
+def compelete_zim_upload_by_url(
+    title_identifier: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    request: URLUploadRequest,
+) -> TitleUploadLightSchema:
+    """Complete ZIM upload and create task on zimfarm to process ZIM file"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+
+    return _create_zimwright_recipe(session, title, current_account, str(request.url))
+
+
+@router.post(
+    "/{title_identifier}/upload/file/complete",
+    dependencies=[
+        Depends(require_permission(namespace="book", name="create")),
+    ],
+)
+def compelete_zim_upload_by_file(
+    title_identifier: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    current_account: Annotated[Account, Depends(get_current_account)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    request: MultipartCompleteRequest,
+) -> TitleUploadLightSchema:
+    """Complete ZIM upload and create task on zimfarm to process ZIM file"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+    s3 = get_kiwix_storage_client(Context.zim_upload_s3_bucket_uri)
+    try:
+        complete_multipart_upload(
+            s3,
+            key=request.key,
+            upload_id=request.upload_id,
+            parts=request.parts,
+        )
+    except S3ClientError as exc:  # pyright: ignore[reportUnknownVariableType]
+        if exc.response["Error"]["Code"] == "NoSuchUpload":
+            raise ConflictError(exc.response["Error"]["Message"]) from exc
+        raise exc
+
+    url = generate_view_presigned_url(s3, request.key)
+    return _create_zimwright_recipe(session, title, current_account, url, request.key)
 
 
 @router.delete(
