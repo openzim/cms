@@ -7,7 +7,7 @@ import type {
 } from '@/types/s3'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
-import type { Title, TitleCreate, TitleLight, TitleUpdate, TitleFlavour } from '@/types/title'
+import type { Title, TitleCreate, TitleLight, TitleUpdate } from '@/types/title'
 import type { TitleUploadLight } from '@/types/titleUpload'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
@@ -211,32 +211,6 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const fetchTitleFlavours = async (titleId: string) => {
-    const service = await authStore.getApiService('titles')
-    try {
-      const response = await service.get<null, ListResponse<TitleFlavour>>(`/${titleId}/flavours`)
-      return response.items
-    } catch (_error) {
-      console.error('Failed to fetch flavours for title', _error)
-      errors.value = translateErrors(_error as ErrorResponse)
-      return null
-    }
-  }
-
-  const deleteTitleFlavour = async (titleId: string, flavour: string) => {
-    const service = await authStore.getApiService('titles')
-    try {
-      const response = await service.delete<null, Record<string, string>>(
-        `/${titleId}/flavours/${flavour}`,
-      )
-      return response
-    } catch (_error) {
-      console.error('Failed to delete flavour for title', _error)
-      errors.value = translateErrors(_error as ErrorResponse)
-      return null
-    }
-  }
-
   const initiateZimUploadByFile = async (
     titleId: string,
     file: File,
@@ -323,8 +297,6 @@ export const useTitleStore = defineStore('title', () => {
     archiveTitles,
     restoreTitles,
     mergeTitles,
-    deleteTitleFlavour,
-    fetchTitleFlavours,
     initiateZimUploadByFile,
     completeZimUploadByFile,
     completeZimUploadByUrl,

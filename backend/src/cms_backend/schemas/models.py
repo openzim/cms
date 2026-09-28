@@ -18,6 +18,7 @@ from cms_backend.schemas.fields import (
     LimitFieldMax200,
     NotEmptyString,
     SkipField,
+    ZimFlavour,
 )
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
@@ -122,6 +123,11 @@ class CollectionUpdateSchema(BaseModel):
     retain_old_books: bool | None = None
 
 
+class TitleFlavourCreateSchema(BaseModel):
+    flavour: ZimFlavour
+    recipe_id: UUID | None
+
+
 class BaseTitleCreateUpdateSchema(BaseModel):
     collection_titles: list[BaseTitleCollectionSchema] | None = None
     long_description: NotEmptyString | None = None
@@ -161,6 +167,8 @@ class BaseTitleCreateUpdateSchema(BaseModel):
                 else:
                     seen.add(entry.collection_name)
         return self
+
+    flavours: list[TitleFlavourCreateSchema] | None = None
 
 
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):

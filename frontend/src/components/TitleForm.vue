@@ -191,6 +191,53 @@
         the library or currently being downloaded by users.
       </v-alert>
     </div>
+
+    <!-- Flavours Section -->
+    <template v-if="flavours !== null">
+      <v-divider class="my-6" />
+
+      <div>
+        <div class="d-flex align-center justify-space-between mb-4">
+          <h3 class="text-h6">Flavours</h3>
+        </div>
+
+        <div
+          v-for="(flavour, index) in editableFlavours"
+          :key="index"
+          class="d-flex align-center ga-2 mb-3"
+        >
+          <TitleFlavourItem :flavour="flavour" class="flex-grow-1" />
+          <v-btn
+            icon="mdi-delete"
+            variant="text"
+            color="error"
+            @click="removeFlavour(Number(index))"
+          />
+        </div>
+      </div>
+
+      <v-alert
+        v-if="isEditMode && removedFlavours.length > 0"
+        type="warning"
+        density="compact"
+        class="mt-4"
+        icon="mdi-alert"
+      >
+        Deleting a flavour will mark all books belonging to this title with that flavour for
+        deletion. This action cannot be undone.
+        <div class="mt-2 d-flex flex-wrap ga-1">
+          <v-chip
+            v-for="flavour in removedFlavours"
+            :key="flavour.flavour"
+            size="small"
+            color="error"
+            variant="tonal"
+          >
+            {{ flavour.flavour === '' ? 'Empty' : flavour.flavour }}
+          </v-chip>
+        </div>
+      </v-alert>
+    </template>
   </v-form>
 </template>
 
@@ -201,9 +248,16 @@ import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
 import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
+import TitleFlavourItem from '@/components/TitleFlavourItem.vue'
 import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
 import IllustrationPreview from '@/components/IllustrationPreview.vue'
-import type { BaseTitleCollection, Title, TitleUpdate } from '@/types/title'
+import type {
+  BaseTitleCollection,
+  Title,
+  TitleFlavour,
+  TitleFlavourCreate,
+  TitleUpdate,
+} from '@/types/title'
 import type { CollectionLight } from '@/types/collections'
 import type { Book } from '@/types/book'
 import { computed, inject, ref, watch } from 'vue'
@@ -216,6 +270,8 @@ interface Props {
   latestBook?: Book | null
   collections: CollectionLight[]
   collectionsDisabled?: boolean
+  // Existing title flavours. When provided, an editable flavours list is shown.
+  flavours?: TitleFlavour[] | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -224,6 +280,7 @@ const props = withDefaults(defineProps<Props>(), {
   latestBook: null,
   collections: () => [],
   collectionsDisabled: false,
+  flavours: null,
 })
 
 const emit = defineEmits<{
@@ -253,6 +310,7 @@ const formData = ref<TitleUpdate>({
 })
 
 const originalCollections = ref<BaseTitleCollection[]>([])
+const editableFlavours = ref<TitleFlavour[]>([])
 
 const isEditMode = computed(() => props.title !== null && props.title.id !== '')
 
@@ -322,6 +380,24 @@ const hasCollectionChanges = computed(() => {
   return false
 })
 
+const flavourPayload = computed<TitleFlavourCreate[]>(() =>
+  editableFlavours.value.map((f) => ({ flavour: f.flavour, recipe_id: f.recipe_id })),
+)
+
+const hasFlavoursChanges = computed(() => {
+  if (props.flavours === null) return false
+  const original = (props.flavours ?? []).map((f) => ({
+    flavour: f.flavour,
+    recipe_id: f.recipe_id,
+  }))
+  return JSON.stringify(original) !== JSON.stringify(flavourPayload.value)
+})
+
+const removedFlavours = computed(() => {
+  const current = new Set(editableFlavours.value.map((f) => f.flavour))
+  return (props.flavours ?? []).filter((f) => !current.has(f.flavour))
+})
+
 const hasChanges = computed(() => {
   if (!isEditMode.value) return true
 
@@ -338,7 +414,8 @@ const hasChanges = computed(() => {
     formData.value.license !== props.title?.license ||
     formData.value.relation !== props.title?.relation ||
     formData.value.source !== props.title?.source ||
-    hasCollectionChanges.value
+    hasCollectionChanges.value ||
+    hasFlavoursChanges.value
   )
 })
 
@@ -381,6 +458,7 @@ function resetFormToTitle(title: Title) {
   }
 
   originalCollections.value = collections.map((c) => ({ ...c }))
+  editableFlavours.value = (props.flavours ?? []).map((f) => ({ ...f }))
   formRef.value?.resetValidation()
 }
 
@@ -401,6 +479,7 @@ function resetForm() {
     source: null,
   }
   originalCollections.value = []
+  editableFlavours.value = []
   formRef.value?.resetValidation()
 }
 
@@ -449,7 +528,13 @@ function getUpdatePayload(): Partial<TitleUpdate> {
 
   if (hasCollectionChanges.value) payload.collection_titles = formData.value.collection_titles
 
+  if (hasFlavoursChanges.value) payload.flavours = flavourPayload.value
+
   return payload
+}
+
+function removeFlavour(index: number) {
+  editableFlavours.value = editableFlavours.value.filter((_, i) => i !== index)
 }
 
 defineExpose({
@@ -461,6 +546,7 @@ defineExpose({
   formData,
   hasAnyDifferences,
   useAllBookValues,
+  editableFlavours,
 })
 </script>
 

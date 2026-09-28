@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from pathlib import Path
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
@@ -28,7 +29,7 @@ from cms_backend.db.title import (
     revert_title,
     update_title,
 )
-from cms_backend.schemas.models import TitleUpdateSchema
+from cms_backend.schemas.models import TitleFlavourCreateSchema, TitleUpdateSchema
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
 
 
@@ -336,6 +337,215 @@ def test_update_title_metadata_no_change(
 
     assert title.title == "Wikipedia"
     assert title.creator == "Contributors"
+
+
+def _flavour_map(title: Title) -> dict[str, UUID | None]:
+    """Return a mapping of a title's flavour names to their recipe ids."""
+    return {tf.flavour: tf.recipe_id for tf in title.flavours}
+
+
+def test_update_title_flavours_add(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test that flavours absent from the title are created"""
+    title = create_title(name="wikipedia_en_test")
+    recipe_id = uuid4()
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            flavours=[
+                TitleFlavourCreateSchema(flavour="maxi", recipe_id=recipe_id),
+                TitleFlavourCreateSchema(flavour="mini", recipe_id=None),
+            ],
+        ),
+    )
+
+    dbsession.refresh(title)
+    assert _flavour_map(title) == {"maxi": recipe_id, "mini": None}
+
+
+def test_update_title_flavours_remove(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test that flavours omitted from the payload are deleted"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini", "nopic"])
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            flavours=[
+                TitleFlavourCreateSchema(flavour="maxi", recipe_id=None),
+                TitleFlavourCreateSchema(flavour="nopic", recipe_id=None),
+            ],
+        ),
+    )
+
+    dbsession.refresh(title)
+    assert set(_flavour_map(title)) == {"maxi", "nopic"}
+
+
+def test_update_title_flavours_remove_updates_history(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test that the history entry excludes flavours deleted by the update"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            flavours=[TitleFlavourCreateSchema(flavour="maxi", recipe_id=None)],
+            comment="Drop mini flavour",
+        ),
+    )
+
+    history = get_title_history(
+        dbsession, title_identifier=str(title.id), skip=0, limit=1
+    )
+    assert history.records[0].comment == "Drop mini flavour"
+    assert {entry.flavour for entry in history.records[0].flavours} == {"maxi"}
+
+
+@pytest.mark.parametrize(
+    "initial_recipe_id,updated_recipe_id",
+    [
+        pytest.param(
+            None,
+            UUID("00000000-0000-0000-0000-000000000001"),
+            id="set-recipe-id",
+        ),
+        pytest.param(
+            UUID("00000000-0000-0000-0000-000000000001"),
+            None,
+            id="clear-recipe-id",
+        ),
+        pytest.param(
+            UUID("00000000-0000-0000-0000-000000000001"),
+            UUID("00000000-0000-0000-0000-000000000002"),
+            id="change-recipe-id",
+        ),
+        pytest.param(
+            UUID("00000000-0000-0000-0000-000000000001"),
+            UUID("00000000-0000-0000-0000-000000000001"),
+            id="keep-recipe-id",
+        ),
+    ],
+)
+def test_update_title_flavours_update_recipe(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+    initial_recipe_id: UUID | None,
+    updated_recipe_id: UUID | None,
+):
+    """Test that retaining a flavour updates its recipe id in place"""
+    title = create_title(
+        name="wikipedia_en_test",
+        flavours=["maxi"],
+        recipe_id=initial_recipe_id,
+    )
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            flavours=[
+                TitleFlavourCreateSchema(flavour="maxi", recipe_id=updated_recipe_id)
+            ],
+        ),
+    )
+
+    dbsession.refresh(title)
+    assert _flavour_map(title) == {"maxi": updated_recipe_id}
+
+
+def test_update_title_flavours_mixed(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test creating, updating and deleting flavours in a single update"""
+    initial_recipe_id = uuid4()
+    title = create_title(
+        name="wikipedia_en_test",
+        flavours=["maxi", "mini"],
+        recipe_id=initial_recipe_id,
+    )
+    updated_recipe_id = uuid4()
+    new_recipe_id = uuid4()
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            flavours=[
+                TitleFlavourCreateSchema(flavour="mini", recipe_id=updated_recipe_id),
+                TitleFlavourCreateSchema(flavour="nopic", recipe_id=new_recipe_id),
+            ],
+        ),
+    )
+
+    # maxi is deleted, mini's recipe is updated and nopic is created
+    dbsession.refresh(title)
+    assert _flavour_map(title) == {
+        "mini": updated_recipe_id,
+        "nopic": new_recipe_id,
+    }
+
+
+def test_update_title_flavours_not_provided(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test that not providing flavours leaves them untouched"""
+    recipe_id = uuid4()
+    title = create_title(
+        name="wikipedia_en_test", flavours=["maxi"], recipe_id=recipe_id
+    )
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(title="Wikipedia"),
+    )
+
+    dbsession.refresh(title)
+    assert _flavour_map(title) == {"maxi": recipe_id}
+
+
+def test_update_title_flavours_remove_all(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
+):
+    """Test that an empty flavours list deletes every flavour"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(flavours=[]),
+    )
+
+    dbsession.refresh(title)
+    assert _flavour_map(title) == {}
 
 
 @pytest.mark.parametrize(
