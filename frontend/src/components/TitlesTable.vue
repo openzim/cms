@@ -211,7 +211,7 @@ function onRowClick(event: Event, { item }: { item: TitleLight }) {
   emit('rowClicked', item)
 
   if (!props.disableNavigation) {
-    router.push({ name: 'title-detail', params: { id: item.name } })
+    router.push({ name: 'title-detail', params: { id: item.id } })
   }
 }
 </script>

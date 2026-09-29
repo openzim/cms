@@ -4,7 +4,7 @@
     :has-more="props.hasMore"
     :loading="props.loading"
     :paginator="props.paginator"
-    :entity-id="props.collectionName"
+    :entity-id="props.collectionId"
     entity-name="collection"
     loading-text="Loading Collection history..."
     empty-state-text="No history available for this collection"
@@ -31,7 +31,7 @@ const props = defineProps<{
   hasMore: boolean
   loading: boolean
   paginator: Paginator
-  collectionName: string
+  collectionId: string
 }>()
 
 const emit = defineEmits<{
@@ -42,18 +42,18 @@ const emit = defineEmits<{
 const collectionHistoryStore = useCollectionHistoryStore()
 
 const fetchEntry = async (
-  collectionName: string,
+  collectionId: string,
   historyId: string,
 ): Promise<CollectionHistory | null> => {
-  return await collectionHistoryStore.fetchHistoryEntry(collectionName, historyId)
+  return await collectionHistoryStore.fetchHistoryEntry(collectionId, historyId)
 }
 
 const revertEntry = async (
-  collectionName: string,
+  collectionId: string,
   historyId: string,
   comment?: string,
 ): Promise<boolean> => {
-  return await collectionHistoryStore.revertToHistory(collectionName, historyId, comment)
+  return await collectionHistoryStore.revertToHistory(collectionId, historyId, comment)
 }
 
 const getErrors = (): string[] => {

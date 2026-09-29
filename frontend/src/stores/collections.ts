@@ -69,13 +69,13 @@ export const useCollectionsStore = defineStore('collection', () => {
     }
   }
 
-  const fetchCollection = async (name: string, forceReload: boolean = false) => {
+  const fetchCollection = async (collectionId: string, forceReload: boolean = false) => {
     const service = await authStore.getApiService('collections')
-    if (!forceReload && collection.value && collection.value.name == name) {
+    if (!forceReload && collection.value && collection.value.id == collectionId) {
       return collection.value
     }
     try {
-      const response = await service.get<null, Collection>(`/${name}`)
+      const response = await service.get<null, Collection>(`/${collectionId}`)
       errors.value = []
       collection.value = null
       collection.value = response
