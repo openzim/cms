@@ -1,5 +1,6 @@
 <!-- Sign-in button that transforms into a user menu
   - send to sign-in if not logged-in
+  - copy user ID (profile URL) to clipboard
   - copy token to clipboard
   - send to change-password (TBI)
   - log-out -->
@@ -21,6 +22,10 @@
       </template>
 
       <v-list>
+        <v-list-item @click="copyUserId" prepend-icon="mdi-account">
+          <v-list-item-title>Copy user ID</v-list-item-title>
+        </v-list-item>
+
         <v-list-item @click="copyToken" prepend-icon="mdi-key">
           <v-list-item-title>Copy token</v-list-item-title>
         </v-list-item>
@@ -60,6 +65,7 @@
 
 <script setup lang="ts">
 import { inject, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { AuthProviderType } from '@/types/auth'
 import { useNotificationStore } from '@/stores/notification'
 import type { Config } from '@/config'
@@ -74,6 +80,7 @@ const props = defineProps<{
   isLoggedIn: boolean
   accessToken: string | null
   tokenType: AuthProviderType | null
+  userId: string | null
 }>()
 
 defineEmits<{
@@ -88,6 +95,26 @@ if (!config) {
 const externalProfileUrl = computed(() => `${config.OAUTH_BASE_URL}/settings`)
 
 const notificationStore = useNotificationStore()
+
+const router = useRouter()
+
+const userProfileUrl = computed(() => {
+  if (!props.userId) return null
+  const { href } = router.resolve({ name: 'user-detail', params: { userId: props.userId } })
+  return new URL(href, window.location.origin).toString()
+})
+
+const copyUserId = async () => {
+  const profileUrl = userProfileUrl.value
+  if (!profileUrl) return
+  try {
+    await navigator.clipboard.writeText(profileUrl)
+    notificationStore.showSuccess('User ID copied to clipboard!')
+  } catch (error) {
+    console.error('Failed to copy user ID:', error)
+    alert(`User profile URL: ${profileUrl}`)
+  }
+}
 
 const copyToken = async () => {
   try {

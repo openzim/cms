@@ -86,6 +86,7 @@ const handleSignOut = async () => {
         :access-token="authStore.accessToken"
         :is-loading="loadingStore.isLoading"
         :token-type="authStore.tokenType"
+        :user-id="authStore.userId"
         :loading-text="loadingStore.loadingText"
         @sign-out="handleSignOut"
       />

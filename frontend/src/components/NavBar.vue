@@ -49,6 +49,7 @@
         :is-logged-in="isLoggedIn"
         :access-token="accessToken"
         :token-type="tokenType"
+        :user-id="userId"
         @sign-out="$emit('sign-out')"
       />
     </div>
@@ -106,6 +107,7 @@ const props = defineProps<{
   isLoading: boolean
   loadingText: string
   tokenType: AuthProviderType | null
+  userId: string | null
 }>()
 
 defineEmits<{
