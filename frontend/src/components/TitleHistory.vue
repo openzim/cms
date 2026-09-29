@@ -4,7 +4,7 @@
     :has-more="props.hasMore"
     :loading="props.loading"
     :paginator="props.paginator"
-    :entity-id="props.titleName"
+    :entity-id="props.titleId"
     entity-name="title"
     loading-text="Loading Title history..."
     empty-state-text="No history available for this title"
@@ -31,7 +31,7 @@ const props = defineProps<{
   hasMore: boolean
   loading: boolean
   paginator: Paginator
-  titleName: string
+  titleId: string
 }>()
 
 const emit = defineEmits<{
@@ -42,18 +42,18 @@ const emit = defineEmits<{
 const titleHistoryStore = useTitleHistoryStore()
 
 const fetchEntry = async (
-  titleName: string,
+  titleId: string,
   historyId: string,
 ): Promise<TitleHistorySchema | null> => {
-  return await titleHistoryStore.fetchHistoryEntry(titleName, historyId)
+  return await titleHistoryStore.fetchHistoryEntry(titleId, historyId)
 }
 
 const revertEntry = async (
-  titleName: string,
+  titleId: string,
   historyId: string,
   comment?: string,
 ): Promise<boolean> => {
-  return await titleHistoryStore.revertToHistory(titleName, historyId, comment)
+  return await titleHistoryStore.revertToHistory(titleId, historyId, comment)
 }
 
 const getErrors = (): string[] => {

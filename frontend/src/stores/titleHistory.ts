@@ -19,11 +19,11 @@ export const useTitleHistoryStore = defineStore('titleHistory', () => {
 
   const authStore = useAuthStore()
 
-  const fetchHistory = async (titleName: string, limit: number, skip: number) => {
+  const fetchHistory = async (titleId: string, limit: number, skip: number) => {
     const service = await authStore.getApiService('titles')
     try {
       const response = await service.get<null, ListResponse<TitleHistorySchema>>(
-        `/${titleName}/history`,
+        `/${titleId}/history`,
         { params: { limit, skip } },
       )
       // Add the items to the history if they are not already in it
@@ -42,11 +42,11 @@ export const useTitleHistoryStore = defineStore('titleHistory', () => {
     }
   }
 
-  const fetchHistoryEntry = async (titleName: string, historyId: string) => {
+  const fetchHistoryEntry = async (titleId: string, historyId: string) => {
     const service = await authStore.getApiService('titles')
     try {
       const response = await service.get<null, TitleHistorySchema>(
-        `/${titleName}/history/${historyId}`,
+        `/${titleId}/history/${historyId}`,
       )
       // Add the item to the history if it's not already in it
       const existingIds = new Set(history.value.map((h) => h.id))
@@ -64,12 +64,12 @@ export const useTitleHistoryStore = defineStore('titleHistory', () => {
     }
   }
 
-  const revertToHistory = async (titleName: string, historyId: string, comment?: string) => {
+  const revertToHistory = async (titleId: string, historyId: string, comment?: string) => {
     const service = await authStore.getApiService('titles')
     try {
       const data = { comment: comment ? comment : null }
       await service.patch<{ comment?: string } | null, { message: string }>(
-        `/${titleName}/revert/${historyId}`,
+        `/${titleId}/revert/${historyId}`,
         data,
       )
       errors.value = []

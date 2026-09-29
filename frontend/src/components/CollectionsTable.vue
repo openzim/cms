@@ -116,7 +116,7 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
 }
 
 function onRowClick(event: Event, { item }: { item: CollectionLight }) {
-  router.push({ name: 'collection-detail', params: { id: item.name } })
+  router.push({ name: 'collection-detail', params: { id: item.id } })
 }
 </script>
 

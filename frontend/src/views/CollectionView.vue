@@ -19,7 +19,7 @@
           value="details"
           :to="{
             name: 'collection-detail',
-            params: { id: collection.name },
+            params: { id: collection.id },
           }"
         >
           <v-icon class="mr-2">mdi-information</v-icon>
@@ -32,7 +32,7 @@
           value="history"
           :to="{
             name: 'collection-detail-tab',
-            params: { id: collection.name, selectedTab: 'history' },
+            params: { id: collection.id, selectedTab: 'history' },
           }"
         >
           <v-icon class="mr-2">mdi-history</v-icon>
@@ -45,7 +45,7 @@
           value="edit"
           :to="{
             name: 'collection-detail-tab',
-            params: { id: collection.name, selectedTab: 'edit' },
+            params: { id: collection.id, selectedTab: 'edit' },
           }"
         >
           <v-icon class="mr-2">mdi-pencil</v-icon>
@@ -201,7 +201,7 @@
             :has-more="canLoadMoreHistory"
             :loading="loadingHistory"
             :paginator="collectionHistoryStore.paginator"
-            :collection-name="collection.name"
+            :collection-id="collection.id"
             @load="loadHistory"
             @revert="handleRevert"
           />
@@ -487,11 +487,6 @@ const handleConfirmUpdate = async () => {
 
     pendingUpdatePayload.value = null
     pendingComment.value = ''
-
-    // If the name changed, navigate to the new URL
-    if (response.name !== props.id) {
-      await router.push({ name: 'collection-detail', params: { id: response.name } })
-    }
 
     await loadData(true)
     currentTab.value = 'details'

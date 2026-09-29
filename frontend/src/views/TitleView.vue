@@ -38,7 +38,7 @@
           value="details"
           :to="{
             name: 'title-detail',
-            params: { id: title.name },
+            params: { id: title.id },
           }"
         >
           <v-icon class="mr-2">mdi-information</v-icon>
@@ -50,7 +50,7 @@
           value="books"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'books' },
+            params: { id: title.id, selectedTab: 'books' },
           }"
         >
           <v-icon class="mr-2">mdi-book-multiple</v-icon>
@@ -63,7 +63,7 @@
           value="history"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'history' },
+            params: { id: title.id, selectedTab: 'history' },
           }"
         >
           <v-icon class="mr-2">mdi-history</v-icon>
@@ -76,7 +76,7 @@
           value="edit"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'edit' },
+            params: { id: title.id, selectedTab: 'edit' },
           }"
         >
           <v-icon class="mr-2">mdi-pencil</v-icon>
@@ -89,7 +89,7 @@
           value="upload"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'upload' },
+            params: { id: title.id, selectedTab: 'upload' },
           }"
         >
           <v-icon class="mr-2">mdi-upload</v-icon>
@@ -102,7 +102,7 @@
           value="archive"
           :to="{
             name: 'title-detail-tab',
-            params: { id: title.name, selectedTab: 'archive' },
+            params: { id: title.id, selectedTab: 'archive' },
           }"
         >
           <v-icon class="mr-2">{{
@@ -333,7 +333,7 @@
             :has-more="canLoadMoreHistory"
             :loading="loadingHistory"
             :paginator="titleHistoryStore.paginator"
-            :title-name="title.name"
+            :title-id="title.id"
             @load="loadHistory"
             @revert="handleRevert"
           />
@@ -938,11 +938,6 @@ const handleConfirmUpdate = async () => {
 
     pendingUpdatePayload.value = null
     pendingComment.value = ''
-
-    // If the name changed, navigate to the new URL
-    if (response.name !== props.id) {
-      await router.push({ name: 'title-detail', params: { id: response.name } })
-    }
 
     await loadData(true)
     currentTab.value = 'details'
