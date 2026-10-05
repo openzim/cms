@@ -13,8 +13,10 @@ from cms_backend.api.token import JWTClaims, token_decoder
 from cms_backend.db import account as db_account
 from cms_backend.db import collection_permission as db_collection_permission
 from cms_backend.db import gen_dbsession, gen_manual_dbsession
+from cms_backend.db import title_permission as db_title_permission
 from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
+from cms_backend.schemas.models import AccountCreateSchema
 
 security = HTTPBearer(description="Access Token", auto_error=False)
 AuthorizationCredentials = Annotated[
@@ -61,9 +63,11 @@ def get_current_account_or_none_with_session(
         if account is None and Context.oauth_create_new_account:
             db_account.create_account(
                 session,
-                display_name=claims.name or str(claims.sub),
-                role=RoleEnum.PUBLIC_VIEWER,
-                idp_sub=claims.sub,
+                request=AccountCreateSchema(
+                    display_name=claims.name or str(claims.sub),
+                    role=RoleEnum.PUBLIC_VIEWER,
+                    idp_sub=claims.sub,
+                ),
             )
             account = db_account.get_account_by_id_or_none(
                 session, account_id=claims.sub
@@ -135,3 +139,10 @@ def get_accessible_collection_ids(
     return db_collection_permission.get_accessible_collection_ids(
         session, current_account
     )
+
+
+def get_accessible_title_ids(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    current_account: Annotated[Account | None, Depends(get_current_account_or_none)],
+) -> Sequence[UUID] | None:
+    return db_title_permission.get_accessible_title_ids(session, current_account)

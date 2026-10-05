@@ -9,6 +9,7 @@ import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import type { Title, TitleCreate, TitleLight, TitleUpdate } from '@/types/title'
 import type { TitleUploadLight } from '@/types/titleUpload'
+import type { User } from '@/types/user'
 import { translateErrors } from '@/utils/errors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -278,6 +279,47 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const fetchTitleUploaders = async (titleId: string): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(`/${titleId}/uploaders`)
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch title uploaders', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
+  const grantTitleUploader = async (titleId: string, accountId: string): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ account_id: string }, null>(`/${titleId}/uploaders`, {
+        account_id: accountId,
+      })
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to grant title uploader', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const revokeTitleUploader = async (titleId: string, accountId: string): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.delete(`/${titleId}/uploaders/${accountId}`)
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to revoke title uploader', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
   return {
     // State
     title,
@@ -300,5 +342,8 @@ export const useTitleStore = defineStore('title', () => {
     initiateZimUploadByFile,
     completeZimUploadByFile,
     completeZimUploadByUrl,
+    fetchTitleUploaders,
+    grantTitleUploader,
+    revokeTitleUploader,
   }
 })

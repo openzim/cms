@@ -30,6 +30,10 @@ def get_accessible_collection_ids(
             return _get_public_collection_ids(session)
         case RoleEnum.GLOBAL_EDITOR | RoleEnum.ADMIN | RoleEnum.GLOBAL_VIEWER:
             return None
+        case RoleEnum.TITLE_UPLOADER:
+            # Title uploaders are restricted at the title level (see
+            # db.title_permission); they get no collection-level access.
+            return []
         case RoleEnum.COLLECTION_EDITOR | RoleEnum.COLLECTION_VIEWER:
             return session.scalars(
                 select(Collection.id)

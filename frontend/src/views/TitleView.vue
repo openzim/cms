@@ -405,6 +405,20 @@
         <!-- Upload Tab -->
         <v-window-item value="upload">
           <div v-if="canUploadZim" class="pa-4">
+            <div
+              v-if="canManageUploaders"
+              class="d-flex flex-column flex-sm-row justify-end ga-2 mb-4"
+            >
+              <v-btn
+                color="primary"
+                variant="elevated"
+                prepend-icon="mdi-account-key"
+                @click="showUploadersDialog = true"
+              >
+                Manage Upload Access
+              </v-btn>
+            </div>
+
             <v-btn-toggle v-model="uploadMode" mandatory divided variant="outlined" class="mb-4">
               <v-btn
                 value="file"
@@ -460,6 +474,8 @@
           </div>
         </v-window-item>
       </v-window>
+
+      <TitleUploadersDialog v-model="showUploadersDialog" :title-id="title.id" />
     </div>
 
     <!-- Title Update Confirmation Dialog -->
@@ -531,6 +547,7 @@ import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import TitleHistory from '@/components/TitleHistory.vue'
 import TitleFlavourSection from '@/components/TitleFlavourSection.vue'
+import TitleUploadersDialog from '@/components/TitleUploadersDialog.vue'
 import TitleUploadsView from '@/views/TitleUploadsView.vue'
 import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
@@ -676,10 +693,10 @@ const canEditTitle = computed(
 
 const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive'))
 
-const canUploadZim = computed(
-  () =>
-    authStore.hasPermission('collection', 'update') && authStore.hasPermission('book', 'create'),
-)
+const canUploadZim = computed(() => authStore.hasPermission('book', 'create'))
+
+const canManageUploaders = computed(() => authStore.hasPermission('account', 'update'))
+const showUploadersDialog = ref(false)
 
 const titleUploadsViewRef = ref<InstanceType<typeof TitleUploadsView>>()
 

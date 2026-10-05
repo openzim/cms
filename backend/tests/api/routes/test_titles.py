@@ -20,6 +20,7 @@ from cms_backend.db.models import (
     Collection,
     Event,
     Title,
+    TitlePermission,
     TitleUpload,
     Warehouse,
 )
@@ -1306,3 +1307,156 @@ def test_complete_upload_by_url_success(
         assert title_upload.s3_key is None
         assert title_upload.requested_by_id == account.id
         assert title_upload.status == "requested"
+
+
+def test_title_uploader_can_only_upload_to_granted_titles(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+):
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    wikipedia_fr_all = create_title(name="wikipedia_fr_all")
+    create_collection(
+        title_ids_with_paths=[
+            (wikipedia_en_all.id, "other"),
+            (wikipedia_fr_all.id, "other"),
+        ]
+    )
+
+    uploader = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    dbsession.add(TitlePermission(title_id=wikipedia_en_all.id, account_id=uploader.id))
+    dbsession.flush()
+    access_token = generate_access_token(
+        issue_time=getnow(), account_id=str(uploader.id)
+    )
+
+    task_id = uuid4()
+    with (
+        patch("cms_backend.api.routes.titles.query_api") as mock_query_api,
+        patch(
+            "cms_backend.api.routes.titles.zimfarm_client_token_provider.get_authorization_header"
+        ) as mock_auth_header,
+    ):
+        mock_auth_header.return_value = {"Authorization": "Bearer access-token"}
+        mock_query_api.side_effect = [
+            # Retrieiving recipe fails
+            _mock_query_api_response(
+                status_code=404, json_data={"error": "Not Found"}, success=False
+            ),
+            # POST /recipes - create recipe
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            # POST /requested-tasks - request task
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"requested": [str(task_id)]},
+            ),
+        ]
+
+        accepted_response = client.post(
+            f"/v1/titles/{wikipedia_en_all.id}/upload/url/complete",
+            json={"url": "https://example.com/my-file.zim"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert accepted_response.status_code == HTTPStatus.OK
+
+        forbidden_response = client.post(
+            f"/v1/titles/{wikipedia_fr_all.id}/upload/url/complete",
+            json={"url": "https://example.com/my-file.zim"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert forbidden_response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_grant_and_revoke_title_uploader(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """An admin can grant and revoke a title-uploader's access to a title."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    account1 = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders",
+        json={"account_id": str(account1.id)},
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders", headers=headers
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert [item["id"] for item in response.json()["items"]] == [str(account1.id)]
+
+    response = client.delete(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders/{account1.id}", headers=headers
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders", headers=headers
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["items"] == []
+
+
+def test_grant_title_uploader_rejects_other_roles(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """Only title-uploader accounts can be granted upload access."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    account1 = create_account(permission=RoleEnum.GLOBAL_EDITOR)
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders",
+        json={"account_id": str(account1.id)},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.parametrize(
+    ["permission", "expected_status_code"],
+    [
+        pytest.param(RoleEnum.ADMIN, HTTPStatus.NO_CONTENT, id="admin"),
+        pytest.param(
+            RoleEnum.GLOBAL_EDITOR, HTTPStatus.UNAUTHORIZED, id="global-editor"
+        ),
+    ],
+)
+def test_grant_title_uploader_required_permissions(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Granting upload access requires the account:update permission."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    account1 = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    account2 = create_account(permission=permission)
+    access_token = generate_access_token(
+        issue_time=getnow(), account_id=str(account2.id)
+    )
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders",
+        json={"account_id": str(account1.id)},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code

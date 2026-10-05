@@ -140,10 +140,12 @@ def get_title_by_id_or_none(
     *,
     title_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title | None:
     """Get a title by ID
 
-    Only returns titles that belong to at least one of the accessible_collection_ids.
+    Only returns titles that belong to at least one of the accessible_collection_ids
+    or that are one of the accessible_title_ids.
     """
     return session.scalars(
         select(Title)
@@ -158,7 +160,8 @@ def get_title_by_id_or_none(
                 CollectionTitle.title_id == Title.id,
                 CollectionTitle.collection_id.in_(accessible_collection_ids or []),
             )
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | Title.id.in_(accessible_title_ids or []),
         )
     ).one_or_none()
 
@@ -168,11 +171,15 @@ def get_title_by_id(
     *,
     title_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title:
     """Get a title by ID"""
 
     title = get_title_by_id_or_none(
-        session, title_id=title_id, accessible_collection_ids=accessible_collection_ids
+        session,
+        title_id=title_id,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     if not title:
         raise RecordDoesNotExistError(f"Title with id {title_id} does not exist")
@@ -184,10 +191,12 @@ def get_title_by_name_or_none(
     *,
     name: str,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title | None:
     """Get a title by name if possible else None
 
-    Only returns titles that belong to at least one of the accessible_collection_ids.
+    Only returns titles that belong to at least one of the accessible_collection_ids
+    or that are one of the accessible_title_ids.
     """
 
     return session.scalars(
@@ -203,7 +212,8 @@ def get_title_by_name_or_none(
                 CollectionTitle.title_id == Title.id,
                 CollectionTitle.collection_id.in_(accessible_collection_ids or []),
             )
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | Title.id.in_(accessible_title_ids or []),
         )
     ).one_or_none()
 
@@ -213,11 +223,15 @@ def get_title_by_name(
     *,
     name: str,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title:
     """Get a title or raise RecordDoesNotExistError if it doesn't exist."""
     if (
         title := get_title_by_name_or_none(
-            session, name=name, accessible_collection_ids=accessible_collection_ids
+            session,
+            name=name,
+            accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
     ) is None:
         raise RecordDoesNotExistError(
@@ -231,18 +245,21 @@ def get_title_or_none(
     title_identifier: str,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title | None:
     if is_valid_uuid(title_identifier):
         return get_title_by_id_or_none(
             session,
             title_id=UUID(title_identifier),
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
     else:
         return get_title_by_name_or_none(
             session,
             name=title_identifier,
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
 
 
@@ -251,9 +268,13 @@ def get_title(
     title_identifier: str,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Title:
     title = get_title_or_none(
-        session, title_identifier, accessible_collection_ids=accessible_collection_ids
+        session,
+        title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     if title is None:
         raise RecordDoesNotExistError(
@@ -266,6 +287,7 @@ def get_titles(
     session: OrmSession,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
     skip: int,
     limit: int,
     name: str | None = None,
@@ -276,7 +298,8 @@ def get_titles(
 ) -> ListResult[TitleLightSchema]:
     """Get a list of titles
 
-    Only returns titles that belong to at least one of the accessible_collection_ids.
+    Only returns titles that belong to at least one of the accessible_collection_ids
+    or that are one of the accessible_title_ids.
     """
 
     stmt = (
@@ -306,7 +329,8 @@ def get_titles(
             # otherwise, we compare the argument to its default which translates
             # to a SQL true i.e we don't filter based on this argument (a no-op).
             CollectionTitle.collection_id.in_(accessible_collection_ids or [])
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | Title.id.in_(accessible_title_ids or []),
             (
                 Title.name.ilike(f"%{name if name is not None else ''}%")
                 | (name is None)

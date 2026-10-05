@@ -110,6 +110,39 @@ class AccountUpdateSchema(BaseAccountCreateUpdateSchema):
     """
 
 
+class AccountCreateSchema(BaseAccountCreateUpdateSchema):
+    """
+    Schema for creating an account
+    """
+
+    password: NotEmptyString | None = Field(default=None, min_length=8)
+
+    @model_validator(mode="after")
+    def check_username_and_displayname(self) -> Self:
+        if not (self.username or self.display_name):
+            raise ValueError("Display name or username must be set.")
+
+        if not self.display_name:
+            self.display_name = self.username
+
+        return self
+
+    @model_validator(mode="after")
+    def check_role(self) -> Self:
+        if self.role is None:
+            raise ValueError("Role must be specified while creating account")
+
+        if self.role == RoleEnum.ZIMFARM:
+            raise ValueError("Zimfarm accounts cannot be created.")
+        return self
+
+    @model_validator(mode="after")
+    def check_username_and_password(self) -> Self:
+        if self.password and not self.username:
+            raise ValueError("Username must be set when password is set.")
+        return self
+
+
 class CollectionUpdateSchema(BaseModel):
     name: NotEmptyString | None = None
     download_base_url: AnyUrl | None = None

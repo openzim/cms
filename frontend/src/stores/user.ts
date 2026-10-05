@@ -61,6 +61,7 @@ export const useUserStore = defineStore('user', () => {
     username?: string,
     show_viewers: boolean = false,
     show_zimfarmers: boolean = false,
+    role?: string,
   ) => {
     const service = await authStore.getApiService('accounts')
     // filter out undefined/falsy string values but keep booleans separate
@@ -69,6 +70,7 @@ export const useUserStore = defineStore('user', () => {
         limit,
         skip,
         username,
+        role,
       }).filter(([, value]) => !!value),
     )
     try {

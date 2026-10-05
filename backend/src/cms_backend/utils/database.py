@@ -3,13 +3,13 @@ import subprocess
 
 from alembic import config, script
 from alembic.runtime import migration
-from werkzeug.security import generate_password_hash
 
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.account import create_account, get_account_by_username_or_none
 from cms_backend.roles import RoleEnum
+from cms_backend.schemas.models import AccountCreateSchema
 
 
 def check_if_schema_is_up_to_date():
@@ -46,10 +46,12 @@ def create_initial_account():
             logger.info(f"creating initial account `{username}`")
             create_account(
                 session=session,
-                display_name=username,
-                username=username,
-                password_hash=generate_password_hash(password),
-                role=RoleEnum.ADMIN,
+                request=AccountCreateSchema(
+                    display_name=username,
+                    username=username,
+                    password=password,
+                    role=RoleEnum.ADMIN,
+                ),
             )
         else:
             logger.info(f"account {username} already exists")
