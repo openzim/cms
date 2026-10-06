@@ -47,6 +47,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "zimfarm_notification": ResourcePermissions.get_all(),
         "account": ResourcePermissions.get_all(),
         "collection": ResourcePermissions.get_all(),
+        "stats": ResourcePermissions.get_all(),
     },
     RoleEnum.GLOBAL_EDITOR: {
         "book": ResourcePermissions.get_all(),

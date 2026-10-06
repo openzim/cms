@@ -2,7 +2,8 @@
 
 import re
 from pathlib import Path
-from typing import cast
+from typing import NamedTuple, cast
+from urllib.parse import unquote, urlsplit
 from uuid import UUID
 
 from sqlalchemy import select
@@ -179,3 +180,32 @@ def get_period_and_suffix_from_filename(filename: str) -> tuple[str, str]:
 def construct_download_url(base_url: str, subpath: Path, filename: str) -> str:
     """Construct the download URL of a ZIM file based on it's subpath and filename."""
     return f"{base_url}{subpath / filename}"
+
+
+class DownloadLocation(NamedTuple):
+    """The location of a ZIM download: its host and URL path."""
+
+    host: str
+    path: str
+
+
+def normalize_download_location(url: str) -> DownloadLocation | None:
+    """Return the DownloadLocation of a ZIM download URL.
+
+    This is used to match Matomo download labels against the download URLs
+    served by collections, regardless of the file extension used by the visitor
+    or the scheme (http/https) used.
+    """
+    parts = urlsplit(url)
+    if not parts.scheme and not parts.netloc:
+        # tolerate scheme-less values such as "host/path"
+        parts = urlsplit(f"//{url}")
+    path = unquote(parts.path)
+    lowered = path.lower()
+    for suffix in (".zim.torrent", ".zim.meta4"):
+        if lowered.endswith(suffix):
+            path = f"{path[: -len(suffix)]}.zim"
+            break
+    if not path.lower().endswith(".zim"):
+        return None
+    return DownloadLocation(host=parts.netloc.lower(), path=path)
