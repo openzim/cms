@@ -68,3 +68,12 @@ class Context:
             os.getenv("DELETE_ZIMCHECK_FILES_INTERVAL", default="1h")
         )
     )
+
+    fetch_download_stats_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("FETCH_DOWNLOAD_STATS_INTERVAL", default="1d"))
+    )
+
+    # Delay (in seconds) between two Matomo API requests, to avoid hammering it
+    download_stats_request_delay: float = float(
+        os.getenv("DOWNLOAD_STATS_REQUEST_DELAY", "10")
+    )

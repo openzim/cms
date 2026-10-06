@@ -1,5 +1,5 @@
 import typing
-from datetime import datetime
+from datetime import date, datetime
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any, Optional
@@ -7,9 +7,13 @@ from uuid import UUID
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
+    Integer,
     String,
     false,
     func,
@@ -66,9 +70,13 @@ class Base(MappedAsDataclass, DeclarativeBase):
         datetime: DateTime(
             timezone=False
         ),  # transform Python datetime into PostgreSQL Datetime without timezone
+        date: Date,  # transform Python date into PostgreSQL Date
         list[str]: MutableList.as_mutable(
             ARRAY(item_type=String)
         ),  # transform Python List[str] into PostgreSQL Array of strings
+        list[int | None]: MutableList.as_mutable(
+            ARRAY(item_type=Integer)
+        ),  # transform Python List[int | None] into PostgreSQL Array of integers
         IPv4Address: INET,  # transform Python IPV4Address into PostgreSQL INET
         Path: PathType,
     }
@@ -304,6 +312,46 @@ class TitleFlavour(Base):
         default=None, server_default=func.now()
     )
     title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
+
+
+class DownloadStats(Base):
+    """
+    Number of downloads per title flavour and per day.
+    """
+
+    __tablename__ = "download_stats"
+    title_id: Mapped[UUID] = mapped_column(primary_key=True)
+    flavour: Mapped[str] = mapped_column(primary_key=True)
+    year: Mapped[int] = mapped_column(primary_key=True, index=True)
+    lb_downloads: Mapped[list[int | None]] = mapped_column(
+        default_factory=lambda: [None] * 366,
+        server_default=text("array_fill(NULL::integer, ARRAY[366])"),
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["title_id", "flavour"],
+            ["title_flavour.title_id", "title_flavour.flavour"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "array_length(lb_downloads, 1) = 366",
+            name="lb_downloads_length",
+        ),
+    )
+
+
+class DownloadStatsFetch(Base):
+    """
+    Bookkeeping of the days whose download stats have been fetched to completion.
+    """
+
+    __tablename__ = "download_stats_fetch"
+    day: Mapped[date] = mapped_column(primary_key=True)
+    fetched_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    nb_downloads: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
 
 
 class TitleHistory(Base):
