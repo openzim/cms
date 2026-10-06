@@ -63,6 +63,7 @@ def get_book_or_none(
     book_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
     needs_file_operation: bool | None = None,
     needs_processing: bool | None = None,
     locations: list[str] | None = None,
@@ -71,7 +72,7 @@ def get_book_or_none(
     """Get a book by ID if possible else None
 
     Only returns books whose title belongs to at least one of the
-    accessible_collection_ids.
+    accessible_collection_ids or is one of the accessible_title_ids.
     """
     return session.scalars(
         select(Book)
@@ -90,7 +91,8 @@ def get_book_or_none(
                 CollectionTitle.title_id == Book.title_id,
                 CollectionTitle.collection_id.in_(accessible_collection_ids or []),
             )
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | Book.title_id.in_(accessible_title_ids or []),
         )
         .options(
             selectinload(Book.title),
@@ -105,6 +107,7 @@ def get_book(
     book_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
     locations: list[str] | None = None,
     needs_file_operation: bool | None = None,
     needs_processing: bool | None = None,
@@ -116,6 +119,7 @@ def get_book(
             session,
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
             locations=locations,
             needs_file_operation=needs_file_operation,
             needs_processing=needs_processing,

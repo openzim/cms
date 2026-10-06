@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
+    get_accessible_title_ids,
     get_current_account,
     require_permission,
 )
@@ -50,11 +51,17 @@ def get_books(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
 ) -> ListResponse[BookLightSchema]:
     """Get a list of books"""
 
     results = db_books.get_books(
-        session, params=params, accessible_collection_ids=accessible_collection_ids
+        session,
+        params=params,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
 
     return ListResponse[BookLightSchema](
@@ -75,9 +82,15 @@ def get_zim_urls(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
 ) -> ZimUrlsSchema:
     return db_books.get_zim_urls(
-        session, zim_ids, accessible_collection_ids=accessible_collection_ids
+        session,
+        zim_ids,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
 
 
@@ -112,6 +125,9 @@ def get_book(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
 ) -> BookFullSchema:
     """Get a book by ID"""
     return db_book.create_book_full_schema(
@@ -119,6 +135,7 @@ def get_book(
             session=session,
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
     )
 

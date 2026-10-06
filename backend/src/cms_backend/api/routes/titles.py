@@ -15,6 +15,7 @@ from cms_backend import logger
 from cms_backend.api.context import Context as ApiContext
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
+    get_accessible_title_ids,
     get_current_account,
     get_current_account_or_none,
     require_permission,
@@ -31,8 +32,10 @@ from cms_backend.context import Context
 from cms_backend.db import account as db_account
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
+from cms_backend.db import title_permission as db_title_permission
 from cms_backend.db import title_upload as db_title_upload
 from cms_backend.db.models import Account, Title
+from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import (
     LimitFieldMax200,
@@ -47,6 +50,7 @@ from cms_backend.schemas.models import (
     TitleUpdateSchema,
 )
 from cms_backend.schemas.orms import (
+    AccountSchema,
     TitleFullSchema,
     TitleHistorySchema,
     TitleLightSchema,
@@ -88,6 +92,9 @@ def get_titles(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
     current_account: Account | None = Depends(get_current_account_or_none),
 ) -> ListResponse[TitleLightSchema]:
@@ -101,6 +108,7 @@ def get_titles(
     results = db_title.get_titles(
         session,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
         skip=params.skip,
         limit=params.limit,
         name=params.name,
@@ -151,6 +159,9 @@ def get_title(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
     session: OrmSession = Depends(gen_dbsession),
 ) -> TitleFullSchema:
     """Get a title by ID with full details including books"""
@@ -159,12 +170,14 @@ def get_title(
             session,
             title_id=UUID(title_identifier),
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
     else:
         title = db_title.get_title_by_name(
             session,
             name=title_identifier,
             accessible_collection_ids=accessible_collection_ids,
+            accessible_title_ids=accessible_title_ids,
         )
     return db_title.create_title_full_schema(title)
 
@@ -350,6 +363,9 @@ def generate_s3_presigned_urls(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
     payload: FileUploadRequest,
 ) -> S3MultipartUpload:
     """Generate presigned URLs for upload to S3 bucket"""
@@ -357,6 +373,7 @@ def generate_s3_presigned_urls(
         session,
         title_identifier=title_identifier,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     s3 = get_kiwix_storage_client(Context.zim_upload_s3_bucket_uri)
     return generate_multipart_upload_presigned_urls(
@@ -560,6 +577,9 @@ def compelete_zim_upload_by_url(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
     request: URLUploadRequest,
 ) -> TitleUploadLightSchema:
     """Complete ZIM upload and create task on zimfarm to process ZIM file"""
@@ -567,6 +587,7 @@ def compelete_zim_upload_by_url(
         session,
         title_identifier=title_identifier,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
 
     return _create_zimwright_recipe(session, title, current_account, str(request.url))
@@ -585,6 +606,9 @@ def compelete_zim_upload_by_file(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
     request: MultipartCompleteRequest,
 ) -> TitleUploadLightSchema:
     """Complete ZIM upload and create task on zimfarm to process ZIM file"""
@@ -592,6 +616,7 @@ def compelete_zim_upload_by_file(
         session,
         title_identifier=title_identifier,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     s3 = get_kiwix_storage_client(Context.zim_upload_s3_bucket_uri)
     try:
@@ -608,6 +633,105 @@ def compelete_zim_upload_by_file(
 
     url = generate_view_presigned_url(s3, request.key)
     return _create_zimwright_recipe(session, title, current_account, url, request.key)
+
+
+class TitleUploaderGrantSchema(BaseModel):
+    account_id: UUID
+
+
+@router.get(
+    "/{title_identifier}/uploaders",
+    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+)
+def get_title_uploaders(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> ListResponse[AccountSchema]:
+    """List the accounts allowed to upload ZIMs to a title"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    accounts = db_title_permission.get_title_uploaders(session, title.id)
+    return ListResponse[AccountSchema](
+        meta=calculate_pagination_metadata(
+            nb_records=len(accounts),
+            skip=0,
+            limit=len(accounts),
+            page_size=len(accounts),
+        ),
+        items=[db_account.create_account_schema(account) for account in accounts],
+    )
+
+
+@router.post(
+    "/{title_identifier}/uploaders",
+    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+)
+def grant_title_uploader(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+    request: TitleUploaderGrantSchema,
+) -> Response:
+    """Allow a title-uploader account to upload ZIMs to a title"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    account = db_account.get_account_by_id(session, account_id=request.account_id)
+    if account.deleted or account.role != RoleEnum.TITLE_UPLOADER:
+        raise BadRequestError(
+            "Only title-uploader accounts can be granted upload access to a title"
+        )
+    if (
+        db_title_permission.get_title_permission_or_none(session, title.id, account.id)
+        is None
+    ):
+        db_title_permission.create_title_permission(session, title.id, account.id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.delete(
+    "/{title_identifier}/uploaders/{account_id}",
+    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+)
+def revoke_title_uploader(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    account_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> Response:
+    """Revoke an account's permission to upload ZIMs to a title"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    account = db_account.get_account_by_id(session, account_id=account_id)
+    db_title_permission.delete_title_permission(session, title.id, account.id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.get(

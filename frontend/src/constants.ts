@@ -26,6 +26,7 @@ export default {
     'public-viewer',
     'collection-viewer',
     'collection-editor',
+    'title-uploader',
     'global-viewer',
     'global-editor',
     'admin',

@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
+from werkzeug.security import generate_password_hash
 
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.collection_permission import (
@@ -14,9 +15,9 @@ from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
 from cms_backend.db.models import Account
+from cms_backend.db.title_permission import delete_title_permissions
 from cms_backend.roles import ROLES, RoleEnum, merge_scopes
-from cms_backend.schemas.fields import NotEmptyString
-from cms_backend.schemas.models import AccountUpdateSchema
+from cms_backend.schemas.models import AccountCreateSchema, AccountUpdateSchema
 from cms_backend.schemas.orms import AccountSchema, ListResult
 from cms_backend.utils import is_valid_uuid
 
@@ -110,35 +111,26 @@ def create_account_schema(account: Account) -> AccountSchema:
     )
 
 
-def create_account(
-    session: OrmSession,
-    *,
-    display_name: str,
-    username: str | None = None,
-    password_hash: str | None = None,
-    role: RoleEnum = RoleEnum.PUBLIC_VIEWER,
-    idp_sub: UUID | None = None,
-    collections: list[NotEmptyString] | None = None,
-) -> Account:
+def create_account(session: OrmSession, *, request: AccountCreateSchema) -> Account:
     """Create a new account"""
+    values = request.model_dump(exclude={"collections", "password"})
     account = Account(
-        username=username,
-        display_name=display_name,
-        password_hash=password_hash,
-        role=role,
+        **values,
+        password_hash=(
+            generate_password_hash(request.password) if request.password else None
+        ),
         deleted=False,
-        idp_sub=idp_sub,
     )
     session.add(account)
     try:
         session.flush()
     except IntegrityError as exc:
         raise RecordAlreadyExistsError("Account already exists") from exc
-    if (
-        account.role in (RoleEnum.COLLECTION_EDITOR, RoleEnum.COLLECTION_VIEWER)
-        and collections
+    if request.collections and account.role in (
+        RoleEnum.COLLECTION_EDITOR,
+        RoleEnum.COLLECTION_VIEWER,
     ):
-        for collection_name in set(collections):
+        for collection_name in set(request.collections):
             collection = get_collection_by_name(session, collection_name)
             create_collection_permission(session, collection.id, account.id)
     return account
@@ -161,6 +153,7 @@ def get_accounts(
     skip: int,
     limit: int,
     username: str | None = None,
+    role: RoleEnum | None = None,
     show_zimfarmers: bool = True,
     show_viewers: bool = True,
 ) -> ListResult[Account]:
@@ -174,6 +167,7 @@ def get_accounts(
             Account.deleted.is_(False),
             (Account.role != RoleEnum.ZIMFARM) | (show_zimfarmers is True),
             (Account.role != RoleEnum.PUBLIC_VIEWER) | (show_viewers is True),
+            (Account.role == role) | (role is None),
             (
                 Account.display_name.ilike(
                     f"%{username if username is not None else ''}%"
@@ -239,6 +233,7 @@ def update_account(
 
     if request.role is not None:
         delete_collection_permissions(session, account_id=account.id)
+        delete_title_permissions(session, account_id=account.id)
 
     if request.collections and account.role in (
         RoleEnum.COLLECTION_EDITOR,

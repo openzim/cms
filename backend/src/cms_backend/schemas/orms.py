@@ -292,7 +292,6 @@ class EventLightSchema(BaseModel):
 
 class TitleUploadLightSchema(BaseModel):
     id: UUID
-    status: str
     requested_by: str | None
     created_at: datetime
     title_id: UUID | None

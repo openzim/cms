@@ -26,6 +26,7 @@ class RoleEnum(StrEnum):
     GLOBAL_EDITOR = "global-editor"
     COLLECTION_EDITOR = "collection-editor"
     COLLECTION_VIEWER = "collection-viewer"
+    TITLE_UPLOADER = "title-uploader"
     PUBLIC_VIEWER = "public-viewer"
     GLOBAL_VIEWER = "global-viewer"
     ZIMFARM = "zimfarm"
@@ -62,6 +63,10 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "book": ResourcePermissions.get(read=True),
         "title": TitlePermissions.get(read=True),
         "collection": ResourcePermissions.get(read=True),
+    },
+    RoleEnum.TITLE_UPLOADER: {
+        "book": ResourcePermissions.get(read=True, create=True),
+        "title": TitlePermissions.get(read=True),
     },
     RoleEnum.ZIMFARM: {
         "zimfarm_notification": ResourcePermissions.get(read=True, create=True),

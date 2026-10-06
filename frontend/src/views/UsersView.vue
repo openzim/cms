@@ -12,7 +12,7 @@
       <v-card class="mb-4" flat>
         <v-card-text>
           <v-row align="center">
-            <v-col cols="12" sm="8">
+            <v-col cols="12" sm="5">
               <v-text-field
                 v-model="searchUsername"
                 label="Search user"
@@ -22,12 +22,24 @@
                 prepend-inner-icon="mdi-magnify"
                 clearable
                 hide-details
-                @blur="handleSearchChange"
-                @keyup.enter="handleSearchChange"
-                @click:clear="handleSearchChange"
+                @blur="updateQuery"
+                @keyup.enter="updateQuery"
+                @click:clear="updateQuery"
               />
             </v-col>
             <v-col cols="12" sm="4">
+              <v-select
+                v-model="roleFilter"
+                :items="roleOptions"
+                label="Role"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+                @update:model-value="updateQuery"
+              />
+            </v-col>
+            <v-col cols="12" sm="3">
               <v-btn
                 v-if="canCreateUsers"
                 color="primary"
@@ -37,6 +49,17 @@
               >
                 <v-icon class="mr-2">mdi-account-plus</v-icon>
                 Create User
+              </v-btn>
+            </v-col>
+
+            <v-col
+              v-if="hasActiveFilters"
+              cols="12"
+              class="d-flex flex-sm-row flex-column align-sm-center"
+            >
+              <v-btn size="small" variant="outlined" @click="clearFilters">
+                <v-icon size="small" class="mr-1">mdi-close-circle</v-icon>
+                clear filters
               </v-btn>
             </v-col>
           </v-row>
@@ -213,6 +236,7 @@ import { generatePassword } from '@/utils/browsers'
 import { isCollectionScopedRole } from '@/utils/roles'
 
 const roles = constants.ROLES
+const roleOptions = roles as readonly string[]
 
 // Inject config
 const config = inject<Config>(constants.config)
@@ -244,6 +268,7 @@ const users = ref<User[]>([])
 const isCreating = ref(false)
 const error = ref<string | null>(null)
 const searchUsername = ref<string>('')
+const roleFilter = ref<string | null>(null)
 const showCreateDialog = ref(false)
 const showingViewers = ref<boolean>(getViewersPreference())
 
@@ -276,6 +301,8 @@ const canReadUsers = computed(() => authStore.hasPermission('account', 'read'))
 const toggleText = computed(() => (showingViewers.value ? 'Hide Viewers' : 'Show Viewers'))
 
 const canCreateUsers = computed(() => authStore.hasPermission('account', 'create'))
+
+const hasActiveFilters = computed(() => !!searchUsername.value || !!roleFilter.value)
 
 const isFormValid = computed(() => {
   if (!form.value.display_name || !form.value.role) return false
@@ -400,6 +427,8 @@ const loadData = async (limit: number, skip: number) => {
     limit,
     searchUsername.value || undefined,
     showingViewers.value,
+    undefined,
+    roleFilter.value || undefined,
   )
   if (response) {
     users.value = response
@@ -413,14 +442,23 @@ const loadData = async (limit: number, skip: number) => {
   loadingStore.stopLoading()
 }
 
-const handleSearchChange = async () => {
+const updateQuery = async () => {
   const query: Record<string, string> = {}
   if (searchUsername.value) {
     query.name = searchUsername.value
   }
+  if (roleFilter.value) {
+    query.role = roleFilter.value
+  }
   router.push({
     query: Object.keys(query).length > 0 ? query : undefined,
   })
+}
+
+const clearFilters = () => {
+  searchUsername.value = ''
+  roleFilter.value = null
+  router.push({ query: undefined })
 }
 
 const closeCreateDialog = () => {
@@ -520,6 +558,11 @@ watch(
       searchUsername.value = query.name
     } else {
       searchUsername.value = ''
+    }
+    if (query.role && typeof query.role === 'string') {
+      roleFilter.value = query.role
+    } else {
+      roleFilter.value = null
     }
     const newSkip = (page - 1) * paginator.value.limit
     await loadData(paginator.value.limit, newSkip)

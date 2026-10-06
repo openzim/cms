@@ -5,7 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session as OrmSession
 
-from cms_backend.api.routes.dependencies import get_accessible_collection_ids
+from cms_backend.api.routes.dependencies import (
+    get_accessible_collection_ids,
+    get_accessible_title_ids,
+)
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title_upload as db_title_upload
@@ -32,6 +35,9 @@ def get_title_uploads(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
 ) -> ListResponse[TitleUploadLightSchema]:
     """Get a list of title uploads for a title"""
 
@@ -41,6 +47,7 @@ def get_title_uploads(
         limit=params.limit,
         status=params.status,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
         title_id=params.title_id,
         sort_order="desc",
     )
@@ -65,6 +72,9 @@ def get_title_upload(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
 ) -> TaskInfo:
     """Fetch details about a title upload."""
     zimfarm_task = fetch_task_from_zimfarm(task_id)
@@ -73,5 +83,6 @@ def get_title_upload(
         task_id,
         zimfarm_task.status,
         accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     return zimfarm_task

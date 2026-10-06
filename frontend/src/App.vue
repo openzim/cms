@@ -25,6 +25,9 @@ onMounted(async () => {
 const canReadUsers = computed(() => {
   return authStore.hasPermission('account', 'read')
 })
+const canReadCollections = computed(() => {
+  return authStore.hasPermission('collection', 'read')
+})
 
 const navigationItems = computed<NavigationItem[]>(() => [
   {
@@ -57,7 +60,7 @@ const navigationItems = computed<NavigationItem[]>(() => [
     route: 'collections',
     icon: 'mdi-folder-multiple',
     disabled: false,
-    show: true,
+    show: canReadCollections.value,
   },
   {
     name: 'users',

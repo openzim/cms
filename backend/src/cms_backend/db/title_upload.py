@@ -41,6 +41,7 @@ def get_title_upload_or_none(
     task_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> TitleUpload | None:
     """Get a title uploadif one exists, otherwise None"""
     return session.scalars(
@@ -51,7 +52,8 @@ def get_title_upload_or_none(
                 CollectionTitle.title_id == TitleUpload.title_id,
                 CollectionTitle.collection_id.in_(accessible_collection_ids or []),
             )
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | TitleUpload.title_id.in_(accessible_title_ids or []),
         )
         .options(
             selectinload(TitleUpload.title),
@@ -65,10 +67,14 @@ def get_title_upload(
     task_id: UUID,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
 ) -> TitleUpload:
     """Get a title upload if one exists, otherwise raise RecordDoesNotExistError"""
     if title_upload := get_title_upload_or_none(
-        session, task_id, accessible_collection_ids=accessible_collection_ids
+        session,
+        task_id,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     ):
         return title_upload
     raise RecordDoesNotExistError(f"Title upload with ID {task_id} does not exist")
@@ -80,10 +86,14 @@ def update_title_upload_status(
     status: str,
     *,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
     s3_file_deleted: bool | None = None,
 ) -> TitleUpload:
     upload = get_title_upload(
-        session, task_id, accessible_collection_ids=accessible_collection_ids
+        session,
+        task_id,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
     )
     upload.status = status
     if s3_file_deleted is not None:
@@ -121,6 +131,7 @@ def get_title_uploads(
     title_id: UUID | None = None,
     recipe_id: UUID | None = None,
     accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
     sort_order: Literal["asc", "desc"] = "asc",
     exclude_status: list[str] | None = None,
     s3_file_deleted: bool | None = None,
@@ -137,7 +148,8 @@ def get_title_uploads(
                 CollectionTitle.title_id == TitleUpload.title_id,
                 CollectionTitle.collection_id.in_(accessible_collection_ids or []),
             )
-            | (accessible_collection_ids is None),
+            | (accessible_collection_ids is None)
+            | TitleUpload.title_id.in_(accessible_title_ids or []),
             TitleUpload.status.not_in(exclude_status or []) | (exclude_status is None),
             (TitleUpload.s3_file_deleted == bool(s3_file_deleted))
             | (s3_file_deleted is None),

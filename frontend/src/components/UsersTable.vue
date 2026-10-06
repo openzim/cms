@@ -112,6 +112,7 @@ const getRoleColor = (role: string): string => {
     zimfarm: 'secondary',
     'collection-viewer': 'teal',
     'collection-editor': 'info',
+    'title-uploader': 'purple',
     'global-viewer': 'indigo',
     'global-editor': 'primary',
   }

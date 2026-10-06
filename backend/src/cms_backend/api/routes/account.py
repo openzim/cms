@@ -1,8 +1,7 @@
 from http import HTTPStatus
-from typing import Annotated, Self, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
-from pydantic import Field, model_validator
 from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -15,10 +14,7 @@ from cms_backend.db.models import Account
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
-from cms_backend.schemas.models import (
-    AccountUpdateSchema,
-    BaseAccountCreateUpdateSchema,
-)
+from cms_backend.schemas.models import AccountCreateSchema, AccountUpdateSchema
 from cms_backend.schemas.orms import AccountSchema
 from cms_backend.utils import is_valid_uuid
 
@@ -54,6 +50,7 @@ class AccountsGetSchema(BaseModel):
     skip: SkipField = 0
     limit: LimitFieldMax200 = 20
     username: NotEmptyString | None = None
+    role: RoleEnum | None = None
     show_zimfarmers: bool = True  # show accounts which have "zimfarm" role
     show_viewers: bool = True  # show accounts which have "viewer" role
 
@@ -71,6 +68,7 @@ def get_accounts(
         skip=params.skip,
         limit=params.limit,
         username=params.username,
+        role=params.role,
         show_zimfarmers=params.show_zimfarmers,
         show_viewers=params.show_viewers,
     )
@@ -87,60 +85,15 @@ def get_accounts(
     )
 
 
-class AccountCreateSchema(BaseAccountCreateUpdateSchema):
-    """
-    Schema for creating an account
-    """
-
-    password: NotEmptyString | None = Field(default=None, min_length=8)
-
-    @model_validator(mode="after")
-    def check_username_and_displayname(self) -> Self:
-        if not (self.username or self.display_name):
-            raise ValueError("Display name or username must be set.")
-
-        if not self.display_name:
-            self.display_name = self.username
-
-        return self
-
-    @model_validator(mode="after")
-    def check_role(self) -> Self:
-        if self.role is None:
-            raise ValueError("Role must be specified while creating account")
-
-        if self.role == RoleEnum.ZIMFARM:
-            raise ValueError("Zimfarm accounts cannot be created.")
-        return self
-
-    @model_validator(mode="after")
-    def check_username_and_password(self) -> Self:
-        if self.password and not self.username:
-            raise ValueError("Username must be set when password is set.")
-        return self
-
-
 @router.post(
     "",
     dependencies=[Depends(require_permission(namespace="account", name="create"))],
 )
 def create_account(
-    account_schema: AccountCreateSchema,
+    request: AccountCreateSchema,
     db_session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> AccountSchema:
-    account = db_account.create_account(
-        db_session,
-        username=account_schema.username,
-        display_name=cast(str, account_schema.display_name),
-        role=cast(RoleEnum, account_schema.role),
-        password_hash=(
-            generate_password_hash(account_schema.password)
-            if account_schema.password
-            else None
-        ),
-        collections=account_schema.collections,
-    )
-
+    account = db_account.create_account(db_session, request=request)
     return db_account.create_account_schema(account)
 
 
