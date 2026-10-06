@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, TypeVar
 from uuid import UUID
@@ -48,6 +48,19 @@ class TitleFlavourSchema(BaseTitleFlavourSchema):
         if self.last_book_added_at is None:
             return False
         return self.last_book_added_at < (getnow() - Context.rotten_flavour_threshold)
+
+
+class DailyDownloadSchema(BaseModel):
+    date: date
+    downloads: int
+
+
+class TitleFlavourDownloadsSchema(BaseModel):
+    """Daily downloads of a single title flavour."""
+
+    flavour: str
+    recipe_id: UUID | None
+    downloads: list[DailyDownloadSchema]
 
 
 class TitleLightSchema(BaseModel):

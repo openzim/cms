@@ -14,6 +14,7 @@ from cms_backend.db import Session
 from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.delete_uploaded_zims import delete_uploaded_zims
 from cms_backend.mill.delete_zimcheck_s3_results import delete_zimcheck_s3_results
+from cms_backend.mill.fetch_lb_download_stats import fetch_download_stats
 from cms_backend.mill.mark_staging_books_for_deletion import (
     mark_staging_books_for_deletion,
 )
@@ -54,6 +55,10 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=delete_zimcheck_s3_results,
         interval=MillContext.delete_zimcheck_files_interval,
+    ),
+    TaskConfig(
+        func=fetch_download_stats,
+        interval=MillContext.fetch_download_stats_interval,
     ),
 ]
 
