@@ -18,7 +18,6 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.api.routes.utils import build_library_xml
 from cms_backend.db import collection as db_collection
 from cms_backend.db import gen_dbsession
-from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
@@ -28,6 +27,7 @@ from cms_backend.schemas.orms import (
     CollectionHistorySchema,
     CollectionLightSchema,
 )
+from cms_backend.utils.opds import OPDS_MEDIA_TYPE, build_opds_xml
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
@@ -170,20 +170,9 @@ def _get_catalog_xml_content(
     path_prefix: str | None,
     accessible_collection_ids: Sequence[UUID] | None,
 ) -> tuple[str, int]:
-    # Try to parse as UUID first, otherwise treat as name
-    collection = None
-    try:
-        try:
-            collection = db_collection.get_collection(
-                session, collection_id_or_name, accessible_collection_ids
-            )
-        except RecordDoesNotExistError:
-            pass
-    except ValueError:
-        # Not a valid UUID, try as name
-        collection = db_collection.get_collection_by_name_or_none(
-            session, collection_id_or_name, accessible_collection_ids
-        )
+    collection = db_collection.get_collection_or_none(
+        session, collection_id_or_name, accessible_collection_ids
+    )
 
     if collection is None:
         return (
@@ -196,6 +185,27 @@ def _get_catalog_xml_content(
         session, collection.id, accessible_collection_ids
     )
     xml_content = build_library_xml(entries, path_prefix=path_prefix)
+
+    return xml_content, HTTPStatus.OK
+
+
+def _get_opds_xml_content(
+    collection_id_or_name: str,
+    session: OrmSession,
+    path_prefix: str | None,
+    accessible_collection_ids: Sequence[UUID] | None,
+) -> tuple[str, int]:
+    collection = db_collection.get_collection_or_none(
+        session, collection_id_or_name, accessible_collection_ids
+    )
+
+    if collection is None:
+        return build_opds_xml([]), HTTPStatus.NOT_FOUND
+
+    entries = db_collection.get_latest_books_for_collection(
+        session, collection.id, accessible_collection_ids
+    )
+    xml_content = build_opds_xml(entries, path_prefix=path_prefix)
 
     return xml_content, HTTPStatus.OK
 
@@ -241,6 +251,50 @@ def head_library_catalog_xml(
         status_code=status_code,
         headers={"ETag": f"{etag}"},
         media_type="application/xml",
+    )
+
+
+@router.get("/{collection_id_or_name}/opds.xml")
+def get_collection_opds_xml(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    path_prefix: Annotated[str | None, Query()] = None,
+):
+    """Get collection catalog as an OPDS feed by collection ID (UUID) or name."""
+    xml_content, status_code = _get_opds_xml_content(
+        collection_id_or_name, session, path_prefix, accessible_collection_ids
+    )
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+
+    return Response(
+        content=xml_content,
+        status_code=status_code,
+        media_type=OPDS_MEDIA_TYPE,
+        headers={"ETag": f"{etag}"},
+    )
+
+
+@router.head("/{collection_id_or_name}/opds.xml")
+def head_collection_opds_xml(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    path_prefix: Annotated[str | None, Query()] = None,
+):
+    """Get collection catalog as an OPDS feed by collection ID (UUID) or name."""
+    xml_content, status_code = _get_opds_xml_content(
+        collection_id_or_name, session, path_prefix, accessible_collection_ids
+    )
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+    return Response(
+        status_code=status_code,
+        headers={"ETag": f"{etag}"},
+        media_type=OPDS_MEDIA_TYPE,
     )
 
 

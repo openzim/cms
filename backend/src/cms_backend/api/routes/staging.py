@@ -12,6 +12,7 @@ from cms_backend.api.routes.dependencies import get_accessible_collection_ids
 from cms_backend.api.routes.utils import build_library_xml
 from cms_backend.db import gen_dbsession
 from cms_backend.db import staging as db_staging
+from cms_backend.utils.opds import OPDS_MEDIA_TYPE, build_opds_xml
 
 router = APIRouter(prefix="/staging", tags=["staging"])
 
@@ -57,4 +58,47 @@ async def head_library_catalog_xml(
         status_code=HTTPStatus.OK,
         headers={"ETag": f"{etag}"},
         media_type="application/xml",
+    )
+
+
+@router.get("/opds.xml")
+async def get_staging_opds_xml(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    path_prefix: Annotated[str | None, Query()] = None,
+):
+    """Get staging catalog as an OPDS feed."""
+    entries = db_staging.get_staging_books_library_data(
+        session, accessible_collection_ids=accessible_collection_ids
+    )
+    xml_content = build_opds_xml(entries, path_prefix=path_prefix)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+
+    return Response(
+        content=xml_content,
+        headers={"ETag": f"{etag}"},
+        status_code=HTTPStatus.OK,
+        media_type=OPDS_MEDIA_TYPE,
+    )
+
+
+@router.head("/opds.xml")
+async def head_staging_opds_xml(
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    path_prefix: Annotated[str | None, Query()] = None,
+):
+    entries = db_staging.get_staging_books_library_data(
+        session, accessible_collection_ids=accessible_collection_ids
+    )
+    xml_content = build_opds_xml(entries, path_prefix=path_prefix)
+    etag = xxhash.xxh64(xml_content.encode("utf-8")).hexdigest()
+    return Response(
+        status_code=HTTPStatus.OK,
+        headers={"ETag": f"{etag}"},
+        media_type=OPDS_MEDIA_TYPE,
     )

@@ -1,10 +1,11 @@
+import base64
 from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
@@ -21,6 +22,7 @@ from cms_backend.db import book_actions as db_book_actions
 from cms_backend.db import books as db_books
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
+from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
@@ -137,6 +139,58 @@ def get_book(
             accessible_collection_ids=accessible_collection_ids,
             accessible_title_ids=accessible_title_ids,
         )
+    )
+
+
+ILLUSTRATION_METADATA_PREFIX = "Illustration"
+
+
+@router.get("/{book_id}/raw_metadata/{metadata}")
+def get_book_raw_metadata(
+    book_id: Annotated[UUID, Path()],
+    metadata: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> Response:
+    book = db_book.get_book(
+        session,
+        book_id,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+
+    if metadata == "Name":
+        value = book.name
+    else:
+        raw_value = book.zim_metadata.get(metadata)
+        value = None if raw_value is None else str(raw_value)
+
+    if value is None:
+        raise RecordDoesNotExistError(f"Book {book_id} has no metadata '{metadata}'")
+
+    if not metadata.startswith(ILLUSTRATION_METADATA_PREFIX):
+        return Response(
+            content=value,
+            media_type="text/plain; charset=utf-8",
+            status_code=HTTPStatus.OK,
+        )
+
+    try:
+        data = base64.b64decode(value, validate=True)
+    except ValueError as exc:
+        raise BadRequestError(
+            f"Book {book_id} metadata '{metadata}' is not a valid base64 image"
+        ) from exc
+
+    return Response(
+        content=data,
+        media_type="image/png",
+        status_code=HTTPStatus.OK,
     )
 
 

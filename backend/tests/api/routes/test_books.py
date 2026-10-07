@@ -1,3 +1,4 @@
+import base64
 import datetime
 from collections.abc import Callable
 from http import HTTPStatus
@@ -1434,3 +1435,51 @@ def test_add_book_to_title_permissions(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
+
+
+def test_get_book_raw_metadata_text(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    access_token: str,
+):
+    book = create_book(zim_metadata={"Description": "a test description"})
+
+    response = client.get(
+        f"/v1/books/{book.id}/raw_metadata/Description",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.text == "a test description"
+
+
+def test_get_book_raw_metadata_illustration(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
+    access_token: str,
+):
+    """Illustration metadata is base64-decoded and served as a PNG."""
+    book = create_book(zim_metadata={"Illustration_48x48@1": illustration_48x48_at_1})
+
+    response = client.get(
+        f"/v1/books/{book.id}/raw_metadata/Illustration_48x48%401",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == "image/png"
+    assert response.content == base64.b64decode(illustration_48x48_at_1)
+
+
+def test_get_book_raw_metadata_missing_metadata(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    access_token: str,
+):
+    book = create_book(zim_metadata={"Name": "test"})
+
+    response = client.get(
+        f"/v1/books/{book.id}/raw_metadata/DoesNotExist",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
