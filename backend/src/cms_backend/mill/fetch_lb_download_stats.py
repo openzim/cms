@@ -13,6 +13,7 @@ from cms_backend.db.download_stats import (
     purge_old_stats,
     replace_day_stats,
 )
+from cms_backend.db.popularity import compute_titles_popularity
 from cms_backend.mill.context import Context as MillContext
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import DownloadLocation
@@ -34,6 +35,7 @@ def fetch_download_stats(session: OrmSession) -> None:
     else:
         logger.info("No day eligible for download stats fetching")
 
+    _update_popularity(session)
     _purge_old_stats(session)
 
 
@@ -95,6 +97,17 @@ def _fetch_day(
         f"Stored download stats for {day}: {total} download(s) across "
         f"{len(counts)} flavour(s), {unmapped} unmapped download(s)"
     )
+
+
+def _update_popularity(session: OrmSession) -> None:
+    try:
+        compute_titles_popularity(
+            session, lookback_days=Context.download_stats_popularity_window_days
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("Failed to update title popularity")
 
 
 def _purge_old_stats(session: OrmSession) -> None:

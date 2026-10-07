@@ -63,7 +63,7 @@ class TitleFlavourDownloadsSchema(BaseModel):
     downloads: list[DailyDownloadSchema]
 
 
-class TitleLightSchema(BaseModel):
+class BaseTitleSchema(BaseModel):
     """
     Schema for reading a title model with some fields
     """
@@ -82,6 +82,10 @@ class TitleLightSchema(BaseModel):
     license: str | None
     relation: str | None
     source: str | None
+
+
+class TitleLightSchema(BaseTitleSchema):
+    popularity: int
 
 
 class BaseTitleCollectionSchema(BaseModel):
@@ -104,7 +108,7 @@ class TitleFullSchema(TitleLightSchema):
     flavours: list[TitleFlavourSchema]
 
 
-class TitleHistorySchema(TitleLightSchema):
+class TitleHistorySchema(BaseTitleSchema):
     """
     Schema for reading a title history model
     """

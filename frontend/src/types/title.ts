@@ -34,6 +34,7 @@ export interface TitleLight {
   name: string
   maturity: string
   archived: boolean
+  popularity: number
   title: string | null
   creator: string | null
   publisher: string | null
