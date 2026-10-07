@@ -60,6 +60,7 @@ export const useTitleStore = defineStore('title', () => {
     collection_name: string | undefined,
     archived: boolean = false,
     is_rotten: boolean | undefined = undefined,
+    sort: 'popularity' | 'name' = 'popularity',
   ) => {
     const service = await authStore.getApiService('titles')
     // filter out undefined values from params
@@ -71,6 +72,7 @@ export const useTitleStore = defineStore('title', () => {
         collection_name,
         archived: archived || undefined,
         is_rotten: is_rotten !== undefined ? is_rotten : undefined,
+        sort,
       }).filter(([, value]) => value !== undefined),
     )
     try {

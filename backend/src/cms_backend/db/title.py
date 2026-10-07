@@ -112,6 +112,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
             for tc in title.collections
         ],
         archived=title.archived,
+        popularity=title.popularity,
     )
 
 
@@ -122,6 +123,7 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         name=title.name,
         maturity=title.maturity,
         archived=title.archived,
+        popularity=title.popularity,
         title=title.title,
         creator=title.creator,
         publisher=title.publisher,
@@ -295,6 +297,7 @@ def get_titles(
     collection_name: str | None = None,
     archived: bool = False,
     is_rotten: bool | None = None,
+    sort: Literal["popularity", "name"] = "popularity",
 ) -> ListResult[TitleLightSchema]:
     """Get a list of titles
 
@@ -318,11 +321,11 @@ def get_titles(
             Title.license.label("title_license"),
             Title.relation.label("title_relation"),
             Title.source.label("title_source"),
+            Title.popularity.label("title_popularity"),
         )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
         .join(Collection, CollectionTitle.collection_id == Collection.id, isouter=True)
         .distinct()
-        .order_by(Title.name)
         .where(
             # If a client provides an argument i.e it is not None,
             # we compare the corresponding model field against the argument,
@@ -361,6 +364,11 @@ def get_titles(
         else:
             stmt = stmt.where(Title.id.not_in(rotten_titles_subquery))
 
+    if sort == "name":
+        stmt = stmt.order_by(Title.name)
+    else:
+        stmt = stmt.order_by(Title.popularity.desc(), Title.name)
+
     return ListResult[TitleLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
@@ -369,6 +377,7 @@ def get_titles(
                 name=title_name,
                 maturity=title_maturity,
                 archived=title_archived,
+                popularity=title_popularity,
                 title=title_title,
                 creator=title_creator,
                 publisher=title_publisher,
@@ -395,6 +404,7 @@ def get_titles(
                 title_license,
                 title_relation,
                 title_source,
+                title_popularity,
             ) in session.execute(stmt.offset(skip).limit(limit)).all()
         ],
     )

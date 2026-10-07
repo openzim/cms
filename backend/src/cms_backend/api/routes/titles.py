@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from http import HTTPStatus
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from botocore.exceptions import (  # pyright: ignore[reportMissingTypeStubs]
@@ -75,6 +75,7 @@ class TitlesGetSchema(BaseModel):
     collection_name: NotEmptyString | None = None
     archived: bool = False
     is_rotten: bool | None = None
+    sort: Literal["popularity", "name"] = "popularity"
 
 
 class RevertTitleSchema(BaseModel):
@@ -115,6 +116,7 @@ def get_titles(
         collection_name=params.collection_name,
         archived=params.archived,
         is_rotten=params.is_rotten,
+        sort=params.sort,
     )
     return ListResponse[TitleLightSchema](
         meta=calculate_pagination_metadata(
