@@ -87,6 +87,19 @@ class Context:
     staging_library_xml_base_path: str = field(
         default=os.getenv("STAGING_LIBRARY_XML_BASE_PATH", "/data/dev/")
     )
+    # OPDS catalogs: whether the book illustration is embedded as a base64
+    # "data:" URL (True) or referenced through opds_illustration_url_template
+    # (False).
+    opds_inline_illustration: bool = field(
+        default=parse_bool(os.getenv("OPDS_INLINE_ILLUSTRATION", "True"))
+    )
+    # Template used to build the illustration URL when opds_inline_illustration
+    # is False. The only placeholder supported is {book_id} which is replaced
+    # with the book UUID. Example:
+    # https://api.cms.openzim.org/v1/books/{book_id}/raw_metadata/Illustration_48x48%401
+    opds_illustration_url_template: str | None = field(
+        default=os.getenv("OPDS_ILLUSTRATION_URL_TEMPLATE") or None
+    )
     quarantine_warehouse_id: UUID = field(
         default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
     )
