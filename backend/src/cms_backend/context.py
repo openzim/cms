@@ -162,3 +162,7 @@ class Context:
     download_stats_yesterday_hour: int = field(
         default=int(os.getenv("DOWNLOAD_STATS_YESTERDAY_HOUR", "4"))
     )
+    # Number of most recent days of download stats used to compute popularity
+    download_stats_popularity_window_days: int = field(
+        default=int(os.getenv("DOWNLOAD_STATS_POPULARITY_WINDOW_DAYS", "7"))
+    )

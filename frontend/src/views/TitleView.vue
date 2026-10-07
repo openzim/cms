@@ -130,6 +130,16 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
+                    <div class="text-subtitle-2">Popularity</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <PopularityFlames :popularity="title.popularity" />
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
                     <div class="text-subtitle-2">Collections</div>
                   </v-col>
                   <v-col cols="12" md="9">
@@ -528,6 +538,7 @@ import ZimUploadZone from '@/components/ZimUploadZone.vue'
 import ZimUrlUploadForm from '@/components/ZimUrlUploadForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import PopularityFlames from '@/components/PopularityFlames.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'

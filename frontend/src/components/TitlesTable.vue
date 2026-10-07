@@ -82,7 +82,7 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <div class="d-flex align-center ga-2">
+          <div>
             <v-icon
               v-if="!showSelection"
               size="small"
@@ -94,6 +94,10 @@
             </v-icon>
             {{ item.name }}
           </div>
+        </template>
+
+        <template #[`item.popularity`]="{ item }">
+          <PopularityFlames :popularity="item.popularity" />
         </template>
 
         <template #no-data>
@@ -115,6 +119,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import PopularityFlames from '@/components/PopularityFlames.vue'
 
 // Props
 interface Props {

@@ -773,6 +773,7 @@ function getSyntheticTitle(index: number): Title {
     name: data.name || '',
     maturity: data.maturity || 'stable',
     archived: false,
+    popularity: 1,
     title: data.title || null,
     creator: data.creator || null,
     publisher: data.publisher || null,

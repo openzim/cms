@@ -13,6 +13,7 @@ from cms_backend.db.download_stats import (
     purge_old_stats,
     replace_day_stats,
 )
+from cms_backend.db.popularity import compute_titles_popularity
 from cms_backend.mill.context import Context as MillContext
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import DownloadLocation
@@ -30,14 +31,15 @@ def fetch_download_stats(session: OrmSession) -> None:
         end -= timedelta(days=1)
 
     if end >= start:
-        _fetch_missing_days(session, start=start, end=end)
+        if _fetch_missing_days(session, start=start, end=end):
+            _update_popularity(session)
     else:
         logger.info("No day eligible for download stats fetching")
 
     _purge_old_stats(session)
 
 
-def _fetch_missing_days(session: OrmSession, *, start: date, end: date) -> None:
+def _fetch_missing_days(session: OrmSession, *, start: date, end: date) -> list[date]:
     fetched_days = get_fetched_days(session, start=start, end=end)
     missing: list[date] = []
     for offset in range((end - start).days + 1):
@@ -47,17 +49,22 @@ def _fetch_missing_days(session: OrmSession, *, start: date, end: date) -> None:
 
     if not missing:
         logger.info("All download stats already fetched.")
-        return
+        return []
 
     location_map = get_prod_download_location_map(session)
     logger.info(
         f"Fetching download stats for {len(missing)} missing day(s), "
         f"{len(location_map)} known download location(s)"
     )
+
+    results: list[date] = []
     for index, day in enumerate(missing):
         if index:
             sleep(MillContext.download_stats_request_delay)
-        _fetch_day(session, day=day, location_map=location_map)
+        if _fetch_day(session, day=day, location_map=location_map):
+            results.append(day)
+
+    return results
 
 
 def _fetch_day(
@@ -65,13 +72,13 @@ def _fetch_day(
     *,
     day: date,
     location_map: dict[DownloadLocation, TitleFlavourKey],
-) -> None:
+) -> bool:
     logger.debug(f"Fetching download stats for {day}")
     try:
         path_downloads = fetch_download_stats_for_day(day)
     except Exception:
         logger.exception(f"Failed to fetch download stats for {day}")
-        return
+        return False
 
     counts: dict[TitleFlavourKey, int] = {}
     unmapped = 0
@@ -89,12 +96,25 @@ def _fetch_day(
     except Exception:
         session.rollback()
         logger.exception(f"Failed to store download stats for {day}")
-        return
+        return False
 
     logger.info(
         f"Stored download stats for {day}: {total} download(s) across "
         f"{len(counts)} flavour(s), {unmapped} unmapped download(s)"
     )
+
+    return True
+
+
+def _update_popularity(session: OrmSession) -> None:
+    try:
+        compute_titles_popularity(
+            session, lookback_days=Context.download_stats_popularity_window_days
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("Failed to update title popularity")
 
 
 def _purge_old_stats(session: OrmSession) -> None:
