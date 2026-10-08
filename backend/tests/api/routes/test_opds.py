@@ -24,6 +24,7 @@ from cms_backend.utils.opds import (
     BITTORRENT_MIMETYPE,
     DC_NAMESPACE,
     ILLUSTRATION_MIMETYPE,
+    KIWIX_NAMESPACE,
     METALINK_MIMETYPE,
     OPDS_MEDIA_TYPE,
     THUMBNAIL_MIMETYPE,
@@ -203,6 +204,7 @@ def test_get_collection_opds_xml_single_book(
     )
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}updated") == "2025-01-01T00:00:00Z"
     assert entry.findtext(f"{{{DC_NAMESPACE}}}issued") == "2025-01-01T00:00:00Z"
+    assert entry.findtext(f"{{{KIWIX_NAMESPACE}}}titleid") == str(title.id)
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}name") == "test_title"
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}flavour") == "test"
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}category") == "test"
