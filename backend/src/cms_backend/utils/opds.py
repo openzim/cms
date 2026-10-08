@@ -11,6 +11,7 @@ from cms_backend.utils.zim import convert_tags
 ATOM_NAMESPACE = "http://www.w3.org/2005/Atom"
 DC_NAMESPACE = "http://purl.org/dc/terms/"
 OPDS_NAMESPACE = "https://specs.opds.io/opds-1.2"
+KIWIX_NAMESPACE = "https://kiwix.org/namespace/opds"
 
 OPDS_MEDIA_TYPE = "application/atom+xml"
 
@@ -38,6 +39,10 @@ def _atom(tag: str) -> str:
 
 def _dc(tag: str) -> str:
     return f"{{{DC_NAMESPACE}}}{tag}"
+
+
+def _kiwix(tag: str) -> str:
+    return f"{{{KIWIX_NAMESPACE}}}{tag}"
 
 
 def _text(value: object) -> str:
@@ -140,6 +145,9 @@ def _append_entry(
     ET.SubElement(entry_elem, _atom("updated")).text = updated
     ET.SubElement(entry_elem, _dc("issued")).text = updated
 
+    ET.SubElement(entry_elem, _kiwix("titleid")).text = str(title.id)
+    ET.SubElement(entry_elem, _kiwix("popularity")).text = str(title.popularity)
+
     ET.SubElement(entry_elem, _atom("name")).text = _text(zim_metadata.get("Name"))
 
     if book.flavour:
@@ -207,6 +215,7 @@ def build_opds_xml(
     """Build an OPDS acquisition feed from books."""
     ET.register_namespace("", ATOM_NAMESPACE)
     ET.register_namespace("dc", DC_NAMESPACE)
+    ET.register_namespace("kiwix", KIWIX_NAMESPACE)
 
     feed = ET.Element(_atom("feed"))
     feed.set("xmlns:opds", OPDS_NAMESPACE)
