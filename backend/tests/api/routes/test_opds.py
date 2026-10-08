@@ -205,6 +205,7 @@ def test_get_collection_opds_xml_single_book(
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}updated") == "2025-01-01T00:00:00Z"
     assert entry.findtext(f"{{{DC_NAMESPACE}}}issued") == "2025-01-01T00:00:00Z"
     assert entry.findtext(f"{{{KIWIX_NAMESPACE}}}titleid") == str(title.id)
+    assert entry.findtext(f"{{{KIWIX_NAMESPACE}}}popularity") == str(title.popularity)
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}name") == "test_title"
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}flavour") == "test"
     assert entry.findtext(f"{{{ATOM_NAMESPACE}}}category") == "test"

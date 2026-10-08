@@ -146,6 +146,7 @@ def _append_entry(
     ET.SubElement(entry_elem, _dc("issued")).text = updated
 
     ET.SubElement(entry_elem, _kiwix("titleid")).text = str(title.id)
+    ET.SubElement(entry_elem, _kiwix("popularity")).text = str(title.popularity)
 
     ET.SubElement(entry_elem, _atom("name")).text = _text(zim_metadata.get("Name"))
 
