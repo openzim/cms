@@ -59,6 +59,18 @@
 
         <v-tab
           base-color="primary"
+          value="stats"
+          :to="{
+            name: 'title-detail-tab',
+            params: { id: title.id, selectedTab: 'stats' },
+          }"
+        >
+          <v-icon class="mr-2">mdi-chart-line</v-icon>
+          Stats
+        </v-tab>
+
+        <v-tab
+          base-color="primary"
           v-if="canEditTitle"
           value="history"
           :to="{
@@ -336,6 +348,11 @@
           </v-card>
         </v-window-item>
 
+        <!-- Stats Tab -->
+        <v-window-item value="stats">
+          <TitleStats :title-id="title.id" />
+        </v-window-item>
+
         <v-window-item value="history">
           <TitleHistory
             v-if="canEditTitle"
@@ -557,6 +574,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import TitleHistory from '@/components/TitleHistory.vue'
+import TitleStats from '@/components/TitleStats.vue'
 import TitleFlavourSection from '@/components/TitleFlavourSection.vue'
 import TitleUploadersDialog from '@/components/TitleUploadersDialog.vue'
 import TitleUploadsView from '@/views/TitleUploadsView.vue'
@@ -1015,6 +1033,7 @@ onMounted(async () => {
   const canAccessSelectedTab =
     props.selectedTab === 'details' ||
     props.selectedTab === 'books' ||
+    props.selectedTab === 'stats' ||
     (props.selectedTab === 'upload' ? canUploadZim.value : canEditTitle.value)
 
   if (!canAccessSelectedTab) {
