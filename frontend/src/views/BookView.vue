@@ -971,6 +971,7 @@ const titleDataFromBook = computed<Title | null>(() => {
     name: book.value.name || '',
     maturity: 'unstable',
     archived: false,
+    popularity: 1,
     collection_titles: [],
     title: (metadata.Title as string | null | undefined) || null,
     creator: (metadata.Creator as string | null | undefined) || null,

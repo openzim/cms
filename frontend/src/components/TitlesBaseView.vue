@@ -20,6 +20,24 @@
     </template>
   </TitlesFilter>
   <template v-if="ready">
+    <div class="d-flex justify-end mb-2">
+      <v-btn-toggle
+        :model-value="sort"
+        mandatory
+        density="compact"
+        variant="outlined"
+        @update:model-value="setSort"
+      >
+        <v-btn value="popularity" size="small">
+          <v-icon class="mr-1">mdi-fire</v-icon>
+          Popularity
+        </v-btn>
+        <v-btn value="name" size="small">
+          <v-icon class="mr-1">mdi-sort-alphabetical-ascending</v-icon>
+          Name
+        </v-btn>
+      </v-btn-toggle>
+    </div>
     <TitlesTable
       :headers="headers"
       :titles="titles"
@@ -152,6 +170,10 @@ const props = withDefaults(
 const headers = [
   { title: 'Name', value: 'name' },
   {
+    title: 'Popularity',
+    value: 'popularity',
+  },
+  {
     title: 'Maturity',
     value: 'maturity',
   },
@@ -186,6 +208,10 @@ const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
 
 const collectionNames = computed(() => collectionsStore.collections.map((c) => c.name))
+
+const sort = computed<'popularity' | 'name'>(() =>
+  route.query.sort === 'name' ? 'name' : 'popularity',
+)
 
 const paginator = ref<Paginator>({
   page: Number(route.query.page) || 1,
@@ -237,6 +263,7 @@ async function loadData(limit: number, skip: number, hideLoading: boolean = fals
     filters.value.collection_name || undefined,
     props.archived,
     statusToIsRotten(filters.value.status),
+    sort.value,
   )
 
   titles.value = titleStore.titles
@@ -444,11 +471,30 @@ function updateUrl(sourceFilters: typeof filters.value) {
   if (sourceFilters.status) {
     query.status = sourceFilters.status
   }
+  if (sort.value !== 'popularity') {
+    query.sort = sort.value
+  }
 
   router.push({
     name: props.routeName,
     query: Object.keys(query).length > 0 ? query : undefined,
   })
+}
+
+function setSort(newSort: unknown) {
+  const value = newSort === 'name' ? 'name' : 'popularity'
+  const query: Record<string, string> = {}
+  for (const [key, val] of Object.entries(router.currentRoute.value.query)) {
+    if (typeof val === 'string') {
+      query[key] = val
+    }
+  }
+  if (value === 'popularity') {
+    delete query.sort
+  } else {
+    query.sort = value
+  }
+  router.push({ name: props.routeName, query })
 }
 
 const filters = computed(() => {
