@@ -6,7 +6,11 @@ import pytest
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db.models import Book
-from cms_backend.utils.filename import compute_target_filename, get_next_suffix
+from cms_backend.utils.filename import (
+    compute_target_filename,
+    get_next_suffix,
+    normalize_download_location,
+)
 
 
 class TestGetNextSuffix:
@@ -40,6 +44,58 @@ class TestGetNextSuffix:
         assert get_next_suffix("aaa") == "aab"
         assert get_next_suffix("aaz") == "aba"
         assert get_next_suffix("zzz") == "aaaa"
+
+
+class TestNormalizeDownloadLocation:
+    """Test the normalize_download_location function."""
+
+    def test_zim_location_is_returned(self):
+        assert normalize_download_location(
+            "https://lb.download.kiwix.org/zim/foo_en_all_2026-01.zim"
+        ) == ("lb.download.kiwix.org", "/zim/foo_en_all_2026-01.zim")
+
+    def test_torrent_is_folded_to_zim(self):
+        assert normalize_download_location(
+            "https://lb.download.kiwix.org/zim/foo_en_all_2026-01.zim.torrent"
+        ) == ("lb.download.kiwix.org", "/zim/foo_en_all_2026-01.zim")
+
+    def test_meta4_is_folded_to_zim(self):
+        assert normalize_download_location(
+            "https://lb.download.kiwix.org/zim/foo_en_all_2026-01.zim.meta4"
+        ) == ("lb.download.kiwix.org", "/zim/foo_en_all_2026-01.zim")
+
+    def test_query_string_is_ignored(self):
+        assert normalize_download_location(
+            "https://lb.download.kiwix.org/foo.zim?foo=bar"
+        ) == ("lb.download.kiwix.org", "/foo.zim")
+
+    def test_url_encoded_path_is_decoded(self):
+        assert normalize_download_location(
+            "https://lb.download.kiwix.org/zim/foo%20bar.zim"
+        ) == ("lb.download.kiwix.org", "/zim/foo bar.zim")
+
+    def test_host_case_is_normalized(self):
+        assert normalize_download_location("https://LB.Download.Kiwix.org/foo.zim") == (
+            "lb.download.kiwix.org",
+            "/foo.zim",
+        )
+
+    def test_scheme_less_host_path_is_supported(self):
+        assert normalize_download_location("lb.download.kiwix.org/zim/foo.zim") == (
+            "lb.download.kiwix.org",
+            "/zim/foo.zim",
+        )
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://lb.download.kiwix.org/index.html",
+            "https://lb.download.kiwix.org/",
+            "https://lb.download.kiwix.org/zim/",
+        ],
+    )
+    def test_non_zim_urls_return_none(self, url: str):
+        assert normalize_download_location(url) is None
 
 
 class TestComputeTargetFilename:

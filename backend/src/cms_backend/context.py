@@ -149,3 +149,16 @@ class Context:
         )
     )
     zim_upload_s3_bucket_uri: str = os.getenv("ZIM_UPLOAD_S3_BUCKET_URI", default="")
+
+    # Matomo instance used to collect download statistics
+    matomo_url: str = field(default=os.getenv("MATOMO_URL", "https://stats.kiwix.org/"))
+    # Matomo site id of the download server (lb.download.kiwix.org)
+    matomo_site_id: int = field(default=int(os.getenv("MATOMO_SITE_ID", "24")))
+    # How far back (in days) download statistics must be fetched
+    download_stats_days_ago: int = field(
+        default=int(os.getenv("DOWNLOAD_STATS_DAYS_AGO", "365"))
+    )
+    # Hour (UTC) after which the previous day statistics are available
+    download_stats_yesterday_hour: int = field(
+        default=int(os.getenv("DOWNLOAD_STATS_YESTERDAY_HOUR", "4"))
+    )
