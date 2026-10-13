@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.context import Context as ApiContext
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
 from cms_backend.db.models import (
@@ -1033,6 +1034,7 @@ def test_complete_upload_recipe_creation_bad_request(
     with (
         patch("cms_backend.api.routes.titles.get_kiwix_storage_client") as mock_get_s3,
         patch("cms_backend.api.routes.titles.complete_multipart_upload"),
+        patch("cms_backend.api.routes.titles.get_object_size"),
         patch(
             "cms_backend.api.routes.titles.generate_view_presigned_url"
         ) as mock_presigned,
@@ -1084,6 +1086,7 @@ def test_complete_upload_recipe_creation_server_error(
     with (
         patch("cms_backend.api.routes.titles.get_kiwix_storage_client") as mock_get_s3,
         patch("cms_backend.api.routes.titles.complete_multipart_upload"),
+        patch("cms_backend.api.routes.titles.get_object_size"),
         patch(
             "cms_backend.api.routes.titles.generate_view_presigned_url"
         ) as mock_presigned,
@@ -1136,6 +1139,7 @@ def test_complete_upload_missing_task_id(
     with (
         patch("cms_backend.api.routes.titles.get_kiwix_storage_client") as mock_get_s3,
         patch("cms_backend.api.routes.titles.complete_multipart_upload"),
+        patch("cms_backend.api.routes.titles.get_object_size"),
         patch(
             "cms_backend.api.routes.titles.generate_view_presigned_url"
         ) as mock_presigned,
@@ -1195,11 +1199,13 @@ def test_complete_upload_by_file_success(
 ):
     """Test that a TitleUpload record is created in the database."""
     task_id = uuid4()
+    zim_size = 3 * 1024**3
     create_collection(title_ids_with_paths=[(title.id, "other")])
 
     with (
         patch("cms_backend.api.routes.titles.get_kiwix_storage_client") as mock_get_s3,
         patch("cms_backend.api.routes.titles.complete_multipart_upload"),
+        patch("cms_backend.api.routes.titles.get_object_size") as mock_get_size,
         patch(
             "cms_backend.api.routes.titles.generate_view_presigned_url"
         ) as mock_presigned,
@@ -1211,6 +1217,7 @@ def test_complete_upload_by_file_success(
         mock_s3_client = MagicMock()
         mock_get_s3.return_value = mock_s3_client
         mock_presigned.return_value = "https://example.com/presigned"
+        mock_get_size.return_value = zim_size
         mock_auth_header.return_value = {"Authorization": "Bearer access-token"}
         mock_query_api.side_effect = [
             # Retrieiving recipe fails
@@ -1253,6 +1260,10 @@ def test_complete_upload_by_file_success(
         assert title_upload.requested_by_id == account.id
         assert title_upload.status == "requested"
 
+        # the recipe is created (second query_api call) with the uploaded size
+        recipe_payload = mock_query_api.call_args_list[1].kwargs["payload"]
+        assert recipe_payload["config"]["resources"]["disk"] == zim_size
+
 
 def test_complete_upload_by_url_success(
     dbsession: OrmSession,
@@ -1264,14 +1275,17 @@ def test_complete_upload_by_url_success(
 ):
     """Test that a TitleUpload record is created in the database."""
     task_id = uuid4()
+    zim_size = 2 * 1024**3
     create_collection(title_ids_with_paths=[(title.id, "other")])
 
     with (
+        patch("cms_backend.api.routes.titles.get_remote_file_size") as mock_get_size,
         patch("cms_backend.api.routes.titles.query_api") as mock_query_api,
         patch(
             "cms_backend.api.routes.titles.zimfarm_client_token_provider.get_authorization_header"
         ) as mock_auth_header,
     ):
+        mock_get_size.return_value = zim_size
         mock_auth_header.return_value = {"Authorization": "Bearer access-token"}
         mock_query_api.side_effect = [
             # Retrieiving recipe fails
@@ -1310,6 +1324,60 @@ def test_complete_upload_by_url_success(
         assert title_upload.requested_by_id == account.id
         assert title_upload.status == "requested"
 
+        recipe_payload = mock_query_api.call_args_list[1].kwargs["payload"]
+        assert recipe_payload["config"]["resources"]["disk"] == zim_size
+
+
+def test_complete_upload_by_url_defaults_disk_size(
+    client: TestClient,
+    title: Title,
+    create_collection: Callable[..., Title],
+    access_token: str,
+):
+    """Configured default disk is used when the remote size cannot be determined."""
+    task_id = uuid4()
+    create_collection(title_ids_with_paths=[(title.id, "other")])
+
+    with (
+        patch("cms_backend.api.routes.titles.get_remote_file_size") as mock_get_size,
+        patch("cms_backend.api.routes.titles.query_api") as mock_query_api,
+        patch(
+            "cms_backend.api.routes.titles.zimfarm_client_token_provider.get_authorization_header"
+        ) as mock_auth_header,
+    ):
+        mock_get_size.return_value = None
+        mock_auth_header.return_value = {"Authorization": "Bearer access-token"}
+        mock_query_api.side_effect = [
+            # Retrieiving recipe fails
+            _mock_query_api_response(
+                status_code=404, json_data={"error": "Not Found"}, success=False
+            ),
+            # POST /recipes - create recipe
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"name": "zimwright_abc12345", "id": str(uuid4())},
+            ),
+            # POST /requested-tasks - request task
+            _mock_query_api_response(
+                status_code=HTTPStatus.CREATED,
+                json_data={"requested": [str(task_id)]},
+            ),
+        ]
+
+        response = client.post(
+            f"/v1/titles/{title.id}/upload/url/complete",
+            json={"url": "https://example.com/my-file.zim"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        recipe_payload = mock_query_api.call_args_list[1].kwargs["payload"]
+        assert recipe_payload["config"]["resources"]["disk"] == ApiContext.zimtask_disk
+
 
 def test_title_uploader_can_only_upload_to_granted_titles(
     dbsession: OrmSession,
@@ -1336,6 +1404,7 @@ def test_title_uploader_can_only_upload_to_granted_titles(
 
     task_id = uuid4()
     with (
+        patch("cms_backend.api.routes.titles.get_remote_file_size"),
         patch("cms_backend.api.routes.titles.query_api") as mock_query_api,
         patch(
             "cms_backend.api.routes.titles.zimfarm_client_token_provider.get_authorization_header"

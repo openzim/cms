@@ -65,6 +65,35 @@ def query_api(
         )
 
 
+def get_remote_file_size(
+    url: str, timeout: int = Context.requests_timeout
+) -> int | None:
+    """Get the size (in bytes) of the remote file at url if available."""
+    for request_method in (requests.head, requests.get):
+        try:
+            response = request_method(
+                url, stream=True, allow_redirects=True, timeout=timeout
+            )
+        except Exception:
+            logger.exception(f"unexpected error while requesting size of {url}")
+            continue
+        try:
+            content_length = (
+                response.headers.get("Content-Length") if response.ok else None
+            )
+        finally:
+            response.close()
+
+        if content_length is None:
+            continue
+
+        try:
+            return int(content_length)
+        except ValueError:
+            continue
+    return None
+
+
 def create_zimfarm_task_info(task: dict[str, Any]) -> TaskInfo:
     """Transforms a task object(dict) returned by Zimfarm API
 
