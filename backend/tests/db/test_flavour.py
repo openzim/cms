@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db.models import Book, Title, TitleFlavour
+from cms_backend.db.title import delete_title_flavour
 
 
 @pytest.mark.parametrize(
@@ -44,7 +45,7 @@ def test_get_title_flavours_pagination(
     assert len(results.records) == expected_count
 
 
-@patch("cms_backend.db.flavour.db_book.delete_book")
+@patch("cms_backend.db.title.delete_book")
 def test_delete_title_flavour(
     mock_delete_book: MagicMock,
     dbsession: OrmSession,
@@ -57,7 +58,7 @@ def test_delete_title_flavour(
     dbsession.add(tf)
     dbsession.flush()
     create_book(flavour="maxi", title_id=title.id)
-    db_flavour.delete_title_flavour(dbsession, title, tf.flavour)
+    delete_title_flavour(dbsession, title, tf.flavour)
     mock_delete_book.assert_called_once()
     assert (
         dbsession.scalars(

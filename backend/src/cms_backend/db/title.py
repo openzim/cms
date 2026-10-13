@@ -27,9 +27,10 @@ from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExi
 from cms_backend.db.flavour import (
     create_title_flavour,
     create_title_flavour_schema,
-    delete_title_flavour,
+    get_title_flavour_or_none,
 )
 from cms_backend.db.models import (
+    Book,
     Collection,
     CollectionTitle,
     Title,
@@ -1015,3 +1016,45 @@ def merge_titles(
         process_book(session, source_book)
 
     apply_retention_rules(session, target_title)
+
+
+def delete_title_flavour(
+    session: OrmSession,
+    title: Title,
+    flavour: str,
+    *,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+):
+    """Delete a title flavour and mark associated books for deletion.
+
+    Only books that are in staging, prod or quarantine and do not have any pending
+    operations are eligible for deletion.
+    """
+    tf = get_title_flavour_or_none(
+        session,
+        title_id=title.id,
+        flavour=flavour,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+    if tf is None:
+        raise RecordDoesNotExistError(
+            f"Title flavour '{flavour}' for title {title.id} does not exist"
+        )
+    book_ids_to_delete = session.scalars(
+        select(Book.id).where(
+            Book.needs_file_operation.is_(False),
+            Book.needs_processing.is_(False),
+            Book.location_kind.in_(["staging", "prod", "quarantine"]),
+            Book.title_id == tf.title_id,
+            Book.flavour == tf.flavour,
+        )
+    ).all()
+    for book_id in book_ids_to_delete:
+        delete_book(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
+    title.flavours.remove(tf)
+    session.delete(tf)
+    session.flush()
