@@ -14,6 +14,7 @@ from cms_backend.db.models import (
     DownloadStats,
     DownloadStatsFetch,
     Title,
+    TitleFlavour,
 )
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import (
@@ -57,6 +58,13 @@ def get_prod_download_location_map(
             BookLocation.filename,
         )
         .join(Title, Book.title_id == Title.id)
+        .join(
+            TitleFlavour,
+            and_(
+                TitleFlavour.title_id == Book.title_id,
+                TitleFlavour.flavour == Book.flavour,
+            ),
+        )
         .join(CollectionTitle, CollectionTitle.title_id == Title.id)
         .join(Collection, Collection.id == CollectionTitle.collection_id)
         .join(

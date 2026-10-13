@@ -119,6 +119,39 @@ def test_get_prod_download_location_map_ignores_non_prod(
     assert get_prod_download_location_map(dbsession) == {}
 
 
+def test_get_prod_download_location_map_ignores_unregistered_flavour(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+):
+    title = create_title(name="wikipedia_en_all", flavours=["all"])
+    collection = create_collection(
+        name="Kiwix",
+        download_base_url="https://lb.download.kiwix.org/",
+        title_ids_with_paths=[(title.id, "zim/")],
+    )
+    collection_title = dbsession.scalars(
+        select(CollectionTitle).where(CollectionTitle.collection_id == collection.id)
+    ).one()
+    book = create_book(
+        title_id=title.id,
+        flavour="maxi",
+        name="foo_en_maxi_2026-01",
+        filename="foo_en_maxi_2026-01.zim",
+        location_kind="prod",
+    )
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path=collection_title.path,
+        filename="foo_en_maxi_2026-01.zim",
+    )
+
+    assert get_prod_download_location_map(dbsession) == {}
+
+
 def test_replace_day_stats_clears_stale_values(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
