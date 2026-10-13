@@ -119,6 +119,17 @@ def generate_multipart_upload_presigned_urls(
     )
 
 
+def get_object_size(s3: KiwixStorage, key: str) -> int:
+    """Get the size (in bytes) of the object stored at key."""
+    response = cast(
+        dict[str, Any],
+        s3.client.head_object(  # pyright: ignore[reportUnknownMemberType]
+            Bucket=s3.bucket_name, Key=key
+        ),
+    )
+    return int(response["ContentLength"])
+
+
 def complete_multipart_upload(
     s3: KiwixStorage, *, key: str, parts: list[PartEtag], upload_id: str
 ):

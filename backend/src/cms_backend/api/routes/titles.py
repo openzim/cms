@@ -57,12 +57,13 @@ from cms_backend.schemas.orms import (
     TitleUploadLightSchema,
 )
 from cms_backend.utils import is_valid_uuid
-from cms_backend.utils.requests import query_api
+from cms_backend.utils.requests import get_remote_file_size, query_api
 from cms_backend.utils.s3 import (
     complete_multipart_upload,
     generate_multipart_upload_presigned_urls,
     generate_view_presigned_url,
     get_kiwix_storage_client,
+    get_object_size,
 )
 
 router = APIRouter(prefix="/titles", tags=["titles"])
@@ -393,8 +394,12 @@ class MultipartCompleteRequest(BaseModel):
     parts: list[PartEtag]
 
 
+def _get_zimtask_disk_size(zim_size: int | None) -> int:
+    return zim_size if zim_size is not None else ApiContext.zimtask_disk
+
+
 def _get_zimwright_recipe_create_payload(
-    recipe_name: str, download_url: str
+    recipe_name: str, download_url: str, disk_size: int
 ) -> dict[str, Any]:
     flags: dict[str, Any] = {"download-from": download_url}
     config = {
@@ -406,7 +411,7 @@ def _get_zimwright_recipe_create_payload(
         "resources": {
             "cpu": ApiContext.zimtask_cpu,
             "memory": ApiContext.zimtask_memory,
-            "disk": ApiContext.zimtask_disk,
+            "disk": disk_size,
             "shm": ApiContext.zimtask_memory,
             "cap_add": ["SYS_ADMIN", "NET_ADMIN"],
         },
@@ -429,7 +434,7 @@ def _get_zimwright_recipe_create_payload(
 
 
 def _get_zimwright_recipe_update_payload(
-    recipe_name: str, download_url: str
+    recipe_name: str, download_url: str, disk_size: int
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "name": recipe_name,
@@ -448,7 +453,7 @@ def _get_zimwright_recipe_update_payload(
         "resources": {
             "cpu": ApiContext.zimtask_cpu,
             "memory": ApiContext.zimtask_memory,
-            "disk": ApiContext.zimtask_disk,
+            "disk": disk_size,
             "shm": ApiContext.zimtask_memory,
             "cap_add": ["SYS_ADMIN", "NET_ADMIN"],
         },
@@ -460,7 +465,7 @@ def _get_zimwright_recipe_update_payload(
 
 
 def create_or_update_zimwright_recipe(
-    recipe_name: str, download_url: str
+    recipe_name: str, download_url: str, disk_size: int
 ) -> dict[str, Any]:
     """Create a zimwright recipe on zimfarm or update the existing one"""
 
@@ -473,7 +478,9 @@ def create_or_update_zimwright_recipe(
         response = query_api(
             f"{Context.zimfarm_api_url}/recipes",
             method="POST",
-            payload=_get_zimwright_recipe_create_payload(recipe_name, download_url),
+            payload=_get_zimwright_recipe_create_payload(
+                recipe_name, download_url, disk_size
+            ),
             headers=zimfarm_client_token_provider.get_authorization_header(),
         )
         if response.success:
@@ -488,7 +495,9 @@ def create_or_update_zimwright_recipe(
         response = query_api(
             f"{Context.zimfarm_api_url}/recipes/{recipe['id']}",
             method="PATCH",
-            payload=_get_zimwright_recipe_update_payload(recipe_name, download_url),
+            payload=_get_zimwright_recipe_update_payload(
+                recipe_name, download_url, disk_size
+            ),
             headers=zimfarm_client_token_provider.get_authorization_header(),
         )
     else:
@@ -516,9 +525,12 @@ def _create_zimwright_recipe(
     account: Account,
     url: str,
     s3_key: str | None = None,
+    zim_size: int | None = None,
 ) -> TitleUploadLightSchema:
 
-    recipe = create_or_update_zimwright_recipe(f"zimwright_{title.name}", url)
+    recipe = create_or_update_zimwright_recipe(
+        f"zimwright_{title.name}", url, _get_zimtask_disk_size(zim_size)
+    )
 
     # request a task for that newly created recipe
     response = query_api(
@@ -592,7 +604,13 @@ def compelete_zim_upload_by_url(
         accessible_title_ids=accessible_title_ids,
     )
 
-    return _create_zimwright_recipe(session, title, current_account, str(request.url))
+    return _create_zimwright_recipe(
+        session,
+        title,
+        current_account,
+        str(request.url),
+        zim_size=get_remote_file_size(str(request.url)),
+    )
 
 
 @router.post(
@@ -634,7 +652,14 @@ def compelete_zim_upload_by_file(
         raise exc
 
     url = generate_view_presigned_url(s3, request.key)
-    return _create_zimwright_recipe(session, title, current_account, url, request.key)
+    try:
+        zim_size = get_object_size(s3, request.key)
+    except S3ClientError:
+        logger.exception(f"Unable to get size of uploaded ZIM {request.key}")
+        zim_size = None
+    return _create_zimwright_recipe(
+        session, title, current_account, url, request.key, zim_size
+    )
 
 
 class TitleUploaderGrantSchema(BaseModel):
