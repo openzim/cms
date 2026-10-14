@@ -988,7 +988,7 @@ const canPromoteBook = computed(() => {
   return (
     authStore.hasPermission('book', 'update') &&
     authStore.hasPermission('title', 'update') &&
-    ['staging', 'quarantine'].includes(book.value.location_kind) &&
+    ['staging'].includes(book.value.location_kind) &&
     !book.value.has_error &&
     !isInTransition.value &&
     !book.value.needs_file_operation &&
