@@ -58,6 +58,8 @@ from cms_backend.utils.zim import (
     parse_zimcheck_result,
 )
 
+NOPIC_MEDIA_IGNORE_THRESHOLD = 1000
+
 
 def get_book_or_none(
     session: OrmSession,
@@ -864,6 +866,9 @@ def get_book_media_count_issues(
 ) -> list[EntryCountIssue]:
 
     if book.media_count == previous_book.media_count:
+        return []
+
+    if book.flavour == "nopic" and book.media_count < NOPIC_MEDIA_IGNORE_THRESHOLD:
         return []
     elif book.media_count > previous_book.media_count:
         collection_media_count_change_threshold = min(
