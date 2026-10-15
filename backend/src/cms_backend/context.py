@@ -142,6 +142,12 @@ class Context:
     requests_timeout: int = field(
         default=int(parse_timespan(os.getenv("REQUESTS_TIMEOUT", default="30s")))
     )
+    # Host of the load balancer serving downloads from mirrors. When a book's
+    # download URL uses this host, it must be available on enough mirrors before
+    # its move can be considered complete.
+    download_lb_host: str = field(
+        default=os.getenv("DOWNLOAD_LB_HOST", "lb.download.kiwix.org")
+    )
     # Regex of scrapers to ignore when running checks for zimcheck quality
     # e.g mwoflliner*|sotoki*
     zimcheck_scrapers_whitelist_regex: ClassVar[re.Pattern[str] | None] = (

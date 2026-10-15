@@ -17,6 +17,7 @@ from cms_backend.db.book import (
     delete_book,
     process_book,
     recover_book,
+    start_book_transition,
     update_book_issues,
 )
 from cms_backend.db.book_location import create_book_target_locations
@@ -671,6 +672,7 @@ def update_title(
                 book=book,
                 target_locations=target_locations,
             )
+            start_book_transition(book)
 
             book.events.append(
                 f"{getnow()}: locations updated due to title collection change"

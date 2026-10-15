@@ -8,7 +8,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from healthcheck.status.auth import authenticate
-from healthcheck.status.books import check_books_need_deletion, check_books_need_move
+from healthcheck.status.books import (
+    check_books_need_deletion,
+    check_books_need_move,
+    check_books_pending_transition,
+)
 from healthcheck.status.collections import check_catalog_generation
 from healthcheck.status.database import (
     check_database_connection,
@@ -51,6 +55,7 @@ async def healthcheck(request: Request) -> HTMLResponse:
         file_needs_move_check,
         file_needs_deletion_check,
         catalog_generation_check,
+        books_pending_transition_check,
     ) = await gather(
         authenticate(),
         check_database_connection(),
@@ -59,6 +64,7 @@ async def healthcheck(request: Request) -> HTMLResponse:
         check_books_need_move(),
         check_books_need_deletion(),
         check_catalog_generation(),
+        check_books_pending_transition(),
     )
 
     global_status = all(
@@ -70,6 +76,7 @@ async def healthcheck(request: Request) -> HTMLResponse:
             file_needs_move_check.success,
             file_needs_deletion_check.success,
             catalog_generation_check.success,
+            books_pending_transition_check.success,
         ]
     )
 
@@ -85,6 +92,7 @@ async def healthcheck(request: Request) -> HTMLResponse:
             "file_needs_move": file_needs_move_check,
             "file_needs_deletion": file_needs_deletion_check,
             "catalog_generation": catalog_generation_check,
+            "books_pending_transition": books_pending_transition_check,
         },
         status_code=HTTPStatus.OK if global_status else HTTPStatus.SERVICE_UNAVAILABLE,
     )

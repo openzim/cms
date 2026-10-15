@@ -214,6 +214,31 @@
                 </v-row>
                 <v-divider class="my-2"></v-divider>
 
+                <template v-if="book.transition_status">
+                  <v-row no-gutters class="py-2">
+                    <v-col cols="12" md="3">
+                      <div class="text-subtitle-2">Move progress</div>
+                    </v-col>
+                    <v-col cols="12" md="9">
+                      <div class="d-flex flex-wrap ga-2">
+                        <v-chip
+                          v-for="condition in transitionConditions"
+                          :key="condition.label"
+                          size="small"
+                          :color="condition.done ? 'success' : 'grey'"
+                          label
+                        >
+                          <v-icon start size="small">
+                            {{ condition.done ? 'mdi-check-circle' : 'mdi-clock-outline' }}
+                          </v-icon>
+                          {{ condition.label }}
+                        </v-chip>
+                      </div>
+                    </v-col>
+                  </v-row>
+                  <v-divider class="my-2"></v-divider>
+                </template>
+
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
                     <div class="text-subtitle-2">URLs</div>
@@ -828,6 +853,20 @@ const locationHeaders = [
   { title: 'Filename', value: 'filename', sortable: false },
 ]
 
+const TRANSITION_STATUS_ORDER = ['moving_files', 'checking_mirrors', 'checking_library']
+
+const transitionConditions = computed(() => {
+  const status = book.value?.transition_status
+  const doneCount = status ? TRANSITION_STATUS_ORDER.indexOf(status) : 0
+  return [
+    { label: 'Files moved', done: doneCount >= 1 },
+    { label: 'On mirrors', done: doneCount >= 2 },
+    { label: 'Live in library', done: doneCount >= 3 },
+  ]
+})
+
+const isInTransition = computed(() => book.value?.transition_status != null)
+
 const hasPendingOperations = computed(() => {
   if (!book.value) return false
   if (
@@ -836,7 +875,7 @@ const hasPendingOperations = computed(() => {
     canRecoverBook.value
   )
     return false
-  return book.value.needs_processing || book.value.needs_file_operation
+  return book.value.needs_processing || book.value.needs_file_operation || isInTransition.value
 })
 
 const canEditBook = computed(() => {
@@ -860,6 +899,7 @@ const canUnpromoteBook = computed(() => {
     book.value.location_kind === 'prod' &&
     book.value.current_locations.length > 0 &&
     !book.value.has_error &&
+    !isInTransition.value &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing &&
     !book.value.title_archived
@@ -871,6 +911,7 @@ const canDeleteBook = computed(() => {
   return (
     authStore.hasPermission('book', 'delete') &&
     ['staging', 'prod', 'quarantine'].includes(book.value.location_kind) &&
+    !isInTransition.value &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing
   )
@@ -885,6 +926,7 @@ const canRecoverBook = computed(() => {
 
   return (
     authStore.hasPermission('book', 'update') &&
+    !isInTransition.value &&
     !book.value.needs_processing &&
     !book.value.title_archived &&
     ((book.value.location_kind === 'to_delete' && hasFutureDeletionDate) ||
@@ -917,6 +959,7 @@ const canBackupBook = computed(() => {
   return (
     authStore.hasPermission('book', 'update') &&
     !book.value.has_error &&
+    !isInTransition.value &&
     !book.value.needs_processing &&
     !book.value.needs_file_operation &&
     ['staging', 'quarantine', 'prod'].includes(book.value.location_kind) &&
@@ -932,6 +975,7 @@ const canRemoveBookBackup = computed(() => {
     ['quarantine', 'prod', 'staging', 'deleted'].includes(book.value.location_kind) &&
     book.value.has_backup &&
     authStore.hasPermission('book', 'update') &&
+    !isInTransition.value &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing &&
     !!book.value.title_id &&
@@ -946,6 +990,7 @@ const canPromoteBook = computed(() => {
     authStore.hasPermission('title', 'update') &&
     ['staging', 'quarantine'].includes(book.value.location_kind) &&
     !book.value.has_error &&
+    !isInTransition.value &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing
   )

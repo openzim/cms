@@ -59,6 +59,8 @@ export interface BookLight {
   has_error: boolean
   needs_file_operation: boolean
   location_kind: LocationKind
+  transition_status?: string | null
+  transition_started_at?: string | null
   created_at: string
   issues: string[]
   offliner: string | null

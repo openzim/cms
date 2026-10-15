@@ -11,6 +11,7 @@ from cms_backend.db import count_from_stmt
 from cms_backend.db.models import (
     Book,
     BookLocation,
+    BookTransitionStatus,
     Collection,
     CollectionTitle,
     Title,
@@ -44,6 +45,8 @@ def get_books(
             Book.has_error,
             Book.needs_file_operation,
             Book.location_kind,
+            Book.transition_status,
+            Book.transition_started_at,
             Book.created_at,
             Book.deletion_date,
             Book.name,
@@ -93,6 +96,16 @@ def get_books(
 
     if params.location_kinds is not None:
         stmt = stmt.where(Book.location_kind.in_(params.location_kinds))
+
+    if params.in_transition is not None:
+        stmt = stmt.where(
+            Book.transition_status.is_not(None)
+            if params.in_transition
+            else Book.transition_status.is_(None)
+        )
+
+    if params.transition_started_before is not None:
+        stmt = stmt.where(Book.transition_started_at < params.transition_started_before)
 
     if params.updated_before is not None:
         stmt = stmt.where(Book.updated_at < params.updated_before)
@@ -183,6 +196,8 @@ def get_books(
                 has_error=has_error,
                 needs_file_operation=needs_file_operation,
                 location_kind=location_kind,
+                transition_status=transition_status,
+                transition_started_at=transition_started_at,
                 created_at=created_at,
                 deletion_date=deletion_date,
                 name=name,
@@ -199,6 +214,8 @@ def get_books(
                 has_error,
                 needs_file_operation,
                 location_kind,
+                transition_status,
+                transition_started_at,
                 created_at,
                 deletion_date,
                 name,
@@ -229,6 +246,7 @@ def get_zim_urls_prod(
             Book.zimcheck_s3_deleted.label("book_zimcheck_s3_deleted"),
             Book.zimcheck_result_url.label("book_zimcheck_result_url"),
             Book.location_kind.label("book_location_kind"),
+            Book.transition_status.label("book_transition_status"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             Collection.name.label("collection_name"),
@@ -257,6 +275,10 @@ def get_zim_urls_prod(
             Book.has_error.is_(False),
             Book.needs_file_operation.is_(False),
             Book.location_kind == "prod",
+            or_(
+                Book.transition_status.is_(None),
+                Book.transition_status == BookTransitionStatus.CHECKING_LIBRARY.value,
+            ),
             CollectionTitle.collection_id.in_(accessible_collection_ids or [])
             | (accessible_collection_ids is None)
             | Title.id.in_(accessible_title_ids or []),
@@ -292,7 +314,7 @@ def get_zim_urls_prod(
                 )
             )
 
-        if row.view_base_url and is_latest:
+        if row.view_base_url and is_latest and row.book_transition_status is None:
             filename_without_suffix = (
                 row.filename[:-4] if row.filename.endswith(".zim") else row.filename
             )
@@ -331,6 +353,7 @@ def get_zim_urls_staging(
             Book.zimcheck_s3_deleted.label("book_zimcheck_s3_deleted"),
             Book.zimcheck_result_url.label("book_zimcheck_result_url"),
             Book.location_kind.label("book_location_kind"),
+            Book.transition_status.label("book_transition_status"),
             Title.id.label("title_id"),
             Book.flavour.label("book_flavour"),
             BookLocation.filename,
@@ -356,6 +379,10 @@ def get_zim_urls_staging(
             Book.has_error.is_(False),
             Book.needs_file_operation.is_(False),
             Book.location_kind == "staging",
+            or_(
+                Book.transition_status.is_(None),
+                Book.transition_status == BookTransitionStatus.CHECKING_LIBRARY.value,
+            ),
             CollectionTitle.collection_id.in_(accessible_collection_ids or [])
             | (accessible_collection_ids is None)
             | Title.id.in_(accessible_title_ids or []),
@@ -380,16 +407,19 @@ def get_zim_urls_staging(
             )
         )
 
-        filename_without_suffix = (
-            row.filename[:-4] if row.filename.endswith(".zim") else row.filename
-        )
-        result.urls[row.book_id].append(
-            ZimUrlSchema(
-                kind="view",
-                url=AnyUrl(f"{Context.staging_view_base_url}{filename_without_suffix}"),
-                collection="staging",
+        if row.book_transition_status is None:
+            filename_without_suffix = (
+                row.filename[:-4] if row.filename.endswith(".zim") else row.filename
             )
-        )
+            result.urls[row.book_id].append(
+                ZimUrlSchema(
+                    kind="view",
+                    url=AnyUrl(
+                        f"{Context.staging_view_base_url}{filename_without_suffix}"
+                    ),
+                    collection="staging",
+                )
+            )
         if not row.book_zimcheck_s3_deleted and row.book_zimcheck_result_url:
             result.urls[row.book_id].append(
                 ZimUrlSchema(

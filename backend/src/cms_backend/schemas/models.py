@@ -52,6 +52,8 @@ class GetBooksSchema(BaseModel):
     has_error: bool | None = None
     needs_file_operation: bool | None = None
     location_kinds: list[NotEmptyString] | None = None
+    in_transition: bool | None = None
+    transition_started_before: datetime.datetime | None = None
     needs_attention: bool | None = None
     has_backup: bool | None = None
     updated_before: datetime.datetime | None = None
