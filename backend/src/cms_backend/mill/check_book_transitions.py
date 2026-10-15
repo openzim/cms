@@ -29,7 +29,7 @@ def _to_internal_url(url: str) -> str:
     internal_host = MillContext.internal_host_mapping.get(parts.hostname or "")
     if internal_host is None:
         return url
-    return urlunsplit(parts._replace(netloc=internal_host))
+    return urlunsplit(parts._replace(scheme="http", netloc=internal_host))
 
 
 def _get_download_urls(book: Book) -> list[str]:
