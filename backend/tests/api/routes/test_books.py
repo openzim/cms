@@ -1399,7 +1399,7 @@ def test_promote_book_permissions(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",

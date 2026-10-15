@@ -87,7 +87,7 @@ def test_promotion_actions_missing_metadata_keys_raises_error(
     """Book missing mandatory ZIM metadata keys should raise ValueError."""
     book = create_book(
         zim_metadata={"Name": "test_en_all"},
-        location_kind="quarantine",
+        location_kind="staging",
     )
 
     with pytest.raises(ValueError, match=r"missing mandatory metadata keys"):
@@ -115,7 +115,7 @@ def test_promotion_actions_unsupported_languages(
             "Language": "xxx,yyy",  # unsupported codes
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         title="Test Article",
@@ -161,7 +161,7 @@ def test_promotion_actions_zimcheck_errors(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     book.zimcheck_summary = {
         "zimcheck_version": "1.0.0",
@@ -220,7 +220,7 @@ def test_promotion_actions_no_title(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
 
     actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
@@ -259,7 +259,7 @@ def test_promotion_actions_archived_title(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -320,7 +320,7 @@ def test_promotion_actions_missing_mandatory_title_metadata(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     # Create title with missing illustration (mandatory metadata) and different name
     title = create_title(
@@ -379,7 +379,7 @@ def test_promotion_actions_differing_metadata(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -429,7 +429,7 @@ def test_promotion_actions_maturity_not_stable(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -479,7 +479,7 @@ def test_promotion_actions_no_collections(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -530,7 +530,7 @@ def test_promotion_actions_flavour_mismatch_no_book_flavour(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -585,7 +585,7 @@ def test_promotion_actions_recipe_issue(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     book.recipe_id = uuid4()
     dbsession.add(book)
@@ -643,7 +643,7 @@ def test_promotion_actions_flavour_mismatch_add_flavour(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -694,7 +694,7 @@ def test_promotion_actions_multiple_actions(
             "Language": "xxx",  # unsupported
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     book.zimcheck_summary = {
         "zimcheck_version": "1.0.0",
@@ -754,7 +754,7 @@ def test_promotion_media_count_issue(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
         article_count=105,
         media_count=115,
     )
@@ -820,7 +820,7 @@ def test_promotion_article_count_issue(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
         article_count=115,
         media_count=100,
     )
@@ -886,7 +886,7 @@ def test_promotion_actions_ready_for_prod(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     title = create_title(
         name="test_en_all",
@@ -937,7 +937,7 @@ def test_promote_book_with_no_actions_move_directly_to_prod(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     create_book_location(
         book=book,
@@ -965,7 +965,7 @@ def test_promote_book_with_no_actions_move_directly_to_prod(
 
     actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     assert len(actions) == 0
-    assert book.location_kind == "quarantine"
+    assert book.location_kind == "staging"
 
     apply_book_promotion_actions(
         dbsession, book_id=book.id, actions=[], account=account
@@ -1274,7 +1274,7 @@ def test_apply_actions_create_title(
         name="test_en_all",
         flavour="maxi",
         zim_metadata=_make_metadata(illustration_48x48_at_1),
-        location_kind="quarantine",
+        location_kind="staging",
     )
     create_book_location(
         book=book,
@@ -1424,7 +1424,7 @@ def test_apply_actions_batched_updates(
             "Language": "eng",
             "Illustration_48x48@1": illustration_48x48_at_1,
         },
-        location_kind="quarantine",
+        location_kind="staging",
     )
     create_book_location(
         book=book,
@@ -1507,7 +1507,7 @@ def _create_valid_book(
     """Create a book with all mandatory metadata, in quarantine, ready for promotion."""
     return create_book(
         zim_metadata=_make_metadata(illustration_48x48_at_1),
-        location_kind="quarantine",
+        location_kind="staging",
     )
 
 

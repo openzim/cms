@@ -279,8 +279,8 @@ def get_book_promotion_actions(
         has_error=False,
         needs_file_operation=False,
         needs_processing=False,
-        locations=["staging", "quarantine"],
         not_in_transition=True,
+        locations=["staging"],
     )
     if book is None:
         raise RecordDoesNotExistError(
