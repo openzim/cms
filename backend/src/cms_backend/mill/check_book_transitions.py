@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 from sqlalchemy.orm import Session as OrmSession
@@ -10,6 +10,7 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db.book import get_books_in_transition
 from cms_backend.db.models import Book, BookTransitionStatus
+from cms_backend.mill.context import Context as MillContext
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.filename import construct_download_url
 from cms_backend.utils.requests import query_api
@@ -20,6 +21,15 @@ WORLDWIDE_SERVING = "Worldwide"
 
 def _filename_without_suffix(filename: str) -> str:
     return filename[:-4] if filename.endswith(".zim") else filename
+
+
+def _to_internal_url(url: str) -> str:
+    """Rewrite a public-facing URL to the internal service address, if mapped."""
+    parts = urlsplit(url)
+    internal_host = MillContext.internal_host_mapping.get(parts.hostname or "")
+    if internal_host is None:
+        return url
+    return urlunsplit(parts._replace(netloc=internal_host))
 
 
 def _get_download_urls(book: Book) -> list[str]:
@@ -74,7 +84,7 @@ def _mirror_serves_worldwide(mirror: dict[str, Any]) -> bool:
 
 
 def _download_url_available_on_mirrors(download_url: str) -> bool:
-    response = query_api(f"{download_url}.lb", method="GET")
+    response = query_api(_to_internal_url(f"{download_url}.lb"), method="GET")
     if response.status_code != HTTPStatus.OK:
         return False
     return any(
@@ -97,7 +107,9 @@ def _available_on_enough_mirrors(book: Book) -> bool:
 def _content_url_is_live(content_url: str) -> bool:
     try:
         response = requests.get(
-            content_url, timeout=Context.requests_timeout, allow_redirects=True
+            _to_internal_url(content_url),
+            timeout=Context.requests_timeout,
+            allow_redirects=True,
         )
     except Exception:
         logger.exception(f"unexpected error while probing content url {content_url}")
