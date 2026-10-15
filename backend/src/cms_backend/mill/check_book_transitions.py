@@ -120,7 +120,8 @@ def _content_url_is_live(content_url: str) -> bool:
 def _live_in_library(book: Book) -> bool:
     """Check that library catalog and live viewer serve the book."""
     content_urls = [
-        view_url.replace("viewer#", "content/") for view_url in _get_view_urls(book)
+        view_url.replace("viewer#", "content/").rstrip("/") + "/"
+        for view_url in _get_view_urls(book)
     ]
     if not content_urls:
         return True
