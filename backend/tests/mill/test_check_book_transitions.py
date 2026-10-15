@@ -171,7 +171,7 @@ def test_available_on_enough_mirrors_requires_worldwide_mirror(
         patch.object(
             MillContext,
             "internal_host_mapping",
-            {"lb.download.kiwix.org": "lb-web-service.zim"},
+            {"lb.download.kiwix.org": "lb-web-service.zim:80"},
         ),
         patch.object(
             check_book_translations_module,
@@ -194,7 +194,7 @@ def test_available_on_enough_mirrors_requires_worldwide_mirror(
         patch.object(
             MillContext,
             "internal_host_mapping",
-            {"lb.download.kiwix.org": "lb-web-service.zim"},
+            {"lb.download.kiwix.org": "lb-web-service.zim:80"},
         ),
         patch.object(
             check_book_translations_module,
@@ -203,7 +203,7 @@ def test_available_on_enough_mirrors_requires_worldwide_mirror(
         ) as mock_query,
     ):
         assert check_book_transition(book) is True
-    assert mock_query.call_args.args[0].startswith("https://lb-web-service.zim/")
+    assert mock_query.call_args.args[0].startswith("http://lb-web-service.zim:80/")
     assert book.transition_status == BookTransitionStatus.CHECKING_LIBRARY
 
 
@@ -227,7 +227,7 @@ def test_live_in_library_requires_live_content(
         patch.object(
             MillContext,
             "internal_host_mapping",
-            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim"},
+            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim:80"},
         ),
         patch.object(
             check_book_translations_module.requests,
@@ -243,14 +243,56 @@ def test_live_in_library_requires_live_content(
         patch.object(
             MillContext,
             "internal_host_mapping",
-            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim"},
+            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim:80"},
         ),
         patch.object(check_book_translations_module, "requests", new=mock_requests),
     ):
         assert check_book_transition(book) is True
     assert mock_requests.get.call_args.args[0].startswith(
-        "https://prod-kiwix-browse-frontend-service.zim/"
+        "http://prod-kiwix-browse-frontend-service.zim:80/"
     )
     assert book.transition_status is None
     assert book.transition_started_at is None
     assert any("complete" in event for event in book.events)
+
+
+def test_transition_check_uses_internal_host_with_custom_port(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+):
+    """A mapped host is reached over HTTP on the configured (custom) port."""
+    book = _make_book_in_transition(
+        create_book=create_book,
+        create_title=create_title,
+        create_collection=create_collection,
+        create_collection_title=create_collection_title,
+        dbsession=dbsession,
+        status=BookTransitionStatus.CHECKING_MIRRORS,
+    )
+    worldwide = [
+        {
+            "ident": "wi.mirror.driftle.ss",
+            "online": True,
+            "enabled": True,
+            "serving": "Worldwide",
+        }
+    ]
+
+    with (
+        patch.object(
+            MillContext,
+            "internal_host_mapping",
+            {"lb.download.kiwix.org": "lb-web-service.zim:8080"},
+        ),
+        patch.object(
+            check_book_translations_module,
+            "query_api",
+            return_value=_mirrors_response(worldwide),
+        ) as mock_query,
+    ):
+        assert check_book_transition(book) is True
+
+    assert mock_query.call_args.args[0].startswith("http://lb-web-service.zim:8080/")
