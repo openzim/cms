@@ -63,6 +63,52 @@ async def check_books_need_move() -> Result[PendingBooksNeedOperation]:
     )
 
 
+async def check_books_pending_transition() -> Result[PendingBooksNeedOperation]:
+    """Check that no book has been in transition (moving to staging/production) for
+    too long."""
+
+    check_name = "cms-books-pending-transition"
+    started_before = getnow() - Context.books_pending_transition_delay
+
+    response = await query_api(
+        f"{Context.cms_api_url}/books",
+        method="GET",
+        params={
+            "limit": 1,
+            "in_transition": "true",
+            "transition_started_before": started_before.isoformat(timespec="seconds"),
+        },
+        check_name=check_name,
+    )
+    if not response.success:
+        return Result(
+            success=response.success,
+            status_code=response.status_code,
+            data=None,
+        )
+
+    items = response.json.get("items", [])
+    if not items:
+        logger.info(
+            "No books stuck in transition.",
+            extra={"checkname": check_name},
+        )
+        return Result(
+            success=response.success,
+            status_code=response.status_code,
+            data=PendingBooksNeedOperation(nb_records=0),
+        )
+
+    return Result(
+        success=False,
+        status_code=response.status_code,
+        data=PendingBooksNeedOperation(
+            nb_records=response.json.get("meta", {}).get("count", 0),
+            book_ids=[UUID(item["id"]) for item in items],
+        ),
+    )
+
+
 async def check_books_need_deletion() -> Result[PendingBooksNeedOperation]:
     """Check that no book with location_kind delete needs file operation."""
 

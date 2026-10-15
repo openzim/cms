@@ -1,5 +1,6 @@
 import typing
 from datetime import date, datetime
+from enum import StrEnum
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any, Optional
@@ -123,6 +124,14 @@ Index(
 )
 
 
+class BookTransitionStatus(StrEnum):
+    """Progress of a book being moved to staging or production."""
+
+    MOVING_FILES = "moving_files"
+    CHECKING_MIRRORS = "checking_mirrors"
+    CHECKING_LIBRARY = "checking_library"
+
+
 class Book(Base):
     __tablename__ = "book"
     id: Mapped[UUID] = mapped_column(primary_key=True)
@@ -147,6 +156,12 @@ class Book(Base):
     )
     location_kind: Mapped[str] = mapped_column(
         init=False, default="quarantine", server_default="quarantine"
+    )
+    # Progress of an ongoing move to staging/production.
+    # None when the book is not in transition.
+    transition_status: Mapped[str | None] = mapped_column(init=False, default=None)
+    transition_started_at: Mapped[datetime | None] = mapped_column(
+        init=False, default=None
     )
     # ideally, these issues should not prevent a book from being acted upon
     issues: Mapped[list[str]] = mapped_column(
@@ -245,6 +260,12 @@ Index(
     "idx_book_location_kind_staging",
     Book.location_kind,
     postgresql_where=text("location_kind = 'staging'"),
+)
+
+Index(
+    "idx_book_transition_status",
+    Book.transition_status,
+    postgresql_where=text("transition_status IS NOT NULL"),
 )
 
 

@@ -18,6 +18,7 @@ from cms_backend.db.models import (
     Account,
     Book,
     BookLocation,
+    BookTransitionStatus,
     Collection,
     CollectionPermission,
     CollectionTitle,
@@ -278,6 +279,88 @@ def test_get_books_filter_by_needs_attention(
     if needs_attention is False:
         returned_ids = {item["id"] for item in response_doc["items"]}
         assert returned_ids == {str(book_with_title.id)}
+
+
+@pytest.mark.parametrize(
+    "in_transition,expected_count",
+    [
+        pytest.param(None, 3, id="no-filter"),
+        pytest.param(True, 2, id="in-transition"),
+        pytest.param(False, 1, id="not-in-transition"),
+    ],
+)
+def test_get_books_filter_by_in_transition(
+    *,
+    client: TestClient,
+    create_book: Callable[..., Book],
+    access_token: str,
+    dbsession: OrmSession,
+    in_transition: bool | None,
+    expected_count: int,
+):
+    moving = create_book(zim_metadata={"Name": "wikipedia_en_all"})
+    moving.transition_status = BookTransitionStatus.MOVING_FILES
+    moving.transition_started_at = getnow()
+
+    awaiting_library = create_book(zim_metadata={"Name": "wiktionary_en_all"})
+    awaiting_library.transition_status = BookTransitionStatus.CHECKING_LIBRARY
+    awaiting_library.transition_started_at = getnow()
+
+    stable = create_book(zim_metadata={"Name": "wikivoyage_en_all"})
+
+    dbsession.flush()
+
+    url = (
+        "/v1/books"
+        if in_transition is None
+        else f"/v1/books?in_transition={str(in_transition).lower()}"
+    )
+    response = client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == expected_count
+    assert len(response_doc["items"]) == expected_count
+
+    returned_ids = {item["id"] for item in response_doc["items"]}
+    if in_transition is True:
+        assert returned_ids == {str(moving.id), str(awaiting_library.id)}
+    if in_transition is False:
+        assert returned_ids == {str(stable.id)}
+
+
+def test_get_books_filter_by_transition_started_before(
+    client: TestClient,
+    create_book: Callable[..., Book],
+    access_token: str,
+    dbsession: OrmSession,
+):
+
+    now = getnow()
+
+    stuck = create_book(zim_metadata={"Name": "wikipedia_en_all"})
+    stuck.transition_status = BookTransitionStatus.CHECKING_MIRRORS
+    stuck.transition_started_at = now - datetime.timedelta(hours=25)
+
+    recent = create_book(zim_metadata={"Name": "wiktionary_en_all"})
+    recent.transition_status = BookTransitionStatus.CHECKING_MIRRORS
+    recent.transition_started_at = now - datetime.timedelta(hours=1)
+
+    # not in transition: ignored even though it has no transition_started_at
+    create_book(zim_metadata={"Name": "wikivoyage_en_all"})
+
+    dbsession.flush()
+
+    cutoff = (now - datetime.timedelta(hours=24)).isoformat(timespec="seconds")
+    response = client.get(
+        f"/v1/books?in_transition=true&transition_started_before={cutoff}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["meta"]["count"] == 1
+    assert {item["id"] for item in response_doc["items"]} == {str(stuck.id)}
 
 
 def test_get_books_filter_by_id(

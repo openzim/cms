@@ -19,6 +19,7 @@ from cms_backend.db.flavour import get_title_flavour_or_none
 from cms_backend.db.models import (
     Book,
     BookHistory,
+    BookTransitionStatus,
     CollectionTitle,
     Title,
     ZimfarmNotification,
@@ -68,33 +69,39 @@ def get_book_or_none(
     needs_processing: bool | None = None,
     locations: list[str] | None = None,
     has_error: bool | None = None,
+    not_in_transition: bool | None = None,
 ) -> Book | None:
     """Get a book by ID if possible else None
 
     Only returns books whose title belongs to at least one of the
     accessible_collection_ids or is one of the accessible_title_ids.
     """
-    return session.scalars(
-        select(Book)
-        .where(
-            # If a client provides an argument i.e it is not None,
-            # we compare the corresponding model field against the argument,
-            # otherwise, we compare the argument to its default which translates
-            # to a SQL true i.e we don't filter based on this argument (a no-op).
-            (Book.id == book_id),
-            (Book.needs_file_operation.is_(needs_file_operation))
-            | (needs_file_operation is None),
-            (Book.needs_processing.is_(needs_processing)) | (needs_processing is None),
-            (Book.has_error.is_(has_error)) | (has_error is None),
-            (Book.location_kind.in_(locations or [])) | (locations is None),
-            exists().where(
-                CollectionTitle.title_id == Book.title_id,
-                CollectionTitle.collection_id.in_(accessible_collection_ids or []),
-            )
-            | (accessible_collection_ids is None)
-            | Book.title_id.in_(accessible_title_ids or []),
+    stmt = select(Book).where(
+        # If a client provides an argument i.e it is not None,
+        # we compare the corresponding model field against the argument,
+        # otherwise, we compare the argument to its default which translates
+        # to a SQL true i.e we don't filter based on this argument (a no-op).
+        (Book.id == book_id),
+        (Book.needs_file_operation.is_(needs_file_operation))
+        | (needs_file_operation is None),
+        (Book.needs_processing.is_(needs_processing)) | (needs_processing is None),
+        (Book.has_error.is_(has_error)) | (has_error is None),
+        (Book.location_kind.in_(locations or [])) | (locations is None),
+        exists().where(
+            CollectionTitle.title_id == Book.title_id,
+            CollectionTitle.collection_id.in_(accessible_collection_ids or []),
         )
-        .options(
+        | (accessible_collection_ids is None)
+        | Book.title_id.in_(accessible_title_ids or []),
+    )
+    if not_in_transition is not None:
+        stmt = stmt.where(
+            Book.transition_status.is_(None)
+            if not_in_transition
+            else Book.transition_status.is_not(None)
+        )
+    return session.scalars(
+        stmt.options(
             selectinload(Book.title),
             selectinload(Book.zimfarm_notification),
             selectinload(Book.locations),
@@ -112,6 +119,7 @@ def get_book(
     needs_file_operation: bool | None = None,
     needs_processing: bool | None = None,
     has_error: bool | None = None,
+    not_in_transition: bool | None = None,
 ) -> Book:
     """Get a book by ID if possible else raise an exception"""
     if (
@@ -124,6 +132,7 @@ def get_book(
             needs_file_operation=needs_file_operation,
             needs_processing=needs_processing,
             has_error=has_error,
+            not_in_transition=not_in_transition,
         )
     ) is None:
         raise RecordDoesNotExistError(
@@ -166,6 +175,8 @@ def create_book_full_schema(book: Book) -> BookFullSchema:
         has_error=book.has_error,
         needs_file_operation=book.needs_file_operation,
         location_kind=book.location_kind,
+        transition_status=book.transition_status,
+        transition_started_at=book.transition_started_at,
         created_at=book.created_at,
         name=book.name,
         date=book.date,
@@ -276,6 +287,28 @@ def get_next_book_to_process_or_none(
     ).one_or_none()
 
 
+def get_books_in_transition(session: OrmSession) -> list[Book]:
+    """Get every book currently being moved to staging/production (not errored)."""
+    return list(
+        session.scalars(
+            select(Book)
+            .where(
+                Book.transition_status.is_not(None),
+                Book.has_error.is_(False),
+            )
+            .order_by(Book.transition_started_at)
+        ).all()
+    )
+
+
+def start_book_transition(book: Book) -> None:
+    """Mark a book as being moved to staging/production."""
+    if book.transition_status is not None:
+        return
+    book.transition_status = BookTransitionStatus.MOVING_FILES
+    book.transition_started_at = getnow()
+
+
 def delete_book(
     session: OrmSession,
     *,
@@ -298,6 +331,7 @@ def delete_book(
         needs_processing=False,
         needs_file_operation=False,
         locations=["staging", "prod", "quarantine"],
+        not_in_transition=True,
     )
     if book is None:
         raise RecordDoesNotExistError(
@@ -344,6 +378,7 @@ def move_book(
         needs_processing=False,
         locations=["staging", "prod"],
         has_error=False,
+        not_in_transition=True,
     )
 
     if book is None:
@@ -407,6 +442,7 @@ def move_book_to_destination(
         f"'{destination}'"
     )
     book.location_kind = "staging" if goes_to_staging else "prod"
+    start_book_transition(book)
     session.add(book)
     session.flush()
 
@@ -458,6 +494,7 @@ def recover_book(
         accessible_collection_ids=accessible_collection_ids,
         needs_processing=False,
         locations=["to_delete", "deleted"],
+        not_in_transition=True,
     )
 
     if book is None:
@@ -1126,6 +1163,7 @@ def backup_book(
         needs_processing=False,
         needs_file_operation=False,
         locations=["staging", "quarantine", "prod"],
+        not_in_transition=True,
     )
 
     if book is None:
@@ -1198,6 +1236,7 @@ def remove_book_backup(
         needs_processing=False,
         needs_file_operation=False,
         locations=["staging", "quarantine", "prod", "deleted"],
+        not_in_transition=True,
     )
 
     if book is None:
@@ -1330,6 +1369,7 @@ def process_book(
         book=book,
         target_locations=target_locations,
     )
+    start_book_transition(book)
     return book
 
 

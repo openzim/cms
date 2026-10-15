@@ -17,6 +17,7 @@ from cms_backend.db.models import (
     Account,
     Book,
     BookLocation,
+    BookTransitionStatus,
     Collection,
     CollectionTitle,
     Title,
@@ -25,6 +26,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import BaseBookPromotionAction
+from cms_backend.utils.datetime import getnow
 
 
 def test_promotion_actions_book_not_eligible_raises_error(
@@ -39,6 +41,42 @@ def test_promotion_actions_book_not_eligible_raises_error(
         RecordDoesNotExistError, match=r"does not meet criteria to be validated"
     ):
         get_book_promotion_actions(dbsession, book_id=book.id, account=account)
+
+
+def test_promotion_actions_book_in_transition_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    account: Account,
+):
+    """A book being moved to staging/production cannot be promoted."""
+    book = create_book(zim_metadata={"Name": "test_en_all"}, location_kind="staging")
+    book.transition_status = BookTransitionStatus.MOVING_FILES
+    book.transition_started_at = getnow()
+    dbsession.flush()
+
+    with pytest.raises(
+        RecordDoesNotExistError, match=r"does not meet criteria to be validated"
+    ):
+        get_book_promotion_actions(dbsession, book_id=book.id, account=account)
+
+
+def test_apply_promotion_actions_book_in_transition_raises_error(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    account: Account,
+):
+    """Applying promotion actions to a book being moved is rejected."""
+    book = create_book(zim_metadata={"Name": "test_en_all"}, location_kind="staging")
+    book.transition_status = BookTransitionStatus.CHECKING_MIRRORS
+    book.transition_started_at = getnow()
+    dbsession.flush()
+
+    with pytest.raises(
+        RecordDoesNotExistError, match=r"does not exist or is not accessible"
+    ):
+        apply_book_promotion_actions(
+            dbsession, book_id=book.id, actions=[], account=account
+        )
 
 
 def test_promotion_actions_missing_metadata_keys_raises_error(

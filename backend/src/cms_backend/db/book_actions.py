@@ -280,6 +280,7 @@ def get_book_promotion_actions(
         needs_file_operation=False,
         needs_processing=False,
         locations=["staging", "quarantine"],
+        not_in_transition=True,
     )
     if book is None:
         raise RecordDoesNotExistError(
@@ -443,7 +444,10 @@ def apply_book_promotion_actions(
         raise ValueError("Provided actions contain duplicates")
 
     book = get_book(
-        session, book_id=book_id, accessible_collection_ids=accessible_collection_ids
+        session,
+        book_id=book_id,
+        accessible_collection_ids=accessible_collection_ids,
+        not_in_transition=True,
     )
     expected_actions = get_book_promotion_actions(
         session,

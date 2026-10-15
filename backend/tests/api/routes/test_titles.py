@@ -469,6 +469,8 @@ def test_get_title_by_id_with_books(
         "has_error",
         "needs_file_operation",
         "location_kind",
+        "transition_status",
+        "transition_started_at",
         "created_at",
         "name",
         "date",

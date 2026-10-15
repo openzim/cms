@@ -164,6 +164,15 @@
               {{ file_needs_deletion.success|status_text }}
             </td>
           </tr>
+          <tr>
+            <th>Books Pending Transition<</tr></th>/th>
+            <td>No book is stuck moving to staging or production</td>
+            <td
+              class="text-right {{ books_pending_transition.success|status_class }}"
+            >
+              {{ books_pending_transition.success|status_text }}
+            </td>
+          </tr>
         </table>
       </section>
     </div>

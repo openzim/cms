@@ -50,7 +50,7 @@ const isStaging = computed(() => props.book.location_kind === 'staging')
 const isProcessing = computed(() => props.book.needs_processing && !props.book.has_error)
 const isMovingFiles = computed(
   () =>
-    props.book.needs_file_operation &&
+    (props.book.needs_file_operation || props.book.transition_status != null) &&
     !props.book.has_error &&
     props.book.location_kind !== 'to_delete' &&
     props.book.location_kind !== 'deleted',

@@ -59,3 +59,10 @@ class Context:
     books_pending_delete_delay = datetime.timedelta(
         seconds=parse_timespan(os.getenv("BOOKS_PENDING_DELETE_DELAY", default="25h"))
     )
+    # A book being moved to staging/production is expected to complete all its
+    # transition checks within this delay.
+    books_pending_transition_delay = datetime.timedelta(
+        seconds=parse_timespan(
+            os.getenv("BOOKS_PENDING_TRANSITION_DELAY", default="24h")
+        )
+    )

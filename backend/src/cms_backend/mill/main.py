@@ -11,6 +11,7 @@ from cms_backend import logger
 from cms_backend.__about__ import __version__
 from cms_backend.context import Context
 from cms_backend.db import Session
+from cms_backend.mill.check_book_transitions import check_book_transitions
 from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.delete_uploaded_zims import delete_uploaded_zims
 from cms_backend.mill.delete_zimcheck_s3_results import delete_zimcheck_s3_results
@@ -35,6 +36,10 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=process_title_modifications,
         interval=MillContext.process_events_interval,
+    ),
+    TaskConfig(
+        func=check_book_transitions,
+        interval=MillContext.check_book_transitions_interval,
     ),
     TaskConfig(
         func=process_retention_rules,

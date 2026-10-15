@@ -30,6 +30,12 @@ class Context:
         seconds=parse_timespan(os.getenv("PROCESS_EVENTS_INTERVAL", default="1m"))
     )
 
+    check_book_transitions_interval: timedelta = timedelta(
+        seconds=parse_timespan(
+            os.getenv("CHECK_BOOK_TRANSITIONS_INTERVAL", default="1m")
+        )
+    )
+
     process_retention_rules_interval: timedelta = timedelta(
         seconds=parse_timespan(
             os.getenv("PROCESS_RETENTION_RULES_INTERVAL", default="1d")

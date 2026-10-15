@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
@@ -11,6 +11,7 @@ from cms_backend.db.collection import LibraryBookData
 from cms_backend.db.models import (
     Book,
     BookLocation,
+    BookTransitionStatus,
     CollectionTitle,
     Title,
 )
@@ -52,6 +53,11 @@ def get_staging_books_library_data(
                 Book.needs_processing.is_(False),
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
+                or_(
+                    Book.transition_status.is_(None),
+                    Book.transition_status
+                    == BookTransitionStatus.CHECKING_LIBRARY.value,
+                ),
                 BookLocation.is_backup.is_(False),
                 CollectionTitle.collection_id.in_(accessible_collection_ids or [])
                 | (accessible_collection_ids is None),
