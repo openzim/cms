@@ -337,9 +337,11 @@
                     :flavour-info="group.flavourInfo"
                     :books="group.books"
                     :show-header="!hideFlavourHeaders"
+                    :can-manage-flavours="!!canEditTitle"
                     :zim-urls="zimUrls"
                     :loading-urls="loadingUrls"
                     :offliners="offlinerStore.offliners"
+                    @toggle-archive="toggleFlavourArchive"
                   />
                 </template>
                 <span v-else class="text-grey">No books</span>
@@ -927,6 +929,22 @@ const restoreTitle = async () => {
     await loadData(true)
     // Switch to info tab after restoring
     currentTab.value = 'details'
+  } else {
+    notificationStore.showErrors(titleStore.errors)
+  }
+}
+
+const toggleFlavourArchive = async (flavour: string, archived: boolean) => {
+  if (!title.value) return
+  const response = await titleStore.setTitleFlavourArchived(title.value.id, flavour, archived)
+  if (response) {
+    const label = flavour === '' ? 'Empty' : flavour
+    notificationStore.showSuccess(
+      archived
+        ? `Flavour <code>${label}</code> has been hidden from the catalog.`
+        : `Flavour <code>${label}</code> is now shown in the catalog.`,
+    )
+    await loadData(true)
   } else {
     notificationStore.showErrors(titleStore.errors)
   }
