@@ -84,6 +84,8 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 has_error=book.has_error,
                 needs_file_operation=book.needs_file_operation,
                 location_kind=book.location_kind,
+                transition_status=book.transition_status,
+                transition_started_at=book.transition_started_at,
                 created_at=book.created_at,
                 deletion_date=book.deletion_date,
                 name=book.name,

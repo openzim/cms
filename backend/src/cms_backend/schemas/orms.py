@@ -181,8 +181,8 @@ class BookLightSchema(BaseModel):
     title_id: UUID | None
     title_name: str | None
     location_kind: str  # 'quarantine', 'staging', or 'prod'
-    transition_status: str | None = None
-    transition_started_at: datetime | None = None
+    transition_status: str | None
+    transition_started_at: datetime | None
     needs_processing: bool
     has_error: bool
     needs_file_operation: bool
