@@ -784,6 +784,82 @@ def test_restore_multiple_titles_required_permissions(
 
 
 @pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.ADMIN, HTTPStatus.OK, id="admin"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.OK, id="global-editor"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
+    ],
+)
+def test_set_title_flavour_archived_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_title: Callable[..., Title],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test hiding a title flavour with different roles"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi"])
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours/archive",
+        json={"flavour": "maxi", "archived": True},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code
+
+
+def test_set_title_flavour_archived_hides_and_restores(
+    client: TestClient,
+    access_token: str,
+    create_title: Callable[..., Title],
+):
+    """Test that a flavour can be hidden from and restored to the catalog"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours/archive",
+        json={"flavour": "maxi", "archived": True},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["flavour"] == "maxi"
+    assert data["archived"] is True
+
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours/archive",
+        json={"flavour": "maxi", "archived": False},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["archived"] is False
+
+
+def test_set_title_flavour_archived_unknown_flavour(
+    client: TestClient,
+    access_token: str,
+    create_title: Callable[..., Title],
+):
+    """Test that hiding an unknown flavour returns an error"""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi"])
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours/archive",
+        json={"flavour": "mini", "archived": True},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize(
     "skip, limit, expected_count",
     [
         pytest.param(0, 3, 3, id="first-page"),

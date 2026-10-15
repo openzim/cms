@@ -4,7 +4,7 @@
       <span class="text-primary text-body-large">{{ flavourLabel }}</span>
     </v-divider>
 
-    <div v-if="flavourInfo && books.length > 0" class="d-flex align-center flex-wrap ga-2 mb-3">
+    <div v-if="flavourInfo" class="d-flex align-center flex-wrap ga-2 mb-3">
       <v-chip
         v-if="flavourInfo.recipe_id"
         size="small"
@@ -34,6 +34,23 @@
         <v-icon start size="small">mdi-calendar-plus</v-icon>
         Last book added on: {{ formatDt(flavourInfo.last_book_added_at, 'ff') }}
       </v-chip>
+
+      <v-chip v-if="flavourInfo.archived" size="small" variant="tonal" color="grey">
+        <v-icon start size="small">mdi-eye-off</v-icon>
+        Hidden from catalog
+      </v-chip>
+
+      <v-spacer v-if="canManageFlavours" />
+
+      <v-btn
+        v-if="canManageFlavours"
+        size="small"
+        variant="text"
+        :prepend-icon="flavourInfo.archived ? 'mdi-eye' : 'mdi-eye-off'"
+        @click="$emit('toggle-archive', flavour, !flavourInfo.archived)"
+      >
+        {{ flavourInfo.archived ? 'Show in catalog' : 'Hide from catalog' }}
+      </v-btn>
     </div>
 
     <v-row v-if="books.length > 0">
@@ -64,6 +81,7 @@ interface Props {
   flavourInfo?: TitleFlavour | null
   books: BookLight[]
   showHeader?: boolean
+  canManageFlavours?: boolean
   zimUrls?: Record<string, ZimUrl[]>
   loadingUrls?: boolean
   offliners?: string[]
@@ -72,10 +90,15 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   flavourInfo: null,
   showHeader: true,
+  canManageFlavours: false,
   zimUrls: undefined,
   loadingUrls: false,
   offliners: () => [],
 })
+
+defineEmits<{
+  'toggle-archive': [flavour: string, archived: boolean]
+}>()
 
 const flavourLabel = computed(() => (props.flavour === '' ? 'Empty' : props.flavour))
 </script>

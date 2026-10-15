@@ -333,6 +333,7 @@ class TitleFlavour(Base):
     last_book_added_at: Mapped[datetime | None] = mapped_column(
         default=None, server_default=func.now()
     )
+    archived: Mapped[bool] = mapped_column(default=False, server_default=false())
     title: Mapped[Title] = relationship(back_populates="flavours", init=False)
 
 

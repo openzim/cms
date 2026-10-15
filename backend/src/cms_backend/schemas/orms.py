@@ -31,6 +31,7 @@ class BaseTitleFlavourSchema(BaseModel):
 
 class TitleFlavourSchema(BaseTitleFlavourSchema):
     last_book_added_at: datetime | None
+    archived: bool
 
     @computed_field
     @property
