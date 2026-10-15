@@ -14,6 +14,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.mill import check_book_transitions as check_book_translations_module
 from cms_backend.mill.check_book_transitions import check_book_transition
+from cms_backend.mill.context import Context as MillContext
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.requests import Response
 
@@ -166,10 +167,17 @@ def test_available_on_enough_mirrors_requires_worldwide_mirror(
             "serving": "Worldwide",
         },
     ]
-    with patch.object(
-        check_book_translations_module,
-        "query_api",
-        return_value=_mirrors_response(mirrors),
+    with (
+        patch.object(
+            MillContext,
+            "internal_host_mapping",
+            {"lb.download.kiwix.org": "lb-web-service.zim"},
+        ),
+        patch.object(
+            check_book_translations_module,
+            "query_api",
+            return_value=_mirrors_response(mirrors),
+        ),
     ):
         assert check_book_transition(book) is False
     assert book.transition_status == BookTransitionStatus.CHECKING_MIRRORS
@@ -182,12 +190,20 @@ def test_available_on_enough_mirrors_requires_worldwide_mirror(
             "serving": "Worldwide",
         }
     ]
-    with patch.object(
-        check_book_translations_module,
-        "query_api",
-        return_value=_mirrors_response(worldwide),
+    with (
+        patch.object(
+            MillContext,
+            "internal_host_mapping",
+            {"lb.download.kiwix.org": "lb-web-service.zim"},
+        ),
+        patch.object(
+            check_book_translations_module,
+            "query_api",
+            return_value=_mirrors_response(worldwide),
+        ) as mock_query,
     ):
         assert check_book_transition(book) is True
+    assert mock_query.call_args.args[0].startswith("https://lb-web-service.zim/")
     assert book.transition_status == BookTransitionStatus.CHECKING_LIBRARY
 
 
@@ -207,20 +223,34 @@ def test_live_in_library_requires_live_content(
         status=BookTransitionStatus.CHECKING_LIBRARY,
     )
 
-    with patch.object(
-        check_book_translations_module.requests,
-        "get",
-        return_value=Mock(status_code=404),
+    with (
+        patch.object(
+            MillContext,
+            "internal_host_mapping",
+            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim"},
+        ),
+        patch.object(
+            check_book_translations_module.requests,
+            "get",
+            return_value=Mock(status_code=404),
+        ),
     ):
         assert check_book_transition(book) is False
     assert book.transition_status == BookTransitionStatus.CHECKING_LIBRARY
 
-    with patch.object(
-        check_book_translations_module,
-        "requests",
-        new=Mock(**{"get.return_value": Mock(status_code=200)}),
+    mock_requests = Mock(**{"get.return_value": Mock(status_code=200)})
+    with (
+        patch.object(
+            MillContext,
+            "internal_host_mapping",
+            {"browse.library.kiwix.org": "prod-kiwix-browse-frontend-service.zim"},
+        ),
+        patch.object(check_book_translations_module, "requests", new=mock_requests),
     ):
         assert check_book_transition(book) is True
+    assert mock_requests.get.call_args.args[0].startswith(
+        "https://prod-kiwix-browse-frontend-service.zim/"
+    )
     assert book.transition_status is None
     assert book.transition_started_at is None
     assert any("complete" in event for event in book.events)
