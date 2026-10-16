@@ -262,6 +262,26 @@ def recover_book(
 
 
 @router.post(
+    "/{book_id}/reprocess",
+    dependencies=[Depends(require_permission(namespace="book", name="update"))],
+)
+def reprocess_book(
+    book_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+) -> BookFullSchema:
+    return db_book.create_book_full_schema(
+        db_book.reprocess_book(
+            session,
+            book_id=book_id,
+            accessible_collection_ids=accessible_collection_ids,
+        )
+    )
+
+
+@router.post(
     "/{book_id}/unpromote",
     dependencies=[Depends(require_permission(namespace="book", name="update"))],
 )

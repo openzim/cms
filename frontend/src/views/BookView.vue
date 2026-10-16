@@ -33,7 +33,8 @@
           canCreateTitleFromBook ||
           canBackupBook ||
           canRemoveBookBackup ||
-          canPromoteBook
+          canPromoteBook ||
+          canReprocessBook
         "
       >
         <v-btn
@@ -99,6 +100,14 @@
           @click="openPromoteDialog"
         >
           Promote Book
+        </v-btn>
+        <v-btn
+          v-if="canReprocessBook"
+          color="primary"
+          prepend-icon="mdi-refresh"
+          @click="openReprocessDialog"
+        >
+          Reprocess Book
         </v-btn>
       </div>
 
@@ -741,6 +750,26 @@
       :collections="collections"
       @promoted="handleBookPromoted"
     />
+
+    <ConfirmDialog
+      v-model="reprocessDialogOpen"
+      title="Confirm Book Reprocessing"
+      confirm-text="Reprocess"
+      cancel-text="Cancel"
+      confirm-color="primary"
+      icon="mdi-refresh"
+      icon-color="primary"
+      :max-width="600"
+      :loading="reprocessingBook"
+      @confirm="handleReprocessBook"
+    >
+      <template #content>
+        <p class="text-body-1">
+          The book will be processed as if it arrived from a Zimfarm notification. This clears the
+          book's errors and recomputes its issues.
+        </p>
+      </template>
+    </ConfirmDialog>
   </v-container>
 </template>
 
@@ -803,9 +832,11 @@ const createTitleDialogOpen = ref(false)
 const backupDialogOpen = ref(false)
 const removeBackupDialogOpen = ref(false)
 const promoteDialogOpen = ref(false)
+const reprocessDialogOpen = ref(false)
 const removingBackup = ref(false)
 const backingUpBook = ref(false)
 const updatingBook = ref(false)
+const reprocessingBook = ref(false)
 const updateError = ref('')
 const flavours = ref<string[]>([])
 const collections = ref<CollectionLight[]>([])
@@ -931,6 +962,19 @@ const canRecoverBook = computed(() => {
     !book.value.title_archived &&
     ((book.value.location_kind === 'to_delete' && hasFutureDeletionDate) ||
       (book.value.location_kind === 'deleted' && book.value.has_backup))
+  )
+})
+
+const canReprocessBook = computed(() => {
+  if (!book.value) return false
+  return (
+    authStore.hasPermission('book', 'update') &&
+    book.value.location_kind === 'quarantine' &&
+    !!book.value.title_id &&
+    book.value.has_error &&
+    !isInTransition.value &&
+    !book.value.needs_file_operation &&
+    !book.value.needs_processing
   )
 })
 
@@ -1164,6 +1208,32 @@ const openRecoverDialog = () => {
 const handleBookRecovered = async () => {
   notificationStore.showSuccess('Book recovered successfully!')
   await loadData()
+}
+
+const openReprocessDialog = () => {
+  reprocessDialogOpen.value = true
+}
+
+const handleReprocessBook = async () => {
+  if (!book.value) return
+
+  reprocessingBook.value = true
+  try {
+    const response = await bookStore.reprocessBook(book.value.id)
+    if (response) {
+      book.value = response
+      notificationStore.showSuccess('Book reprocessed successfully!')
+    } else {
+      for (const err of bookStore.errors) {
+        notificationStore.showError(err)
+      }
+    }
+  } catch {
+    notificationStore.showError('An error occurred while reprocessing the book')
+  } finally {
+    reprocessingBook.value = false
+    reprocessDialogOpen.value = false
+  }
 }
 
 const openDeleteDialog = () => {

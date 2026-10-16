@@ -221,6 +221,20 @@ export const useBookStore = defineStore('book', () => {
     }
   }
 
+  const reprocessBook = async (bookId: string) => {
+    const service = await authStore.getApiService('books')
+    try {
+      const response = await service.post<null, Book>(`/${bookId}/reprocess`)
+      errors.value = []
+      book.value = response
+      return response
+    } catch (_error) {
+      console.error('Failed to reprocess book', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return null
+    }
+  }
+
   const removeBookBackup = async (bookId: string) => {
     const service = await authStore.getApiService('books')
     try {
@@ -350,6 +364,7 @@ export const useBookStore = defineStore('book', () => {
     recoverBook,
     removeBookBackup,
     unPromoteBook,
+    reprocessBook,
     fetchBookFlavours,
     updateBook,
     backupBook,

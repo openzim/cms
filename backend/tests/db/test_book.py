@@ -2,6 +2,7 @@ import datetime
 import re
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -21,6 +22,7 @@ from cms_backend.db.book import (
     get_zimcheck_errors,
     recover_book,
     remove_book_backup,
+    reprocess_book,
     revert_book,
     update_book,
     update_book_issues,
@@ -1045,3 +1047,124 @@ def test_get_zimcheck_errors_ignore_scraper(
         assert len(errors) == 0
     else:
         assert len(errors) > 0
+
+
+def test_reprocess_book_rejects_book_not_in_quarantine(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    book = create_book(name="test_en_all", date="2025-01-01")
+    book.location_kind = "staging"
+    book.has_error = True
+    dbsession.flush()
+
+    with pytest.raises(RecordDoesNotExistError):
+        reprocess_book(dbsession, book_id=book.id)
+
+
+def test_reprocess_book_rejects_book_without_notification(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+):
+    book = create_book(name="test_en_all", date="2025-01-01")
+    book.location_kind = "quarantine"
+    book.has_error = True
+    dbsession.flush()
+
+    with pytest.raises(ValueError):
+        reprocess_book(dbsession, book_id=book.id)
+
+
+def test_reprocess_book_rejects_errored_notification(
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+):
+    notification = create_zimfarm_notification()
+    notification.status = "errored"
+    book = create_book(
+        name="test_en_all",
+        date="2025-01-01",
+        zimfarm_notification=notification,
+    )
+    book.location_kind = "quarantine"
+    book.has_error = True
+    dbsession.flush()
+
+    with pytest.raises(ValueError):
+        reprocess_book(dbsession, book_id=book.id)
+
+
+@patch("cms_backend.db.book.get_zimcheck_errors")
+def test_reprocess_book_moves_errored_quarantined_book_to_staging(
+    mock_get_zimcheck_errors: MagicMock,  # noqa: ARG001
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    illustration_48x48_at_1: str,
+):
+    """Reprocessing an errored quarantined book moves it to staging."""
+
+    content: dict[str, Any] = {
+        "article_count": 1000,
+        "media_count": 500,
+        "size": 1000000,
+        "metadata": {
+            "Name": "test_en_all",
+            "Title": "Test Article",
+            "Creator": "Test Creator",
+            "Publisher": "Test Publisher",
+            "Date": "2025-01-01",
+            "Description": "Test description",
+            "Language": "eng",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        "zimcheck_url": "https://www.example.com/zimcheck.json",
+        "folder_name": "test_folder",
+        "filename": "test.zim",
+        "recipe_id": str(uuid4()),
+    }
+    create_warehouse(warehouse_id=Context.quarantine_warehouse_id)
+
+    notification = create_zimfarm_notification(content=content)
+    notification.status = "processed"
+
+    title = create_title(
+        name=content["metadata"]["Name"],
+        title=content["metadata"]["Title"],
+        creator=content["metadata"]["Creator"],
+        publisher=content["metadata"]["Publisher"],
+        description=content["metadata"]["Description"],
+        language=content["metadata"]["Language"],
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    title.maturity = "unstable"
+
+    book = create_book(
+        zim_metadata=content["metadata"],
+        flavour="all",
+        filename="test_en_all_2025-01.zim",
+        zimfarm_notification=notification,
+        title_id=title.id,
+    )
+    book.location_kind = "quarantine"
+    book.has_error = True
+
+    create_book_location(
+        book=book,
+        warehouse_id=Context.quarantine_warehouse_id,
+        path=Context.quarantine_base_path,
+        filename="test_en_all_2025-01.zim",
+        status="current",
+    )
+
+    reprocessed = reprocess_book(dbsession, book_id=book.id)
+
+    assert reprocessed.id == book.id
+    assert reprocessed.has_error is False
+    assert reprocessed.location_kind == "staging"
+    assert reprocessed.needs_file_operation is True
+    assert reprocessed.transition_status is not None
