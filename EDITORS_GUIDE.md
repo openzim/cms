@@ -92,6 +92,13 @@ The CMS uses the flavour of a book to decide which recipe a new book belongs to 
 detect problems such as a book arriving with a flavour that is not declared on its
 title.
 
+A flavour can be **hidden from the catalogs**. This is useful during flavour
+transitions, for example when a recipe stops producing `mini` and `maxi` flavours in
+favour of `full`. Hiding a flavour removes its books from the collection catalogs
+without deleting anything: the ZIM files stay on the filesystem so ongoing downloads
+keep working, and the flavour can be shown again at any time. Once new books cover the
+expected flavours, the old flavour can still be deleted if desired.
+
 ### Collections
 
 A **collection** is a curated catalog of titles exposed to Kiwix readers through a
@@ -184,7 +191,9 @@ A title detail page is organized into tabs:
   attached to it.
 - **Flavours**: the flavours of the title and their linked zimfarm recipe. You can
   remove a flavour from here. Deleting a flavour has the implication that books are
-  marked for deletion.
+  marked for deletion. You can also hide a flavour from the catalogs (or show it
+  again): hiding keeps the books and their files untouched, it only stops publishing
+  the flavour in the collections.
 - **History**: the change history of the title. Useful to see who made changes to a
   title and the reason why they made a change.
 - **Edit**: edit the title's metadata and associated collections.
