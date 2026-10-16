@@ -906,7 +906,7 @@ const hasPendingOperations = computed(() => {
     canRecoverBook.value
   )
     return false
-  return book.value.needs_processing || book.value.needs_file_operation || isInTransition.value
+  return book.value.needs_processing || book.value.needs_file_operation
 })
 
 const canEditBook = computed(() => {

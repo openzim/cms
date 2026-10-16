@@ -23,10 +23,12 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=move_files,
         interval=ShuttleContext.move_files_interval,
+        enabled=ShuttleContext.move_files_enabled,
     ),
     TaskConfig(
         func=delete_files,
         interval=ShuttleContext.delete_files_interval,
+        enabled=ShuttleContext.delete_files_enabled,
     ),
 ]
 
@@ -49,6 +51,11 @@ def main():
         logger.setLevel(logging.DEBUG)
     logger.info("Shuttle component starting...")
     logger.info(f"Found {len(tasks)} tasks to process")
+    for task_config in tasks:
+        logger.info(
+            f"Task {task_config.task_name} is "
+            f"{'enabled' if task_config.enabled else 'disabled'}"
+        )
 
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
