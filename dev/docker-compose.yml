@@ -7,6 +7,7 @@ services:
     volumes:
       - pg_data_cms:/var/lib/postgresql
       - ./postgres-initdb:/docker-entrypoint-initdb.d
+      - ./cms.db:/data/cms
     # - /tmp/foo/root/.borgmatic/postgresql_databases/api-db-service/cms:/data/cms
     environment:
       - POSTGRES_DB=cms
@@ -229,33 +230,34 @@ services:
       - healthcheck
 
   minio:
-    image: minio/minio
+    # S3-compatible server (MinIO no longer publishes Docker images)
+    image: rustfs/rustfs
     container_name: cms_minio
     ports:
       - 127.0.0.1:37605:9000 # api
       - 127.0.0.1:37606:9001 # web console
     environment:
-      - MINIO_ROOT_USER=minio_key
-      - MINIO_ROOT_PASSWORD=minio_secret
-    command: server /data --console-address ":9001"
+      - RUSTFS_ACCESS_KEY=minio_key
+      - RUSTFS_SECRET_KEY=minio_secret
+      - RUSTFS_CONSOLE_ENABLE=true
     volumes:
       - minio_data_cms:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       start_period: 30s
       interval: 30s
       timeout: 10s
       retries: 5
 
   createbuckets:
-    image: minio/mc
+    image: amazon/aws-cli
     container_name: cms_minio_setup
     depends_on:
       minio:
         condition: service_healthy
     volumes:
       - ./contrib/setup-buckets.sh:/setup-buckets.sh
-    entrypoint: ["/bin/sh", "/setup-buckets.sh"]
+    entrypoint: ["/bin/bash", "/setup-buckets.sh"]
 
   zimfarm-db:
     image: postgres:18.0-trixie
