@@ -942,7 +942,6 @@ const canDeleteBook = computed(() => {
   return (
     authStore.hasPermission('book', 'delete') &&
     ['staging', 'prod', 'quarantine'].includes(book.value.location_kind) &&
-    !isInTransition.value &&
     !book.value.needs_file_operation &&
     !book.value.needs_processing
   )
@@ -957,7 +956,6 @@ const canRecoverBook = computed(() => {
 
   return (
     authStore.hasPermission('book', 'update') &&
-    !isInTransition.value &&
     !book.value.needs_processing &&
     !book.value.title_archived &&
     ((book.value.location_kind === 'to_delete' && hasFutureDeletionDate) ||
