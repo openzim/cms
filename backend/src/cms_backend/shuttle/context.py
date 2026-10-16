@@ -7,6 +7,8 @@ from uuid import UUID
 
 from humanfriendly import parse_timespan
 
+from cms_backend.context import parse_bool
+
 WarehouseId = str
 LocalWarehousePath = str
 
@@ -39,8 +41,12 @@ class Context:
         seconds=parse_timespan(os.getenv("MOVE_FILES_INTERVAL", default="1m"))
     )
 
+    move_files_enabled: bool = parse_bool(os.getenv("MOVE_FILES", default="true"))
+
     delete_files_interval: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("DELETE_FILES_INTERVAL", default="1h"))
     )
+
+    delete_files_enabled: bool = parse_bool(os.getenv("DELETE_FILES", default="true"))
 
     local_warehouse_paths: ClassVar[dict[UUID, Path]] = _parse_local_warehouse_paths()

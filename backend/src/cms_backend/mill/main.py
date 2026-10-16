@@ -32,38 +32,47 @@ tasks: list[TaskConfig] = [
     TaskConfig(
         func=process_zimfarm_notifications,
         interval=MillContext.process_zimfarm_notifications_interval,
+        enabled=MillContext.process_zimfarm_notifications_enabled,
     ),
     TaskConfig(
         func=process_title_modifications,
         interval=MillContext.process_events_interval,
+        enabled=MillContext.process_title_modifications_enabled,
     ),
     TaskConfig(
         func=check_book_transitions,
         interval=MillContext.check_book_transitions_interval,
+        enabled=MillContext.check_book_transitions_enabled,
     ),
     TaskConfig(
         func=process_retention_rules,
         interval=MillContext.process_retention_rules_interval,
+        enabled=MillContext.process_retention_rules_enabled,
     ),
     TaskConfig(
         func=mark_staging_books_for_deletion,
         interval=MillContext.mark_staging_books_for_deletion_interval,
+        enabled=MillContext.mark_staging_books_for_deletion_enabled,
     ),
     TaskConfig(
         func=update_title_uploads_status,
         interval=MillContext.update_title_upload_status_interval,
+        enabled=MillContext.update_title_uploads_status_enabled,
     ),
     TaskConfig(
         func=delete_uploaded_zims,
         interval=MillContext.delete_uploaded_zims_interval,
+        enabled=MillContext.delete_uploaded_zims_enabled,
     ),
     TaskConfig(
         func=delete_zimcheck_s3_results,
         interval=MillContext.delete_zimcheck_files_interval,
+        enabled=MillContext.delete_zimcheck_s3_results_enabled,
     ),
     TaskConfig(
         func=fetch_download_stats,
         interval=MillContext.fetch_download_stats_interval,
+        enabled=MillContext.fetch_download_stats_enabled,
     ),
 ]
 
@@ -87,6 +96,11 @@ def main():
 
     logger.info("Mill component starting...")
     logger.info(f"Found {len(tasks)} tasks to process")
+    for task_config in tasks:
+        logger.info(
+            f"Task {task_config.task_name} is "
+            f"{'enabled' if task_config.enabled else 'disabled'}"
+        )
 
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
