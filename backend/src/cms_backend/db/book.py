@@ -333,7 +333,6 @@ def delete_book(
         needs_processing=False,
         needs_file_operation=False,
         locations=["staging", "prod", "quarantine"],
-        not_in_transition=True,
     )
     if book is None:
         raise RecordDoesNotExistError(
@@ -496,7 +495,6 @@ def recover_book(
         accessible_collection_ids=accessible_collection_ids,
         needs_processing=False,
         locations=["to_delete", "deleted"],
-        not_in_transition=True,
     )
 
     if book is None:
