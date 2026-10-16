@@ -25,6 +25,7 @@ from cms_backend.db.models import (
     Title,
     TitleFlavour,
     Warehouse,
+    ZimfarmNotification,
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import BaseBookPromotionAction, BookUpdateSchema
@@ -1566,3 +1567,119 @@ def test_get_book_raw_metadata_missing_metadata(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_reprocess_book(
+    dbsession: OrmSession,
+    client: TestClient,
+    create_account: Callable[..., Account],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_title: Callable[..., Title],
+    create_warehouse: Callable[..., Warehouse],
+    create_zimfarm_notification: Callable[..., ZimfarmNotification],
+    illustration_48x48_at_1: str,
+):
+    """Reprocess an errored quarantined book and move it to staging."""
+    account = create_account(permission=RoleEnum.GLOBAL_EDITOR)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+
+    create_warehouse(warehouse_id=Context.quarantine_warehouse_id)
+
+    metadata = {
+        "Name": "test_en_all",
+        "Title": "Test Article",
+        "Creator": "Test Creator",
+        "Publisher": "Test Publisher",
+        "Date": "2025-01-01",
+        "Description": "Test description",
+        "Language": "eng",
+        "Illustration_48x48@1": illustration_48x48_at_1,
+    }
+
+    notification = create_zimfarm_notification(
+        content={
+            "article_count": 1000,
+            "media_count": 500,
+            "size": 1000000,
+            "metadata": metadata,
+            "zimcheck_url": "https://www.example.com/zimcheck.json",
+            "folder_name": "test_folder",
+            "filename": "test.zim",
+            "recipe_id": str(uuid4()),
+        }
+    )
+    notification.status = "processed"
+
+    title = create_title(
+        name="test_en_all",
+        title="Test Article",
+        creator="Test Creator",
+        publisher="Test Publisher",
+        description="Test description",
+        language="eng",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    title.maturity = "unstable"
+
+    book = create_book(
+        zim_metadata=metadata,
+        flavour="all",
+        filename="test_en_all_2025-01.zim",
+        zimfarm_notification=notification,
+        title_id=title.id,
+    )
+    book.location_kind = "quarantine"
+    book.has_error = True
+
+    create_book_location(
+        book=book,
+        warehouse_id=Context.quarantine_warehouse_id,
+        path=Context.quarantine_base_path,
+        filename="test_en_all_2025-01.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    with patch("cms_backend.db.book.get_zimcheck_errors", return_value=[]):
+        response = client.post(
+            f"/v1/books/{book.id}/reprocess",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    assert response.status_code == HTTPStatus.OK
+    response_doc = response.json()
+    assert response_doc["has_error"] is False
+    assert response_doc["location_kind"] == "staging"
+
+
+@pytest.mark.parametrize(
+    "permission,expected_status_code",
+    [
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NOT_FOUND, id="global-editor"),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
+        ),
+    ],
+)
+def test_reprocess_book_required_permissions(
+    client: TestClient,
+    create_account: Callable[..., Account],
+    permission: RoleEnum,
+    expected_status_code: HTTPStatus,
+):
+    """Test permissions required to reprocess a book."""
+    account = create_account(permission=permission)
+    access_token = generate_access_token(
+        account_id=str(account.id), issue_time=getnow()
+    )
+    response = client.post(
+        f"/v1/books/{uuid4()}/reprocess",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == expected_status_code

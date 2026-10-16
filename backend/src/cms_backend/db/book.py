@@ -1378,6 +1378,54 @@ def process_book(
     return book
 
 
+def reprocess_book(
+    session: OrmSession,
+    *,
+    book_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> Book:
+    """Reprocess a book that errored while processing its notification."""
+    book = get_book_or_none(
+        session,
+        book_id,
+        accessible_collection_ids=accessible_collection_ids,
+        locations=["quarantine"],
+        has_error=True,
+        needs_processing=False,
+        needs_file_operation=False,
+        not_in_transition=True,
+    )
+    if book is None:
+        raise RecordDoesNotExistError(
+            f"Book {book_id} is not eligible for reprocessing or "
+            "is not accessible to you."
+        )
+
+    if book.title is None:
+        raise ValueError("Book has no associated title.")
+
+    notification = book.zimfarm_notification
+    if notification is None:
+        raise ValueError(
+            f"Book {book_id} has no associated zimfarm notification "
+            "and cannot be reprocessed"
+        )
+
+    if notification.status != "processed":
+        raise ValueError(
+            f"Book {book_id} cannot be reprocessed because its Zimfarm "
+            f"notification (id={notification.id}) is in '{notification.status}' "
+            "state."
+        )
+
+    title = book.title
+    title.books.remove(book)
+    book.has_error = False
+    book.events.append(f"{getnow()}: reprocessing book")
+    logger.info(f"Reprocessing quarantined book {book.id}")
+    return add_book_to_title(session, book, title, is_new=True)
+
+
 def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
     """Helper function to recover a book that is deleted.
 
@@ -1485,7 +1533,7 @@ def update_title_metadata_from_book(title: Title, book: Book):
 
 def add_book_to_title(
     session: OrmSession, book: Book, title: Title, *, is_new: bool = True
-):
+) -> Book:
     try:
         # Retrieve name from book.name directly
         if not book.name:
@@ -1528,3 +1576,4 @@ def add_book_to_title(
         )
         book.has_error = True
         logger.exception(f"Failed to add book {book.id} to title {title.id}")
+    return book
