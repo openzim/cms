@@ -351,6 +351,8 @@ def delete_book(
         )
     book.location_kind = "to_delete"
     book.needs_file_operation = True
+    book.transition_status = None
+    book.transition_started_at = None
     book.events.append(
         f"{now}: marked for deletion, will be deleted after {deletion_date}"
     )
