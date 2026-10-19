@@ -5,6 +5,8 @@ from typing import ClassVar, TypeVar
 
 from humanfriendly import parse_timespan
 
+from cms_backend.context import parse_bool
+
 T = TypeVar("T")
 
 
@@ -39,8 +41,16 @@ class Context:
         )
     )
 
+    process_zimfarm_notifications_enabled: bool = parse_bool(
+        os.getenv("PROCESS_ZIMFARM_NOTIFICATIONS", default="true")
+    )
+
     process_events_interval: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("PROCESS_EVENTS_INTERVAL", default="1m"))
+    )
+
+    process_title_modifications_enabled: bool = parse_bool(
+        os.getenv("PROCESS_TITLE_MODIFICATIONS", default="true")
     )
 
     check_book_transitions_interval: timedelta = timedelta(
@@ -49,16 +59,28 @@ class Context:
         )
     )
 
+    check_book_transitions_enabled: bool = parse_bool(
+        os.getenv("CHECK_BOOK_TRANSITIONS", default="true")
+    )
+
     process_retention_rules_interval: timedelta = timedelta(
         seconds=parse_timespan(
             os.getenv("PROCESS_RETENTION_RULES_INTERVAL", default="1d")
         )
     )
 
+    process_retention_rules_enabled: bool = parse_bool(
+        os.getenv("PROCESS_RETENTION_RULES", default="true")
+    )
+
     mark_staging_books_for_deletion_interval: timedelta = timedelta(
         seconds=parse_timespan(
             os.getenv("MARK_STAGING_BOOKS_FOR_DELETION_INTERVAL", default="1d")
         )
+    )
+
+    mark_staging_books_for_deletion_enabled: bool = parse_bool(
+        os.getenv("MARK_STAGING_BOOKS_FOR_DELETION", default="true")
     )
 
     staging_books_lifespan: timedelta = timedelta(
@@ -76,9 +98,19 @@ class Context:
             os.getenv("UPDATE_TITLE_UPLOAD_STATUS_INTERVAL", default="1m")
         )
     )
+
+    update_title_uploads_status_enabled: bool = parse_bool(
+        os.getenv("UPDATE_TITLE_UPLOADS_STATUS", default="true")
+    )
+
     delete_uploaded_zims_interval: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("DELETE_UPLOADED_ZIMS_INTERVAL", default="1d"))
     )
+
+    delete_uploaded_zims_enabled: bool = parse_bool(
+        os.getenv("DELETE_UPLOADED_ZIMS", default="true")
+    )
+
     zimcheck_results_s3_bucket_uri: str = os.getenv(
         "ZIMCHECK_RESULTS_S3_BUCKET_URI", default=""
     )
@@ -88,8 +120,16 @@ class Context:
         )
     )
 
+    delete_zimcheck_s3_results_enabled: bool = parse_bool(
+        os.getenv("DELETE_ZIMCHECK_S3_RESULTS", default="true")
+    )
+
     fetch_download_stats_interval: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("FETCH_DOWNLOAD_STATS_INTERVAL", default="1d"))
+    )
+
+    fetch_download_stats_enabled: bool = parse_bool(
+        os.getenv("FETCH_DOWNLOAD_STATS", default="true")
     )
 
     # Delay (in seconds) between two Matomo API requests, to avoid hammering it
