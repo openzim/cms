@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import math
 import pathlib
 import urllib.parse
@@ -63,7 +63,7 @@ def get_kiwix_storage_client(uri: str):
 def generate_view_presigned_url(
     s3: KiwixStorage,
     key: str,
-    expires_in: datetime.timedelta = datetime.timedelta(days=7),
+    expires_in: dt.timedelta = dt.timedelta(days=7),
 ) -> str:
     """Generate a presigned URL for read access to file"""
     return cast(
@@ -83,7 +83,7 @@ def generate_multipart_upload_presigned_urls(
     filesize: int,
     part_size: int,
     upload_id: str | None = None,
-    expires_in: datetime.timedelta = datetime.timedelta(days=1),
+    expires_in: dt.timedelta = dt.timedelta(days=1),
 ) -> S3MultipartUpload:
     """Generate presigned URLs for upload to S3 bucket"""
     if upload_id is None:

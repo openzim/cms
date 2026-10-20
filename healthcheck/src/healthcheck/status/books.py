@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -137,12 +137,7 @@ async def check_books_need_deletion() -> Result[PendingBooksNeedOperation]:
     items = [
         item
         for item in response.json.get("items", [])
-        if (
-            now
-            - datetime.datetime.fromisoformat(item["deletion_date"]).replace(
-                tzinfo=None
-            )
-        )
+        if (now - dt.datetime.fromisoformat(item["deletion_date"]).replace(tzinfo=None))
         > Context.books_pending_delete_delay
     ]
     if not items:

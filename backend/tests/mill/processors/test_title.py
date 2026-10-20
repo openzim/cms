@@ -1,6 +1,6 @@
 """Tests for title processor functions."""
 
-import datetime
+import datetime as dt
 from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
@@ -178,7 +178,7 @@ def test_apply_retention_rules_keeps_last_version_of_two_most_recent_months(
 
     with patch(
         "cms_backend.db.rules.getnow",
-        return_value=datetime.datetime(2024, 4, 1),
+        return_value=dt.datetime(2024, 4, 1),
     ):
         apply_retention_rules(dbsession, title)
 
@@ -264,7 +264,7 @@ def test_apply_retention_rules_handles_different_flavours_separately(
 
     with patch(
         "cms_backend.db.rules.getnow",
-        return_value=datetime.datetime(2024, 2, 1),
+        return_value=dt.datetime(2024, 2, 1),
     ):
         apply_retention_rules(dbsession, title)
 
@@ -350,7 +350,7 @@ def test_apply_retention_rules_all_older_than_30_days(
     # Set 'now' to 2024-06-01 so all books are older than 30 days
     with patch(
         "cms_backend.db.rules.getnow",
-        return_value=datetime.datetime(2024, 6, 1),
+        return_value=dt.datetime(2024, 6, 1),
     ):
         apply_retention_rules(dbsession, title)
 
@@ -424,7 +424,7 @@ def test_apply_retention_rules_skip_for_collections_that_retain_books(
 
     with patch(
         "cms_backend.db.rules.getnow",
-        return_value=datetime.datetime(2024, 2, 1),
+        return_value=dt.datetime(2024, 2, 1),
     ):
         apply_retention_rules(dbsession, title)
 

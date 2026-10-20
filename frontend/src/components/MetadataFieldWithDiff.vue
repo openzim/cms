@@ -4,7 +4,11 @@
     <slot />
 
     <!-- Diff warning banner -->
-    <div v-if="showDiff" class="text-body-2" :class="{ 'mt-2': hasCustomContent, 'mb-2': true }">
+    <div
+      v-if="showDiff"
+      class="text-body-medium"
+      :class="{ 'mt-2': hasCustomContent, 'mb-2': true }"
+    >
       <div class="mb-1 text-warning font-weight-medium">
         {{ diffLabel }}
       </div>

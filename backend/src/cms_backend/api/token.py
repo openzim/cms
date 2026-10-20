@@ -1,5 +1,5 @@
 import abc
-import datetime
+import datetime as dt
 import uuid
 from typing import Any, cast
 
@@ -20,8 +20,8 @@ from cms_backend.utils.datetime import getnow
 
 class JWTClaims(BaseModel):
     iss: str
-    exp: datetime.datetime
-    iat: datetime.datetime
+    exp: dt.datetime
+    iat: dt.datetime
     sub: uuid.UUID = Field(alias="subject")
     name: str | None = Field(exclude=True, default=None)
 
@@ -316,11 +316,11 @@ token_decoder = TokenDecoderChain(
 def generate_access_token(
     *,
     account_id: str,
-    issue_time: datetime.datetime,
+    issue_time: dt.datetime,
 ) -> str:
     """Generate a JWT access token for the given account ID with configured expiry."""
 
-    expire_time = issue_time + datetime.timedelta(
+    expire_time = issue_time + dt.timedelta(
         seconds=ApiContext.jwt_token_expiry_duration
     )
     payload = {
@@ -338,9 +338,9 @@ class ZimfarmClientTokenProvider:
     def __init__(self):
         self._access_token: str | None = None
         self._refresh_token: str | None = None
-        self._expires_at: datetime.datetime = datetime.datetime.fromtimestamp(
-            0
-        ).replace(tzinfo=None)
+        self._expires_at: dt.datetime = dt.datetime.fromtimestamp(0).replace(
+            tzinfo=None
+        )
 
     def _generate_oauth_access_token(self) -> None:
         """Generate oauth access token and update expires_at."""
@@ -359,7 +359,7 @@ class ZimfarmClientTokenProvider:
         response.raise_for_status()
         payload = response.json()
         self._access_token = cast(str, payload["access_token"])
-        self._expires_at = getnow() + datetime.timedelta(seconds=payload["expires_in"])
+        self._expires_at = getnow() + dt.timedelta(seconds=payload["expires_in"])
 
     def _generate_local_access_token(self) -> None:
         if self._refresh_token:
@@ -384,9 +384,9 @@ class ZimfarmClientTokenProvider:
         payload = response.json()
         self._access_token = cast(str, payload["access_token"])
         self._refresh_token = cast(str, payload["refresh_token"])
-        self._expires_at = datetime.datetime.fromisoformat(
-            payload["expires_time"]
-        ).replace(tzinfo=None)
+        self._expires_at = dt.datetime.fromisoformat(payload["expires_time"]).replace(
+            tzinfo=None
+        )
 
     def get_access_token(self) -> str:
         """Retrieve or generate access token depending on if token has expired."""

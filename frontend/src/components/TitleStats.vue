@@ -4,7 +4,7 @@
       <div class="ml-4 mr-4 mt-2 mb-2">
         <div v-if="loading" class="text-center pa-8">
           <v-progress-circular indeterminate size="64" />
-          <div class="mt-4 text-body-1">Fetching download statistics...</div>
+          <div class="mt-4 text-body-large">Fetching download statistics...</div>
         </div>
 
         <v-data-table
@@ -40,7 +40,9 @@
 
         <div v-else-if="statsStore.errors.length === 0" class="text-center pa-8">
           <v-icon size="large" class="mb-2">mdi-chart-line</v-icon>
-          <div class="text-body-1 text-grey">No download statistics available for this title</div>
+          <div class="text-body-large text-grey">
+            No download statistics available for this title
+          </div>
         </div>
 
         <ErrorMessage v-for="error in statsStore.errors" :key="error" :message="error" />

@@ -1,5 +1,5 @@
 # pyright: strict, reportPrivateUsage=false
-import datetime
+import datetime as dt
 from typing import Any
 from unittest.mock import patch
 from uuid import UUID, uuid4
@@ -24,7 +24,7 @@ def create_test_jwt(
     issuer: str = TEST_ISSUER,
     client_id: str = TEST_CLIENT_ID,
     subject: str | None = None,
-    exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
+    exp_delta: dt.timedelta = dt.timedelta(hours=1),
 ) -> str:
     """Create a test JWT token with the given parameters."""
     if subject is None:
@@ -47,7 +47,7 @@ def get_test_session_jwt_payload(
     issuer: str = TEST_ISSUER,
     audience: str = TEST_AUDIENCE,
     subject: str | None = None,
-    exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
+    exp_delta: dt.timedelta = dt.timedelta(hours=1),
     aal: str | None = "aal2",
     name: str | None = "Test Account",
     client_id: str | None = None,
@@ -79,7 +79,7 @@ def get_test_oidc_jwt_payload(
     audience: str = TEST_AUDIENCE,
     client_id: str = TEST_CLIENT_ID,
     subject: str | None = None,
-    exp_delta: datetime.timedelta = datetime.timedelta(hours=1),
+    exp_delta: dt.timedelta = dt.timedelta(hours=1),
     aal: str | None = "aal2",
     name: str | None = "Test Account",
 ) -> dict[str, Any]:

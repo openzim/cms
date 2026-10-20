@@ -1,6 +1,6 @@
-FROM python:3.13-slim-bookworm
-LABEL org.opencontainers.image.source https://github.com/openzim/cms
-LABEL cms true
+FROM python:3.15-slim-trixie
+LABEL org.opencontainers.image.source=https://github.com/openzim/cms
+LABEL cms=true
 
 # install Python dependencies first (since they change more rarely than src code)
 COPY pyproject.toml README.md /app/

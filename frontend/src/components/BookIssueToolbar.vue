@@ -2,7 +2,7 @@
   <div class="border rounded pa-3 mb-4">
     <v-row no-gutters>
       <v-col cols="12" md="3">
-        <span class="text-subtitle-2 mr-2">Current book</span>
+        <span class="text-title-small mr-2">Current book</span>
       </v-col>
       <v-col cols="12" md="9" class="d-flex align-center flex-wrap ga-2">
         <template v-if="book.recipe_link || currentUrls.length > 0">
@@ -26,7 +26,7 @@
       <v-divider class="my-2" />
       <v-row no-gutters>
         <v-col cols="12" md="3">
-          <span class="text-subtitle-2 mr-2">Previous book</span>
+          <span class="text-title-small mr-2">Previous book</span>
         </v-col>
         <v-col cols="12" md="9" class="d-flex align-center flex-wrap ga-2">
           <v-btn

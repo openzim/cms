@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
@@ -40,7 +40,7 @@ def delete_files(session: OrmSession):
         logger.info(f"Done deleting {nb_zim_files_deleted} ZIM files")
 
 
-def get_next_book_to_delete(session: OrmSession, now: datetime.datetime) -> Book | None:
+def get_next_book_to_delete(session: OrmSession, now: dt.datetime) -> Book | None:
     """Get the next book that needs deletion."""
     return session.scalars(
         select(Book)

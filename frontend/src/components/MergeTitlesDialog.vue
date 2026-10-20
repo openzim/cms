@@ -1,12 +1,12 @@
 <template>
   <v-dialog v-model="isTargetDialogOpen" :max-width="600" persistent>
     <v-card>
-      <v-card-title class="text-h6">
+      <v-card-title class="text-title-large">
         <v-icon class="mr-2" color="primary">mdi-merge</v-icon>
         Select Target Title for Merge
       </v-card-title>
 
-      <v-card-text class="text-body-1">
+      <v-card-text class="text-body-large">
         <p class="mb-4">
           Select in which title you want to move all books. Other titles will be deleted.
         </p>
@@ -18,8 +18,8 @@
           density="comfortable"
           :rules="[(v: string) => !!v || 'Target title is required']"
         >
-          <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps" :title="item.value" />
+          <template #item="{ props: itemProps, internalItem }">
+            <v-list-item v-bind="itemProps" :title="internalItem.title" />
           </template>
         </v-select>
       </v-card-text>

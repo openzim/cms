@@ -12,11 +12,11 @@ on:
 
 jobs:
   run-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     services:
       postgresdb:
-        image: postgres:16.3-bookworm
+        image: postgres:18.6-trixie
         env:
           POSTGRES_DB: cmstest
           POSTGRES_PASSWORD: cmspass
@@ -47,10 +47,10 @@ jobs:
 
     steps:
       - name: Retrieve source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version-file: backend/pyproject.toml
           architecture: x64
@@ -59,7 +59,7 @@ jobs:
         working-directory: backend
         run: |
           pip install -U pip
-          pip install -e .[test,scripts,maint-scripts]
+          pip install -e .[test,scripts]
 
       - name: Create extensions on the PostgreSQL database
         run: >-

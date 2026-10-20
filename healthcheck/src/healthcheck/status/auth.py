@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from http import HTTPStatus
 from typing import cast
 
@@ -15,14 +15,14 @@ class Token(BaseModel):
     """Access token on successful authentication."""
 
     access_token: str
-    expires_time: datetime.datetime
+    expires_time: dt.datetime
     refresh_token: str
     token_type: str = "Bearer"
 
 
 def getnow():
     """naive UTC now"""
-    return datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    return dt.datetime.now(dt.UTC).replace(tzinfo=None)
 
 
 class ClientTokenProvider:
@@ -31,9 +31,9 @@ class ClientTokenProvider:
     def __init__(self):
         self._access_token: str | None = None
         self._refresh_token: str | None = None
-        self._expires_at: datetime.datetime = datetime.datetime.fromtimestamp(
-            0
-        ).replace(tzinfo=None)
+        self._expires_at: dt.datetime = dt.datetime.fromtimestamp(0).replace(
+            tzinfo=None
+        )
 
     async def _generate_oauth_access_token(self) -> None:
         """Generate oauth access token and update expires_at."""
@@ -53,7 +53,7 @@ class ClientTokenProvider:
         )
         if response.json:
             self._access_token = cast(str, response.json["access_token"])
-            self._expires_at = getnow() + datetime.timedelta(
+            self._expires_at = getnow() + dt.timedelta(
                 seconds=response.json["expires_in"]
             )
 
@@ -84,7 +84,7 @@ class ClientTokenProvider:
         if response.json:
             self._access_token = cast(str, response.json["access_token"])
             self._refresh_token = cast(str, response.json["refresh_token"])
-            self._expires_at = datetime.datetime.fromisoformat(
+            self._expires_at = dt.datetime.fromisoformat(
                 response.json["expires_time"]
             ).replace(tzinfo=None)
 
@@ -110,7 +110,7 @@ class ClientTokenProvider:
         return self._access_token
 
     @property
-    def expires_at(self) -> datetime.datetime:
+    def expires_at(self) -> dt.datetime:
         return self._expires_at
 
     @property

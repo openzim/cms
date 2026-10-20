@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import re
 from collections.abc import Sequence
 from typing import Any, Literal, get_args
@@ -360,7 +360,7 @@ def delete_book(
     *,
     book_id: UUID,
     force_delete: bool = False,
-    deletion_delay: datetime.timedelta = Context.book_deletion_delay,
+    deletion_delay: dt.timedelta = Context.book_deletion_delay,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Mark a book as deleted.

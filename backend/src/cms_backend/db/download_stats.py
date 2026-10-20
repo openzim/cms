@@ -1,8 +1,8 @@
 from datetime import date, timedelta
-from typing import NamedTuple
+from typing import Any, NamedTuple, cast
 from uuid import UUID
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import CursorResult, Result, and_, delete, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
@@ -175,6 +175,11 @@ def mark_day_fetched(
     return entry
 
 
+def _rowcount(result: Result[Any]) -> int:
+    """Return the number of rows affected by a statement."""
+    return cast("CursorResult[Any]", result).rowcount
+
+
 def unmark_day_fetched(session: OrmSession, *, day: date) -> bool:
     """Forget that day was fetched, forcing a refetch. Returns True if a day
     was actually removed."""
@@ -182,7 +187,7 @@ def unmark_day_fetched(session: OrmSession, *, day: date) -> bool:
         delete(DownloadStatsFetch).where(DownloadStatsFetch.day == day)
     )
     session.flush()
-    return bool(result.rowcount)
+    return bool(_rowcount(result))
 
 
 def purge_old_stats(session: OrmSession, *, keep_since_year: int) -> tuple[int, int]:
@@ -190,14 +195,18 @@ def purge_old_stats(session: OrmSession, *, keep_since_year: int) -> tuple[int, 
 
     Returns the number of (stats rows, fetched-days rows) deleted.
     """
-    stats_deleted = session.execute(
-        delete(DownloadStats).where(DownloadStats.year < keep_since_year)
-    ).rowcount
-    fetch_deleted = session.execute(
-        delete(DownloadStatsFetch).where(
-            DownloadStatsFetch.day < date(keep_since_year, 1, 1)
+    stats_deleted = _rowcount(
+        session.execute(
+            delete(DownloadStats).where(DownloadStats.year < keep_since_year)
         )
-    ).rowcount
+    )
+    fetch_deleted = _rowcount(
+        session.execute(
+            delete(DownloadStatsFetch).where(
+                DownloadStatsFetch.day < date(keep_since_year, 1, 1)
+            )
+        )
+    )
     session.flush()
     return stats_deleted, fetch_deleted
 

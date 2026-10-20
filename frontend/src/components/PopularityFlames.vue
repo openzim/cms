@@ -8,7 +8,7 @@
     >
       mdi-fire
     </v-icon>
-    <span class="text-caption text-medium-emphasis ml-1">{{ popularity }}/100</span>
+    <span class="text-body-small text-medium-emphasis ml-1">{{ popularity }}/100</span>
   </div>
 </template>
 

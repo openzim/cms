@@ -110,7 +110,7 @@ def compare_elements(
                     size2 = int(attrs2.get(key, 0))
                     if abs(size1 - size2) == 1:
                         continue
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
             diffs.append(

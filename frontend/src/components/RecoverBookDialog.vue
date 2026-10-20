@@ -1,22 +1,22 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600px" persistent>
     <v-card>
-      <v-card-title class="text-h5 pa-4 bg-primary">
+      <v-card-title class="text-headline-small pa-4 bg-primary">
         <span class="text-white">Recover Book</span>
       </v-card-title>
 
       <v-card-text class="pt-4">
         <div v-if="book" class="mb-4">
-          <div v-if="book.name" class="text-body-2 mb-2">
+          <div v-if="book.name" class="text-body-medium mb-2">
             <strong>Name:</strong> {{ book.name }}
           </div>
-          <div v-if="book.flavour" class="text-body-2 mb-2">
+          <div v-if="book.flavour" class="text-body-medium mb-2">
             <strong>Flavour:</strong> {{ book.flavour }}
           </div>
-          <div v-if="book.date" class="text-body-2 mb-2">
+          <div v-if="book.date" class="text-body-medium mb-2">
             <strong>Date:</strong> {{ book.date }}
           </div>
-          <div class="text-body-2 mb-2">
+          <div class="text-body-medium mb-2">
             <strong>Created:</strong> {{ formatDt(book.created_at) }}
           </div>
         </div>

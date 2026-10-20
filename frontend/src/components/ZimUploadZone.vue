@@ -9,7 +9,7 @@
           : '2px dashed rgb(var(--v-border-color))',
         minHeight: '220px',
         cursor: state === 'uploading' ? 'default' : 'pointer',
-        backgroundColor: isDragging ? 'rgb(var(--v-theme-primary), 0.05)' : undefined,
+        backgroundColor: isDragging ? 'var(--overlay-primary-05)' : undefined,
       }"
       @click="handleDropZoneClick"
       @drop.prevent="handleDrop"
@@ -23,10 +23,10 @@
         <!-- Idle / No file selected -->
         <template v-if="state === 'idle'">
           <v-icon size="48" color="grey-lighten-1">mdi-cloud-upload</v-icon>
-          <p class="text-body-1 text-grey-darken-1 mt-3 mb-0 text-center">
+          <p class="text-body-large text-grey-darken-1 mt-3 mb-0 text-center">
             Drag &amp; drop a ZIM file here
           </p>
-          <p class="text-body-2 text-grey mt-2 mb-0 text-center">
+          <p class="text-body-medium text-grey mt-2 mb-0 text-center">
             or click to browse, or paste (Ctrl+V)
           </p>
         </template>
@@ -34,10 +34,10 @@
         <!-- File selected, ready to upload -->
         <template v-if="state === 'ready' || state === 'paused'">
           <v-icon size="48" color="primary">mdi-file</v-icon>
-          <p class="text-body-1 mt-3 mb-1 text-center font-weight-medium">
+          <p class="text-body-large mt-3 mb-1 text-center font-weight-medium">
             {{ selectedFile!.name }}
           </p>
-          <p class="text-body-2 text-grey mb-0">
+          <p class="text-body-medium text-grey mb-0">
             {{ formattedBytesSize(selectedFile!.size) }}
           </p>
         </template>
@@ -52,8 +52,8 @@
           >
             {{ uploadProgressPercent }}%
           </v-progress-circular>
-          <p class="text-body-1 mt-3 mb-0 text-center">Uploading {{ selectedFile!.name }}</p>
-          <p v-if="uploadSpeedText || uploadEtaText" class="text-body-2 text-grey mt-2 mb-0">
+          <p class="text-body-large mt-3 mb-0 text-center">Uploading {{ selectedFile!.name }}</p>
+          <p v-if="uploadSpeedText || uploadEtaText" class="text-body-medium text-grey mt-2 mb-0">
             <template v-if="uploadSpeedText">{{ uploadSpeedText }}</template>
             <template v-if="uploadSpeedText && uploadEtaText"> · </template>
             <template v-if="uploadEtaText">{{ uploadEtaText }}</template>
@@ -67,17 +67,17 @@
         <!-- Completing -->
         <template v-if="state === 'completing'">
           <v-progress-circular indeterminate size="48" color="primary" />
-          <p class="text-body-1 mt-3 mb-0">Finalizing upload...</p>
+          <p class="text-body-large mt-3 mb-0">Finalizing upload...</p>
         </template>
 
         <!-- Done -->
         <template v-if="state === 'done'">
           <v-icon size="48" color="success">mdi-check-circle</v-icon>
-          <p class="text-body-1 mt-3 mb-0 text-success font-weight-medium">
+          <p class="text-body-large mt-3 mb-0 text-success font-weight-medium">
             Upload complete! Zimfarm is now processing your ZIM file and will be imported into the
             CMS shortly. Please, wait for book to be associated with title.
           </p>
-          <p class="text-body-2 text-grey mt-1 mb-0">{{ selectedFile!.name }}</p>
+          <p class="text-body-medium text-grey mt-1 mb-0">{{ selectedFile!.name }}</p>
           <v-btn
             variant="text"
             color="primary"
@@ -93,8 +93,8 @@
         <!-- Error -->
         <template v-if="state === 'error'">
           <v-icon size="48" color="error">mdi-alert-circle</v-icon>
-          <p class="text-body-1 mt-3 mb-0 text-error">Upload failed</p>
-          <p class="text-body-2 text-grey mt-1 mb-0 text-center">{{ errorMessage }}</p>
+          <p class="text-body-large mt-3 mb-0 text-error">Upload failed</p>
+          <p class="text-body-medium text-grey mt-1 mb-0 text-center">{{ errorMessage }}</p>
           <div class="d-flex ga-2 mt-3">
             <v-btn variant="tonal" color="primary" size="small" @click.stop="handleStartUpload">
               <v-icon class="mr-1">mdi-refresh</v-icon>

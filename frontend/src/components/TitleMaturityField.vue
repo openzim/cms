@@ -8,7 +8,7 @@
     @update:model-value="$emit('update:modelValue', $event ? 'stable' : 'unstable')"
   >
     <template #label>
-      <span class="text-subtitle-1">
+      <span class="text-body-large">
         Maturity: <strong>{{ modelValue }}</strong>
       </span>
     </template>

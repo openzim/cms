@@ -5,7 +5,7 @@
     <!-- Loading state when data hasn't been loaded yet -->
     <div v-if="!dataLoaded && loadingStore.isLoading" class="text-center pa-8">
       <v-progress-circular indeterminate size="64" />
-      <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
+      <div class="mt-4 text-body-large">{{ loadingStore.loadingText }}</div>
     </div>
 
     <!-- Background event polling indicator -->
@@ -14,13 +14,13 @@
       class="d-flex align-center justify-center ga-2 py-2 mb-2"
     >
       <v-progress-circular indeterminate size="18" width="2" />
-      <span class="text-body-2 text-medium-emphasis">{{ backgroundEventMessage }}</span>
+      <span class="text-body-medium text-medium-emphasis">{{ backgroundEventMessage }}</span>
     </div>
 
     <div v-if="dataLoaded && title">
       <v-row>
         <v-col>
-          <h2 class="text-h6 text-md-h5">
+          <h2 class="text-title-large text-md-headline-small">
             <code>{{ title.name }}</code>
           </h2>
         </v-col>
@@ -132,7 +132,7 @@
               <div class="ml-4 mr-4 mt-2 mb-2">
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Name</div>
+                    <div class="text-title-small">Name</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ title.name }}
@@ -142,7 +142,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Popularity</div>
+                    <div class="text-title-small">Popularity</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <PopularityFlames :popularity="title.popularity" />
@@ -152,7 +152,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Collections</div>
+                    <div class="text-title-small">Collections</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div v-if="title.collections && title.collections.length > 0">
@@ -173,7 +173,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Maturity</div>
+                    <div class="text-title-small">Maturity</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ title.maturity }}
@@ -183,7 +183,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Title</div>
+                    <div class="text-title-small">Title</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.title">{{ title.title }}</span>
@@ -194,7 +194,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Description</div>
+                    <div class="text-title-small">Description</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.description">{{ title.description }}</span>
@@ -205,7 +205,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Long Description</div>
+                    <div class="text-title-small">Long Description</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.long_description" style="white-space: pre-wrap">{{
@@ -218,7 +218,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Creator</div>
+                    <div class="text-title-small">Creator</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.creator">{{ title.creator }}</span>
@@ -229,7 +229,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Publisher</div>
+                    <div class="text-title-small">Publisher</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.publisher">{{ title.publisher }}</span>
@@ -240,7 +240,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Language</div>
+                    <div class="text-title-small">Language</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.language">{{ title.language }}</span>
@@ -251,7 +251,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">License</div>
+                    <div class="text-title-small">License</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.license">{{ title.license }}</span>
@@ -262,7 +262,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Source</div>
+                    <div class="text-title-small">Source</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.source">{{ title.source }}</span>
@@ -273,7 +273,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Relation</div>
+                    <div class="text-title-small">Relation</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="title.relation">{{ title.relation }}</span>
@@ -284,7 +284,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Illustration</div>
+                    <div class="text-title-small">Illustration</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div v-if="title.illustration_48x48_at_1">
@@ -302,7 +302,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Events</div>
+                    <div class="text-title-small">Events</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <EventsList :events="title.events" />
@@ -481,7 +481,7 @@
             </v-card>
 
             <div class="d-flex align-center mt-4 mb-4 ga-3">
-              <h3 class="text-h6 mb-0">Uploads</h3>
+              <h3 class="text-title-large mb-0">Uploads</h3>
               <v-divider class="flex-grow-1" />
             </div>
 
@@ -521,8 +521,8 @@
     >
       <template #content>
         <div class="mb-4">
-          <h3 class="text-h6 mb-2">Changes Summary</h3>
-          <p class="text-body-2 text-medium-emphasis mb-3">
+          <h3 class="text-title-large mb-2">Changes Summary</h3>
+          <p class="text-body-medium text-medium-emphasis mb-3">
             Please review the changes below and optionally add a comment describing what you've
             modified.
           </p>

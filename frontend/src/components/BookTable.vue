@@ -23,7 +23,7 @@
         <template #loading>
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
-            <div class="mt-4 text-body-1">
+            <div class="mt-4 text-body-large">
               {{ loadingText || 'Fetching books...' }}
             </div>
           </div>
@@ -129,7 +129,7 @@
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="x-large" class="mb-2">mdi-book-open-page-variant</v-icon>
-            <div class="text-h6 text-grey-darken-1 mb-2">No books found</div>
+            <div class="text-title-large text-grey-darken-1 mb-2">No books found</div>
           </div>
         </template>
       </component>

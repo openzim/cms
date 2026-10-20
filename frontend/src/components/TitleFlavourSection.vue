@@ -1,7 +1,7 @@
 <template>
   <div>
     <v-divider v-if="showHeader" class="my-3" color="primary" thickness="2">
-      <span class="text-primary text-body-1">{{ flavourLabel }}</span>
+      <span class="text-primary text-body-large">{{ flavourLabel }}</span>
     </v-divider>
 
     <div v-if="flavourInfo && books.length > 0" class="d-flex align-center flex-wrap ga-2 mb-3">

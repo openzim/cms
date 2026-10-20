@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from typing import Annotated
 from uuid import UUID
 
@@ -36,7 +36,7 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str = "Bearer"
-    expires_time: datetime.datetime
+    expires_time: dt.datetime
     refresh_token: str
 
 
@@ -57,7 +57,7 @@ def _access_token_response(
             ).token
         ),
         expires_time=issue_time
-        + datetime.timedelta(seconds=Context.jwt_token_expiry_duration),
+        + dt.timedelta(seconds=Context.jwt_token_expiry_duration),
     )
 
 
