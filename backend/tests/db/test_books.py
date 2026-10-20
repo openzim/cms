@@ -17,6 +17,7 @@ from cms_backend.db.book import (
 from cms_backend.db.books import get_book_languages, get_books, get_zim_urls
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
+    Account,
     Book,
     BookLocation,
     Collection,
@@ -706,6 +707,7 @@ def test_delete_book(
 
 def test_move_book_staging_to_prod(
     dbsession: OrmSession,
+    account: Account,
     warehouse: Warehouse,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -733,7 +735,7 @@ def test_move_book_staging_to_prod(
 
     now = getnow()
     monkeypatch.setattr("cms_backend.db.book.getnow", lambda: now)
-    move_book(dbsession, book_id=book.id, destination="prod")
+    move_book(dbsession, book_id=book.id, destination="prod", author_id=account.id)
 
     book = get_book(dbsession, book_id=book.id)
 
@@ -750,6 +752,7 @@ def test_move_book_staging_to_prod(
 
 def test_move_book_with_different_flavor_from_title_to_prod(
     dbsession: OrmSession,
+    account: Account,
     warehouse: Warehouse,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
@@ -778,11 +781,12 @@ def test_move_book_with_different_flavor_from_title_to_prod(
     now = getnow()
     monkeypatch.setattr("cms_backend.db.book.getnow", lambda: now)
     with pytest.raises(ValueError):
-        move_book(dbsession, book_id=book.id, destination="prod")
+        move_book(dbsession, book_id=book.id, destination="prod", author_id=account.id)
 
 
 def test_move_book_same_destination_raises_error(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     create_book_location: Callable[..., BookLocation],
@@ -806,11 +810,17 @@ def test_move_book_same_destination_raises_error(
     with pytest.raises(
         ValueError, match="Book destination must be different from current location"
     ):
-        move_book(dbsession, book_id=book.id, destination="staging")
+        move_book(
+            dbsession,
+            book_id=book.id,
+            destination="staging",
+            author_id=account.id,
+        )
 
 
 def test_move_book_no_current_location_raises_error(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
 ):
@@ -822,11 +832,12 @@ def test_move_book_no_current_location_raises_error(
     dbsession.flush()
 
     with pytest.raises(ValueError, match="has no current location"):
-        move_book(dbsession, book_id=book.id, destination="prod")
+        move_book(dbsession, book_id=book.id, destination="prod", author_id=account.id)
 
 
 def test_move_book_no_title_raises_error(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
@@ -846,11 +857,12 @@ def test_move_book_no_title_raises_error(
     dbsession.flush()
 
     with pytest.raises(ValueError, match="has no associated title"):
-        move_book(dbsession, book_id=book.id, destination="prod")
+        move_book(dbsession, book_id=book.id, destination="prod", author_id=account.id)
 
 
 def test_move_book_archived_title_raises_error(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
     create_title: Callable[..., Title],
     create_book_location: Callable[..., BookLocation],
@@ -875,7 +887,12 @@ def test_move_book_archived_title_raises_error(
     with pytest.raises(
         ValueError, match=f"Book title {book.title_id} is currently archived"
     ):
-        move_book(dbsession, book_id=book.id, destination="prod")
+        move_book(
+            dbsession,
+            book_id=book.id,
+            destination="prod",
+            author_id=account.id,
+        )
 
 
 def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavour(

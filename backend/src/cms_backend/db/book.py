@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
+from cms_backend.db import title as db_title
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import get_title_flavour_or_none
@@ -409,6 +410,7 @@ def move_book(
     *,
     book_id: UUID,
     destination: Literal["staging", "prod"],
+    author_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Move a book in staging/prod to prod/staging.
@@ -433,11 +435,17 @@ def move_book(
             "accessible to you."
         )
 
-    return move_book_to_destination(session, book=book, destination=destination)
+    return move_book_to_destination(
+        session, book=book, destination=destination, author_id=author_id
+    )
 
 
 def move_book_to_destination(
-    session: OrmSession, *, book: Book, destination: Literal["staging", "prod"]
+    session: OrmSession,
+    *,
+    book: Book,
+    destination: Literal["staging", "prod"],
+    author_id: UUID,
 ) -> Book:
     if not book.title:
         raise ValueError(f"Book {book.id} has no associated title.")
@@ -493,6 +501,13 @@ def move_book_to_destination(
     session.flush()
 
     if not goes_to_staging:
+        db_title.update_title_languages_from_book(
+            session,
+            book.title,
+            book,
+            Context.min_languages_for_title_sync,
+            author_id=author_id,
+        )
         apply_retention_rules(session, book.title)
 
     return book
@@ -625,13 +640,25 @@ def get_differing_metadata_keys(book: Book) -> list[MetadataKey]:
 
     Assumes book has mandatory metadata set.
     Assumes that the book name and title name already match, thus aren't checked.
+    Language is omitted while the book is not in prod and its languages are
+    pending synchronization; the change will be applied automatically on
+    promotion. If the sync conditions are not met, Language is reported.
     """
 
     if book.title is None:
         raise ValueError("Book has no associated title.")
 
+    ignore_language = (
+        book.location_kind != "prod"
+        and db_title.should_update_title_languages_from_book(
+            book.title, book, Context.min_languages_for_title_sync
+        )
+    )
+
     keys: list[MetadataKey] = []
     for key in get_args(MetadataKey):
+        if key == "Language" and ignore_language:
+            continue
         book_value = get_book_metadata(book, key)
         title_value = get_book_title_metadata(book, key)
         if key == "Illustration_48x48@1":
@@ -1375,6 +1402,7 @@ def process_book(
     session: OrmSession,
     book: Book,
     *,
+    author_id: UUID,
     is_new: bool = False,
 ) -> Book:
     """Process a book as if it just arrived.
@@ -1437,6 +1465,14 @@ def process_book(
         target_locations=target_locations,
     )
     start_book_transition(book)
+    if not goes_to_staging:
+        db_title.update_title_languages_from_book(
+            session,
+            book.title,  # pyright: ignore[reportArgumentType]
+            book,
+            Context.min_languages_for_title_sync,
+            author_id=author_id,
+        )
     return book
 
 
@@ -1444,6 +1480,7 @@ def reprocess_book(
     session: OrmSession,
     *,
     book_id: UUID,
+    author_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> Book:
     """Reprocess a book that errored while processing its notification."""
@@ -1485,7 +1522,7 @@ def reprocess_book(
     book.has_error = False
     book.events.append(f"{getnow()}: reprocessing book")
     logger.info(f"Reprocessing quarantined book {book.id}")
-    return add_book_to_title(session, book, title, is_new=True)
+    return add_book_to_title(session, book, title, author_id=author_id, is_new=True)
 
 
 def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
@@ -1578,23 +1615,13 @@ def book_has_flavour_mismatch(
     return book.flavour not in title_flavours
 
 
-def update_title_metadata_from_book(title: Title, book: Book):
-    """Update a title's metadata from book"""
-
-    title.title = book.zim_metadata["Title"]
-    title.creator = book.zim_metadata["Creator"]
-    title.publisher = book.zim_metadata["Publisher"]
-    title.description = book.zim_metadata["Description"]
-    title.language = book.zim_metadata["Language"]
-    title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
-    title.long_description = book.zim_metadata.get("LongDescription")
-    title.license = book.zim_metadata.get("License")
-    title.relation = book.zim_metadata.get("Relation")
-    title.source = book.zim_metadata.get("Source")
-
-
 def add_book_to_title(
-    session: OrmSession, book: Book, title: Title, *, is_new: bool = True
+    session: OrmSession,
+    book: Book,
+    title: Title,
+    *,
+    author_id: UUID,
+    is_new: bool = True,
 ) -> Book:
     try:
         # Retrieve name from book.name directly
@@ -1622,10 +1649,7 @@ def add_book_to_title(
         if tf is not None:
             tf.last_book_added_at = getnow()
 
-        if title_is_missing_mandatory_metadata(title):
-            update_title_metadata_from_book(title, book)
-
-        process_book(session, book, is_new=is_new)
+        process_book(session, book, author_id=author_id, is_new=is_new)
         if book.location_kind == "prod":
             apply_retention_rules(session, title)
 

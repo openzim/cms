@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
 from cms_backend.db.book import (
+    add_book_to_title,
     backup_book,
     book_has_flavour_mismatch,
     book_has_recipe_issue,
@@ -22,6 +23,7 @@ from cms_backend.db.book import (
     get_book_metadata_issues,
     get_differing_metadata_keys,
     get_zimcheck_errors,
+    move_book_to_destination,
     recover_book,
     remove_book_backup,
     reprocess_book,
@@ -112,6 +114,222 @@ def test_get_differing_metadata_keys(
 
     differences = get_differing_metadata_keys(book)
     assert set(differences) == {"Title", "Creator", "Publisher", "Description"}
+
+
+def test_get_differing_metadata_keys_ignores_pending_language_update(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    illustration_48x48_at_1: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Ignore the language change while it is pending, report it once in prod."""
+    monkeypatch.setattr(Context, "min_languages_for_title_sync", 2)
+    title = create_title(
+        title="Title",
+        creator="Creator",
+        publisher="openZIM",
+        description="Description",
+        language="eng,fra",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+    )
+    book = create_book(
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Title",
+            "Creator": "Creator",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Description",
+            "Language": "eng,spa",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+        title_id=title.id,
+    )
+
+    assert "Language" not in get_differing_metadata_keys(book)
+
+    book.location_kind = "prod"
+    dbsession.flush()
+    assert "Language" in get_differing_metadata_keys(book)
+
+
+@patch("cms_backend.db.book.get_zimcheck_errors")
+def test_add_book_to_title_defers_language_update_for_staging_book(
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    account: Account,
+    illustration_48x48_at_1: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A book going to staging must not update the title languages."""
+    mock_get_zimcheck_errors.return_value = []
+    monkeypatch.setattr(Context, "min_languages_for_title_sync", 2)
+    staging_warehouse = create_warehouse()
+    monkeypatch.setattr(Context, "staging_warehouse_id", staging_warehouse.id)
+    monkeypatch.setattr(Context, "staging_base_path", Path("staging"))
+    create_warehouse(warehouse_id=Context.quarantine_warehouse_id)
+
+    title = create_title(
+        name="test_en_all",
+        title="Title",
+        creator="Creator",
+        publisher="openZIM",
+        description="Description",
+        language="eng,fra",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+        flavours=["maxi"],
+        recipe_id=uuid4(),
+    )
+    title.maturity = "unstable"
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Title",
+            "Creator": "Creator",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Description",
+            "Language": "eng,spa",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+    )
+    create_book_location(
+        book=book,
+        warehouse_id=Context.quarantine_warehouse_id,
+        path=Context.quarantine_base_path,
+        filename="test.zim",
+        status="current",
+    )
+
+    add_book_to_title(dbsession, book, title, author_id=account.id)
+
+    assert book.has_error is False
+    assert book.location_kind == "staging"
+    assert title.language == "eng,fra"
+    assert "metadata mismatch" not in book.issues
+
+
+@patch("cms_backend.db.book.get_zimcheck_errors")
+def test_add_book_to_title_updates_language_for_prod_book(
+    mock_get_zimcheck_errors: MagicMock,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    account: Account,
+    illustration_48x48_at_1: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A book going to prod synchronizes the title languages."""
+    mock_get_zimcheck_errors.return_value = []
+    monkeypatch.setattr(Context, "min_languages_for_title_sync", 2)
+    create_warehouse(warehouse_id=Context.quarantine_warehouse_id)
+
+    title = create_title(
+        name="test_en_all",
+        title="Title",
+        creator="Creator",
+        publisher="openZIM",
+        description="Description",
+        language="eng,fra",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+        flavours=["maxi"],
+        recipe_id=uuid4(),
+    )
+    title.maturity = "stable"
+    book = create_book(
+        flavour="maxi",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Title",
+            "Creator": "Creator",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Description",
+            "Language": "eng,spa",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+    )
+    create_book_location(
+        book=book,
+        warehouse_id=Context.quarantine_warehouse_id,
+        path=Context.quarantine_base_path,
+        filename="test.zim",
+        status="current",
+    )
+
+    add_book_to_title(dbsession, book, title, author_id=account.id)
+
+    assert book.has_error is False
+    assert book.location_kind == "prod"
+    dbsession.refresh(title)
+    assert title.language is not None
+    assert set(title.language.split(",")) == {"eng", "spa"}
+
+
+def test_move_book_to_destination_updates_language_on_prod(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    account: Account,
+    illustration_48x48_at_1: str,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Manual promotion synchronizes the title languages."""
+    monkeypatch.setattr(Context, "min_languages_for_title_sync", 2)
+    create_warehouse(warehouse_id=Context.staging_warehouse_id)
+
+    title = create_title(
+        name="test_en_all",
+        title="Title",
+        creator="Creator",
+        publisher="openZIM",
+        description="Description",
+        language="eng,fra",
+        illustration_48x48_at_1=illustration_48x48_at_1,
+        flavours=["maxi"],
+        recipe_id=uuid4(),
+    )
+    book = create_book(
+        flavour="maxi",
+        title_id=title.id,
+        location_kind="staging",
+        zim_metadata={
+            "Name": "test_en_all",
+            "Title": "Title",
+            "Creator": "Creator",
+            "Publisher": "openZIM",
+            "Date": "2025-01-01",
+            "Description": "Description",
+            "Language": "eng,spa",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+        },
+    )
+    create_book_location(
+        book=book,
+        warehouse_id=Context.staging_warehouse_id,
+        path=Context.staging_base_path,
+        filename="test.zim",
+        status="current",
+    )
+
+    move_book_to_destination(
+        dbsession, book=book, destination="prod", author_id=account.id
+    )
+
+    assert book.location_kind == "prod"
+    dbsession.refresh(title)
+    assert title.language is not None
+    assert set(title.language.split(",")) == {"eng", "spa"}
 
 
 def test_update_deleted_book(
@@ -1181,6 +1399,7 @@ def test_get_zimcheck_errors_ignore_scraper(
 
 def test_reprocess_book_rejects_book_not_in_quarantine(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
 ):
     book = create_book(name="test_en_all", date="2025-01-01")
@@ -1189,11 +1408,12 @@ def test_reprocess_book_rejects_book_not_in_quarantine(
     dbsession.flush()
 
     with pytest.raises(RecordDoesNotExistError):
-        reprocess_book(dbsession, book_id=book.id)
+        reprocess_book(dbsession, book_id=book.id, author_id=account.id)
 
 
 def test_reprocess_book_rejects_book_without_notification(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
 ):
     book = create_book(name="test_en_all", date="2025-01-01")
@@ -1202,11 +1422,12 @@ def test_reprocess_book_rejects_book_without_notification(
     dbsession.flush()
 
     with pytest.raises(ValueError):
-        reprocess_book(dbsession, book_id=book.id)
+        reprocess_book(dbsession, book_id=book.id, author_id=account.id)
 
 
 def test_reprocess_book_rejects_errored_notification(
     dbsession: OrmSession,
+    account: Account,
     create_book: Callable[..., Book],
     create_zimfarm_notification: Callable[..., ZimfarmNotification],
 ):
@@ -1222,7 +1443,7 @@ def test_reprocess_book_rejects_errored_notification(
     dbsession.flush()
 
     with pytest.raises(ValueError):
-        reprocess_book(dbsession, book_id=book.id)
+        reprocess_book(dbsession, book_id=book.id, author_id=account.id)
 
 
 @patch("cms_backend.db.book.get_zimcheck_errors")
@@ -1230,6 +1451,7 @@ def test_reprocess_book_moves_errored_quarantined_book_to_staging(
     mock_get_zimcheck_errors: MagicMock,  # noqa: ARG001
     dbsession: OrmSession,
     create_book: Callable[..., Book],
+    account: Account,
     create_book_location: Callable[..., BookLocation],
     create_title: Callable[..., Title],
     create_warehouse: Callable[..., Warehouse],
@@ -1291,7 +1513,7 @@ def test_reprocess_book_moves_errored_quarantined_book_to_staging(
         status="current",
     )
 
-    reprocessed = reprocess_book(dbsession, book_id=book.id)
+    reprocessed = reprocess_book(dbsession, book_id=book.id, author_id=account.id)
 
     assert reprocessed.id == book.id
     assert reprocessed.has_error is False

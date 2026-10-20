@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal, cast
 from uuid import UUID
 
+import pycountry
 from psycopg.errors import UniqueViolation
 from sqlalchemy import exists, select, update
 from sqlalchemy.exc import IntegrityError
@@ -12,14 +13,8 @@ from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
 from cms_backend.context import Context
+from cms_backend.db import book as db_book
 from cms_backend.db import count_from_stmt
-from cms_backend.db.book import (
-    delete_book,
-    process_book,
-    recover_book,
-    start_book_transition,
-    update_book_issues,
-)
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
@@ -675,14 +670,14 @@ def update_title(
                 book=book,
                 target_locations=target_locations,
             )
-            start_book_transition(book)
+            db_book.start_book_transition(book)
 
             book.events.append(
                 f"{getnow()}: locations updated due to title collection change"
             )
 
     for book in title.books:
-        update_book_issues(session, book)
+        db_book.update_book_issues(session, book)
 
     if name_changed and create_event:
         create_title_modified_event(
@@ -695,6 +690,86 @@ def update_title(
         session,
         title_id=title.id,
         accessible_collection_ids=accessible_collection_ids,
+    )
+
+
+def update_title_metadata_from_book(title: Title, book: Book):
+    """Update a title's metadata from book"""
+
+    title.title = book.zim_metadata["Title"]
+    title.creator = book.zim_metadata["Creator"]
+    title.publisher = book.zim_metadata["Publisher"]
+    title.description = book.zim_metadata["Description"]
+    title.language = book.zim_metadata["Language"]
+    title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
+    title.long_description = book.zim_metadata.get("LongDescription")
+    title.license = book.zim_metadata.get("License")
+    title.relation = book.zim_metadata.get("Relation")
+    title.source = book.zim_metadata.get("Source")
+
+
+def get_known_languages(language: str | None) -> list[str]:
+    languages: list[str] = []
+    if not language:
+        return languages
+    for lang_code in language.split(","):
+        if (
+            lang_code not in languages and pycountry.languages.get(alpha_3=lang_code)  # pyright: ignore[reportUnknownMemberType]
+        ):
+            languages.append(lang_code)
+    return languages
+
+
+def should_update_title_languages_from_book(
+    title: Title, book: Book, min_language_count: int
+) -> bool:
+    """Whether the title languages should be updated from the book.
+
+    This is the case when:
+    - the set of known languages is identical in book and title metadata
+      (only their order differs), or
+    - both book and title metadata have at least `min_language_count` known
+      languages.
+    """
+    book_languages = set(get_known_languages(book.zim_metadata.get("Language")))
+    title_languages = set(get_known_languages(title.language))
+
+    if book_languages and title_languages and book_languages == title_languages:
+        return True
+
+    return (
+        len(book_languages) >= min_language_count
+        and len(title_languages) >= min_language_count
+    )
+
+
+def update_title_languages_from_book(
+    session: OrmSession,
+    title: Title,
+    book: Book,
+    min_language_count: int,
+    *,
+    author_id: UUID,
+) -> Title:
+    """Update the title language from book when:
+    - set of languages is identical in book and title metadata (only order changed)
+    - number of languages is min_language_count or more in book and title metadata.
+    """
+    if not should_update_title_languages_from_book(title, book, min_language_count):
+        return title
+
+    language = ",".join(get_known_languages(book.zim_metadata.get("Language")))
+    if title.language == language:
+        return title
+
+    return update_title(
+        session,
+        title_identifier=title.name,
+        payload=TitleUpdateSchema(
+            language=language,
+            comment=f"Languages updated from book {book.id}",
+        ),
+        author_id=author_id,
     )
 
 
@@ -723,7 +798,7 @@ def archive_title(
     for book in title.books:
         with session.begin_nested():
             try:
-                delete_book(
+                db_book.delete_book(
                     session,
                     book_id=book.id,
                     accessible_collection_ids=accessible_collection_ids,
@@ -787,7 +862,7 @@ def restore_title(
     for book in title.books:
         with session.begin_nested():
             try:
-                recover_book(
+                db_book.recover_book(
                     session,
                     book.id,
                     accessible_collection_ids=accessible_collection_ids,
@@ -975,6 +1050,7 @@ def merge_titles(
     target_title_name: str,
     source_title_names: list[str],
     *,
+    author_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> None:
     """
@@ -1015,7 +1091,7 @@ def merge_titles(
         session.delete(source_title)
 
     for source_book in source_books:
-        process_book(session, source_book)
+        db_book.process_book(session, source_book, author_id=author_id)
 
     apply_retention_rules(session, target_title)
 
@@ -1052,7 +1128,7 @@ def delete_title_flavour(
         )
     ).all()
     for book_id in book_ids_to_delete:
-        delete_book(
+        db_book.delete_book(
             session,
             book_id=book_id,
             accessible_collection_ids=accessible_collection_ids,

@@ -77,7 +77,9 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
             notification.status = "bad_notification"
             return
 
-        account = get_account_by_username(session, username="maint-scripts")
+        account = get_account_by_username(
+            session, username=Context.mill_account_username
+        )
 
         if existing_book := get_book_or_none(session, notification.id):
             if existing_book.zimfarm_notification:
@@ -124,7 +126,7 @@ def process_notification(session: ORMSession, notification: ZimfarmNotification)
         notification.status = "processed"
 
         # Try to move book to staging
-        process_book(session, book)
+        process_book(session, book, author_id=account.id)
 
     except Exception as exc:
         notification.events.append(

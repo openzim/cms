@@ -29,7 +29,8 @@
         <div v-else>
           <p class="text-body-2 text-medium-emphasis mb-4">
             The following actions are needed to promote this book. Required actions are always
-            performed. You may uncheck optional actions to skip them.
+            performed. You may uncheck optional actions to skip them. Informational items are shown
+            for awareness and cannot be changed.
           </p>
 
           <v-expansion-panels variant="accordion" multiple>
@@ -494,6 +495,12 @@
             {{ action.requirement }}
           </v-chip>
         </div>
+        <p
+          v-if="action.requirement === 'information' && action.message"
+          class="text-body-2 text-medium-emphasis ml-8 mb-2"
+        >
+          {{ action.message }}
+        </p>
         <DiffViewer
           v-if="isDiffableAction(action.actionKind) && titleDiffs[action.index]?.length"
           :differences="titleDiffs[action.index]"
@@ -664,6 +671,7 @@ const selectedActionsForConfirm = computed(() => {
         kind: formatActionKind(action.kind),
         actionKind: action.kind,
         requirement: action.requirement,
+        message: action.message,
         index,
       }
     })

@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import construct_recipe_link
+from cms_backend.context import Context
 from cms_backend.db.book import (
     add_book_to_title,
     book_has_flavour_mismatch,
@@ -28,7 +29,9 @@ from cms_backend.db.flavour import (
 from cms_backend.db.models import Account, Book
 from cms_backend.db.title import (
     create_title,
+    get_known_languages,
     restore_title,
+    should_update_title_languages_from_book,
     update_title,
 )
 from cms_backend.roles import RoleEnum
@@ -86,6 +89,31 @@ def _get_update_title_metadata_action(
             },
             message="Update title metadata from book",
         )
+
+
+def _get_update_title_language_action(book: Book) -> BookPromotionAction | None:
+    """Inform that the title language will be updated automatically on promotion."""
+    if book.title is None:
+        return None
+
+    if not should_update_title_languages_from_book(
+        book.title, book, Context.min_languages_for_title_sync
+    ):
+        return None
+
+    language = ",".join(get_known_languages(book.zim_metadata.get("Language")))
+    if language == book.title.language:
+        return None
+
+    return BookPromotionAction(
+        kind="update_title_language",
+        requirement="information",
+        data={"language": language},
+        message=(
+            "The title language will be updated automatically from the book on "
+            f"promotion: '{book.title.language or ''}' -> '{language}'."
+        ),
+    )
 
 
 def _get_unknown_languages_action(book: Book) -> BookPromotionAction | None:
@@ -320,6 +348,9 @@ def get_book_promotion_actions(
     if action := _get_update_title_metadata_action(book, account):
         actions.append(action)
 
+    if action := _get_update_title_language_action(book):
+        actions.append(action)
+
     if action := _get_update_title_maturity_action(book):
         actions.append(action)
 
@@ -427,7 +458,7 @@ def _apply_create_title_action(
     # Set book location kind to prod so that when we re-process, it moves
     # to prod location despite any issues that may be computed
     book.location_kind = "prod"
-    add_book_to_title(session, book, title)
+    add_book_to_title(session, book, title, author_id=author_id)
 
 
 def apply_book_promotion_actions(
@@ -576,6 +607,7 @@ def apply_book_promotion_actions(
                 | "zimcheck_issues"
                 | "media_count"
                 | "article_count"
+                | "update_title_language"
             ):
                 pass
 
@@ -597,4 +629,6 @@ def apply_book_promotion_actions(
         if tf is not None:
             tf.last_book_added_at = getnow()
 
-    move_book_to_destination(session, book=book, destination="prod")
+    move_book_to_destination(
+        session, book=book, destination="prod", author_id=account.id
+    )

@@ -8,6 +8,7 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.account import create_account, get_account_by_username_or_none
+from cms_backend.db.exceptions import RecordAlreadyExistsError
 from cms_backend.roles import RoleEnum
 from cms_backend.schemas.models import AccountCreateSchema
 
@@ -36,22 +37,41 @@ def upgrade_db_schema():
     subprocess.check_output(args=["alembic", "upgrade", "head"], cwd=Context.base_dir)
 
 
-def create_initial_account():
-    with Session.begin() as session:
-        username = os.getenv("INIT_USERNAME", default="admin")
-        password = os.getenv("INIT_PASSWORD", default="admin_pass")
+def _create_account_if_not_exists(
+    *, username: str, role: RoleEnum, password: str | None = None
+) -> None:
+    try:
+        with Session.begin() as session:
+            account = get_account_by_username_or_none(session, username=username)
+            if account is not None:
+                logger.info(f"account {username} already exists")
+                return
 
-        account = get_account_by_username_or_none(session, username=username)
-        if account is None:
-            logger.info(f"creating initial account `{username}`")
+            logger.info(f"creating account `{username}`")
             create_account(
                 session=session,
                 request=AccountCreateSchema(
                     display_name=username,
                     username=username,
                     password=password,
-                    role=RoleEnum.ADMIN,
+                    role=role,
                 ),
             )
-        else:
-            logger.info(f"account {username} already exists")
+    except RecordAlreadyExistsError:
+        logger.info(f"account {username} already exists")
+
+
+def create_initial_account():
+    _create_account_if_not_exists(
+        username=os.getenv("INIT_USERNAME", default="admin"),
+        password=os.getenv("INIT_PASSWORD", default="admin_pass"),
+        role=RoleEnum.ADMIN,
+    )
+
+
+def create_mill_account():
+    """Create the technical account used by the mill if it does not exist."""
+    _create_account_if_not_exists(
+        username=Context.mill_account_username,
+        role=RoleEnum.ADMIN,
+    )

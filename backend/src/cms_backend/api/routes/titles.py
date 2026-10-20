@@ -143,11 +143,13 @@ def merge_titles(
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> JSONResponse:
     db_title.merge_titles(
         session,
         request.target,
         request.sources,
+        author_id=current_account.id,
         accessible_collection_ids=accessible_collection_ids,
     )
     return JSONResponse(
