@@ -8,44 +8,44 @@ authors = [
   { name = "Kiwix", email = "dev@kiwix.org" },
 ]
 keywords = ["healthcheck"]
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 description = "CMS HealthCheck API"
 license = {text = "GPL-3.0-or-later"}
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.15",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
 ]
 dependencies = [
-    "fastapi[all] == 0.115.2",
-    "pydantic == 2.11.4", # this is also a sub-dep of fastapi but we rely a lot on it
-    "SQLAlchemy == 2.0.41",
-    "aiohttp == 3.13.3",
+    "fastapi[all] == 0.153.0",
+    "pydantic == 2.14.1", # this is also a sub-dep of fastapi but we rely a lot on it
+    "SQLAlchemy == 2.1.5",
+    "aiohttp == 3.14.5",
     "humanfriendly == 10.0",
     "jinja2 == 3.1.6",
-    "psycopg[binary,pool] == 3.2.9",
+    "psycopg[binary,pool] == 3.3.6",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 scripts = [
-    "invoke == 2.2.0",
+    "invoke == 3.0.3",
 ]
 qa = [
-    "ruff==0.15.12",
-    "pyright==1.1.409",
-    "types-humanfriendly == 10.0.0"
+    "ruff==0.17.1",
+    "pyright==1.1.414",
+    "types-humanfriendly == 10.0.1.20250319"
 ]
 test = [
-    "coverage == 7.8.0",
-    "httpx == 0.28.0",
-    "pytest == 8.3.5",
-    "pytest-asyncio == 0.26.0",
-    "pytest-env == 1.1.5",
-    "Faker==37.3.0",
+    "coverage == 7.16.2",
+    "httpx == 0.28.1",
+    "pytest == 9.1.1",
+    "pytest-asyncio == 1.4.0",
+    "pytest-env == 1.8.1",
+    "Faker==40.43.0",
 ]
 dev = [
-    "pre-commit == 4.2.0",
+    "pre-commit == 4.7.0",
     "healthcheck[scripts]",
     "healthcheck[qa]",
     "healthcheck[test]",
@@ -95,7 +95,7 @@ fix-all = "inv fix-all --args '{args}'"
 
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py315"
 src = ["src"]
 
 [tool.ruff.lint]
@@ -192,7 +192,7 @@ ban-relative-imports = "all"
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
 [tool.pytest.ini_options]
-minversion = "8.3.5"
+minversion = "9.1.1"
 testpaths = ["tests"]
 pythonpath = [".", "src"]
 addopts = "--strict-markers"
@@ -222,5 +222,5 @@ exclude_lines = [
 include = ["src", "tests", "tasks.py"]
 exclude = [".env/**", ".venv/**"]
 extraPaths = ["src"]
-pythonVersion = "3.13"
+pythonVersion = "3.15"
 typeCheckingMode="strict"

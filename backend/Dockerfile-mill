@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.15-slim-trixie
 LABEL org.opencontainers.image.source=https://github.com/openzim/cms
 
 ENV ALEMBIC_UPGRADE_HEAD_ON_START=true

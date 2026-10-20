@@ -19,7 +19,7 @@
           :rules="[(v: string) => !!v || 'Target title is required']"
         >
           <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps" :title="item.value" />
+            <v-list-item v-bind="itemProps" :title="item" />
           </template>
         </v-select>
       </v-card-text>

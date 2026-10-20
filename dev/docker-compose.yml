@@ -1,6 +1,6 @@
 services:
   postgresdb:
-    image: postgres:18.0-trixie
+    image: postgres:18.6-trixie
     container_name: cms_postgresdb
     ports:
       - 127.0.0.1:37602:5432
@@ -24,7 +24,7 @@ services:
     container_name: cms_api
     volumes:
       - ../backend/maint-scripts:/app/maint-scripts
-      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ../backend/src/cms_backend:/usr/local/lib/python3.15/site-packages/cms_backend
     ports:
       - 127.0.0.1:37601:80
     healthcheck:
@@ -81,7 +81,7 @@ services:
       - "*"
       - --reload
       - --reload-dir
-      - /usr/local/lib/python3.13/site-packages/cms_backend
+      - /usr/local/lib/python3.15/site-packages/cms_backend
     depends_on:
       postgresdb:
         condition: service_healthy
@@ -92,7 +92,7 @@ services:
     container_name: cms_mill
     volumes:
       - ../backend/maint-scripts:/app/maint-scripts
-      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ../backend/src/cms_backend:/usr/local/lib/python3.15/site-packages/cms_backend
     environment:
       DEBUG: 1
       DATABASE_URL: postgresql+psycopg://cms:cmspass@postgresdb:5432/cms
@@ -119,7 +119,7 @@ services:
     container_name: cms_shuttle
     volumes:
       - ../backend/maint-scripts:/app/maint-scripts
-      - ../backend/src/cms_backend:/usr/local/lib/python3.13/site-packages/cms_backend
+      - ../backend/src/cms_backend:/usr/local/lib/python3.15/site-packages/cms_backend
       - ./scripts:/scripts
       - ./warehouses:/warehouses
       - ./scripts:/scripts
@@ -211,7 +211,7 @@ services:
       CMS_PASSWORD: cms_pass
       CMS_API_URL: http://api/v1
     volumes:
-      - ../healthcheck/src/healthcheck:/usr/local/lib/python3.13/site-packages/healthcheck
+      - ../healthcheck/src/healthcheck:/usr/local/lib/python3.15/site-packages/healthcheck
     command:
       - uvicorn
       - healthcheck.main:app
@@ -224,7 +224,7 @@ services:
       - "*"
       - --reload
       - --reload-dir
-      - /usr/local/lib/python3.13/site-packages/healthcheck
+      - /usr/local/lib/python3.15/site-packages/healthcheck
     profiles:
       - healthcheck
 
@@ -258,7 +258,7 @@ services:
     entrypoint: ["/bin/sh", "/setup-buckets.sh"]
 
   zimfarm-db:
-    image: postgres:18.0-trixie
+    image: postgres:18.6-trixie
     container_name: zimfarm-postgresdb
     ports:
       - 127.0.0.1:37607:5432

@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-merge-conflict
       - id: trailing-whitespace
@@ -8,13 +8,13 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.17.1
     hooks:
       - id: ruff-check
       - id: ruff-format
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.409
+    rev: v1.1.414
     hooks:
       - id: pyright
         name: pyright (system)
@@ -32,18 +32,18 @@ repos:
         entry: prettier --write --ignore-unknown
         language: node
         additional_dependencies:
-          - prettier@3.5.3
+          - prettier@3.9.10
         files: frontend\/.*$ # files in frontend folder
         minimum_pre_commit_version: "2.9.2"
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.35.0
+    rev: v10.13.0
     hooks:
       - id: eslint
         additional_dependencies:
-          - eslint@9.29.0
-          - eslint-plugin-vue@10.2.0
-          - jiti@2.4.2
+          - eslint@10.13.0
+          - eslint-plugin-vue@10.11.1
+          - jiti@2.7.0
         types: [file]
         files: frontend\/src\/.*(?:\.[jt]sx?|\.vue)$ # *.js, *.jsx, *.ts, *.tsx, *.vue in frontend/src folder
         args:

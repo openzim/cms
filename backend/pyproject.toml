@@ -8,63 +8,63 @@ authors = [
   { name = "Kiwix", email = "dev@kiwix.org" },
 ]
 keywords = ["cms"]
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 description = "CMS Backend API"
 license = {text = "GPL-3.0-or-later"}
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.15",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
 ]
 dependencies = [
-    "alembic == 1.18.4",
-    "pydantic == 2.11.4", # this is also a sub-dep of fastapi but we rely a lot on it
-    "SQLAlchemy == 2.0.41",
-    "pymongo == 4.13.0",
-    "psycopg[binary,pool] == 3.2.11",
-    "regex == 2025.10.23",
+    "alembic == 1.20.0",
+    "pydantic == 2.14.1", # this is also a sub-dep of fastapi but we rely a lot on it
+    "SQLAlchemy == 2.1.5",
+    "pymongo == 4.19.0",
+    "psycopg[binary,pool] == 3.3.6",
+    "regex == 2026.9.29",
     "humanfriendly == 10.0",
-    "Werkzeug == 3.1.5",
-    "xxhash == 3.7.0",
+    "Werkzeug == 3.1.9",
+    "xxhash == 4.0.2",
     "pycountry == 26.2.16",
     "requests == 2.34.2",
     "kiwixstorage == 0.10.1",
-    "numpy == 2.5.3",
-    "pillow == 12.3.0",
+    "numpy == 2.5.4",
+    "pillow == 13.0.0",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 api = [
-    "fastapi[all] == 0.115.2",
-    "PyJWT == 2.11.0",
-    "cryptography == 46.0.4",
+    "fastapi[all] == 0.153.0",
+    "PyJWT == 2.15.1",
+    "cryptography == 50.0.2",
 ]
 shuttle = []
 scripts = [
-    "invoke == 2.2.0",
+    "invoke == 3.0.3",
 ]
 qa = [
-    "ruff==0.15.12",
-    "pyright==1.1.400",
-    "types-humanfriendly == 10.0.0"
+    "ruff==0.17.1",
+    "pyright==1.1.414",
+    "types-humanfriendly == 10.0.1.20250319"
 ]
 test = [
-    "coverage == 7.8.0",
-    "httpx == 0.28.0",
-    "pytest == 8.3.5",
-    "pytest-asyncio == 0.26.0",
-    "pytest-env == 1.1.5",
-    "Faker==37.3.0",
+    "coverage == 7.16.2",
+    "httpx == 0.28.1",
+    "pytest == 9.1.1",
+    "pytest-asyncio == 1.4.0",
+    "pytest-env == 1.8.1",
+    "Faker==40.43.0",
     "python-dateutil==2.9.0.post0",
     "cms_backend[api]",
     "cms_backend[shuttle]",
 ]
 maint-scripts = [
-    "libzim == 3.8.0",
+    "libzim == 3.13.1",
 ]
 dev = [
-    "pre-commit == 4.2.0",
+    "pre-commit == 4.7.0",
     "cms_backend[api]",
     "cms_backend[scripts]",
     "cms_backend[test]",
@@ -124,7 +124,7 @@ fix-all = "inv fix-all --args '{args}'"
 
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py315"
 src = ["src"]
 
 [tool.ruff.lint]
@@ -224,7 +224,7 @@ ban-relative-imports = "all"
 "src/cms_backend/periodic-scheduler.py" = ["N999"]
 
 [tool.pytest.ini_options]
-minversion = "8.3.5"
+minversion = "9.1.1"
 testpaths = ["tests"]
 pythonpath = [".", "src"]
 addopts = "--strict-markers"
@@ -253,5 +253,5 @@ exclude_lines = [
 include = ["src", "tests", "tasks.py"]
 exclude = [".env/**", ".venv/**"]
 extraPaths = ["src"]
-pythonVersion = "3.13"
+pythonVersion = "3.15"
 typeCheckingMode="strict"
