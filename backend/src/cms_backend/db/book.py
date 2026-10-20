@@ -60,6 +60,49 @@ from cms_backend.utils.zim import (
 
 NOPIC_MEDIA_IGNORE_THRESHOLD = 1000
 
+CountThresholdTier = tuple[int | None, float, float]
+CountThresholdTiers = tuple[CountThresholdTier, ...]
+
+# Allowed relative change by previous count, as
+# (exclusive upper bound, allowed increase, allowed decrease).
+# The last tier has no upper bound.
+ARTICLE_COUNT_THRESHOLD_TIERS: CountThresholdTiers = (
+    (1_000, 1.0, 0.5),
+    (10_000, 0.5, 0.3),
+    (50_000, 0.25, 0.15),
+    (200_000, 0.15, 0.1),
+    (None, 0.1, 0.05),
+)
+MEDIA_COUNT_THRESHOLD_TIERS: CountThresholdTiers = (
+    (500, 1.0, 0.5),
+    (5_000, 0.75, 0.4),
+    (20_000, 0.5, 0.25),
+    (100_000, 0.3, 0.2),
+    (None, 0.2, 0.15),
+)
+ARTICLE_COUNT_MIN_ABSOLUTE_CHANGE = 50
+MEDIA_COUNT_MIN_ABSOLUTE_CHANGE = 25
+
+
+def _get_collection_count_threshold(
+    collection_thresholds: Sequence[float | None],
+) -> float | None:
+    explicit_thresholds = [
+        threshold for threshold in collection_thresholds if threshold is not None
+    ]
+    return min(explicit_thresholds) if explicit_thresholds else None
+
+
+def _get_adaptive_count_threshold(
+    previous_count: int, *, tiers: CountThresholdTiers, increase: bool
+) -> float:
+    """Return the adaptive default threshold for a count."""
+    for upper_bound, increase_threshold, decrease_threshold in tiers:
+        if upper_bound is None or previous_count < upper_bound:
+            return increase_threshold if increase else decrease_threshold
+
+    raise ValueError("No count threshold tier matched")
+
 
 def get_book_or_none(
     session: OrmSession,
@@ -817,37 +860,49 @@ def get_book_article_count_issues(
 
     if book.article_count == previous_book.article_count:
         return []
-    elif book.article_count > previous_book.article_count:
-        collection_article_count_change_threshold = min(
-            [
-                Context.article_count_increase_threshold
-                if tc.collection.article_count_increase_threshold is None
-                else tc.collection.article_count_increase_threshold
-                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-            ],
-            default=Context.article_count_increase_threshold,
-        )
-    else:
-        collection_article_count_change_threshold = min(
-            [
-                Context.article_count_decrease_threshold
-                if tc.collection.article_count_decrease_threshold is None
+
+    increase = book.article_count > previous_book.article_count
+    collection_article_count_change_threshold = _get_collection_count_threshold(
+        [
+            (
+                tc.collection.article_count_increase_threshold
+                if increase
                 else tc.collection.article_count_decrease_threshold
-                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-            ],
-            default=Context.article_count_decrease_threshold,
+            )
+            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+        ]
+    )
+    uses_adaptive_threshold = collection_article_count_change_threshold is None
+    if collection_article_count_change_threshold is None:
+        collection_article_count_change_threshold = _get_adaptive_count_threshold(
+            previous_book.article_count,
+            tiers=ARTICLE_COUNT_THRESHOLD_TIERS,
+            increase=increase,
         )
 
-    try:
-        article_count_diff = (
-            abs(book.article_count - previous_book.article_count)
-        ) / previous_book.article_count
-    except ZeroDivisionError:
+    article_count_delta = abs(book.article_count - previous_book.article_count)
+    if (
+        uses_adaptive_threshold
+        and article_count_delta <= ARTICLE_COUNT_MIN_ABSOLUTE_CHANGE
+    ):
+        return []
+
+    if previous_book.article_count == 0:
         # At this point, previous book had an article count of zero whereas book
         # does not
         article_count_diff = 1.0
+        exceeds_threshold = (
+            True
+            if uses_adaptive_threshold
+            else article_count_diff > collection_article_count_change_threshold
+        )
+    else:
+        article_count_diff = article_count_delta / previous_book.article_count
+        exceeds_threshold = (
+            article_count_diff > collection_article_count_change_threshold
+        )
 
-    if article_count_diff > collection_article_count_change_threshold:
+    if exceeds_threshold:
         return [
             EntryCountIssue(
                 previous_book_id=previous_book.id,
@@ -870,36 +925,43 @@ def get_book_media_count_issues(
 
     if book.flavour == "nopic" and book.media_count < NOPIC_MEDIA_IGNORE_THRESHOLD:
         return []
-    elif book.media_count > previous_book.media_count:
-        collection_media_count_change_threshold = min(
-            [
-                Context.media_count_increase_threshold
-                if tc.collection.media_count_increase_threshold is None
-                else tc.collection.media_count_increase_threshold
-                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-            ],
-            default=Context.media_count_increase_threshold,
-        )
-    else:
-        collection_media_count_change_threshold = min(
-            [
-                Context.media_count_decrease_threshold
-                if tc.collection.media_count_decrease_threshold is None
+
+    increase = book.media_count > previous_book.media_count
+    collection_media_count_change_threshold = _get_collection_count_threshold(
+        [
+            (
+                tc.collection.media_count_increase_threshold
+                if increase
                 else tc.collection.media_count_decrease_threshold
-                for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
-            ],
-            default=Context.media_count_decrease_threshold,
+            )
+            for tc in book.title.collections  # pyright: ignore[reportOptionalMemberAccess]
+        ]
+    )
+    uses_adaptive_threshold = collection_media_count_change_threshold is None
+    if collection_media_count_change_threshold is None:
+        collection_media_count_change_threshold = _get_adaptive_count_threshold(
+            previous_book.media_count,
+            tiers=MEDIA_COUNT_THRESHOLD_TIERS,
+            increase=increase,
         )
 
-    try:
-        media_count_diff = (
-            abs(book.media_count - previous_book.media_count)
-        ) / previous_book.media_count
-    except ZeroDivisionError:
+    media_count_delta = abs(book.media_count - previous_book.media_count)
+    if uses_adaptive_threshold and media_count_delta <= MEDIA_COUNT_MIN_ABSOLUTE_CHANGE:
+        return []
+
+    if previous_book.media_count == 0:
         # At this point, previous book had a media count of zero whereas book does not
         media_count_diff = 1.0
+        exceeds_threshold = (
+            True
+            if uses_adaptive_threshold
+            else media_count_diff > collection_media_count_change_threshold
+        )
+    else:
+        media_count_diff = media_count_delta / previous_book.media_count
+        exceeds_threshold = media_count_diff > collection_media_count_change_threshold
 
-    if media_count_diff > collection_media_count_change_threshold:
+    if exceeds_threshold:
         return [
             EntryCountIssue(
                 previous_book_id=previous_book.id,
