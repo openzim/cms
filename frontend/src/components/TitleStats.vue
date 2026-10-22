@@ -81,7 +81,18 @@ const loadStats = async () => {
 
 watch(() => props.titleId, loadStats, { immediate: true })
 
-const flavourNames = computed(() => flavours.value.map((flavour) => flavour.flavour))
+const flavourNames = computed(() => [...new Set(flavours.value.map((flavour) => flavour.flavour))])
+
+const EMPTY_FLAVOUR_KEY = '__empty__'
+const EMPTY_FLAVOUR_LABEL = 'Empty'
+
+const flavourColumns = computed(() =>
+  flavourNames.value.map((flavour) => ({
+    flavour,
+    key: flavour === '' ? EMPTY_FLAVOUR_KEY : flavour,
+    title: flavour === '' ? EMPTY_FLAVOUR_LABEL : flavour,
+  })),
+)
 
 const currentMonth = computed(() => DateTime.now().toFormat('yyyy-MM'))
 
@@ -102,17 +113,23 @@ const monthlyDownloads = computed(() => {
   return months
 })
 
-const headers = computed(() => [
-  { title: 'Month', key: 'month' },
-  {
-    title: 'Downloads',
-    key: 'downloads',
-    children: [
-      { title: 'Total', key: 'total' },
-      ...flavourNames.value.map((flavour) => ({ title: flavour, key: flavour })),
-    ],
-  },
-])
+const headers = computed(() => {
+  const baseHeaders = [
+    { title: 'Month', key: 'month' },
+    { title: 'Total Downloads', key: 'total' },
+  ]
+  if (flavourColumns.value.length <= 1) {
+    return baseHeaders
+  }
+  return [
+    ...baseHeaders,
+    {
+      title: 'Downloads by Flavour',
+      key: 'flavours',
+      children: flavourColumns.value.map(({ key, title }) => ({ title, key })),
+    },
+  ]
+})
 
 const items = computed(() =>
   Array.from(monthlyDownloads.value.entries())
@@ -123,9 +140,9 @@ const items = computed(() =>
         isCurrentMonth: month === currentMonth.value,
       }
       let total = 0
-      for (const flavour of flavourNames.value) {
-        const count = counts.get(flavour) ?? 0
-        row[flavour] = count
+      for (const column of flavourColumns.value) {
+        const count = counts.get(column.flavour) ?? 0
+        row[column.key] = count
         total += count
       }
       row.total = total
