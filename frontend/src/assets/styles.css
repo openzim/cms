@@ -1,3 +1,32 @@
+@layer vuetify-core.reset {
+  ul,
+  ol,
+  figure,
+  details,
+  summary {
+    padding: 0;
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p {
+    margin: 0;
+  }
+}
+
+/* Vuetify 4 no longer uppercases button text by default. Restore the previous
+   behavior in the component layer so `text-none` utilities still take precedence. */
+@layer vuetify-components {
+  .v-btn.v-btn {
+    text-transform: uppercase;
+  }
+}
+
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',

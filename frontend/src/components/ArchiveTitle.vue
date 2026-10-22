@@ -5,7 +5,7 @@
     class="mb-4 mx-auto"
     width="auto"
   >
-    <div class="text-body-1 mb-2">
+    <div class="text-body-large mb-2">
       <template v-if="isArchived">
         You are about to <strong>restore</strong> title <code>{{ name }}</code
         >. This will make it available again for normal use.
@@ -18,9 +18,9 @@
     </div>
 
     <v-form @submit.prevent="confirmAction">
-      <v-row dense>
+      <v-row density="compact">
         <v-col cols="12">
-          <span class="text-body-2"> Please type the title name to confirm: </span>
+          <span class="text-body-medium"> Please type the title name to confirm: </span>
         </v-col>
 
         <v-col cols="12" sm="6">
@@ -63,7 +63,7 @@
     >
       <template #content>
         <div>
-          <p class="text-body-2 text-medium-emphasis">
+          <p class="text-body-medium text-medium-emphasis">
             {{
               isArchived
                 ? `You are about to restore title '${name}'. This will make it available again for normal use.`

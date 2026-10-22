@@ -2,7 +2,7 @@
   <v-dialog v-model="dialogModel" max-width="800" persistent>
     <v-card>
       <v-card-title class="d-flex justify-space-between align-center">
-        <span class="text-h5">Select Title</span>
+        <span class="text-headline-small">Select Title</span>
         <v-btn icon="mdi-close" variant="text" @click="closeDialog" />
       </v-card-title>
 
@@ -29,7 +29,7 @@
         <v-alert v-if="selectedTitleData" type="info" variant="tonal" class="mt-4">
           <div class="font-weight-bold mb-1">Selected Title</div>
           <div>{{ selectedTitleData.name }}</div>
-          <div class="mt-2 text-caption">
+          <div class="mt-2 text-body-small">
             This will add the book <strong>{{ bookName }}</strong> to the selected title.
           </div>
         </v-alert>
@@ -55,7 +55,7 @@
         <v-alert v-if="selectedTitleData" type="info" variant="tonal" class="mt-4">
           <div class="font-weight-bold mb-1">Selected Title</div>
           <div>{{ selectedTitleData.name }}</div>
-          <div class="mt-2 text-caption">
+          <div class="mt-2 text-body-small">
             This will add the book <strong>{{ bookName }}</strong> to the selected title.
           </div>
         </v-alert>

@@ -21,7 +21,7 @@
         <template #loading>
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
-            <div class="mt-4 text-body-1">{{ loadingText || 'Fetching title uploads...' }}</div>
+            <div class="mt-4 text-body-large">{{ loadingText || 'Fetching title uploads...' }}</div>
           </div>
         </template>
 
@@ -55,7 +55,7 @@
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="large" class="mb-2">mdi-clipboard-text-clock</v-icon>
-            <div class="text-body-1">No uploads found</div>
+            <div class="text-body-large">No uploads found</div>
           </div>
         </template>
       </v-data-table-server>

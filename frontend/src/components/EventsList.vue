@@ -12,7 +12,7 @@
       style="max-height: 400px"
     >
       <v-list-item v-for="(event, index) in events" :key="index" class="px-3 py-1">
-        <v-list-item-title class="text-body-2 text-wrap">
+        <v-list-item-title class="text-body-medium text-wrap">
           {{ event }}
         </v-list-item-title>
       </v-list-item>
@@ -64,6 +64,6 @@ const copyToClipboard = async (text: string) => {
 
 <style scoped>
 .striped-list :deep(.v-list-item:nth-child(even)) {
-  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  background-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 5%, transparent);
 }
 </style>

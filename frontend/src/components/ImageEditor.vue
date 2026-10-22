@@ -83,6 +83,6 @@ const handleFileChange = async (event: Event) => {
 <style scoped>
 .drag-over :deep(.v-field) {
   border: 2px dashed rgb(var(--v-theme-primary));
-  background-color: rgba(var(--v-theme-primary), 0.05);
+  background-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 5%, transparent);
 }
 </style>

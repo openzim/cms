@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="label" class="text-caption text-grey-darken-1 mb-1">
+    <div v-if="label" class="text-body-small text-grey-darken-1 mb-1">
       {{ label }}
     </div>
     <!-- Drop Zone / Preview Container -->
@@ -36,10 +36,10 @@
         style="pointer-events: none"
       >
         <v-icon size="48" color="grey-lighten-1">mdi-cloud-upload</v-icon>
-        <p class="text-body-1 text-grey-darken-1 mt-3 mb-0 text-center">
+        <p class="text-body-large text-grey-darken-1 mt-3 mb-0 text-center">
           Drag & drop an image here
         </p>
-        <p class="text-body-2 text-grey mt-2 mb-0 text-center">
+        <p class="text-body-medium text-grey mt-2 mb-0 text-center">
           or click to browse, or paste (Ctrl+V)
         </p>
       </div>
@@ -54,7 +54,7 @@
           <!-- Loading Overlay -->
           <div v-if="loading" class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate color="primary" size="48" />
-            <p class="text-body-2 mt-3">Loading image...</p>
+            <p class="text-body-medium mt-3">Loading image...</p>
           </div>
 
           <!-- Image/Cropper -->
@@ -79,7 +79,7 @@
             />
             <div
               v-if="dimensionsText"
-              class="position-absolute text-caption px-2 py-1 rounded"
+              class="position-absolute text-body-small px-2 py-1 rounded"
               style="
                 bottom: 8px;
                 right: 8px;
@@ -192,15 +192,15 @@
       v-if="description || (showPreview && fileSizeText)"
       class="d-flex align-center justify-space-between mt-2"
     >
-      <span v-if="description" class="text-caption text-grey">{{ description }}</span>
+      <span v-if="description" class="text-body-small text-grey">{{ description }}</span>
       <span v-else />
-      <span v-if="showPreview && fileSizeText" class="text-caption text-grey-darken-1">{{
+      <span v-if="showPreview && fileSizeText" class="text-body-small text-grey-darken-1">{{
         fileSizeText
       }}</span>
     </div>
 
     <!-- Error Message -->
-    <div v-if="errorMessage" class="text-error text-caption mt-2">
+    <div v-if="errorMessage" class="text-error text-body-small mt-2">
       <v-icon size="small" class="mr-1">mdi-alert-circle</v-icon>
       {{ errorMessage }}
     </div>

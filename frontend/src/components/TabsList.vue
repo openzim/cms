@@ -6,7 +6,7 @@
         v-for="tabOption in tabOptions"
         :key="tabOption.value"
         :value="tabOption.value"
-        class="text-none text-subtitle-2"
+        class="text-none text-title-small"
         @click="$emit('tab-changed', tabOption.value)"
       >
         {{ tabOption.label }}

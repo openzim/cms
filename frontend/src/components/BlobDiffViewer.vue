@@ -6,7 +6,7 @@
         <div class="image-comparison">
           <v-row no-gutters>
             <v-col cols="6" class="pa-4 border-right">
-              <div class="text-caption text-medium-emphasis mb-2">Previous</div>
+              <div class="text-body-small text-medium-emphasis mb-2">Previous</div>
               <IllustrationPreview
                 :illustration="oldBlobContent"
                 width="100%"
@@ -16,13 +16,13 @@
                 <template #empty>
                   <div class="pa-4 text-center text-medium-emphasis">
                     <v-icon size="large" class="mb-2">mdi-image-off</v-icon>
-                    <div class="text-caption">No previous image/illustration</div>
+                    <div class="text-body-small">No previous image/illustration</div>
                   </div>
                 </template>
               </IllustrationPreview>
             </v-col>
             <v-col cols="6" class="pa-4">
-              <div class="text-caption text-medium-emphasis mb-2">Current</div>
+              <div class="text-body-small text-medium-emphasis mb-2">Current</div>
               <IllustrationPreview
                 :illustration="newBlobContent"
                 width="100%"
@@ -32,7 +32,7 @@
                 <template #empty>
                   <div class="pa-4 text-center text-medium-emphasis">
                     <v-icon size="large" class="mb-2">mdi-image-off</v-icon>
-                    <div class="text-caption">No current image/illustration (removed)</div>
+                    <div class="text-body-small">No current image/illustration (removed)</div>
                   </div>
                 </template>
               </IllustrationPreview>

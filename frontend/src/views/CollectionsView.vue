@@ -2,7 +2,7 @@
   <div>
     <v-card class="mb-4" flat>
       <v-card-text>
-        <v-row align="center">
+        <v-row class="align-center">
           <v-col cols="12" sm="4">
             <v-text-field
               v-model="searchCollection"

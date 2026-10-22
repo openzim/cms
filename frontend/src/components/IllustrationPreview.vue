@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex flex-column flex-grow-1">
     <v-img v-if="src" v-bind="$attrs" :src="src" :width="width" :alt="alt" class="rounded border" />
-    <span v-if="sizeText" class="text-caption text-grey-darken-1 mt-1">{{ sizeText }}</span>
+    <span v-if="sizeText" class="text-body-small text-grey-darken-1 mt-1">{{ sizeText }}</span>
     <slot v-else name="empty">
       <strong v-if="emptyText">{{ emptyText }}</strong>
     </slot>

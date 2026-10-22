@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="d-flex align-center justify-space-between mb-4">
-      <h3 class="text-h6">Collections</h3>
+      <h3 class="text-title-large">Collections</h3>
       <v-btn
         v-if="!disabled"
         color="primary"
@@ -21,7 +21,7 @@
 
     <div v-for="(ct, index) in modelValue" :key="index" class="mb-4 pa-3 border rounded">
       <div class="d-flex align-center mb-2">
-        <span class="text-subtitle-2 flex-grow-1">Collection #{{ Number(index) + 1 }}</span>
+        <span class="text-title-small flex-grow-1">Collection #{{ Number(index) + 1 }}</span>
         <v-btn
           v-if="!disabled"
           icon="mdi-delete"
@@ -129,6 +129,6 @@ function handleCollectionChange(index: number) {
 
 <style scoped>
 .border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 12%, transparent);
 }
 </style>

@@ -1,14 +1,14 @@
 <template>
   <v-container class="py-8">
-    <v-row justify="center">
+    <v-row class="justify-center">
       <v-col cols="12" md="10" lg="8">
         <v-card class="pa-6" elevation="2">
           <v-card-title class="d-flex align-center mb-4">
-            <h2 class="text-h4 font-weight-bold">Support Kiwix</h2>
+            <h2 class="text-headline-large font-weight-bold">Support Kiwix</h2>
             <img src="/assets/logo.svg" width="32" height="32" class="ml-2" alt="CMS Logo" />
           </v-card-title>
 
-          <v-card-text class="text-body-1">
+          <v-card-text class="text-body-large">
             <p class="mb-4">
               CMS is
               <a href="https://kiwix.org" target="_blank" class="text-primary text-decoration-none">
@@ -34,7 +34,7 @@
             </p>
 
             <v-card variant="outlined" class="mb-4">
-              <v-card-title class="text-h6">
+              <v-card-title class="text-title-large">
                 <v-icon class="mr-2">mdi-heart</v-icon>
                 Support with Donations
               </v-card-title>

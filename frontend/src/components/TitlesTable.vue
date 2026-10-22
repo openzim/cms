@@ -57,7 +57,7 @@
         <template #loading>
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
-            <div class="mt-4 text-body-1">{{ loadingText || 'Fetching titles...' }}</div>
+            <div class="mt-4 text-body-large">{{ loadingText || 'Fetching titles...' }}</div>
           </div>
         </template>
 
@@ -103,7 +103,7 @@
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="x-large" class="mb-2">mdi-format-list-bulleted</v-icon>
-            <div class="text-h6 text-grey-darken-1 mb-2">No titles found</div>
+            <div class="text-title-large text-grey-darken-1 mb-2">No titles found</div>
           </div>
         </template>
       </v-data-table-server>
@@ -227,7 +227,7 @@ function onRowClick(event: Event, { item }: { item: TitleLight }) {
 }
 
 :deep(.selected-row td) {
-  background-color: rgba(var(--v-theme-primary), 0.1) !important;
+  background-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 10%, transparent) !important;
 }
 
 :deep(.selected-row td:first-child) {
@@ -235,6 +235,6 @@ function onRowClick(event: Event, { item }: { item: TitleLight }) {
 }
 
 :deep(.selected-row:hover td) {
-  background-color: rgba(var(--v-theme-primary), 0.16) !important;
+  background-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 16%, transparent) !important;
 }
 </style>

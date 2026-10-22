@@ -1,7 +1,7 @@
 <template>
   <v-card elevation="2" class="border">
     <div class="d-flex flex-column align-start pa-2">
-      <div class="text-subtitle-1 font-weight-medium">
+      <div class="text-body-large font-weight-medium">
         {{ flavour.flavour === '' ? 'Empty' : flavour.flavour }}
       </div>
 
@@ -53,6 +53,6 @@ defineProps<Props>()
 
 <style scoped>
 .border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 12%, transparent);
 }
 </style>

@@ -1,10 +1,10 @@
 <template>
   <v-card flat variant="outlined">
     <v-card-text class="pa-3">
-      <v-row class="ga-3 px-3">
+      <v-row gap="12" class="px-3">
         <v-col>
           <v-icon color="brown-darken-4" size="large" class="mr-2"> mdi-alert-outline </v-icon>
-          <span class="text-body-2">
+          <span class="text-body-medium">
             <span class="font-weight-medium">
               {{ label }} changed beyond {{ formatPercent(issue.alert_threshold) }} threshold
             </span>
@@ -12,12 +12,12 @@
         </v-col>
       </v-row>
 
-      <v-row class="ga-3 px-3">
+      <v-row gap="12" class="px-3">
         <!-- Previous book count -->
         <v-col class="bg-grey-lighten-5 pa-3 rounded">
           <div class="d-flex flex-column">
-            <span class="text-caption text-medium-emphasis mb-1">Previous book</span>
-            <span class="text-h6 font-weight-bold">
+            <span class="text-body-small text-medium-emphasis mb-1">Previous book</span>
+            <span class="text-title-large font-weight-bold">
               {{ issue.previous_book_count.toLocaleString() }}
             </span>
           </div>
@@ -25,8 +25,8 @@
 
         <v-col class="bg-grey-lighten-5 pa-3 rounded">
           <div class="d-flex flex-column">
-            <span class="text-caption text-medium-emphasis mb-1">Current book</span>
-            <span class="text-h6 font-weight-bold">
+            <span class="text-body-small text-medium-emphasis mb-1">Current book</span>
+            <span class="text-title-large font-weight-bold">
               {{ issue.current_book_count.toLocaleString() }}
             </span>
           </div>
@@ -35,17 +35,17 @@
         <!-- Change summary -->
         <v-col class="bg-orange-lighten-4 pa-3 rounded text-brown-darken-4">
           <div class="d-flex flex-column">
-            <span class="text-caption text-medium-emphasis mb-1">Change</span>
-            <span class="text-h6 font-weight-bold">
+            <span class="text-body-small text-medium-emphasis mb-1">Change</span>
+            <span class="text-title-large font-weight-bold">
               {{ signedDelta }} ({{ formatSignedPercent(issue.change_ratio) }})
             </span>
           </div>
         </v-col>
       </v-row>
 
-      <v-row class="ga-3 px-3">
+      <v-row gap="12" class="px-3">
         <v-col>
-          <span class="text-caption text-medium-emphasis"
+          <span class="text-body-small text-medium-emphasis"
             >Alert threshold: {{ formatPercent(issue.alert_threshold) }} ∙ only fires when current
             count differs from previous book count by
             {{ formatPercent(issue.alert_threshold) }} count.</span
