@@ -15,8 +15,10 @@ from cms_backend.db.book import (
     backup_book,
     book_has_flavour_mismatch,
     book_has_recipe_issue,
+    get_book_article_count_issues,
     get_book_history,
     get_book_history_entry_or_none,
+    get_book_media_count_issues,
     get_book_metadata_issues,
     get_differing_metadata_keys,
     get_zimcheck_errors,
@@ -942,6 +944,134 @@ def test_update_book_issues_item_count_issues(
     dbsession.flush()
     update_book_issues(dbsession, book)
     assert set(book.issues) == expected_issues
+
+
+@pytest.mark.parametrize(
+    "previous_count,current_count,expected",
+    [
+        # Under 1,000: 100% increase, 50% decrease
+        (500, 1_000, False),
+        (500, 1_001, True),
+        (500, 250, False),
+        (500, 249, True),
+        # 1,000-9,999: 50% increase, 30% decrease
+        (5_000, 7_500, False),
+        (5_000, 7_501, True),
+        (5_000, 3_500, False),
+        (5_000, 3_499, True),
+        # 10,000-49,999: 25% increase, 15% decrease
+        (15_000, 18_750, False),
+        (15_000, 18_751, True),
+        (15_000, 12_750, False),
+        (15_000, 12_749, True),
+        # 50,000-199,999: 15% increase, 10% decrease
+        (100_000, 115_000, False),
+        (100_000, 115_001, True),
+        (100_000, 90_000, False),
+        (100_000, 89_999, True),
+        # 200,000+: 10% increase, 5% decrease
+        (250_000, 275_000, False),
+        (250_000, 275_001, True),
+        (250_000, 237_500, False),
+        (250_000, 237_499, True),
+        # Absolute floor of 50 articles
+        (20, 70, False),
+        (20, 71, True),
+    ],
+)
+def test_get_book_article_count_issues_adaptive(
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    previous_count: int,
+    current_count: int,
+    *,
+    expected: bool,
+):
+    title = create_title(flavours=["maxi"])
+    create_collection(title_ids_with_paths=[(title.id, "zim")])
+    previous_book = create_book(
+        article_count=previous_count,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+        location_kind="prod",
+    )
+    book = create_book(
+        article_count=current_count,
+        media_count=100,
+        flavour="maxi",
+        title_id=title.id,
+    )
+
+    assert (
+        bool(get_book_article_count_issues(book=book, previous_book=previous_book))
+        is expected
+    )
+
+
+@pytest.mark.parametrize(
+    "previous_count,current_count,expected",
+    [
+        # Under 500: 100% increase, 50% decrease
+        (400, 800, False),
+        (400, 801, True),
+        (400, 200, False),
+        (400, 199, True),
+        # 500-4,999: 75% increase, 40% decrease
+        (1_000, 1_750, False),
+        (1_000, 1_751, True),
+        (1_000, 600, False),
+        (1_000, 599, True),
+        # 5,000-19,999: 50% increase, 25% decrease
+        (10_000, 15_000, False),
+        (10_000, 15_001, True),
+        (10_000, 7_500, False),
+        (10_000, 7_499, True),
+        # 20,000-99,999: 30% increase, 20% decrease
+        (50_000, 65_000, False),
+        (50_000, 65_001, True),
+        (50_000, 40_000, False),
+        (50_000, 39_999, True),
+        # 100,000+: 20% increase, 15% decrease
+        (200_000, 240_000, False),
+        (200_000, 240_001, True),
+        (200_000, 170_000, False),
+        (200_000, 169_999, True),
+        # Absolute floor of 25 media items
+        (10, 35, False),
+        (10, 36, True),
+    ],
+)
+def test_get_book_media_count_issues_adaptive(
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    previous_count: int,
+    current_count: int,
+    *,
+    expected: bool,
+):
+    title = create_title(flavours=["maxi"])
+    create_collection(title_ids_with_paths=[(title.id, "zim")])
+    previous_book = create_book(
+        article_count=100,
+        media_count=previous_count,
+        flavour="maxi",
+        title_id=title.id,
+        location_kind="prod",
+    )
+    book = create_book(
+        article_count=100,
+        media_count=current_count,
+        flavour="maxi",
+        title_id=title.id,
+    )
+
+    assert (
+        bool(get_book_media_count_issues(book=book, previous_book=previous_book))
+        is expected
+    )
 
 
 @pytest.mark.parametrize(
