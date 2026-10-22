@@ -285,49 +285,6 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
     @patch("cms_backend.db.book.book_has_flavour_mismatch")
     @patch("cms_backend.db.book.get_zimcheck_errors")
     @patch("cms_backend.db.book.book_has_recipe_issue")
-    def test_set_missing_title_metadata_from_book(
-        self,
-        mock_book_has_recipe_issue: MagicMock,
-        mock_get_zimcheck_errors: MagicMock,
-        mock_book_has_flavour_mismatch: MagicMock,
-        dbsession: OrmSession,
-        warehouse: Warehouse,  # noqa: ARG002
-        create_zimfarm_notification: Callable[..., ZimfarmNotification],
-        create_title: Callable[..., Title],
-    ):
-        """
-        Set title metadata from book because title has no metadata set
-        """
-        mock_book_has_recipe_issue.return_value = False
-        mock_get_zimcheck_errors.return_value = []
-        mock_book_has_flavour_mismatch.return_value = False
-        # Create title that matches book name
-        title = create_title(name="test_en_all")
-        title.maturity = "unstable"
-        dbsession.flush()
-
-        notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
-        dbsession.flush()
-
-        process_notification(dbsession, notification)
-
-        assert notification.status == "processed"
-
-        book = dbsession.query(Book).filter_by(id=notification.id).first()
-        assert book is not None
-        assert len(book.issues) == 0
-        assert book.title_id == title.id
-
-        dbsession.refresh(title)
-        assert title.title == book.zim_metadata["Title"]
-        assert title.creator == book.zim_metadata["Creator"]
-        assert title.publisher == book.zim_metadata["Publisher"]
-        assert title.description == book.zim_metadata["Description"]
-        assert title.language == book.zim_metadata["Language"]
-
-    @patch("cms_backend.db.book.book_has_flavour_mismatch")
-    @patch("cms_backend.db.book.get_zimcheck_errors")
-    @patch("cms_backend.db.book.book_has_recipe_issue")
     def test_preserve_title_metadata(
         self,
         mock_book_has_recipe_issue: MagicMock,
@@ -765,7 +722,19 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_get_zimcheck_errors.return_value = []
         mock_book_has_flavour_mismatch.return_value = False
 
-        title = create_title(name="test_en_all")
+        content = deepcopy(VALID_NOTIFICATION_CONTENT)
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "xyz"
+
+        title = create_title(
+            name=content["metadata"]["Name"],
+            title=content["metadata"]["Title"],
+            creator=content["metadata"]["Creator"],
+            publisher=content["metadata"]["Publisher"],
+            description=content["metadata"]["Description"],
+            language=content["metadata"]["Language"],
+            illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
+        )
         title.maturity = "stable"
 
         prod = create_warehouse(
@@ -778,10 +747,6 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         ct.collection = collection
         dbsession.add(ct)
         dbsession.flush()
-
-        content = VALID_NOTIFICATION_CONTENT.copy()
-        content["folder_name"] = ""
-        content["metadata"]["Language"] = "xyz"
 
         notification = create_zimfarm_notification(content=content)
         dbsession.flush()
@@ -824,7 +789,19 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_get_zimcheck_errors.return_value = []
         mock_book_has_flavour_mismatch.return_value = False
 
-        title = create_title(name="test_en_all")
+        content = deepcopy(VALID_NOTIFICATION_CONTENT)
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "xyz"
+
+        title = create_title(
+            name=content["metadata"]["Name"],
+            title=content["metadata"]["Title"],
+            creator=content["metadata"]["Creator"],
+            publisher=content["metadata"]["Publisher"],
+            description=content["metadata"]["Description"],
+            language=content["metadata"]["Language"],
+            illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
+        )
         title.maturity = "stable"
 
         prod = create_warehouse(
@@ -838,9 +815,6 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         dbsession.add(ct)
         dbsession.flush()
 
-        content = VALID_NOTIFICATION_CONTENT.copy()
-        content["folder_name"] = ""
-        content["metadata"]["Language"] = "xyz"
         monkeypatch.setattr(
             "cms_backend.context.Context.custom_language_codes", ["xyz"]
         )
@@ -886,7 +860,19 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_get_zimcheck_errors.return_value = []
         mock_book_has_flavour_mismatch.return_value = False
 
-        title = create_title(name="test_en_all")
+        content = deepcopy(VALID_NOTIFICATION_CONTENT)
+        content["folder_name"] = ""
+        content["metadata"]["Language"] = "fra"
+
+        title = create_title(
+            name=content["metadata"]["Name"],
+            title=content["metadata"]["Title"],
+            creator=content["metadata"]["Creator"],
+            publisher=content["metadata"]["Publisher"],
+            description=content["metadata"]["Description"],
+            language=content["metadata"]["Language"],
+            illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
+        )
         title.maturity = "stable"
 
         prod = create_warehouse(
@@ -900,9 +886,6 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         dbsession.add(ct)
         dbsession.flush()
 
-        content = VALID_NOTIFICATION_CONTENT.copy()
-        content["folder_name"] = ""
-        content["metadata"]["Language"] = "fra"
         monkeypatch.setattr(
             "cms_backend.context.Context.disallowed_language_codes", ["fra"]
         )

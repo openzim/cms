@@ -271,11 +271,13 @@ def reprocess_book(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    current_account: Account = Depends(get_current_account),
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
         db_book.reprocess_book(
             session,
             book_id=book_id,
+            author_id=current_account.id,
             accessible_collection_ids=accessible_collection_ids,
         )
     )
@@ -291,12 +293,14 @@ def unpromote_book(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    current_account: Account = Depends(get_current_account),
 ) -> BookFullSchema:
     return db_book.create_book_full_schema(
         db_book.move_book(
             session,
             book_id=book_id,
             destination="staging",
+            author_id=current_account.id,
             accessible_collection_ids=accessible_collection_ids,
         )
     )
@@ -513,6 +517,7 @@ def add_book_to_title(
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
+    current_account: Account = Depends(get_current_account),
 ) -> BookFullSchema:
     """Associate a book in quarantine without a title to title"""
     title = db_title.get_title_by_id(
@@ -530,5 +535,7 @@ def add_book_to_title(
     if book.title_id:
         raise BadRequestError("Book is already associated with a title")
 
-    db_book.add_book_to_title(session, book, title, is_new=False)
+    db_book.add_book_to_title(
+        session, book, title, author_id=current_account.id, is_new=False
+    )
     return db_book.create_book_full_schema(book)

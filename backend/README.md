@@ -27,3 +27,14 @@ Relevant environment variables:
 | `DOWNLOAD_STATS_YESTERDAY_HOUR` | `4`                        | UTC hour after which yesterday is available |
 | `FETCH_DOWNLOAD_STATS_INTERVAL` | `1d`                       | How often the mill runs the job             |
 | `DOWNLOAD_STATS_REQUEST_DELAY`  | `10`                       | Seconds between two Matomo requests         |
+
+## Mill technical account
+
+Automated actions performed by the mill (processing Zimfarm notifications and title
+modifications) are attributed to a technical account. The mill creates this account
+with role `mill` on startup if it does not already exist. If an account with the
+configured username already exists, it is reused as-is.
+
+| Variable                | Default | Description                                                        |
+| ----------------------- | ------- | ------------------------------------------------------------------ |
+| `MILL_ACCOUNT_USERNAME` | `mill`  | Username of the technical account used for automated mill actions. |

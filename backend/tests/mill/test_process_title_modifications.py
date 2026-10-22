@@ -1,13 +1,22 @@
 from collections.abc import Callable
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.event import create_title_modified_event
-from cms_backend.db.models import Book, Event, Title
+from cms_backend.db.models import Account, Book, Event, Title
 from cms_backend.mill.process_title_modifications import process_title_modifications
 from cms_backend.utils.datetime import getnow
+
+
+@pytest.fixture(autouse=True)
+def mill_account(
+    create_account: Callable[..., Account],
+) -> None:
+    create_account(username=Context.mill_account_username)
 
 
 def test_process_title_modifications_event_missing_keys(

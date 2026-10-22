@@ -23,7 +23,7 @@ from cms_backend.mill.process_retention_rules import process_retention_rules
 from cms_backend.mill.process_title_modifications import process_title_modifications
 from cms_backend.mill.process_zimfarm_notifications import process_zimfarm_notifications
 from cms_backend.mill.update_zimfarm_task_status import update_title_uploads_status
-from cms_backend.utils.database import upgrade_db_schema
+from cms_backend.utils.database import create_mill_account, upgrade_db_schema
 from cms_backend.utils.datetime import getnow
 from cms_backend.utils.task_config import TaskConfig
 
@@ -104,6 +104,8 @@ def main():
 
     if Context.alembic_upgrade_head_on_start:
         upgrade_db_schema()
+
+    create_mill_account()
 
     while True:
         now = getnow()

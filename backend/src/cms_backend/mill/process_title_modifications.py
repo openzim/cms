@@ -4,6 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
+from cms_backend.context import Context
+from cms_backend.db.account import get_account_by_username
 from cms_backend.db.event import delete_event, get_next_event_to_process_or_none
 from cms_backend.db.models import Book
 from cms_backend.db.title import get_title_by_id_or_none
@@ -68,9 +70,12 @@ def process_title_modifications(session: OrmSession):
             f"Found {len(books_without_title)} book(s) matching title '{title_name}'"
         )
 
+        author = get_account_by_username(
+            session, username=Context.mill_account_username
+        )
         for book in books_without_title:
             try:
-                process_book(session, book)
+                process_book(session, book, author_id=author.id)
             except Exception:
                 logger.exception("error while processing book")
             else:

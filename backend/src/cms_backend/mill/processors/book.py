@@ -12,7 +12,7 @@ from cms_backend.utils.datetime import getnow
 from cms_backend.utils.zim import get_missing_metadata_keys
 
 
-def process_book(session: ORMSession, book: Book):
+def process_book(session: ORMSession, book: Book, *, author_id: UUID):
     try:
         if not check_book_zim_spec(book):
             return
@@ -28,7 +28,7 @@ def process_book(session: ORMSession, book: Book):
             )
             return
 
-        add_book_to_title(session, book, title)
+        add_book_to_title(session, book, title, author_id=author_id)
 
     finally:
         book.needs_processing = False

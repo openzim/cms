@@ -10,6 +10,7 @@ export type BookPromotionActionKind =
   | 'create_title'
   | 'restore_title'
   | 'update_title_metadata'
+  | 'update_title_language'
   | 'update_title_maturity'
   | 'set_title_collections'
   | 'update_title_flavours'

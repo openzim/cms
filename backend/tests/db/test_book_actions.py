@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.context import Context
 from cms_backend.db.book import book_has_recipe_issue
 from cms_backend.db.book_actions import (
     apply_book_promotion_actions,
@@ -1484,6 +1485,43 @@ def test_apply_actions_batched_updates(
     dbsession.refresh(book)
     assert book.location_kind == "prod"
     assert book.needs_file_operation
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_promotion_actions_update_title_language(
+    mock_get_zimcheck_errors: MagicMock,
+    mock_get_book_unsupported_languages: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    illustration_48x48_at_1: str,
+    account: Account,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Emit an informational action when the title language is auto-updated."""
+    monkeypatch.setattr(Context, "min_languages_for_title_sync", 2)
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+
+    book = _create_valid_book(create_book, illustration_48x48_at_1)
+    book.zim_metadata = {**book.zim_metadata, "Language": "eng,spa"}
+    title = _create_valid_title(
+        create_title,
+        illustration_48x48_at_1,
+        language="eng,fra",
+    )
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
+
+    language_actions = [a for a in actions if a.kind == "update_title_language"]
+    assert len(language_actions) == 1
+    assert language_actions[0].requirement == "information"
+    assert language_actions[0].data["language"] == "eng,spa"
+    assert "eng,spa" in language_actions[0].message
 
 
 def _make_metadata(illustration_48x48_at_1: str) -> dict[str, Any]:

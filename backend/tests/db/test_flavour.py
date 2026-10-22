@@ -45,7 +45,7 @@ def test_get_title_flavours_pagination(
     assert len(results.records) == expected_count
 
 
-@patch("cms_backend.db.title.delete_book")
+@patch("cms_backend.db.book.delete_book")
 def test_delete_title_flavour(
     mock_delete_book: MagicMock,
     dbsession: OrmSession,

@@ -232,6 +232,7 @@ type BookPromotionActionKind = Literal[
     "create_title",
     "restore_title",
     "update_title_metadata",
+    "update_title_language",
     "update_title_maturity",
     "create_title_flavour",
     "set_title_collections",

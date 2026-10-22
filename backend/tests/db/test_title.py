@@ -28,6 +28,7 @@ from cms_backend.db.title import (
     restore_title,
     revert_title,
     update_title,
+    update_title_languages_from_book,
 )
 from cms_backend.schemas.models import TitleFlavourCreateSchema, TitleUpdateSchema
 from cms_backend.schemas.orms import BaseTitleCollectionSchema
@@ -337,6 +338,67 @@ def test_update_title_metadata_no_change(
 
     assert title.title == "Wikipedia"
     assert title.creator == "Contributors"
+
+
+def test_update_title_languages_from_book_same_set(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    account: Account,
+):
+    """Update languages when book and title have the same set in a different order"""
+    title = create_title(name="wikipedia_en_test", language="fra,eng")
+    book = create_book(zim_metadata={"Language": "eng,fra"})
+
+    updated_title = update_title_languages_from_book(
+        dbsession, title, book, min_language_count=3, author_id=account.id
+    )
+
+    dbsession.refresh(updated_title)
+    assert updated_title.language is not None
+    assert set(updated_title.language.split(",")) == {"eng", "fra"}
+    history = get_title_history(
+        dbsession, title_identifier=str(title.id), skip=0, limit=1
+    )
+    assert history.records[0].comment == f"Languages updated from book {book.id}"
+
+
+def test_update_title_languages_from_book_above_threshold(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    account: Account,
+):
+    """Update languages when both book and title meet the minimum count"""
+    title = create_title(name="wikipedia_en_test", language="eng,fra")
+    book = create_book(zim_metadata={"Language": "eng,spa"})
+
+    updated_title = update_title_languages_from_book(
+        dbsession, title, book, min_language_count=2, author_id=account.id
+    )
+
+    dbsession.refresh(updated_title)
+    assert updated_title.language is not None
+    assert set(updated_title.language.split(",")) == {"eng", "spa"}
+
+
+def test_update_title_languages_from_book_no_update(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    account: Account,
+):
+    """Keep the title language when sets differ and are below the minimum count"""
+    title = create_title(name="wikipedia_en_test", language="eng,fra")
+    book = create_book(zim_metadata={"Language": "eng,spa"})
+
+    returned_title = update_title_languages_from_book(
+        dbsession, title, book, min_language_count=3, author_id=account.id
+    )
+
+    dbsession.refresh(returned_title)
+    assert returned_title.id == title.id
+    assert returned_title.language == "eng,fra"
 
 
 def _flavour_map(title: Title) -> dict[str, UUID | None]:
@@ -725,26 +787,29 @@ def test_revert_title(
 
 def test_merge_titles_missing_sources(
     dbsession: OrmSession,
+    account: Account,
     create_title: Callable[..., Title],
 ):
     title = create_title()
     with pytest.raises(ValueError, match=r"No sources to merge from"):
-        merge_titles(dbsession, title.name, [])
+        merge_titles(dbsession, title.name, [], author_id=account.id)
 
 
 def test_merge_titles_target_in_sources(
     dbsession: OrmSession,
+    account: Account,
     create_title: Callable[..., Title],
 ):
     title = create_title()
     with pytest.raises(
         ValueError, match=r"Target title must not be in the list of sources"
     ):
-        merge_titles(dbsession, title.name, [title.name])
+        merge_titles(dbsession, title.name, [title.name], author_id=account.id)
 
 
 def test_merge_titles_fail_because_one_source_book_needs_processing(
     dbsession: OrmSession,
+    account: Account,
     create_warehouse: Callable[..., Warehouse],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -823,11 +888,12 @@ def test_merge_titles_fail_because_one_source_book_needs_processing(
     with pytest.raises(
         ValueError, match=r".*book either needs processing or file operation.*"
     ):
-        merge_titles(dbsession, title2.name, [title1.name])
+        merge_titles(dbsession, title2.name, [title1.name], author_id=account.id)
 
 
 def test_merge_titles_success(
     dbsession: OrmSession,
+    account: Account,
     create_warehouse: Callable[..., Warehouse],
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -902,7 +968,7 @@ def test_merge_titles_success(
         title_ids_with_paths=[(title1.id, "zim"), (title2.id, "zim")],
     )
     dbsession.flush()
-    merge_titles(dbsession, title2.name, [title1.name])
+    merge_titles(dbsession, title2.name, [title1.name], author_id=account.id)
     # title1 along with it's collection titles should be deleted
     assert (
         dbsession.scalars(select(Title).where(Title.id == title1.id)).one_or_none()

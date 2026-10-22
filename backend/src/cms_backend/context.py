@@ -70,6 +70,10 @@ class Context:
         get_mandatory_env("ALEMBIC_UPGRADE_HEAD_ON_START")
     )
 
+    # Username of the technical account used by the mill to attribute automated
+    # actions. The account is created on startup with role `admin` if missing.
+    mill_account_username: str = os.getenv("MILL_ACCOUNT_USERNAME", default="mill")
+
     # delay before books are deleted
     book_deletion_delay: timedelta = timedelta(
         seconds=parse_timespan(os.getenv("BOOK_DELETION_DELAY", default="1d"))
@@ -184,4 +188,9 @@ class Context:
     # Number of most recent days of download stats used to compute popularity
     download_stats_popularity_window_days: int = field(
         default=int(os.getenv("DOWNLOAD_STATS_POPULARITY_WINDOW_DAYS", "7"))
+    )
+    # Minimum number of languages in book and title metadata that is required for
+    # title language metadata to be updated from book
+    min_languages_for_title_sync: int = field(
+        default=int(os.getenv("MIN_LANGUAGES_FOR_TITLE_SYNC", "5"))
     )
