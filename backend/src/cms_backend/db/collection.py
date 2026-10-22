@@ -5,7 +5,7 @@ from uuid import UUID
 
 from psycopg.errors import UniqueViolation
 from pydantic import AnyUrl
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
@@ -22,6 +22,7 @@ from cms_backend.db.models import (
     CollectionPermission,
     CollectionTitle,
     Title,
+    TitleFlavour,
 )
 from cms_backend.db.warehouse import get_warehouse
 from cms_backend.schemas.models import CollectionUpdateSchema
@@ -202,6 +203,11 @@ def get_latest_books_for_collection(
                 Collection.id.in_(accessible_collection_ids or [])
                 | (accessible_collection_ids is None),
                 BookLocation.is_backup.is_(False),
+                ~exists().where(
+                    TitleFlavour.title_id == Book.title_id,
+                    TitleFlavour.flavour == Book.flavour,
+                    TitleFlavour.archived.is_(True),
+                ),
             )
         )
         .order_by(Title.id, Book.flavour, Book.created_at.desc())

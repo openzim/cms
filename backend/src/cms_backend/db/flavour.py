@@ -8,6 +8,7 @@ from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import CollectionTitle, Title, TitleFlavour
 from cms_backend.schemas.orms import ListResult, TitleFlavourSchema
+from cms_backend.utils.datetime import getnow
 
 
 def get_title_flavours(
@@ -42,6 +43,7 @@ def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
         flavour=tf.flavour,
         recipe_id=tf.recipe_id,
         last_book_added_at=tf.last_book_added_at,
+        archived=tf.archived,
     )
 
 
@@ -55,6 +57,45 @@ def create_title_flavour(
     title.flavours.append(title_flavour)
     session.flush()
     return title_flavour
+
+
+def set_title_flavour_archived(
+    session: OrmSession,
+    title: Title,
+    flavour: str,
+    *,
+    archived: bool,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+) -> TitleFlavour:
+    """Hide (or unhide) a title flavour from the catalog.
+
+    The flavour and its books are kept as-is so that ongoing downloads and
+    backups keep working; only catalog publication is affected.
+    """
+    tf = get_title_flavour_or_none(
+        session,
+        title_id=title.id,
+        flavour=flavour,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+    if tf is None:
+        raise RecordDoesNotExistError(
+            f"Title flavour '{flavour}' for title {title.id} does not exist"
+        )
+    if tf.archived == archived:
+        raise RecordDoesNotExistError(
+            f"Title flavour '{flavour}' is already "
+            f"{'archived' if archived else 'not archived'}"
+        )
+    tf.archived = archived
+    title.events.append(
+        f"{getnow()}: flavour '{flavour}' "
+        f"{'hidden from' if archived else 'restored to'} catalog"
+    )
+    session.add(tf)
+    session.add(title)
+    session.flush()
+    return tf
 
 
 def get_title_flavour_or_none(

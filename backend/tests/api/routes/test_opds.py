@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.context import Context
+from cms_backend.db import flavour as db_flavour
 from cms_backend.db.models import (
     Book,
     BookLocation,
@@ -387,3 +389,55 @@ def test_get_staging_opds_xml(
     entries = list(root.findall(f"{{{ATOM_NAMESPACE}}}entry"))
     assert len(entries) == 1
     assert entries[0].findtext(f"{{{ATOM_NAMESPACE}}}id") == f"urn:uuid:{book.id}"
+
+
+def test_get_collection_opds_xml_excludes_archived_flavour(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    warehouse: Warehouse,
+    access_token: str,
+):
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test_title", flavours=["maxi", "mini"])
+    _add_title_to_collection(dbsession, collection, title, "wikipedia")
+
+    for flavour in ("maxi", "mini"):
+        book = create_book(
+            zim_metadata={**ZIM_METADATA, "Flavour": flavour},
+            flavour=flavour,
+        )
+        book.title = title
+        book.needs_processing = False
+        book.has_error = False
+        book.needs_file_operation = False
+        book.location_kind = "prod"
+        create_book_location(
+            book=book,
+            warehouse_id=warehouse.id,
+            path="wikipedia",
+            status="current",
+            filename=f"test_{flavour}.zim",
+        )
+    dbsession.flush()
+
+    def _catalogued_flavours() -> list[str]:
+        response = client.get(
+            f"/v1/collections/{collection.id}/opds.xml",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == HTTPStatus.OK
+        return re.findall(r"<flavour>([^<]*)</flavour>", response.text)
+
+    assert sorted(_catalogued_flavours()) == ["maxi", "mini"]
+
+    db_flavour.set_title_flavour_archived(dbsession, title, "mini", archived=True)
+    dbsession.flush()
+    assert _catalogued_flavours() == ["maxi"]
+
+    db_flavour.set_title_flavour_archived(dbsession, title, "mini", archived=False)
+    dbsession.flush()
+    assert sorted(_catalogued_flavours()) == ["maxi", "mini"]
