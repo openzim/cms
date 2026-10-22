@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import logging
 
 from healthcheck.context import Context
@@ -14,4 +14,4 @@ if not logger.hasHandlers():
 
 def getnow():
     """naive UTC now"""
-    return datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    return dt.datetime.now(dt.UTC).replace(tzinfo=None)

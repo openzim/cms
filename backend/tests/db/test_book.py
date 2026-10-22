@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -963,7 +963,7 @@ def test_recover_deleted_book_with_backup(
     book.location_kind = "deleted"
     book.needs_file_operation = False
     book.needs_processing = False
-    book.deletion_date = now - datetime.timedelta(days=1)
+    book.deletion_date = now - dt.timedelta(days=1)
     dbsession.flush()
 
     book = recover_book(dbsession, book_id=book.id)
@@ -995,7 +995,7 @@ def test_recover_deleted_book_with_no_backup(
     book.location_kind = "deleted"
     book.needs_file_operation = False
     book.needs_processing = False
-    book.deletion_date = now - datetime.timedelta(days=1)
+    book.deletion_date = now - dt.timedelta(days=1)
     dbsession.flush()
 
     with pytest.raises(ValueError, match=r"Book does not have a backup."):

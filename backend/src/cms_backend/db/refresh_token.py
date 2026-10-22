@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -31,7 +31,7 @@ def create_refresh_token(session: OrmSession, account_id: UUID) -> Refreshtoken:
     refresh_token = Refreshtoken(
         token=uuid4(),
         expire_time=getnow()
-        + datetime.timedelta(seconds=Context.refresh_token_expiry_duration),
+        + dt.timedelta(seconds=Context.refresh_token_expiry_duration),
     )
     refresh_token.account = get_account_by_id(session, account_id=account_id)
     session.add(refresh_token)
@@ -48,7 +48,7 @@ def delete_refresh_token(session: OrmSession, token: UUID) -> None:
     session.flush()
 
 
-def expire_refresh_tokens(session: OrmSession, expire_time: datetime.datetime) -> None:
+def expire_refresh_tokens(session: OrmSession, expire_time: dt.datetime) -> None:
     """Expire all refresh tokens before a given time"""
     for db_refresh_token in session.scalars(
         select(Refreshtoken).where(Refreshtoken.expire_time < expire_time)

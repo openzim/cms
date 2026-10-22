@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 from alembic import config, script
 from alembic.runtime import migration
@@ -34,7 +35,10 @@ def check_if_schema_is_up_to_date():
 def upgrade_db_schema():
     """Checks if Alembic schema has been applied to the DB"""
     logger.info(f"Upgrading database schema with config in {Context.base_dir}")
-    subprocess.check_output(args=["alembic", "upgrade", "head"], cwd=Context.base_dir)
+    subprocess.check_output(
+        args=[sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=Context.base_dir,
+    )
 
 
 def _create_account_if_not_exists(

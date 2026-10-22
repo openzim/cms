@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from collections import defaultdict
 from typing import cast
 from uuid import UUID
@@ -63,7 +63,7 @@ def apply_retention_rules(session: OrmSession, title: Title):
         return
 
     now = getnow()
-    thirty_days_ago = (now - datetime.timedelta(days=30)).date()
+    thirty_days_ago = (now - dt.timedelta(days=30)).date()
 
     books_by_flavour: dict[str, list[Book]] = defaultdict(list)
     for book in session.scalars(
@@ -96,7 +96,7 @@ def apply_retention_rules(session: OrmSession, title: Title):
             books_to_keep.add(sorted_books_by_period[0].id)
 
         for book in books:
-            book_date = datetime.date.fromisoformat(cast(str, book.date))
+            book_date = dt.date.fromisoformat(cast(str, book.date))
             if book_date <= thirty_days_ago and book.id not in books_to_keep:
                 books_to_delete.append(book)
 

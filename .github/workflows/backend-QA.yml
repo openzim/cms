@@ -26,7 +26,7 @@ jobs:
         working-directory: backend
         run: |
           pip install -U pip
-          pip install -e .[qa,scripts,test,maint-scripts]
+          pip install -e .[qa,scripts,test]
 
       - name: Check Linting
         working-directory: backend

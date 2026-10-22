@@ -59,7 +59,7 @@ jobs:
         working-directory: backend
         run: |
           pip install -U pip
-          pip install -e .[test,scripts,maint-scripts]
+          pip install -e .[test,scripts]
 
       - name: Create extensions on the PostgreSQL database
         run: >-
