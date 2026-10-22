@@ -28,7 +28,7 @@ dependencies = [
     "xxhash == 4.0.2",
     "pycountry == 26.2.16",
     "requests == 2.34.2",
-    "kiwixstorage == 0.10.1",
+    "kiwixstorage == 0.11.0",
     "numpy == 2.5.4",
     "pillow == 13.0.0",
 ]
