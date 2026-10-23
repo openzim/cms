@@ -81,8 +81,9 @@ async def healthcheck(request: Request) -> HTMLResponse:
     )
 
     return templates.TemplateResponse(
-        "healthcheck.html",
-        {
+        request,
+        name="healthcheck.html",
+        context={
             "request": request,
             "global_status": global_status,
             "auth": auth_check,

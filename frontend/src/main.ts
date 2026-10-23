@@ -28,6 +28,15 @@ const vuetify = createVuetify({
   theme: {
     defaultTheme: 'system',
   },
+  display: {
+    // Keep the Vuetify 3 breakpoints used by the existing layouts.
+    thresholds: {
+      md: 960,
+      lg: 1280,
+      xl: 1920,
+      xxl: 2560,
+    },
+  },
 })
 
 const pinia = createPinia()

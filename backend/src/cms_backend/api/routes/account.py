@@ -79,9 +79,7 @@ def get_accounts(
             limit=params.limit,
             page_size=len(results.records),
         ),
-        items=[
-            db_account.create_account_schema(account) for account in results.records
-        ],
+        items=results.records,
     )
 
 

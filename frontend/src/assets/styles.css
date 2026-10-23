@@ -20,21 +20,23 @@
 }
 
 /* Vuetify 4 no longer uppercases button text by default. Restore the previous
-   behavior in the component layer so `text-none` utilities still take precedence. */
-@layer vuetify-components {
+   behavior after Vuetify's component styles so `text-none` utilities still win. */
+@layer app-components {
   .v-btn.v-btn {
     text-transform: uppercase;
   }
 }
 
-body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-}
+@layer app-base {
+  body {
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+      'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
 
-/* Global link styles */
-a {
-  text-decoration: none !important;
-  color: rgb(var(--v-theme-primary));
+  /* Global link styles */
+  a {
+    text-decoration: none !important;
+    color: rgb(var(--v-theme-primary));
+  }
 }
