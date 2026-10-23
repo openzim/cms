@@ -103,8 +103,8 @@ class TitleFullSchema(TitleLightSchema):
     """
 
     events: list[str]
-    books: list["BookLightSchema"]
-    collections: list["TitleCollectionSchema"]
+    books: list[BookLightSchema]
+    collections: list[TitleCollectionSchema]
     flavours: list[TitleFlavourSchema]
 
 

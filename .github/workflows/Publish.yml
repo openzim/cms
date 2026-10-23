@@ -20,7 +20,7 @@ on:
 
 jobs:
   paths-filter:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     outputs:
       backend: ${{ steps.filter.outputs.backend || 'false'}}
@@ -28,9 +28,9 @@ jobs:
       healthcheck: ${{ steps.filter.outputs.healthcheck || 'false'}}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name == 'push'
         with:
@@ -44,12 +44,12 @@ jobs:
 
   backend:
     name: Backend build and publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.backend == 'true' || inputs.force == true || contains(inputs.force_components, 'backend') }}
     steps:
       - name: Retrieve source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build and publish Docker Image for backend mill
         uses: openzim/docker-publish-action@v10
@@ -111,12 +111,12 @@ jobs:
 
   frontend:
     name: Frontend build and publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.frontend == 'true' || inputs.force == true || contains(inputs.force_components, 'frontend') }}
     steps:
       - name: Retrieve source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build and publish Docker Image
         uses: openzim/docker-publish-action@v10
@@ -138,12 +138,12 @@ jobs:
 
   healthcheck:
     name: Healthcheck build and publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: paths-filter
     if: ${{ needs.paths-filter.outputs.healthcheck == 'true' || inputs.force == true || contains(inputs.force_components, 'healthcheck') }}
     steps:
       - name: Retrieve source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build and publish Docker Image
         uses: openzim/docker-publish-action@v10

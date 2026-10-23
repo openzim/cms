@@ -1,9 +1,10 @@
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
 from http import HTTPStatus
+from typing import Any
 
 import pytest
-from _pytest.python_api import RaisesContext
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -56,7 +57,7 @@ def test_account_creation_schema(
     display_name: str | None,
     password: str | None,
     role: RoleEnum,
-    expected: RaisesContext[Exception],
+    expected: AbstractContextManager[Any],
 ):
     with expected:
         AccountCreateSchema(

@@ -2,7 +2,7 @@
   <div>
     <div v-if="loading" class="text-center pa-4">
       <v-progress-circular indeterminate size="32" />
-      <div class="mt-2 text-body-2 text-medium-emphasis">Loading issues...</div>
+      <div class="mt-2 text-body-medium text-medium-emphasis">Loading issues...</div>
     </div>
 
     <div
@@ -33,16 +33,16 @@
 
             <div v-else-if="issueKey === 'metadata mismatch'" class="border pa-2 rounded mt-0">
               <template v-if="metadataDifferences">
-                <div class="text-subtitle-2 mb-2">Title Metadata vs Book Metadata:</div>
+                <div class="text-title-small mb-2">Title Metadata vs Book Metadata:</div>
                 <DiffViewer :differences="metadataDifferences" />
               </template>
-              <div v-else class="text-center pa-2 text-body-2 text-medium-emphasis">
+              <div v-else class="text-center pa-2 text-body-medium text-medium-emphasis">
                 No metadata differences found.
               </div>
             </div>
 
             <div v-else-if="issueKey === 'invalid language code'" class="border pa-2 rounded mt-0">
-              <div class="text-body-2 text-wrap">
+              <div class="text-body-medium text-wrap">
                 Book has unknown language code(s):
                 <span class="font-weight-medium">{{ joinLanguageCodes(reasons.issues) }}</span>
               </div>
@@ -54,7 +54,7 @@
                 :key="index"
                 class="border pa-2 rounded mb-2"
               >
-                <div class="text-body-2 text-wrap">
+                <div class="text-body-medium text-wrap">
                   Book flavour
                   <span class="font-weight-medium">{{ issue.book_flavour }}</span>
                   is not in list of title flavours
@@ -83,7 +83,9 @@
                 :key="index"
                 class="px-3 py-1"
               >
-                <v-list-item-title class="text-body-2 text-wrap">{{ message }}</v-list-item-title>
+                <v-list-item-title class="text-body-medium text-wrap">{{
+                  message
+                }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </template>
@@ -208,6 +210,6 @@ const metadataDifferences = computed(() => {
 
 <style scoped>
 .striped-list :deep(.v-list-item:nth-child(even)) {
-  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  background-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 5%, transparent);
 }
 </style>

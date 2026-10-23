@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from uuid import uuid4
 
 import pytest
@@ -21,7 +21,7 @@ def refresh_token(dbsession: OrmSession, account: Account) -> Refreshtoken:
     """Create a refresh token for an account"""
     token = Refreshtoken(
         token=uuid4(),
-        expire_time=getnow() + datetime.timedelta(seconds=1_000),
+        expire_time=getnow() + dt.timedelta(seconds=1_000),
     )
     token.account = account
     dbsession.add(token)
@@ -61,7 +61,7 @@ def test_expire_refresh_tokens(dbsession: OrmSession, refresh_token: Refreshtoke
     """Test that expire_refresh_tokens expires the refresh tokens"""
     expire_refresh_tokens(
         dbsession,
-        getnow() + datetime.timedelta(seconds=2_000),
+        getnow() + dt.timedelta(seconds=2_000),
     )
     assert get_refresh_token_or_none(dbsession, refresh_token.token) is None
 

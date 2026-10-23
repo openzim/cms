@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from collections.abc import Callable
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -912,7 +912,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 
     book1 = create_book(
         zim_metadata={"Name": title.name},
-        created_at=now - datetime.timedelta(days=7),
+        created_at=now - dt.timedelta(days=7),
         flavour="test",
         date="2023-01-02",
     )
@@ -930,7 +930,7 @@ def test_get_zim_urls_single_view_link_for_multiple_books_with_same_title_flavou
 
     book2 = create_book(
         zim_metadata={"Name": title.name},
-        created_at=now - datetime.timedelta(days=14),
+        created_at=now - dt.timedelta(days=14),
         flavour="test",
         date="2023-01-01",
     )
@@ -980,7 +980,7 @@ def test_get_zim_urls_tie_breaker_same_date(
     def add_book(flavour: str, date: str, days_old: int, filename: str) -> Book:
         book = create_book(
             zim_metadata={"Name": title.name},
-            created_at=now - datetime.timedelta(days=days_old),
+            created_at=now - dt.timedelta(days=days_old),
             flavour=flavour,
             date=date,
         )
@@ -1040,7 +1040,7 @@ def test_get_zim_urls_no_view_link_if_latest_excluded(
     def add_book(flavour: str, date: str, days_old: int, filename: str) -> Book:
         book = create_book(
             zim_metadata={"Name": title.name},
-            created_at=now - datetime.timedelta(days=days_old),
+            created_at=now - dt.timedelta(days=days_old),
             flavour=flavour,
             date=date,
         )
@@ -1132,7 +1132,7 @@ def test_recover_book(
     now = getnow()
     book.location_kind = "to_delete"
     book.needs_file_operation = True
-    book.deletion_date = now + datetime.timedelta(days=1)
+    book.deletion_date = now + dt.timedelta(days=1)
     dbsession.flush()
 
     book = recover_book(dbsession, book_id=book.id)
@@ -1179,7 +1179,7 @@ def test_recover_book_no_current_location(
 
     book.location_kind = "to_delete"
     book.needs_file_operation = True
-    book.deletion_date = getnow() + datetime.timedelta(days=1)
+    book.deletion_date = getnow() + dt.timedelta(days=1)
     dbsession.flush()
 
     with pytest.raises(ValueError, match="has no current location"):
@@ -1211,7 +1211,7 @@ def test_recover_book_archived_title(
     now = getnow()
     book.location_kind = "to_delete"
     book.needs_file_operation = True
-    book.deletion_date = now + datetime.timedelta(days=1)
+    book.deletion_date = now + dt.timedelta(days=1)
     dbsession.flush()
 
     with pytest.raises(
@@ -1243,23 +1243,19 @@ def test_get_books_time_filters(
     """Test that get_books works correctly with time filters."""
     now = getnow()
     # Create 5 books with different times
-    create_book(updated_at=now - datetime.timedelta(hours=10))
-    create_book(updated_at=now - datetime.timedelta(hours=8))
-    create_book(updated_at=now - datetime.timedelta(hours=6))
-    create_book(updated_at=now - datetime.timedelta(hours=4))
-    create_book(updated_at=now - datetime.timedelta(hours=2))
+    create_book(updated_at=now - dt.timedelta(hours=10))
+    create_book(updated_at=now - dt.timedelta(hours=8))
+    create_book(updated_at=now - dt.timedelta(hours=6))
+    create_book(updated_at=now - dt.timedelta(hours=4))
+    create_book(updated_at=now - dt.timedelta(hours=2))
 
     dbsession.flush()
 
     updated_after = (
-        now - datetime.timedelta(hours=updated_after_hours)
-        if updated_after_hours
-        else None
+        now - dt.timedelta(hours=updated_after_hours) if updated_after_hours else None
     )
     updated_before = (
-        now - datetime.timedelta(hours=updated_before_hours)
-        if updated_before_hours
-        else None
+        now - dt.timedelta(hours=updated_before_hours) if updated_before_hours else None
     )
 
     results = get_books(
@@ -1294,18 +1290,16 @@ def test_get_books_created_before_filters(
     """Test that get_books works correctly with created_before filters."""
     now = getnow()
     # Create 5 books with different times
-    create_book(created_at=now - datetime.timedelta(hours=10))
-    create_book(created_at=now - datetime.timedelta(hours=8))
-    create_book(created_at=now - datetime.timedelta(hours=6))
-    create_book(created_at=now - datetime.timedelta(hours=4))
-    create_book(created_at=now - datetime.timedelta(hours=2))
+    create_book(created_at=now - dt.timedelta(hours=10))
+    create_book(created_at=now - dt.timedelta(hours=8))
+    create_book(created_at=now - dt.timedelta(hours=6))
+    create_book(created_at=now - dt.timedelta(hours=4))
+    create_book(created_at=now - dt.timedelta(hours=2))
 
     dbsession.flush()
 
     created_before = (
-        now - datetime.timedelta(hours=created_before_hours)
-        if created_before_hours
-        else None
+        now - dt.timedelta(hours=created_before_hours) if created_before_hours else None
     )
 
     results = get_books(

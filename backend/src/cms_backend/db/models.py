@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from ipaddress import IPv4Address
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
@@ -106,7 +106,7 @@ class ZimfarmNotification(Base):
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     book_id: Mapped[UUID | None] = mapped_column(ForeignKey("book.id"), init=False)
-    book: Mapped[Optional["Book"]] = relationship(
+    book: Mapped[Book | None] = relationship(
         init=False, back_populates="zimfarm_notification"
     )
 
@@ -171,9 +171,9 @@ class Book(Base):
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
 
     title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
-    title: Mapped[Optional["Title"]] = relationship(init=False, foreign_keys=[title_id])
+    title: Mapped[Title | None] = relationship(init=False, foreign_keys=[title_id])
 
-    zimfarm_notification: Mapped[Optional["ZimfarmNotification"]] = relationship(
+    zimfarm_notification: Mapped[ZimfarmNotification | None] = relationship(
         back_populates="book"
     )
     recipe_id: Mapped[UUID | None] = mapped_column(default=None)
@@ -191,12 +191,12 @@ class Book(Base):
         default_factory=getnow, onupdate=getnow, server_default=func.now()
     )
 
-    locations: Mapped[list["BookLocation"]] = relationship(
+    locations: Mapped[list[BookLocation]] = relationship(
         back_populates="book",
         cascade="all, delete-orphan",
         init=False,
     )
-    history_entries: Mapped[list["BookHistory"]] = relationship(
+    history_entries: Mapped[list[BookHistory]] = relationship(
         back_populates="book",
         cascade="all, delete",
         passive_deletes=True,
@@ -222,8 +222,8 @@ class BookHistory(Base):
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )
-    book: Mapped["Book"] = relationship(back_populates="history_entries", init=False)
-    author: Mapped["Account"] = relationship(init=False)
+    book: Mapped[Book] = relationship(back_populates="history_entries", init=False)
+    author: Mapped[Account] = relationship(init=False)
 
 
 Index(
@@ -290,20 +290,20 @@ class Title(Base):
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
     popularity: Mapped[int] = mapped_column(init=False, default=1, server_default="1")
 
-    books: Mapped[list["Book"]] = relationship(
+    books: Mapped[list[Book]] = relationship(
         back_populates="title",
         cascade="save-update, merge, refresh-expire",
         init=False,
         foreign_keys=[Book.title_id],
     )
 
-    collections: Mapped[list["CollectionTitle"]] = relationship(
+    collections: Mapped[list[CollectionTitle]] = relationship(
         back_populates="title",
         cascade="all, delete-orphan",
         init=False,
     )
 
-    history_entries: Mapped[list["TitleHistory"]] = relationship(
+    history_entries: Mapped[list[TitleHistory]] = relationship(
         back_populates="title_",
         cascade="all, delete",
         passive_deletes=True,
@@ -312,13 +312,13 @@ class Title(Base):
         # return the history entries in descending order of created_at
         order_by="TitleHistory.created_at.desc()",
     )
-    flavours: Mapped[list["TitleFlavour"]] = relationship(
+    flavours: Mapped[list[TitleFlavour]] = relationship(
         back_populates="title",
         cascade="all, delete",
         passive_deletes=True,
         default_factory=list,
     )
-    uploads: Mapped[list["TitleUpload"]] = relationship(
+    uploads: Mapped[list[TitleUpload]] = relationship(
         back_populates="title", init=False, default_factory=list
     )
 
@@ -333,7 +333,7 @@ class TitleFlavour(Base):
     last_book_added_at: Mapped[datetime | None] = mapped_column(
         default=None, server_default=func.now()
     )
-    title: Mapped["Title"] = relationship(back_populates="flavours", init=False)
+    title: Mapped[Title] = relationship(back_populates="flavours", init=False)
 
 
 class DownloadStats(Base):
@@ -408,8 +408,8 @@ class TitleHistory(Base):
     collection_titles: Mapped[list[dict[str, Any]]] = mapped_column(
         default_factory=list, server_default="{}"
     )
-    title_: Mapped["Title"] = relationship(back_populates="history_entries", init=False)
-    author: Mapped["Account"] = relationship(init=False)
+    title_: Mapped[Title] = relationship(back_populates="history_entries", init=False)
+    author: Mapped[Account] = relationship(init=False)
 
 
 class Collection(Base):
@@ -431,17 +431,17 @@ class Collection(Base):
         default=False, server_default="false"
     )
 
-    titles: Mapped[list["CollectionTitle"]] = relationship(
+    titles: Mapped[list[CollectionTitle]] = relationship(
         back_populates="collection",
         cascade="all, delete-orphan",
         init=False,
     )
 
-    warehouse: Mapped["Warehouse"] = relationship(
+    warehouse: Mapped[Warehouse] = relationship(
         back_populates="collections", init=False
     )
 
-    history_entries: Mapped[list["CollectionHistory"]] = relationship(
+    history_entries: Mapped[list[CollectionHistory]] = relationship(
         back_populates="collection",
         cascade="all, delete",
         passive_deletes=True,
@@ -497,10 +497,10 @@ class CollectionHistory(Base):
         default=False, server_default="false"
     )
 
-    collection: Mapped["Collection"] = relationship(
+    collection: Mapped[Collection] = relationship(
         back_populates="history_entries", init=False
     )
-    author: Mapped["Account"] = relationship(init=False)
+    author: Mapped[Account] = relationship(init=False)
 
 
 class CollectionTitle(Base):
@@ -513,8 +513,8 @@ class CollectionTitle(Base):
     )
     path: Mapped[Path] = mapped_column()
 
-    title: Mapped["Title"] = relationship(back_populates="collections", init=False)
-    collection: Mapped["Collection"] = relationship(back_populates="titles", init=False)
+    title: Mapped[Title] = relationship(back_populates="collections", init=False)
+    collection: Mapped[Collection] = relationship(back_populates="titles", init=False)
 
 
 class Warehouse(Base):
@@ -524,7 +524,7 @@ class Warehouse(Base):
     )
     name: Mapped[str] = mapped_column(unique=True, index=True)
 
-    collections: Mapped[list["Collection"]] = relationship(
+    collections: Mapped[list[Collection]] = relationship(
         back_populates="warehouse",
         cascade="all, delete-orphan",
         init=False,
@@ -542,8 +542,8 @@ class BookLocation(Base):
     filename: Mapped[str]
     is_backup: Mapped[bool] = mapped_column(default=False, server_default=false())
 
-    book: Mapped["Book"] = relationship(back_populates="locations", init=False)
-    warehouse: Mapped["Warehouse"] = relationship(init=False)
+    book: Mapped[Book] = relationship(back_populates="locations", init=False)
+    warehouse: Mapped[Warehouse] = relationship(init=False)
 
     def full_local_path(self, warehouse_local_folders_map: dict[UUID, Path]) -> Path:
         return warehouse_local_folders_map[self.warehouse.id] / self.path_in_warehouse
@@ -573,7 +573,7 @@ class Account(Base):
     deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
     idp_sub: Mapped[UUID | None] = mapped_column(index=True, unique=True, default=None)
 
-    refresh_tokens: Mapped[list["Refreshtoken"]] = relationship(
+    refresh_tokens: Mapped[list[Refreshtoken]] = relationship(
         back_populates="account", cascade="all, delete-orphan", init=False
     )
 
@@ -587,9 +587,7 @@ class Refreshtoken(Base):
     expire_time: Mapped[datetime]
     account_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
 
-    account: Mapped["Account"] = relationship(
-        back_populates="refresh_tokens", init=False
-    )
+    account: Mapped[Account] = relationship(back_populates="refresh_tokens", init=False)
 
     __table_args__ = (
         Index("ix_refresh_token_account_id_token", "account_id", "token", unique=True),
@@ -623,10 +621,10 @@ class TitleUpload(Base):
         ForeignKey("book.id", ondelete="CASCADE")
     )
     s3_file_deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
-    requested_by: Mapped["Account | None"] = relationship(
+    requested_by: Mapped[Account | None] = relationship(
         init=False, foreign_keys=[requested_by_id]
     )
-    title: Mapped["Title | None"] = relationship(init=False, back_populates="uploads")
+    title: Mapped[Title | None] = relationship(init=False, back_populates="uploads")
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
     )

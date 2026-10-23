@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-if="canShow" v-model="isOpen" max-width="700px" persistent>
     <v-card>
-      <v-card-title class="text-h5 pa-4 bg-primary">
+      <v-card-title class="text-headline-small pa-4 bg-primary">
         <span class="text-white">Update Recipe on Zimfarm</span>
       </v-card-title>
 
@@ -19,13 +19,13 @@
 
         <div v-if="checkingAuth || loading" class="text-center pa-8">
           <v-progress-circular indeterminate size="48" />
-          <div class="mt-3 text-body-2 text-medium-emphasis">
+          <div class="mt-3 text-body-medium text-medium-emphasis">
             {{ loadingMessage }}
           </div>
         </div>
 
         <div v-else-if="needsAuth">
-          <p class="text-body-2 mb-3">
+          <p class="text-body-medium mb-3">
             You need to authenticate with the Zimfarm API to update the recipe.
           </p>
           <v-text-field
@@ -55,12 +55,12 @@
           </v-alert>
 
           <template v-if="!permissionDenied">
-            <p class="text-body-2 text-medium-emphasis mb-2">
+            <p class="text-body-medium text-medium-emphasis mb-2">
               The following title metadata values differ from the current recipe configuration.
               Select the fields you would like to update on Zimfarm.
             </p>
 
-            <p class="text-body-2 mb-3" v-if="props.recipeLink">
+            <p class="text-body-medium mb-3" v-if="props.recipeLink">
               <a
                 :href="props.recipeLink"
                 target="_blank"
@@ -73,7 +73,9 @@
 
             <!-- Field selection checkboxes -->
             <div v-if="Object.keys(fieldSelection).length > 0" class="mb-4">
-              <v-label class="text-body-2 font-weight-bold mb-2 d-block">Fields to update:</v-label>
+              <v-label class="text-body-medium font-weight-bold mb-2 d-block"
+                >Fields to update:</v-label
+              >
               <v-checkbox
                 v-for="key in Object.keys(fieldSelection)"
                 :key="key"
@@ -85,7 +87,7 @@
             </div>
 
             <DiffViewer v-if="diffs.length" :differences="diffs" class="mb-4" />
-            <p v-else class="text-body-2 text-medium-emphasis mb-4">
+            <p v-else class="text-body-medium text-medium-emphasis mb-4">
               No configuration differences detected.
             </p>
           </template>

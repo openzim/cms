@@ -12,11 +12,26 @@ export default defineConfig({
     vue(),
     vueJsx(),
     vueDevTools(),
-    vuetify(),
+    vuetify({
+      styles: {
+        configFile: 'src/settings.scss',
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  optimizeDeps: {
+    // Keep Vuetify's overlay modules pre-bundled together so that the internal
+    // overlay stack is shared and nested overlays stack above dialogs in dev mode.
+    include: [
+      'vuetify/components/VOverlay',
+      'vuetify/components/VDialog',
+      'vuetify/components/VMenu',
+      'vuetify/components/VSelect',
+      'vuetify/components/VTooltip',
+    ],
   },
 })

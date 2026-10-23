@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import os
 
 from humanfriendly import parse_size, parse_timespan
@@ -71,7 +71,7 @@ class Context:
     )
     zimfarm_oauth_audience_id: str = os.getenv("ZIMFARM_OAUTH_AUDIENCE_ID", default="")
     # Number of seconds before the access token expires at which it should be renewed
-    zimfarm_token_renewal_window: datetime.timedelta = datetime.timedelta(
+    zimfarm_token_renewal_window: dt.timedelta = dt.timedelta(
         seconds=parse_timespan(os.getenv("ZIMFARM_TOKEN_RENEWAL_WINDOW", default="5m"))
     )
     zimwright_image: str = os.getenv("ZIMWRIGHT_IMAGE", "openzim/zimwright:1.0.0")

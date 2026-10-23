@@ -1,6 +1,6 @@
 <template>
   <div class="border pa-2 rounded mb-2">
-    <div class="text-body-2 text-wrap">
+    <div class="text-body-medium text-wrap">
       Book recipe
       <a
         v-if="issue.book_recipe_link"

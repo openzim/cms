@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -74,7 +74,7 @@ def test_get_titles_only_rotten_titles(
     client: TestClient, create_title: Callable[..., Title], access_token: str
 ):
     title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
-    title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
+    title1.flavours[0].last_book_added_at = dt.datetime.fromtimestamp(0)
 
     create_title(name="test_en_all2", flavours=["maxi", "mini"])
 
@@ -91,7 +91,7 @@ def test_get_titles_skip_rotten_titles(
     client: TestClient, create_title: Callable[..., Title], access_token: str
 ):
     title1 = create_title(name="test_en_all1", flavours=["maxi", "mini"])
-    title1.flavours[0].last_book_added_at = datetime.datetime.fromtimestamp(0)
+    title1.flavours[0].last_book_added_at = dt.datetime.fromtimestamp(0)
 
     title2 = create_title(name="test_en_all2", flavours=["maxi", "mini"])
 

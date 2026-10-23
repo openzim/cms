@@ -1,7 +1,7 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="600" @update:model-value="close">
     <v-card>
-      <v-card-title class="text-h6 bg-primary">
+      <v-card-title class="text-title-large bg-primary">
         <v-icon class="mr-2">mdi-account-key</v-icon>
         Upload Access
       </v-card-title>
@@ -11,8 +11,8 @@
           {{ errors.join(', ') }}
         </v-alert>
 
-        <div class="text-subtitle-2 mb-2">Users with upload access</div>
-        <div v-if="uploaders.length === 0" class="text-body-2 text-medium-emphasis mb-4">
+        <div class="text-title-small mb-2">Users with upload access</div>
+        <div v-if="uploaders.length === 0" class="text-body-medium text-medium-emphasis mb-4">
           No user has upload access to this title yet.
         </div>
         <v-list v-else density="compact" class="mb-4">
@@ -30,7 +30,7 @@
           </v-list-item>
         </v-list>
 
-        <div class="text-subtitle-2 mb-2">Grant access to a title-uploader</div>
+        <div class="text-title-small mb-2">Grant access to a title-uploader</div>
         <v-autocomplete
           v-model="selectedAccountId"
           :items="availableAccounts"

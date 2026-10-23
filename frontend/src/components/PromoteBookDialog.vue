@@ -1,14 +1,14 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800px" persistent scrollable>
     <v-card>
-      <v-card-title class="text-h5 pa-4 bg-primary">
+      <v-card-title class="text-headline-small pa-4 bg-primary">
         <span class="text-white">Promote Book</span>
       </v-card-title>
 
       <v-card-text class="pt-4">
         <div v-if="loadingDryRun" class="text-center pa-8">
           <v-progress-circular indeterminate size="48" />
-          <div class="mt-3 text-body-2 text-medium-emphasis">
+          <div class="mt-3 text-body-medium text-medium-emphasis">
             Analyzing book promotion requirements...
           </div>
         </div>
@@ -27,7 +27,7 @@
         </v-alert>
 
         <div v-else>
-          <p class="text-body-2 text-medium-emphasis mb-4">
+          <p class="text-body-medium text-medium-emphasis mb-4">
             The following actions are needed to promote this book. Required actions are always
             performed. You may uncheck optional actions to skip them. Informational items are shown
             for awareness and cannot be changed.
@@ -67,7 +67,7 @@
                       action.requirement !== 'information' ? 'mdi-alert-circle' : 'mdi-information'
                     }}
                   </v-icon>
-                  <span class="text-body-2 text-capitalize flex-grow-0">
+                  <span class="text-body-medium text-capitalize flex-grow-0">
                     {{ formatActionKind(action.kind) }}
                   </span>
                   <v-chip
@@ -117,7 +117,7 @@
                       />
                       <div v-if="actionData[index].flavours?.length">
                         <v-divider class="my-4" />
-                        <h3 class="text-h6 mb-3">Flavours</h3>
+                        <h3 class="text-title-large mb-3">Flavours</h3>
                         <div
                           v-for="(tf, idx) in actionData[index].flavours"
                           :key="idx"
@@ -133,7 +133,7 @@
                             :href="tf.recipe_link"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="text-primary text-decoration-none text-body-2 ml-2 mt-1 d-inline-block"
+                            class="text-primary text-decoration-none text-body-medium ml-2 mt-1 d-inline-block"
                           >
                             <v-icon size="x-small" class="mr-1">mdi-open-in-new</v-icon>
                             View recipe on Zimfarm
@@ -375,7 +375,7 @@
 
                     <!-- restore_title: read-only -->
                     <template v-else-if="action.kind === 'restore_title'">
-                      <div class="text-body-2">
+                      <div class="text-body-medium">
                         <strong>Titles to restore:</strong>
                         <v-chip
                           v-for="(name, tIdx) in actionData[index].title_names || []"
@@ -391,13 +391,13 @@
 
                     <!-- create_title_flavour -->
                     <template v-else-if="action.kind === 'create_title_flavour'">
-                      <div class="text-body-2">
+                      <div class="text-body-medium">
                         <strong>Flavour to add:</strong>
                         <v-chip size="small" class="ml-1" label color="primary" variant="tonal">
                           {{ actionData[index].flavour }}
                         </v-chip>
                       </div>
-                      <div v-if="actionData[index].recipe_link" class="text-body-2 mt-2">
+                      <div v-if="actionData[index].recipe_link" class="text-body-medium mt-2">
                         <a
                           :href="actionData[index].recipe_link"
                           target="_blank"
@@ -411,7 +411,7 @@
                     </template>
 
                     <template v-else-if="action.kind === 'update_flavour_recipe'">
-                      <div v-if="actionData[index].recipe_link" class="text-body-2">
+                      <div v-if="actionData[index].recipe_link" class="text-body-medium">
                         <a
                           :href="actionData[index].recipe_link"
                           target="_blank"
@@ -473,7 +473,10 @@
     @confirm="executePromote"
   >
     <template #content>
-      <p v-if="selectedActionsForConfirm.length === 0" class="text-body-2 text-medium-emphasis">
+      <p
+        v-if="selectedActionsForConfirm.length === 0"
+        class="text-body-medium text-medium-emphasis"
+      >
         No additional actions will be performed. The book will simply be moved to prod.
       </p>
       <p v-else class="mb-3">
@@ -485,7 +488,7 @@
           <v-icon :color="action.requirement !== 'information' ? 'warning' : 'info'" size="small">
             {{ action.requirement !== 'information' ? 'mdi-alert-circle' : 'mdi-check-circle' }}
           </v-icon>
-          <span class="text-body-2 text-capitalize">{{ action.kind }}</span>
+          <span class="text-body-medium text-capitalize">{{ action.kind }}</span>
           <v-chip
             size="x-small"
             :color="action.requirement !== 'information' ? 'warning' : 'info'"
@@ -507,7 +510,7 @@
         />
         <div
           v-else-if="isDiffableAction(action.actionKind) && !titleDiffs[action.index]"
-          class="text-body-2 text-medium-emphasis ml-8"
+          class="text-body-medium text-medium-emphasis ml-8"
         >
           No changes to display.
         </div>

@@ -2,7 +2,7 @@
   <v-card elevation="2" class="h-100 d-flex flex-column border">
     <v-card-title class="d-flex flex-column align-start pa-4">
       <div class="d-flex align-center flex-wrap w-100">
-        <div class="text-subtitle-1 text-truncate flex-grow-1">
+        <div class="text-body-large text-truncate flex-grow-1">
           {{ displayName }}
         </div>
       </div>
@@ -35,13 +35,13 @@
       <div class="d-flex flex-column ga-2">
         <!-- Status -->
         <div class="d-flex justify-space-between align-center">
-          <div class="text-body-2 font-weight-medium">Status</div>
+          <div class="text-body-medium font-weight-medium">Status</div>
           <BookStatusIndicator :book="book" />
         </div>
 
         <!-- Location -->
         <div v-if="showLocationChip" class="d-flex justify-space-between align-center">
-          <div class="text-body-2 font-weight-medium">Location</div>
+          <div class="text-body-medium font-weight-medium">Location</div>
           <BookLocationChip :book="book" />
         </div>
 
@@ -50,7 +50,7 @@
           v-if="book.issues && book.issues.length"
           class="d-flex justify-space-between align-start"
         >
-          <div class="text-body-2 font-weight-medium">Issues</div>
+          <div class="text-body-medium font-weight-medium">Issues</div>
           <div class="d-flex flex-column ga-1">
             <v-chip
               v-for="(issue, idx) in book.issues"
