@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.api.context import Context as ApiContext
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
+from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.models import (
     Account,
     Book,
@@ -1507,8 +1508,20 @@ def test_grant_title_uploader_rejects_other_roles(
     ["permission", "expected_status_code"],
     [
         pytest.param(RoleEnum.ADMIN, HTTPStatus.NO_CONTENT, id="admin"),
+        pytest.param(RoleEnum.GLOBAL_EDITOR, HTTPStatus.NO_CONTENT, id="global-editor"),
         pytest.param(
-            RoleEnum.GLOBAL_EDITOR, HTTPStatus.UNAUTHORIZED, id="global-editor"
+            RoleEnum.TITLE_UPLOADER, HTTPStatus.UNAUTHORIZED, id="title-uploader"
+        ),
+        pytest.param(
+            RoleEnum.GLOBAL_VIEWER, HTTPStatus.UNAUTHORIZED, id="global-viewer"
+        ),
+        pytest.param(
+            RoleEnum.COLLECTION_VIEWER,
+            HTTPStatus.UNAUTHORIZED,
+            id="collection-viewer",
+        ),
+        pytest.param(
+            RoleEnum.PUBLIC_VIEWER, HTTPStatus.UNAUTHORIZED, id="public-viewer"
         ),
     ],
 )
@@ -1519,7 +1532,7 @@ def test_grant_title_uploader_required_permissions(
     permission: RoleEnum,
     expected_status_code: HTTPStatus,
 ):
-    """Granting upload access requires the account:update permission."""
+    """Granting upload access requires the title:update permission."""
     wikipedia_en_all = create_title(name="wikipedia_en_all")
     account1 = create_account(permission=RoleEnum.TITLE_UPLOADER)
     account2 = create_account(permission=permission)
@@ -1533,3 +1546,113 @@ def test_grant_title_uploader_required_permissions(
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
+
+
+def test_collection_editor_can_grant_uploader_on_editable_title(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+):
+    """A collection editor can grant upload access for a title in their collection."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    collection = create_collection(
+        title_ids_with_paths=[(wikipedia_en_all.id, "other")]
+    )
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_collection_permission(dbsession, collection.id, editor.id)
+    uploader = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    access_token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders",
+        json={"account_id": str(uploader.id)},
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders", headers=headers
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert [item["id"] for item in response.json()["items"]] == [str(uploader.id)]
+
+    response = client.delete(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders/{uploader.id}",
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+
+def test_collection_editor_cannot_grant_uploader_on_other_title(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+):
+    """A collection editor cannot grant upload access for other collections' titles."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    create_collection(title_ids_with_paths=[(wikipedia_en_all.id, "other")])
+    other_collection = create_collection()
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_collection_permission(dbsession, other_collection.id, editor.id)
+    uploader = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    access_token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders",
+        json={"account_id": str(uploader.id)},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_get_available_title_uploaders(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+):
+    """Editors can list title-uploader accounts without account:read permission."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    collection = create_collection(
+        title_ids_with_paths=[(wikipedia_en_all.id, "other")]
+    )
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_collection_permission(dbsession, collection.id, editor.id)
+    granted_uploader = create_account(permission=RoleEnum.TITLE_UPLOADER)
+    dbsession.add(
+        TitlePermission(title_id=wikipedia_en_all.id, account_id=granted_uploader.id)
+    )
+    dbsession.flush()
+
+    for _ in range(2):
+        create_account(permission=RoleEnum.TITLE_UPLOADER)
+
+    access_token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders/available?skip=0&limit=1",
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.OK
+    first_page = response.json()
+    assert first_page["meta"]["count"] == 2
+    assert first_page["meta"]["skip"] == 0
+    assert first_page["meta"]["limit"] == 1
+    assert len(first_page["items"]) == 1
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/uploaders/available?skip=1&limit=1",
+        headers=headers,
+    )
+    assert response.status_code == HTTPStatus.OK
+    second_page = response.json()
+    assert second_page["meta"]["count"] == 2
+    assert second_page["meta"]["skip"] == 1
+    assert len(second_page["items"]) == 1

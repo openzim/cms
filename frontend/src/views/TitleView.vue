@@ -724,7 +724,7 @@ const canArchiveTitle = computed(() => authStore.hasPermission('title', 'archive
 
 const canUploadZim = computed(() => authStore.hasPermission('book', 'create'))
 
-const canManageUploaders = computed(() => authStore.hasPermission('account', 'update'))
+const canManageUploaders = computed(() => authStore.hasPermission('title', 'update'))
 const showUploadersDialog = ref(false)
 
 const titleUploadsViewRef = ref<InstanceType<typeof TitleUploadsView>>()

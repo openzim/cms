@@ -1,11 +1,14 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.db import account as db_account
+from cms_backend.db import count_from_stmt
 from cms_backend.db.models import Account, TitlePermission
 from cms_backend.roles import RoleEnum
+from cms_backend.schemas.orms import AccountSchema, ListResult
 
 
 def get_accessible_title_ids(
@@ -47,6 +50,31 @@ def get_title_uploaders(session: OrmSession, title_id: UUID) -> Sequence[Account
         .where(TitlePermission.title_id == title_id)
         .order_by(Account.display_name)
     ).all()
+
+
+def get_available_title_uploaders(
+    session: OrmSession, title_id: UUID, *, skip: int, limit: int
+) -> ListResult[AccountSchema]:
+    """Get title-uploader accounts not yet granted upload access to a title."""
+    stmt = (
+        select(Account)
+        .where(
+            Account.deleted.is_(False),
+            Account.role == RoleEnum.TITLE_UPLOADER,
+            ~exists().where(
+                TitlePermission.title_id == title_id,
+                TitlePermission.account_id == Account.id,
+            ),
+        )
+        .order_by(Account.display_name, Account.id)
+    )
+    return ListResult[AccountSchema](
+        nb_records=count_from_stmt(session, stmt),
+        records=[
+            db_account.create_account_schema(account)
+            for account in session.scalars(stmt.offset(skip).limit(limit)).all()
+        ],
+    )
 
 
 def get_title_permission_or_none(
