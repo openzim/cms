@@ -1,4 +1,4 @@
-FROM node:24-alpine3.22 AS builder
+FROM node:26-alpine3.23 AS builder
 
 RUN apk --no-cache add yarn
 WORKDIR /app
@@ -11,8 +11,8 @@ COPY public /app/public
 COPY src /app/src
 RUN NODE_ENV=production yarn build
 
-FROM nginx:1.28-alpine3.21
-LABEL org.opencontainers.image.source https://github.com/openzim/cms
+FROM nginx:1.31-alpine3.23
+LABEL org.opencontainers.image.source=https://github.com/openzim/cms
 
 RUN apk --no-cache add python3
 

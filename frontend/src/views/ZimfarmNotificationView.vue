@@ -5,7 +5,7 @@
     <!-- Loading state when data hasn't been loaded yet -->
     <div v-if="!dataLoaded && loadingStore.isLoading" class="text-center pa-8">
       <v-progress-circular indeterminate size="64" />
-      <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
+      <div class="mt-4 text-body-large">{{ loadingStore.loadingText }}</div>
     </div>
 
     <div v-if="dataLoaded && zimfarmNotification">
@@ -14,7 +14,7 @@
           <div class="ml-4 mr-4 mt-2 mb-2">
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Id</div>
+                <div class="text-title-small">Id</div>
               </v-col>
               <v-col cols="12" md="9">
                 <code>{{ zimfarmNotification.id }}</code>
@@ -24,7 +24,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Status</div>
+                <div class="text-title-small">Status</div>
               </v-col>
               <v-col cols="12" md="9">
                 <ZimfarmNotificationStatus :zimfarm-notification="zimfarmNotification" />
@@ -34,7 +34,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Book Id</div>
+                <div class="text-title-small">Book Id</div>
               </v-col>
               <v-col cols="12" md="9">
                 <code>{{ zimfarmNotification.book_id || 'None' }}</code>
@@ -44,7 +44,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Received</div>
+                <div class="text-title-small">Received</div>
               </v-col>
               <v-col cols="12" md="9">
                 <v-tooltip location="bottom">
@@ -61,7 +61,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Events</div>
+                <div class="text-title-small">Events</div>
               </v-col>
               <v-col cols="12" md="9">
                 <EventsList :events="zimfarmNotification.events" />
@@ -71,7 +71,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Content</div>
+                <div class="text-title-small">Content</div>
               </v-col>
               <v-col cols="12" md="9">
                 <v-btn

@@ -34,7 +34,7 @@
         <template #loading>
           <div class="d-flex flex-column align-center justify-center pa-8">
             <v-progress-circular indeterminate size="64" />
-            <div class="mt-4 text-body-1">{{ loadingText || 'Fetching users...' }}</div>
+            <div class="mt-4 text-body-large">{{ loadingText || 'Fetching users...' }}</div>
           </div>
         </template>
 
@@ -53,7 +53,7 @@
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="large" class="mb-2">mdi-account-group-outline</v-icon>
-            <div class="text-body-1">No users found</div>
+            <div class="text-body-large">No users found</div>
           </div>
         </template>
       </v-data-table-server>

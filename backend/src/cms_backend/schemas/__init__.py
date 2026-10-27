@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from typing import Any
 
 import pydantic
@@ -6,7 +6,7 @@ from pydantic import ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 
 
-def serialize_datetime(value: datetime.datetime) -> str:
+def serialize_datetime(value: dt.datetime) -> str:
     """Serialize datetime to ISO format with UTC indication.
 
     Naive datetimes are assumed to be UTC and get a 'Z' suffix.
@@ -28,7 +28,7 @@ class BaseModel(pydantic.BaseModel):
     @field_serializer("*", when_used="json", check_fields=False)
     def _serialize_datetimes(self, value: Any) -> Any:
         """Serialize datetime fields with proper timezone indication"""
-        if isinstance(value, datetime.datetime):
+        if isinstance(value, dt.datetime):
             return serialize_datetime(value)
         return value
 

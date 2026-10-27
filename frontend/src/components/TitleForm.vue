@@ -2,7 +2,7 @@
   <v-form ref="formRef" v-model="formValid">
     <!-- Basic Settings Section -->
     <div class="mb-6">
-      <h3 class="text-h6 mb-4">Basic Settings</h3>
+      <h3 class="text-title-large mb-4">Basic Settings</h3>
       <v-row>
         <v-col cols="12" :md="inDialog ? 12 : 6">
           <TitleNameField v-model="formData.name" />
@@ -18,7 +18,7 @@
     <!-- Metadata Section -->
     <div v-if="isEditMode" class="mb-6">
       <div class="d-flex align-center justify-space-between mb-4">
-        <h3 class="text-h6">Metadata</h3>
+        <h3 class="text-title-large">Metadata</h3>
         <v-btn
           v-if="!inDialog && hasAnyDifferences"
           color="primary"
@@ -198,7 +198,7 @@
 
       <div>
         <div class="d-flex align-center justify-space-between mb-4">
-          <h3 class="text-h6">Flavours</h3>
+          <h3 class="text-title-large">Flavours</h3>
         </div>
 
         <div
@@ -552,6 +552,6 @@ defineExpose({
 
 <style scoped>
 .border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border: 1px solid var(--overlay-on-surface-12);
 }
 </style>

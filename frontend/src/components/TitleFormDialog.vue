@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600px" persistent>
     <v-card>
-      <v-card-title class="text-h5 pa-4 bg-primary">
+      <v-card-title class="text-headline-small pa-4 bg-primary">
         <span class="text-white">Create New Title</span>
       </v-card-title>
 

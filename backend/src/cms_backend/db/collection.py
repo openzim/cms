@@ -282,7 +282,7 @@ def get_collections(
                 name=collection_name,
                 is_private=is_private,
                 retain_old_books=retain_old_books,
-                paths=paths,
+                paths=cast(list[Path], paths),
             )
             for (
                 collection_id,

@@ -5,13 +5,15 @@
     <!-- Loading state when data hasn't been loaded yet -->
     <div v-if="!dataLoaded && loadingStore.isLoading" class="text-center pa-8">
       <v-progress-circular indeterminate size="64" />
-      <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
+      <div class="mt-4 text-body-large">{{ loadingStore.loadingText }}</div>
     </div>
 
     <div v-if="dataLoaded && book">
       <v-row>
         <v-col>
-          <h2 class="text-h6 text-md-h5 mb-2 d-flex flex-wrap align-center ga-2">
+          <h2
+            class="text-title-large text-md-headline-small mb-2 d-flex flex-wrap align-center ga-2"
+          >
             <code>{{ book.name || book.id }}</code>
             <v-chip v-if="book.flavour" size="small" variant="tonal" color="primary">
               {{ book.flavour }}
@@ -195,7 +197,7 @@
               <div class="ml-4 mr-4 mt-2 mb-2">
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Title</div>
+                    <div class="text-title-small">Title</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <router-link
@@ -211,7 +213,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Status</div>
+                    <div class="text-title-small">Status</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div class="d-flex ga-2 align-center">
@@ -226,7 +228,7 @@
                 <template v-if="book.transition_status">
                   <v-row no-gutters class="py-2">
                     <v-col cols="12" md="3">
-                      <div class="text-subtitle-2">Move progress</div>
+                      <div class="text-title-small">Move progress</div>
                     </v-col>
                     <v-col cols="12" md="9">
                       <div class="d-flex flex-wrap ga-2">
@@ -250,7 +252,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">URLs</div>
+                    <div class="text-title-small">URLs</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div
@@ -286,7 +288,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Created</div>
+                    <div class="text-title-small">Created</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <v-tooltip location="bottom">
@@ -303,7 +305,7 @@
 
                 <v-row v-if="book.deletion_date" no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Deletion Date</div>
+                    <div class="text-title-small">Deletion Date</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <v-tooltip location="bottom">
@@ -323,7 +325,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Has Backup</div>
+                    <div class="text-title-small">Has Backup</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <v-chip
@@ -343,7 +345,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Name</div>
+                    <div class="text-title-small">Name</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="book.name">{{ book.name }}</span>
@@ -354,7 +356,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Flavour</div>
+                    <div class="text-title-small">Flavour</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <div>
@@ -369,7 +371,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Date</div>
+                    <div class="text-title-small">Date</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="book.date">{{ book.date }}</span>
@@ -380,7 +382,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Offliner</div>
+                    <div class="text-title-small">Offliner</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <span v-if="offlinerName !== 'Unknown'">{{ offlinerName }}</span>
@@ -391,7 +393,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Article Count</div>
+                    <div class="text-title-small">Article Count</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ book.article_count.toLocaleString() }}
@@ -401,7 +403,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Media Count</div>
+                    <div class="text-title-small">Media Count</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ book.media_count.toLocaleString() }}
@@ -411,7 +413,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Size</div>
+                    <div class="text-title-small">Size</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     {{ formatBytes(book.size) }}
@@ -422,7 +424,7 @@
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
                     <div
-                      class="text-subtitle-2 d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
+                      class="text-title-small d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
                     >
                       <span> ZIM Metadata </span>
                       <v-btn
@@ -448,7 +450,7 @@
                 <v-row v-if="book.zimcheck_summary" no-gutters class="py-2">
                   <v-col cols="12" md="3">
                     <div
-                      class="text-subtitle-2 d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
+                      class="text-title-small d-flex flex-row flex-sm-column ga-2 pa-2 align-center align-sm-stretch"
                     >
                       <span> Zimcheck Summary </span>
                       <v-btn
@@ -511,7 +513,7 @@
                       v-if="book.zimcheck_summary.checks && book.zimcheck_summary.checks.length > 0"
                       class="mt-2"
                     >
-                      <div class="text-caption text-medium-emphasis mb-1">Checks:</div>
+                      <div class="text-body-small text-medium-emphasis mb-1">Checks:</div>
                       <div class="d-flex flex-wrap ga-1">
                         <v-chip
                           v-for="check in book.zimcheck_summary.checks"
@@ -529,7 +531,7 @@
                 <!-- Zimcheck Results File -->
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Zimcheck Results File</div>
+                    <div class="text-title-small">Zimcheck Results File</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <template v-if="book.zimcheck_result_url && !book.zimcheck_s3_deleted">
@@ -558,7 +560,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Current Locations</div>
+                    <div class="text-title-small">Current Locations</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <v-data-table
@@ -581,7 +583,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Target Locations</div>
+                    <div class="text-title-small">Target Locations</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <v-data-table
@@ -604,7 +606,7 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-subtitle-2">Events</div>
+                    <div class="text-title-small">Events</div>
                   </v-col>
                   <v-col cols="12" md="9">
                     <EventsList :events="book.events" />
@@ -678,7 +680,7 @@
       @confirm="handleBackupBook"
     >
       <template #content>
-        <p class="text-body-1">
+        <p class="text-body-large">
           The book will be copied to the backup area. This operation may take some time depending on
           the book size.
         </p>
@@ -698,7 +700,7 @@
       @confirm="handleRemoveBookBackup"
     >
       <template #content>
-        <p class="text-body-1">
+        <p class="text-body-large">
           Are you sure you want to remove the backup for this book? This action cannot be undone.
         </p>
       </template>
@@ -719,8 +721,8 @@
     >
       <template #content>
         <div class="mb-4">
-          <h3 class="text-h6 mb-2">Changes Summary</h3>
-          <p class="text-body-2 text-medium-emphasis mb-3">
+          <h3 class="text-title-large mb-2">Changes Summary</h3>
+          <p class="text-body-medium text-medium-emphasis mb-3">
             Please review the changes below and optionally add a comment describing what you've
             modified.
           </p>
@@ -764,7 +766,7 @@
       @confirm="handleReprocessBook"
     >
       <template #content>
-        <p class="text-body-1">
+        <p class="text-body-large">
           The book will be processed as if it arrived from a Zimfarm notification. This clears the
           book's errors and recomputes its issues.
         </p>

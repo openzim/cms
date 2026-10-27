@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,13 +53,13 @@ class GetBooksSchema(BaseModel):
     needs_file_operation: bool | None = None
     location_kinds: list[NotEmptyString] | None = None
     in_transition: bool | None = None
-    transition_started_before: datetime.datetime | None = None
+    transition_started_before: dt.datetime | None = None
     needs_attention: bool | None = None
     has_backup: bool | None = None
-    updated_before: datetime.datetime | None = None
-    updated_after: datetime.datetime | None = None
-    created_before: datetime.datetime | None = None
-    created_after: datetime.datetime | None = None
+    updated_before: dt.datetime | None = None
+    updated_after: dt.datetime | None = None
+    created_before: dt.datetime | None = None
+    created_after: dt.datetime | None = None
     omit_book_ids: list[UUID] | None = None
     offliner: NotEmptyString | None = None
     issue: NotEmptyString | None = None

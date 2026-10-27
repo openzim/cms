@@ -15,8 +15,11 @@
     :loading="loading"
     :rules="[flavourRule]"
   >
-    <template #item="{ props, item }">
-      <v-list-item v-bind="props" :title="item.title === '' ? 'Empty' : item.title" />
+    <template #item="{ props, internalItem }">
+      <v-list-item
+        v-bind="props"
+        :title="internalItem.title === '' ? 'Empty' : internalItem.title"
+      />
     </template>
   </v-combobox>
 </template>

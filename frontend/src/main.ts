@@ -19,6 +19,7 @@ import router from '@/router'
 
 import App from '@/App.vue'
 import constants from '@/constants'
+import { BREAKPOINTS } from '@/constants/breakpoints'
 
 const app = createApp(App)
 
@@ -27,6 +28,10 @@ const vuetify = createVuetify({
   directives,
   theme: {
     defaultTheme: 'system',
+  },
+  display: {
+    // Keep the Vuetify 3 breakpoints used by the existing layouts.
+    thresholds: { ...BREAKPOINTS },
   },
 })
 

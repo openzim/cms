@@ -2,7 +2,7 @@
   <v-container>
     <div v-if="!dataLoaded && loadingStore.isLoading" class="text-center pa-8">
       <v-progress-circular indeterminate size="64" />
-      <div class="mt-4 text-body-1">{{ loadingStore.loadingText }}</div>
+      <div class="mt-4 text-body-large">{{ loadingStore.loadingText }}</div>
     </div>
 
     <div v-if="dataLoaded && collection">
@@ -58,7 +58,7 @@
           <div>
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Name</div>
+                <div class="text-title-small">Name</div>
               </v-col>
               <v-col cols="12" md="9">
                 {{ collection.name }}
@@ -68,7 +68,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Warehouse</div>
+                <div class="text-title-small">Warehouse</div>
               </v-col>
               <v-col cols="12" md="9">
                 {{ collection.warehouse }}
@@ -78,7 +78,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Download Base URL</div>
+                <div class="text-title-small">Download Base URL</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.download_base_url">{{ collection.download_base_url }}</span>
@@ -89,7 +89,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">View Base URL</div>
+                <div class="text-title-small">View Base URL</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.view_base_url">{{ collection.view_base_url }}</span>
@@ -100,7 +100,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Article Count Increase Threshold</div>
+                <div class="text-title-small">Article Count Increase Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.article_count_increase_threshold">{{
@@ -113,7 +113,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Article Count Decrease Threshold</div>
+                <div class="text-title-small">Article Count Decrease Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.article_count_decrease_threshold">{{
@@ -126,7 +126,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Media Count Increase Threshold</div>
+                <div class="text-title-small">Media Count Increase Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.media_count_increase_threshold">{{
@@ -139,7 +139,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Media Count Decrease Threshold</div>
+                <div class="text-title-small">Media Count Decrease Threshold</div>
               </v-col>
               <v-col cols="12" md="9">
                 <span v-if="collection.media_count_decrease_threshold">{{
@@ -152,7 +152,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Private</div>
+                <div class="text-title-small">Private</div>
               </v-col>
               <v-col cols="12" md="9">
                 <v-chip
@@ -168,7 +168,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Retains Books</div>
+                <div class="text-title-small">Retains Books</div>
               </v-col>
               <v-col cols="12" md="9">
                 <v-icon :color="collection.retain_old_books ? 'success' : 'grey'">
@@ -180,7 +180,7 @@
 
             <v-row no-gutters class="py-2">
               <v-col cols="12" md="3">
-                <div class="text-subtitle-2">Titles</div>
+                <div class="text-title-small">Titles</div>
               </v-col>
               <v-col cols="12" md="9">
                 <router-link
@@ -288,8 +288,8 @@
     >
       <template #content>
         <div class="mb-4">
-          <h3 class="text-h6 mb-2">Changes Summary</h3>
-          <p class="text-body-2 text-medium-emphasis mb-3">
+          <h3 class="text-title-large mb-2">Changes Summary</h3>
+          <p class="text-body-medium text-medium-emphasis mb-3">
             Please review the changes below and optionally add a comment describing what you've
             modified.
           </p>

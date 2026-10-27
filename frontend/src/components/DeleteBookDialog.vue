@@ -1,26 +1,26 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600px" persistent>
     <v-card>
-      <v-card-title class="text-h5 pa-4 bg-primary">
+      <v-card-title class="text-headline-small pa-4 bg-primary">
         <span class="text-white">Delete Book</span>
       </v-card-title>
 
       <v-card-text class="pt-4">
         <v-form ref="formRef" v-model="formValid">
           <div v-if="book" class="mb-4">
-            <div class="text-body-2 mb-2">
+            <div class="text-body-medium mb-2">
               <strong>Book ID:</strong> <code>{{ book.id }}</code>
             </div>
-            <div v-if="book.name" class="text-body-2 mb-2">
+            <div v-if="book.name" class="text-body-medium mb-2">
               <strong>Name:</strong> {{ book.name }}
             </div>
-            <div v-if="book.flavour" class="text-body-2 mb-2">
+            <div v-if="book.flavour" class="text-body-medium mb-2">
               <strong>Flavour:</strong> {{ book.flavour }}
             </div>
-            <div v-if="book.date" class="text-body-2 mb-2">
+            <div v-if="book.date" class="text-body-medium mb-2">
               <strong>Date:</strong> {{ book.date }}
             </div>
-            <div class="text-body-2 mb-2">
+            <div class="text-body-medium mb-2">
               <strong>Created:</strong> {{ formatDt(book.created_at) }}
             </div>
           </div>
@@ -45,7 +45,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Normal Delete (Recommended)</div>
-                  <div class="text-caption">
+                  <div class="text-body-small">
                     Book will be deleted after the usual grace period. This is the safe option.
                   </div>
                 </div>
@@ -56,7 +56,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium text-error">Force Delete (Immediate)</div>
-                  <div class="text-caption">
+                  <div class="text-body-small">
                     Book will be deleted immediately and this will break user experience as ongoing
                     downloads will be broken. Use with extreme caution!
                   </div>
@@ -71,8 +71,8 @@
             class="mt-4"
             icon="mdi-shield-alert"
           >
-            <div class="text-subtitle-2 mb-2">Confirmation Required</div>
-            <div class="text-body-2 mb-3">
+            <div class="text-title-small mb-2">Confirmation Required</div>
+            <div class="text-body-medium mb-3">
               To proceed with force delete, please type the book ID below to confirm:
             </div>
 

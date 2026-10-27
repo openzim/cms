@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import os
 from typing import Any
 
@@ -39,29 +39,29 @@ class Context:
     cms_oauth_client_id = os.getenv("CMS_OAUTH_CLIENT_ID", default="")
     cms_oauth_client_secret = os.getenv("CMS_OAUTH_CLIENT_SECRET", default="")
     cms_oauth_audience_id = os.getenv("CMS_OAUTH_AUDIENCE_ID", default="")
-    cms_token_renewal_window = datetime.timedelta(
+    cms_token_renewal_window = dt.timedelta(
         seconds=parse_timespan(os.getenv("CMS_TOKEN_RENEWAL_WINDOW", default="5m"))
     )
     cms_database_url = get_mandatory_env("CMS_DATABASE_URL")
     catalog_generation_timeout = parse_timespan(
         os.getenv("CATALOG_GENERATION_TIMEOUT", default="10s")
     )
-    zimfarm_notification_pending_delay = datetime.timedelta(
+    zimfarm_notification_pending_delay = dt.timedelta(
         seconds=parse_timespan(
             os.getenv("ZIMFARM_NOTIFICATION_PENDING_DELAY", default="15m")
         )
     )
-    books_pending_move_delay = datetime.timedelta(
+    books_pending_move_delay = dt.timedelta(
         seconds=parse_timespan(os.getenv("BOOKS_PENDING_MOVE_DELAY", default="15m"))
     )
     # Should be set to be more than CMS deletion delay as it's only an issue if
     # CMS hasn't deleted the file after the delay.
-    books_pending_delete_delay = datetime.timedelta(
+    books_pending_delete_delay = dt.timedelta(
         seconds=parse_timespan(os.getenv("BOOKS_PENDING_DELETE_DELAY", default="25h"))
     )
     # A book being moved to staging/production is expected to complete all its
     # transition checks within this delay.
-    books_pending_transition_delay = datetime.timedelta(
+    books_pending_transition_delay = dt.timedelta(
         seconds=parse_timespan(
             os.getenv("BOOKS_PENDING_TRANSITION_DELAY", default="24h")
         )

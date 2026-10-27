@@ -1,5 +1,5 @@
 import base64
-import datetime
+import datetime as dt
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -341,18 +341,18 @@ def test_get_books_filter_by_transition_started_before(
 
     stuck = create_book(zim_metadata={"Name": "wikipedia_en_all"})
     stuck.transition_status = BookTransitionStatus.CHECKING_MIRRORS
-    stuck.transition_started_at = now - datetime.timedelta(hours=25)
+    stuck.transition_started_at = now - dt.timedelta(hours=25)
 
     recent = create_book(zim_metadata={"Name": "wiktionary_en_all"})
     recent.transition_status = BookTransitionStatus.CHECKING_MIRRORS
-    recent.transition_started_at = now - datetime.timedelta(hours=1)
+    recent.transition_started_at = now - dt.timedelta(hours=1)
 
     # not in transition: ignored even though it has no transition_started_at
     create_book(zim_metadata={"Name": "wikivoyage_en_all"})
 
     dbsession.flush()
 
-    cutoff = (now - datetime.timedelta(hours=24)).isoformat(timespec="seconds")
+    cutoff = (now - dt.timedelta(hours=24)).isoformat(timespec="seconds")
     response = client.get(
         f"/v1/books?in_transition=true&transition_started_before={cutoff}",
         headers={"Authorization": f"Bearer {access_token}"},
@@ -831,7 +831,7 @@ def test_get_book_by_id_invalid_uuid(
     "updated_after,updated_before,created_after,created_before,expected_nb_records",
     [
         pytest.param(
-            datetime.timedelta(days=2),
+            dt.timedelta(days=2),
             None,
             None,
             None,
@@ -840,15 +840,15 @@ def test_get_book_by_id_invalid_uuid(
         ),
         pytest.param(
             None,
-            datetime.timedelta(days=1),
+            dt.timedelta(days=1),
             None,
             None,
             2,
             id="updated-before-yesterday",
         ),
         pytest.param(
-            datetime.timedelta(days=3),
-            datetime.timedelta(days=1),
+            dt.timedelta(days=3),
+            dt.timedelta(days=1),
             None,
             None,
             1,
@@ -857,7 +857,7 @@ def test_get_book_by_id_invalid_uuid(
         pytest.param(
             None,
             None,
-            datetime.timedelta(days=1),
+            dt.timedelta(days=1),
             None,
             1,
             id="created-after-yesterday",
@@ -866,14 +866,14 @@ def test_get_book_by_id_invalid_uuid(
             None,
             None,
             None,
-            datetime.timedelta(days=2),
+            dt.timedelta(days=2),
             1,
             id="created-before-two-days-ago",
         ),
         pytest.param(
-            datetime.timedelta(days=1),
+            dt.timedelta(days=1),
             None,
-            datetime.timedelta(days=2),
+            dt.timedelta(days=2),
             None,
             1,
             id="created-two-days-ago-updated-yesterday",
@@ -884,18 +884,18 @@ def test_get_books_filter_by_date_range(
     client: TestClient,
     create_book: Callable[..., Book],
     access_token: str,
-    updated_after: datetime.timedelta | None,
-    updated_before: datetime.timedelta | None,
-    created_after: datetime.timedelta | None,
-    created_before: datetime.timedelta | None,
+    updated_after: dt.timedelta | None,
+    updated_before: dt.timedelta | None,
+    created_after: dt.timedelta | None,
+    created_before: dt.timedelta | None,
     expected_nb_records: int,
 ):
     """Test get books endpoint filtering by updated_after/before"""
 
     now = getnow()
-    yesterday = now - datetime.timedelta(days=1)
-    two_days_ago = now - datetime.timedelta(days=2)
-    three_days_ago = now - datetime.timedelta(days=3)
+    yesterday = now - dt.timedelta(days=1)
+    two_days_ago = now - dt.timedelta(days=2)
+    three_days_ago = now - dt.timedelta(days=3)
 
     # Create books at different times
     create_book(created_at=yesterday, updated_at=three_days_ago)

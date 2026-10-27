@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.15-slim-trixie
 
 # install Python dependencies first (since they change more rarely than src code)
 COPY pyproject.toml README.md /app/

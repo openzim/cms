@@ -156,7 +156,7 @@ def get_accounts(
     role: RoleEnum | None = None,
     show_zimfarmers: bool = True,
     show_viewers: bool = True,
-) -> ListResult[Account]:
+) -> ListResult[AccountSchema]:
     """Get a list of accounts"""
     query = (
         select(
@@ -180,10 +180,10 @@ def get_accounts(
         .order_by(Account.display_name.asc(), Account.id.asc())
     )
 
-    results = ListResult[Account](nb_records=0, records=[])
+    results = ListResult[AccountSchema](nb_records=0, records=[])
     for nb_records, account in session.execute(query).all():
         results.nb_records = nb_records
-        results.records.append(account)
+        results.records.append(create_account_schema(account))
     return results
 
 

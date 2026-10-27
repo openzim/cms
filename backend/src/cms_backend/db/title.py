@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, cast
@@ -93,9 +93,9 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
                 title.books,
                 key=lambda book: (
                     (
-                        datetime.date.fromisoformat(book.date)
+                        dt.date.fromisoformat(book.date)
                         if book.date
-                        else datetime.datetime.fromtimestamp(0).date()
+                        else dt.datetime.fromtimestamp(0).date()
                     ),
                     book.created_at,
                 ),

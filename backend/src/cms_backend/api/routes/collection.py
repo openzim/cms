@@ -176,8 +176,10 @@ def _get_catalog_xml_content(
 
     if collection is None:
         return (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            '<library version="20110515"></library>',
+            (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<library version="20110515"></library>'
+            ),
             HTTPStatus.NOT_FOUND,
         )
 
