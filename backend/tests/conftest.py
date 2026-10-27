@@ -500,11 +500,12 @@ def create_account(
         permission: RoleEnum = RoleEnum.ADMIN,
         password: str | None = None,
     ):
-        username = username or faker.first_name()
+        display_name = username or faker.first_name()
+        username = username or f"{display_name}_{uuid4().hex[:8]}"
         account = Account(
             role=permission,
             username=username,
-            display_name=username,
+            display_name=display_name,
             idp_sub=uuid4(),
             password_hash=(
                 None if password is None else generate_password_hash(password)

@@ -281,6 +281,26 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const fetchAvailableTitleUploaders = async (
+    titleId: string,
+    skip: number = 0,
+    limit: number = 200,
+  ): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(
+        `/${titleId}/uploaders/available`,
+        { params: { skip, limit } },
+      )
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch available title uploaders', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
   const fetchTitleUploaders = async (titleId: string): Promise<User[]> => {
     const service = await authStore.getApiService('titles')
     try {
@@ -345,6 +365,7 @@ export const useTitleStore = defineStore('title', () => {
     completeZimUploadByFile,
     completeZimUploadByUrl,
     fetchTitleUploaders,
+    fetchAvailableTitleUploaders,
     grantTitleUploader,
     revokeTitleUploader,
   }

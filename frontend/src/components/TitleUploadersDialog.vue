@@ -79,7 +79,6 @@ import { computed, ref, watch } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useNotificationStore } from '@/stores/notification'
 import { useTitleStore } from '@/stores/title'
-import { useUserStore } from '@/stores/user'
 import type { User } from '@/types/user'
 
 interface Props {
@@ -94,7 +93,6 @@ const emit = defineEmits<{
 }>()
 
 const titleStore = useTitleStore()
-const userStore = useUserStore()
 const notificationStore = useNotificationStore()
 
 const errors = ref<string[]>([])
@@ -121,7 +119,7 @@ const loadData = async () => {
   loading.value = true
   errors.value = []
   const [accounts, currentUploaders] = await Promise.all([
-    userStore.fetchUsers(0, 200, undefined, false, false, 'title-uploader'),
+    titleStore.fetchAvailableTitleUploaders(props.titleId),
     titleStore.fetchTitleUploaders(props.titleId),
   ])
   titleUploaderAccounts.value = accounts ?? []

@@ -668,9 +668,14 @@ class TitleUploaderGrantSchema(BaseModel):
     account_id: UUID
 
 
+class AvailableTitleUploadersGetSchema(BaseModel):
+    skip: SkipField = 0
+    limit: LimitFieldMax200 = 20
+
+
 @router.get(
     "/{title_identifier}/uploaders",
-    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
 def get_title_uploaders(
     title_identifier: Annotated[NotEmptyString, Path()],
@@ -701,9 +706,45 @@ def get_title_uploaders(
     )
 
 
+@router.get(
+    "/{title_identifier}/uploaders/available",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_available_title_uploaders(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    params: Annotated[AvailableTitleUploadersGetSchema, Query()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> ListResponse[AccountSchema]:
+    """List title-uploader accounts which may be granted upload access to a title"""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    results = db_title_permission.get_available_title_uploaders(
+        session, title.id, skip=params.skip, limit=params.limit
+    )
+    return ListResponse[AccountSchema](
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=params.skip,
+            limit=params.limit,
+            page_size=len(results.records),
+        ),
+        items=results.records,
+    )
+
+
 @router.post(
     "/{title_identifier}/uploaders",
-    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
 def grant_title_uploader(
     title_identifier: Annotated[NotEmptyString, Path()],
@@ -738,7 +779,7 @@ def grant_title_uploader(
 
 @router.delete(
     "/{title_identifier}/uploaders/{account_id}",
-    dependencies=[Depends(require_permission(namespace="account", name="update"))],
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
 def revoke_title_uploader(
     title_identifier: Annotated[NotEmptyString, Path()],
