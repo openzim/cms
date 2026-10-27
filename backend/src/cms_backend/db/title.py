@@ -454,7 +454,10 @@ def create_title(
         # Create the title flavours for the title
         for entry in payload.flavours:
             create_title_flavour(
-                session, title, recipe_id=entry.recipe_id, flavour=entry.flavour
+                session,
+                title,
+                recipe_id=entry.recipe_id,
+                flavour=entry.flavour,
             )
 
     create_title_history_entry(

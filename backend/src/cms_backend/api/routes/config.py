@@ -23,6 +23,7 @@ def get_config() -> JSONResponse:
             ),
             "ZIM_TITLE_MAX_LENGTH": Context.zim_title_max_length,
             "ZIM_DESCRIPTION_MAX_LENGTH": Context.zim_description_max_length,
+            "APP_BUILD_STORES": Context.app_build_stores,
         },
         status_code=HTTPStatus.OK,
     )

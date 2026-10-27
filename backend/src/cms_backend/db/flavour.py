@@ -48,7 +48,10 @@ def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
 
 
 def create_title_flavour(
-    session: OrmSession, title: Title, recipe_id: UUID | None, flavour: str
+    session: OrmSession,
+    title: Title,
+    recipe_id: UUID | None,
+    flavour: str,
 ):
     title_flavour = TitleFlavour(
         flavour=flavour,

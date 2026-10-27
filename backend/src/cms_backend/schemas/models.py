@@ -158,9 +158,50 @@ class CollectionUpdateSchema(BaseModel):
     retain_old_books: bool | None = None
 
 
+type ApplicationStore = Literal["apple", "android"]
+
+APP_NAME_REGEX = re.compile(r"^[a-z0-9_-]+$")
+
+
+class ApplicationCreateSchema(BaseModel):
+    title_id: NotEmptyString
+    flavour: ZimFlavour
+    store: ApplicationStore
+    enabled: bool = True
+    name: NotEmptyString = Field(pattern=APP_NAME_REGEX)
+
+
+class ApplicationUpdateSchema(BaseModel):
+    enabled: bool | None = None
+    name: NotEmptyString | None = Field(default=None, pattern=APP_NAME_REGEX)
+    comment: NotEmptyString | None = None
+
+
 class TitleFlavourCreateSchema(BaseModel):
     flavour: ZimFlavour
     recipe_id: UUID | None
+
+
+class ApplicationBuildRequestSchema(BaseModel):
+    title_identifier: NotEmptyString
+    flavour: ZimFlavour
+    store: ApplicationStore
+
+
+class ApplicationBuildCreateSchema(BaseModel):
+    application_id: UUID
+    store: ApplicationStore
+    content_version: NotEmptyString
+    app_name: NotEmptyString
+    zim_filename: NotEmptyString
+    repository: NotEmptyString
+    workflow: NotEmptyString
+    branch: NotEmptyString
+    tag: NotEmptyString | None = None
+    commit_sha: NotEmptyString | None = None
+    release_id: int | None = None
+    release_url: NotEmptyString | None = None
+    requested_by_id: UUID | None = None
 
 
 class BaseTitleCreateUpdateSchema(BaseModel):

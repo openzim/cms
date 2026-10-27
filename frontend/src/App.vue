@@ -28,6 +28,9 @@ const canReadUsers = computed(() => {
 const canReadCollections = computed(() => {
   return authStore.hasPermission('collection', 'read')
 })
+const canReadApplications = computed(() => {
+  return authStore.hasPermission('application', 'read')
+})
 
 const navigationItems = computed<NavigationItem[]>(() => [
   {
@@ -61,6 +64,14 @@ const navigationItems = computed<NavigationItem[]>(() => [
     icon: 'mdi-folder-multiple',
     disabled: false,
     show: canReadCollections.value,
+  },
+  {
+    name: 'apps',
+    label: 'Apps',
+    route: 'apps',
+    icon: 'mdi-apps',
+    disabled: false,
+    show: canReadApplications.value,
   },
   {
     name: 'users',
