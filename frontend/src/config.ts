@@ -1,4 +1,5 @@
 import constants from '@/constants'
+import type { PublicationStore } from '@/types/publication'
 import httpRequest from '@/utils/httpRequest'
 import type { PiniaPluginContext } from 'pinia'
 import { inject } from 'vue'
@@ -21,6 +22,7 @@ export interface Config {
   ARTICLE_COUNT_DECREASE_THRESHOLD: number | undefined
   ZIM_TITLE_MAX_LENGTH: number | undefined
   ZIM_DESCRIPTION_MAX_LENGTH: number | undefined
+  PUBLICATION_STORES?: Array<PublicationStore>
 }
 
 export const ConfigService = {

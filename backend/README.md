@@ -38,3 +38,35 @@ configured username already exists, it is reused as-is.
 | Variable                | Default | Description                                                        |
 | ----------------------- | ------- | ------------------------------------------------------------------ |
 | `MILL_ACCOUNT_USERNAME` | `mill`  | Username of the technical account used for automated mill actions. |
+
+## App publication
+
+Titles whose flavours are enabled for a given store (Android and/or Apple) can
+trigger a branded-app release from the CMS. The backend creates a tag pointing
+at the configured branch and a GitHub release, which triggers the branded app
+CD workflow. Tags are the same for every store:
+
+- `<app>_<YYYY>.<MM>[suffix].<build>`
+
+`<build>` starts at 0 for the first publication of a given content version and
+is incremented on every retry (for example after a failed build). Legacy/manual
+releases using the bare app folder name as the tag remain supported.
+
+Android publications use
+[kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded). Apple
+publications are supported by the same generic code path but stay disabled
+until an Apple repository is configured (`GITHUB_APPLE_REPO`).
+
+Relevant environment variables:
+
+| Variable                  | Default                       | Description                                       |
+| ------------------------- | ----------------------------- | ------------------------------------------------- |
+| `GITHUB_API_URL`          | `https://api.github.com`      | GitHub API base URL                               |
+| `GITHUB_TOKEN`            | (empty)                       | Token with `contents: write` on the branded repo  |
+| `GITHUB_ANDROID_REPO`     | `kiwix/kiwix-android-branded` | Android branded apps repository                   |
+| `GITHUB_ANDROID_WORKFLOW` | `cd.yml`                      | Android CD workflow used for status tracking      |
+| `GITHUB_ANDROID_BRANCH`   | `main`                        | Branch the Android publication tag points to      |
+| `GITHUB_APPLE_REPO`       | (empty)                       | Apple branded apps repository (disabled if empty) |
+| `GITHUB_APPLE_WORKFLOW`   | `cd.yml`                      | Apple CD workflow used for status tracking        |
+| `GITHUB_APPLE_BRANCH`     | `main`                        | Branch the Apple publication tag points to        |
+| `PUBLICATION_STORES`      | `android`                     | Comma-separated stores exposed to the UI          |

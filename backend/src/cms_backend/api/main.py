@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from cms_backend.api.routes.account import router as account_router
+from cms_backend.api.routes.applications import router as applications_router
 from cms_backend.api.routes.auth import router as auth_router
 from cms_backend.api.routes.books import router as books_router
 from cms_backend.api.routes.collection import router as collection_router
@@ -18,6 +19,7 @@ from cms_backend.api.routes.config import router as config_router
 from cms_backend.api.routes.events import router as events_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
+from cms_backend.api.routes.publications import router as publications_router
 from cms_backend.api.routes.staging import router as staging_router
 from cms_backend.api.routes.stats import router as stats_router
 from cms_backend.api.routes.title_uploads import router as title_uploads_router
@@ -73,6 +75,8 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=zimfarm_notification_router)
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)
+    main_router.include_router(router=applications_router)
+    main_router.include_router(router=publications_router)
     main_router.include_router(router=books_router)
     main_router.include_router(router=collection_router)
     main_router.include_router(router=events_router)

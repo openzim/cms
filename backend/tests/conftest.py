@@ -14,6 +14,9 @@ from cms_backend.context import Context
 from cms_backend.db import Session
 from cms_backend.db.models import (
     Account,
+    Application,
+    ApplicationHistory,
+    ApplicationPublication,
     Base,
     Book,
     BookHistory,
@@ -31,6 +34,7 @@ from cms_backend.db.models import (
 )
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
+from cms_backend.utils.github import get_tag_prefix
 
 
 @pytest.fixture
@@ -294,6 +298,129 @@ def title(
     create_title: Callable[..., Title],
 ) -> Title:
     return create_title()
+
+
+@pytest.fixture
+def create_application(
+    dbsession: OrmSession,
+    faker: Faker,
+    account: Account,
+    create_title: Callable[..., Title],
+) -> Callable[..., Application]:
+    def _create_application(
+        *,
+        title: Title | None = None,
+        flavour: str | None = None,
+        store: str = "android",
+        name: str | None = None,
+        enabled: bool = True,
+        author_id: UUID | None = None,
+    ) -> Application:
+        if title is None:
+            title = create_title(flavours=["maxi"])
+        if flavour is None:
+            flavour = title.flavours[0].flavour
+
+        application = Application(
+            title_id=title.id,
+            flavour=flavour,
+            store=store,
+            name=name if name is not None else faker.word(),
+            enabled=enabled,
+        )
+
+        history_entry = ApplicationHistory(
+            store=store,
+            comment="Initial history entry",
+            name=application.name,
+            enabled=enabled,
+        )
+        history_entry.title_id = title.id
+        history_entry.flavour = flavour
+        history_entry.author_id = author_id if author_id is not None else account.id
+
+        dbsession.add(application)
+        dbsession.add(history_entry)
+        dbsession.flush()
+        return application
+
+    return _create_application
+
+
+@pytest.fixture
+def application(
+    create_application: Callable[..., Application],
+) -> Application:
+    return create_application()
+
+
+@pytest.fixture
+def create_publication(
+    dbsession: OrmSession,
+    account: Account,
+    create_title: Callable[..., Title],
+) -> Callable[..., ApplicationPublication]:
+    def _create_publication(
+        *,
+        title: Title | None = None,
+        flavour: str | None = None,
+        store: str = "android",
+        app_name: str = "phet",
+        content_version: str = "2026-05",
+        build: int = 0,
+        tag: str | None = None,
+        commit_sha: str = "abc",
+        repository: str = "kiwix/kiwix-android-branded",
+        workflow: str = "cd.yml",
+        status: str = "pending",
+        release_id: int | None = 1,
+        release_url: str | None = "https://github.test/release/1",
+        run_id: int | None = None,
+        run_url: str | None = None,
+        error: str | None = None,
+        requested_by_id: UUID | None = None,
+    ) -> ApplicationPublication:
+        if title is None:
+            title = create_title(flavours=["maxi"])
+        if flavour is None:
+            flavour = title.flavours[0].flavour
+        if tag is None:
+            tag_prefix = get_tag_prefix(
+                app_name=app_name, content_version=content_version
+            )
+            tag = f"{tag_prefix}.{build}"
+
+        publication = ApplicationPublication(
+            title_id=title.id,
+            flavour=flavour,
+            store=store,
+            content_version=content_version,
+            tag=tag,
+            commit_sha=commit_sha,
+            repository=repository,
+            workflow=workflow,
+            status=status,
+            release_id=release_id,
+            release_url=release_url,
+            run_id=run_id,
+            run_url=run_url,
+            error=error,
+            requested_by_id=(
+                requested_by_id if requested_by_id is not None else account.id
+            ),
+        )
+        dbsession.add(publication)
+        dbsession.flush()
+        return publication
+
+    return _create_publication
+
+
+@pytest.fixture
+def publication(
+    create_publication: Callable[..., ApplicationPublication],
+) -> ApplicationPublication:
+    return create_publication()
 
 
 @pytest.fixture

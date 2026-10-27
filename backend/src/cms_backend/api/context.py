@@ -85,3 +85,23 @@ class Context:
     )
     zimtask_disk = parse_size(os.getenv("ZIMTASK_DISK", default="1GiB"), binary=True)
     zimtask_worker = os.getenv("ZIMTASK_WORKER")
+
+    # GitHub integration used to publish branded apps, per platform
+    github_api_url: str = os.getenv("GITHUB_API_URL", default="https://api.github.com")
+    github_token: str = os.getenv("GITHUB_TOKEN", default="")
+    github_android_repo: str = os.getenv(
+        "GITHUB_ANDROID_REPO", default="kiwix/kiwix-android-branded"
+    )
+    github_android_workflow: str = os.getenv(
+        "GITHUB_ANDROID_WORKFLOW", default="cd.yml"
+    )
+    github_android_branch: str = os.getenv("GITHUB_ANDROID_BRANCH", default="main")
+    github_apple_repo: str = os.getenv(
+        "GITHUB_APPLE_REPO", default="kiwix/kiwix-apple-branded"
+    )
+    github_apple_workflow: str = os.getenv("GITHUB_APPLE_WORKFLOW", default="cd.yml")
+    github_apple_branch: str = os.getenv("GITHUB_APPLE_BRANCH", default="main")
+    # App stores enabled for publication (comma-separated)
+    publication_stores: list[str] = os.getenv(
+        "PUBLICATION_STORES", default="android,apple"
+    ).split(",")

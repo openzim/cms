@@ -16,6 +16,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    UniqueConstraint,
     false,
     func,
     text,
@@ -334,6 +335,100 @@ class TitleFlavour(Base):
         default=None, server_default=func.now()
     )
     title: Mapped[Title] = relationship(back_populates="flavours", init=False)
+    applications: Mapped[list[Application]] = relationship(
+        back_populates="title_flavour",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        default_factory=list,
+    )
+
+
+class Application(Base):
+    """Per-store application configuration for a title flavour."""
+
+    __tablename__ = "application"
+
+    title_id: Mapped[UUID] = mapped_column(primary_key=True)
+    flavour: Mapped[str] = mapped_column(primary_key=True)
+    store: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    enabled: Mapped[bool] = mapped_column(default=False, server_default=false())
+    title_flavour: Mapped[TitleFlavour] = relationship(
+        back_populates="applications", init=False
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["title_id", "flavour"],
+            ["title_flavour.title_id", "title_flavour.flavour"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("name", "store", name="uq_application_name_store"),
+    )
+
+
+class ApplicationHistory(Base):
+    __tablename__ = "application_history"
+
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_id: Mapped[UUID] = mapped_column(init=False)
+    flavour: Mapped[str] = mapped_column(init=False)
+    store: Mapped[str]
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("account.id"), init=False)
+    comment: Mapped[str | None]
+    name: Mapped[str]
+    enabled: Mapped[bool] = mapped_column(default=False, server_default=false())
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    author: Mapped[Account] = relationship(init=False)
+
+
+class ApplicationPublication(Base):
+    """A publication of a title flavour to an app store."""
+
+    __tablename__ = "application_publication"
+
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_id: Mapped[UUID]
+    flavour: Mapped[str]
+    store: Mapped[str]
+    content_version: Mapped[str]
+    tag: Mapped[str]
+    commit_sha: Mapped[str]
+    repository: Mapped[str]
+    workflow: Mapped[str]
+    status: Mapped[str] = mapped_column(default="pending", server_default="pending")
+    release_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
+    release_url: Mapped[str | None] = mapped_column(default=None)
+    run_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
+    run_url: Mapped[str | None] = mapped_column(default=None)
+    error: Mapped[str | None] = mapped_column(default=None)
+    requested_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("account.id", ondelete="SET NULL"), default=None
+    )
+    requested_by: Mapped[Account | None] = relationship(
+        init=False, foreign_keys=[requested_by_id]
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, onupdate=getnow, server_default=func.now()
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["title_id", "flavour"],
+            ["title_flavour.title_id", "title_flavour.flavour"],
+            ondelete="CASCADE",
+        ),
+        Index("ix_application_publication_tag", "tag", unique=True),
+    )
 
 
 class DownloadStats(Base):

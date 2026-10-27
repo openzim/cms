@@ -70,6 +70,16 @@ export function base64FormattedSize(base64String: string): string {
   return formattedBytesSize(bytes)
 }
 
+export function storeLabel(store: string): string {
+  if (store === 'android') return 'Android'
+  if (store === 'apple') return 'Apple'
+  return store
+}
+
+export function flavourLabel(flavour: string): string {
+  return flavour === '' ? 'Empty' : flavour
+}
+
 export function matchOffliner(rawOffliner: string | null, offlinerNames: string[]): string {
   if (!rawOffliner) return 'Unknown'
   const lower = rawOffliner.toLowerCase()

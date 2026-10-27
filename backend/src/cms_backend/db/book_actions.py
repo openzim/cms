@@ -17,7 +17,7 @@ from cms_backend.db.book import (
     get_book_or_none,
     get_book_unsupported_languages,
     get_differing_metadata_keys,
-    get_latest_prod_book,
+    get_latest_prod_book_or_current_book,
     get_zimcheck_errors,
     move_book_to_destination,
 )
@@ -331,7 +331,7 @@ def get_book_promotion_actions(
     if action := _get_zimcheck_issues_action(book):
         actions.append(action)
 
-    previous_book = get_latest_prod_book(session, book)
+    previous_book = get_latest_prod_book_or_current_book(session, book)
     if action := _get_media_count_issues_action(book, previous_book):
         actions.append(action)
 
