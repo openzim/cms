@@ -96,7 +96,39 @@
       <v-window v-model="currentTab">
         <v-window-item :value="store">
           <template v-if="application && application.store === store">
+            <div
+              v-if="canManagePublishers || canPublish"
+              class="d-flex flex-column flex-sm-row justify-end ga-2 mb-4"
+            >
+              <v-btn
+                v-if="canManagePublishers"
+                color="primary"
+                variant="elevated"
+                prepend-icon="mdi-account-key"
+                @click="showPublishersDialog = true"
+              >
+                Manage Publication Access
+              </v-btn>
+
+              <v-btn
+                v-if="canPublish"
+                color="success"
+                variant="elevated"
+                :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
+                :loading="publicationsRef?.publishing"
+                :disabled="
+                  !application?.enabled ||
+                  publicationsRef?.publishing ||
+                  publicationsRef?.hasOngoing
+                "
+                @click="publicationsRef?.publish()"
+              >
+                Publish to {{ storeLabel(store) }}
+              </v-btn>
+            </div>
+
             <ApplicationPublications
+              ref="publicationsRef"
               :title-id="application.title_id"
               :flavour="application.flavour"
               :name="application.name"
@@ -218,6 +250,12 @@
       </v-window>
     </div>
 
+    <PublicationPublishersDialog
+      v-if="application"
+      v-model="showPublishersDialog"
+      :title-id="application.title_id"
+    />
+
     <ConfirmDialog
       v-model="showConfirmDialog"
       title="Confirm Application Update"
@@ -288,6 +326,7 @@ import ApplicationHistory from '@/components/ApplicationHistory.vue'
 import ApplicationPublications from '@/components/ApplicationPublications.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import PublicationPublishersDialog from '@/components/PublicationPublishersDialog.vue'
 import { useApplicationStore } from '@/stores/application'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
 import { useAuthStore } from '@/stores/auth'
@@ -325,6 +364,9 @@ const currentTab = ref<string>(props.store)
 const canUpdate = computed(() => authStore.hasPermission('application', 'update'))
 const canDelete = computed(() => authStore.hasPermission('application', 'delete'))
 const canPublish = computed(() => authStore.hasPermission('publication', 'create'))
+const canManagePublishers = computed(() => authStore.hasPermission('title', 'update'))
+const showPublishersDialog = ref(false)
+const publicationsRef = ref<InstanceType<typeof ApplicationPublications> | null>(null)
 
 const formRef = ref()
 const formValid = ref(false)

@@ -2,19 +2,6 @@
   <div v-if="(canPublish && enabled) || publications.length > 0" class="mb-4">
     <div class="d-flex align-center flex-wrap ga-2 mb-2">
       <span class="text-title-small">{{ storeLabel(store) }} publications</span>
-      <v-spacer />
-      <v-btn
-        v-if="canPublish"
-        size="small"
-        color="primary"
-        variant="tonal"
-        :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
-        :loading="publishing"
-        :disabled="!enabled || publishing || hasOngoing"
-        @click="triggerPublication"
-      >
-        Publish to {{ storeLabel(store) }}
-      </v-btn>
     </div>
 
     <v-alert
@@ -38,7 +25,7 @@
         variant="outlined"
         density="compact"
       >
-        <div class="d-flex flex-wrap align-center ga-2 pa-2">
+        <div class="d-flex flex-wrap align-center ga-2 px-2 pt-2">
           <v-chip size="small" variant="tonal" :color="statusColor(publication.status)">
             <v-progress-circular
               v-if="isOngoing(publication)"
@@ -56,48 +43,50 @@
           <span v-if="publication.requested_by" class="text-body-small text-medium-emphasis">
             by {{ publication.requested_by }}
           </span>
-          <v-spacer />
-          <v-btn
-            v-if="publication.pr_url"
-            size="x-small"
-            variant="text"
-            :href="publication.pr_url"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Pull request
-          </v-btn>
-          <v-btn
-            v-if="publication.release_url"
-            size="x-small"
-            variant="text"
-            :href="publication.release_url"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Release
-          </v-btn>
-          <v-btn
-            size="x-small"
-            variant="text"
-            :href="workflowUrl(publication)"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ publication.run_url ? 'Workflow run' : 'Actions' }}
-          </v-btn>
-          <v-btn
-            v-if="publication.events.length > 0 || publication.phase"
-            size="x-small"
-            variant="text"
-            :icon="isExpanded(publication.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
-            :aria-label="
-              isExpanded(publication.id) ? 'Hide publication details' : 'Show publication details'
-            "
-            :aria-expanded="isExpanded(publication.id)"
-            :aria-controls="`publication-details-${publication.id}`"
-            @click="toggleExpanded(publication.id)"
-          />
+
+          <div class="d-flex flex-wrap align-center ga-1 ms-auto">
+            <v-btn
+              v-if="publication.pr_url"
+              size="x-small"
+              variant="text"
+              :href="publication.pr_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Pull request
+            </v-btn>
+            <v-btn
+              v-if="publication.release_url"
+              size="x-small"
+              variant="text"
+              :href="publication.release_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Release
+            </v-btn>
+            <v-btn
+              size="x-small"
+              variant="text"
+              :href="workflowUrl(publication)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ publication.run_url ? 'Workflow run' : 'Actions' }}
+            </v-btn>
+            <v-btn
+              v-if="publication.events.length > 0 || publication.phase"
+              size="x-small"
+              variant="text"
+              :icon="isExpanded(publication.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              :aria-label="
+                isExpanded(publication.id) ? 'Hide publication details' : 'Show publication details'
+              "
+              :aria-expanded="isExpanded(publication.id)"
+              :aria-controls="`publication-details-${publication.id}`"
+              @click="toggleExpanded(publication.id)"
+            />
+          </div>
         </div>
 
         <v-expand-transition>
@@ -362,4 +351,6 @@ const confirmDuplicatePublication = async () => {
     publishing.value = false
   }
 }
+
+defineExpose({ publish: triggerPublication, publishing, hasOngoing })
 </script>

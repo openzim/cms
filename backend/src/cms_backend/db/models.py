@@ -594,6 +594,16 @@ class TitlePermission(Base):
     )
 
 
+class PublicationPermission(Base):
+    __tablename__ = "publication_permission"
+    title_id: Mapped[UUID] = mapped_column(
+        ForeignKey("title.id", ondelete="CASCADE"), primary_key=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("account.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class CollectionHistory(Base):
     __tablename__ = "collection_history"
     id: Mapped[UUID] = mapped_column(

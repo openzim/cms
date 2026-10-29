@@ -64,6 +64,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "title": TitlePermissions.get(read=True, update=True),
         "collection": ResourcePermissions.get(read=True, update=True),
         "application": ResourcePermissions.get(create=True, read=True, update=True),
+        "publication": ResourcePermissions.get(create=True, read=True),
     },
     RoleEnum.COLLECTION_VIEWER: {
         "book": ResourcePermissions.get(read=True),

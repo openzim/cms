@@ -342,6 +342,73 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const fetchAvailablePublicationPublishers = async (
+    titleId: string,
+    skip: number = 0,
+    limit: number = 200,
+  ): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(
+        `/${titleId}/publishers/available`,
+        { params: { skip, limit } },
+      )
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch available publication publishers', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
+  const fetchPublicationPublishers = async (titleId: string): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(`/${titleId}/publishers`)
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch publication publishers', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
+  const grantPublicationPublisher = async (
+    titleId: string,
+    accountId: string,
+  ): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ account_id: string }, null>(`/${titleId}/publishers`, {
+        account_id: accountId,
+      })
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to grant publication publisher', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const revokePublicationPublisher = async (
+    titleId: string,
+    accountId: string,
+  ): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.delete(`/${titleId}/publishers/${accountId}`)
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to revoke publication publisher', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
   return {
     // State
     title,
@@ -368,5 +435,9 @@ export const useTitleStore = defineStore('title', () => {
     fetchAvailableTitleUploaders,
     grantTitleUploader,
     revokeTitleUploader,
+    fetchPublicationPublishers,
+    fetchAvailablePublicationPublishers,
+    grantPublicationPublisher,
+    revokePublicationPublisher,
   }
 })

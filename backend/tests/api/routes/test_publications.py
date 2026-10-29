@@ -3,15 +3,22 @@ from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
+from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.models import (
     Account,
     Application,
     ApplicationPublication,
     Book,
+    Collection,
     Title,
 )
+from cms_backend.db.publication_permission import create_publication_permission
+from cms_backend.roles import RoleEnum
+from cms_backend.utils.datetime import getnow
 
 
 def test_create_publication(
@@ -340,3 +347,86 @@ def test_cancel_finished_publication(
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_create_publication_forbidden_without_publication_grant(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_application: Callable[..., Application],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
+
+    title = create_title(name="phet_mul_all", flavours=["maxi"])
+    create_application(
+        title=title, flavour="maxi", store="android", name="phet", enabled=True
+    )
+    create_book(
+        title_id=title.id,
+        flavour="maxi",
+        filename="phet_mul_all_maxi_2026-05.zim",
+        location_kind="prod",
+        date="2026-05-01",
+    )
+    collection = create_collection(title_ids_with_paths=[(title.id, "other")])
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_collection_permission(dbsession, collection.id, editor.id)
+    token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
+
+    response = client.post(
+        "/v1/publications",
+        json={
+            "title_identifier": str(title.id),
+            "flavour": "maxi",
+            "store": "android",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_create_publication_allowed_with_publication_grant(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_application: Callable[..., Application],
+    create_collection: Callable[..., Collection],
+    create_account: Callable[..., Account],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
+
+    title = create_title(name="phet_mul_all", flavours=["maxi"])
+    create_application(
+        title=title, flavour="maxi", store="android", name="phet", enabled=True
+    )
+    create_book(
+        title_id=title.id,
+        flavour="maxi",
+        filename="phet_mul_all_maxi_2026-05.zim",
+        location_kind="prod",
+        date="2026-05-01",
+    )
+    collection = create_collection(title_ids_with_paths=[(title.id, "other")])
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_collection_permission(dbsession, collection.id, editor.id)
+    create_publication_permission(dbsession, title.id, editor.id)
+    token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
+
+    response = client.post(
+        "/v1/publications",
+        json={
+            "title_identifier": str(title.id),
+            "flavour": "maxi",
+            "store": "android",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == HTTPStatus.CREATED

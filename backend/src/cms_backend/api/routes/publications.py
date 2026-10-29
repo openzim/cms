@@ -14,6 +14,7 @@ from cms_backend.api.routes.dependencies import (
 )
 from cms_backend.api.routes.http_errors import (
     BadRequestError,
+    ForbiddenError,
     ServerError,
 )
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
@@ -24,6 +25,7 @@ from cms_backend.db import event as db_event
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
 from cms_backend.db import publication as db_publication
+from cms_backend.db import publication_permission as db_publication_permission
 from cms_backend.db import title as db_title
 from cms_backend.db.exceptions import RecordAlreadyExistsError
 from cms_backend.db.models import Account, Book
@@ -144,6 +146,10 @@ def create_publication(
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
+    if not db_publication_permission.can_publish(session, current_account, title.id):
+        raise ForbiddenError(
+            "You do not have permission to publish applications for this title"
+        )
     title_flavour = db_flavour.get_title_flavour(
         session,
         title.id,
@@ -274,6 +280,12 @@ def cancel_publication(
 ) -> ApplicationPublicationSchema:
     """Cancel an in-progress publication and unblock its app."""
     publication = db_publication.get_publication(session, publication_id=publication_id)
+    if not db_publication_permission.can_publish(
+        session, current_account, publication.title_id
+    ):
+        raise ForbiddenError(
+            "You do not have permission to publish applications for this title"
+        )
     if publication.status not in db_publication.ACTIVE_STATUSES:
         raise BadRequestError(f"Publication is already {publication.status}")
     db_publication.cancel_publication(
