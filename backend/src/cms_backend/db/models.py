@@ -1,3 +1,4 @@
+# # ruff: noqa: RUF012
 import typing
 from datetime import date, datetime
 from enum import StrEnum
@@ -63,7 +64,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
     # PostgreSQL. This is only needed for the case where a specific PostgreSQL
     # type has to be used or when we want to ensure a specific setting (like the
     # timezone below)
-    type_annotation_map = {  # noqa: RUF012
+    type_annotation_map = {  # pyright: ignore[reportUnknownVariableType]
         dict[str, Any]: MutableDict.as_mutable(
             JSONB
         ),  # transform Python Dict[str, Any] into PostgreSQL JSONB
@@ -131,6 +132,17 @@ class BookTransitionStatus(StrEnum):
     MOVING_FILES = "moving_files"
     CHECKING_MIRRORS = "checking_mirrors"
     CHECKING_LIBRARY = "checking_library"
+
+
+class PublicationPhase(StrEnum):
+    """Progress of a publication to an app store."""
+
+    REQUESTED = "requested"
+    CHECKS = "checks"
+    MERGE = "merge"
+    RELEASE = "release"
+    BUILDING = "building"
+    STORE = "store"
 
 
 class Book(Base):
@@ -398,21 +410,36 @@ class ApplicationPublication(Base):
     flavour: Mapped[str]
     store: Mapped[str]
     content_version: Mapped[str]
-    tag: Mapped[str]
-    commit_sha: Mapped[str]
+    app_name: Mapped[str]
+    zim_filename: Mapped[str]
     repository: Mapped[str]
     workflow: Mapped[str]
+    branch: Mapped[str]
+    tag: Mapped[str | None] = mapped_column(default=None)
+    commit_sha: Mapped[str | None] = mapped_column(default=None)
+    merge_commit_sha: Mapped[str | None] = mapped_column(default=None)
+    pr_number: Mapped[int | None] = mapped_column(BigInteger, default=None)
+    pr_url: Mapped[str | None] = mapped_column(default=None)
     status: Mapped[str] = mapped_column(default="pending", server_default="pending")
+    phase: Mapped[str | None] = mapped_column(default=None)
+    phase_started_at: Mapped[datetime | None] = mapped_column(default=None)
     release_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
     release_url: Mapped[str | None] = mapped_column(default=None)
     run_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
     run_url: Mapped[str | None] = mapped_column(default=None)
     error: Mapped[str | None] = mapped_column(default=None)
+    events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     requested_by_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("account.id", ondelete="SET NULL"), default=None
     )
     requested_by: Mapped[Account | None] = relationship(
         init=False, foreign_keys=[requested_by_id]
+    )
+    cancelled_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("account.id", ondelete="SET NULL"), default=None
+    )
+    cancelled_by: Mapped[Account | None] = relationship(
+        init=False, foreign_keys=[cancelled_by_id]
     )
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()

@@ -57,15 +57,30 @@ class ApplicationPublicationSchema(BaseModel):
     flavour: str
     store: str
     repository: str
+    app_name: str
     status: str
+    phase: str | None
+    phase_started_at: datetime | None
     content_version: str
-    tag: str
+    tag: str | None
+    branch: str
+    pr_number: int | None
+    pr_url: str | None
+    merge_commit_sha: str | None
     release_url: str | None
     run_url: str | None
     error: str | None
+    events: list[str]
     requested_by: str | None
+    cancelled_by: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class PublicationCheckSchema(BaseModel):
+    content_version: str
+    published: bool
+    publication: ApplicationPublicationSchema | None = None
 
 
 class TitleFlavourSchema(BaseTitleFlavourSchema):

@@ -42,31 +42,46 @@ configured username already exists, it is reused as-is.
 ## App publication
 
 Titles whose flavours are enabled for a given store (Android and/or Apple) can
-trigger a branded-app release from the CMS. The backend creates a tag pointing
-at the configured branch and a GitHub release, which triggers the branded app
-CD workflow. Tags are the same for every store:
+trigger a branded-app publication from the CMS. The pipeline is asynchronous:
 
-- `<app>_<YYYY>.<MM>[suffix].<build>`
+1. `POST /publications` records the request and emits a `publication_requested`
+   event. It is rejected with a conflict if another publication for the same app
+   has not reached a terminal status.
+2. The mill consumes the event, updates the app's `info.json` `zim_url`
+    and opens a pull request.
+3. A mill task advances the publication through checks, merge, release and the
+   CD workflow. The CMS merges the pull request itself once checks pass
+4. Once the CD workflow succeeds, the publication is complete and the app is
+   considered uploaded to the store. Store review is outside the CMS scope.
 
-`<build>` starts at 0 for the first publication of a given content version and
-is incremented on every retry (for example after a failed build). Legacy/manual
-releases using the bare app folder name as the tag remain supported.
+Tags are created after the pull request is merged and follow the
+`<app>_<YYYY>.<MM>[suffix].<build>` convention for every store. `<build>` starts
+at 0 for the first publication of a given content version and is incremented on
+every retry (for example after a failed build)
 
 Android publications use
-[kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded). Apple
-publications are supported by the same generic code path but stay disabled
-until an Apple repository is configured (`GITHUB_APPLE_REPO`).
+[kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded) whereas
+apple publications use [kiwix-apple-branded](https://github.com/kiwix/kiwix-android-branded)
+
+The GitHub token needs `contents: write`, `pull requests: write`, `actions: read`
+and `checks: read`. Branch protection must not require human approvals if the
+bot is expected to merge without review.
 
 Relevant environment variables:
 
-| Variable                  | Default                       | Description                                       |
-| ------------------------- | ----------------------------- | ------------------------------------------------- |
-| `GITHUB_API_URL`          | `https://api.github.com`      | GitHub API base URL                               |
-| `GITHUB_TOKEN`            | (empty)                       | Token with `contents: write` on the branded repo  |
-| `GITHUB_ANDROID_REPO`     | `kiwix/kiwix-android-branded` | Android branded apps repository                   |
-| `GITHUB_ANDROID_WORKFLOW` | `cd.yml`                      | Android CD workflow used for status tracking      |
-| `GITHUB_ANDROID_BRANCH`   | `main`                        | Branch the Android publication tag points to      |
-| `GITHUB_APPLE_REPO`       | (empty)                       | Apple branded apps repository (disabled if empty) |
-| `GITHUB_APPLE_WORKFLOW`   | `cd.yml`                      | Apple CD workflow used for status tracking        |
-| `GITHUB_APPLE_BRANCH`     | `main`                        | Branch the Apple publication tag points to        |
-| `PUBLICATION_STORES`      | `android`                     | Comma-separated stores exposed to the UI          |
+| Variable                            | Default                       | Description                                          |
+| ----------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `GITHUB_API_URL`                    | `https://api.github.com`      | GitHub API base URL                                  |
+| `GITHUB_TOKEN`                      | (empty)                       | Token for contents, pull requests, actions and checks |
+| `GITHUB_ANDROID_REPO`               | `kiwix/kiwix-android-branded` | Android branded apps repository                      |
+| `GITHUB_ANDROID_WORKFLOW`           | `cd.yml`                      | Android CD workflow used for status tracking         |
+| `GITHUB_ANDROID_BRANCH`             | `main`                        | Base branch for Android publication pull requests    |
+| `GITHUB_APPLE_REPO`                 | `kiwix/kiwix-apple-branded`
+| `GITHUB_APPLE_WORKFLOW`             | `cd.yml`                      | Apple CD workflow used for status tracking           |
+| `GITHUB_APPLE_BRANCH`               | `main`                        | Base branch for Apple publication pull requests      |
+| `PUBLICATION_STORES`                | `android,apple`                     | Comma-separated stores exposed to the UI             |
+
+| `PROCESS_PUBLICATION_REQUESTS`      | `true`                        | Enable the publication request event processor       |
+| `PROCESS_PUBLICATION_REQUESTS_INTERVAL` | `10s`                     | Event processor interval                             |
+| `ADVANCE_PUBLICATIONS`              | `true`                        | Enable the publication state-machine task            |
+| `ADVANCE_PUBLICATIONS_INTERVAL`     | `30s`                         | Publication state-machine interval                  |

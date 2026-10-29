@@ -326,9 +326,7 @@ def test_revert_application(
         dbsession, name="phet2", store=store, skip=0, limit=10
     )
     initial_entry = next(
-        entry
-        for entry in history.records
-        if entry.comment == "Initial history entry"
+        entry for entry in history.records if entry.comment == "Initial history entry"
     )
 
     reverted = db_application.revert_application(

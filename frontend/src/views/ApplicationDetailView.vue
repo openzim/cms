@@ -383,8 +383,7 @@ const loadHistory = async ({ limit, skip }: { limit: number; skip: number }) => 
   }
 }
 
-const handleRevert = async () => {
-  const reverted = applicationHistoryStore.lastRevertedApplication
+const handleRevert = async (reverted: Application | null) => {
   if (reverted && reverted.name !== props.name) {
     await router.replace({
       name: 'app-detail-tab',

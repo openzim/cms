@@ -1,13 +1,17 @@
 from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from cms_backend.api.context import Context as ApiContext
-from cms_backend.db.models import Application, ApplicationPublication, Book, Title
-from cms_backend.utils.github import PublicationResult, github_client
+from cms_backend.context import Context
+from cms_backend.db.models import (
+    Account,
+    Application,
+    ApplicationPublication,
+    Book,
+    Title,
+)
 
 
 def test_create_publication(
@@ -18,7 +22,7 @@ def test_create_publication(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ApiContext, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -31,18 +35,6 @@ def test_create_publication(
         location_kind="prod",
         date="2026-05-01",
     )
-
-    def fake_publish(**_kwargs: Any) -> PublicationResult:
-        return PublicationResult(
-            tag="phet_2026.05.0",
-            commit_sha="abc",
-            release_id=1,
-            release_url="https://github.test/release/1",
-            repository="kiwix/kiwix-android-branded",
-            workflow="cd.yml",
-        )
-
-    monkeypatch.setattr(github_client, "publish", fake_publish)
 
     response = client.post(
         "/v1/publications",
@@ -58,9 +50,49 @@ def test_create_publication(
     data = response.json()
     assert data["store"] == "android"
     assert data["content_version"] == "2026-05"
-    assert data["tag"] == "phet_2026.05.0"
+    assert data["tag"] is None
     assert data["status"] == "pending"
+    assert data["phase"] == "requested"
     assert data["repository"] == "kiwix/kiwix-android-branded"
+    assert len(data["events"]) == 1
+    assert "Publication requested" in data["events"][0]
+
+
+def test_create_publication_rejects_active_publication(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_application: Callable[..., Application],
+    create_publication: Callable[..., ApplicationPublication],
+    access_token: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
+
+    title = create_title(name="phet_mul_all", flavours=["maxi"])
+    create_application(
+        title=title, flavour="maxi", store="android", name="phet", enabled=True
+    )
+    create_book(
+        title_id=title.id,
+        flavour="maxi",
+        filename="phet_mul_all_maxi_2026-05.zim",
+        location_kind="prod",
+        date="2026-05-01",
+    )
+    create_publication(title=title, flavour="maxi", store="android", app_name="phet")
+
+    response = client.post(
+        "/v1/publications",
+        json={
+            "title_identifier": str(title.id),
+            "flavour": "maxi",
+            "store": "android",
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
 
 
 def test_create_publication_disabled(
@@ -71,7 +103,7 @@ def test_create_publication_disabled(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ApiContext, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -106,7 +138,7 @@ def test_create_publication_store_not_enabled(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ApiContext, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -140,7 +172,7 @@ def test_create_publication_without_book(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ApiContext, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "publication_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -249,39 +281,62 @@ def test_list_publications(
             assert [item["tag"] for item in data["items"]] == expected_tags
 
 
-def test_get_publication_refreshes_status(
+def test_cancel_publication(
     client: TestClient,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
     create_publication: Callable[..., ApplicationPublication],
+    account: Account,
     access_token: str,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
     publication = create_publication(
-        title=title, flavour="maxi", store="android", app_name="phet"
+        title=title,
+        flavour="maxi",
+        store="android",
+        app_name="phet",
+        status="running",
+        phase="checks",
     )
 
-    def fake_get_run(**_kwargs: Any) -> dict[str, Any]:
-        return {
-            "id": 7,
-            "html_url": "https://github.test/run/7",
-            "status": "completed",
-            "conclusion": "success",
-        }
-
-    monkeypatch.setattr(github_client, "get_run_for_publication", fake_get_run)
-
-    response = client.get(
-        f"/v1/publications/{publication.id}",
-        params={"name": "phet", "store": "android"},
+    response = client.post(
+        f"/v1/publications/{publication.id}/cancel",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.OK
     data = response.json()
-    assert data["status"] == "success"
-    assert data["run_url"] == "https://github.test/run/7"
+    assert data["status"] == "cancelled"
+    assert data["phase"] is None
+    assert data["cancelled_by"] == account.display_name
+    assert f"cancelled by {account.display_name}" in data["events"][-1]
+
+
+def test_cancel_finished_publication(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_application: Callable[..., Application],
+    create_publication: Callable[..., ApplicationPublication],
+    access_token: str,
+) -> None:
+    title = create_title(name="phet_mul_all", flavours=["maxi"])
+    create_application(
+        title=title, flavour="maxi", store="android", name="phet", enabled=True
+    )
+    publication = create_publication(
+        title=title,
+        flavour="maxi",
+        store="android",
+        app_name="phet",
+        status="success",
+    )
+
+    response = client.post(
+        f"/v1/publications/{publication.id}/cancel",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST

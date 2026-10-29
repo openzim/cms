@@ -21,12 +21,13 @@
 import HistoryViewer from '@/components/HistoryViewer.vue'
 import type { HistoryItem } from '@/components/HistoryViewer.vue'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
-import type { ApplicationHistory } from '@/types/application'
+import type { Application, ApplicationHistory } from '@/types/application'
 import type { Paginator } from '@/types/base'
 import type { PublicationStore } from '@/types/publication'
 import type { EnhancedDiff } from '@/utils/diff'
 import { storeLabel } from '@/utils/format'
 import { diff } from 'deep-diff'
+import { ref } from 'vue'
 
 const props = defineProps<{
   history: ApplicationHistory[]
@@ -39,10 +40,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   load: [{ limit: number; skip: number }]
-  revert: []
+  revert: [application: Application | null]
 }>()
 
 const applicationHistoryStore = useApplicationHistoryStore()
+const revertedApplication = ref<Application | null>(null)
 
 const fetchEntry = async (
   _entityId: string,
@@ -56,10 +58,14 @@ const revertEntry = async (
   historyId: string,
   comment?: string,
 ): Promise<boolean> => {
-  return (
-    (await applicationHistoryStore.revertToHistory(props.name, props.store, historyId, comment)) !==
-    null
+  const reverted = await applicationHistoryStore.revertToHistory(
+    props.name,
+    props.store,
+    historyId,
+    comment,
   )
+  revertedApplication.value = reverted
+  return reverted !== null
 }
 
 const getErrors = (): string[] => {
@@ -102,6 +108,7 @@ const handleLoad = (params: { limit: number; skip: number }) => {
 }
 
 const handleRevert = () => {
-  emit('revert')
+  emit('revert', revertedApplication.value)
+  revertedApplication.value = null
 }
 </script>

@@ -167,7 +167,7 @@ class ApplicationCreateSchema(BaseModel):
     title_id: NotEmptyString
     flavour: ZimFlavour
     store: ApplicationStore
-    enabled: bool = False
+    enabled: bool = True
     name: NotEmptyString = Field(pattern=APP_NAME_REGEX)
 
 
@@ -193,10 +193,13 @@ class ApplicationPublicationCreateSchema(BaseModel):
     flavour: ZimFlavour
     store: ApplicationStore
     content_version: NotEmptyString
-    tag: NotEmptyString
-    commit_sha: NotEmptyString
+    app_name: NotEmptyString
+    zim_filename: NotEmptyString
     repository: NotEmptyString
     workflow: NotEmptyString
+    branch: NotEmptyString
+    tag: NotEmptyString | None = None
+    commit_sha: NotEmptyString | None = None
     release_id: int | None = None
     release_url: NotEmptyString | None = None
     requested_by_id: UUID | None = None

@@ -1,16 +1,17 @@
-"""add app and app publications
+"""add app and app publicaton tables
 
-Revision ID: fa8e6dcb4679
+Revision ID: dd2aaceefda5
 Revises: c58424978f8a
-Create Date: 2026-10-27 10:12:45.424038
+Create Date: 2026-10-28 17:49:54.915476
 
 """
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "fa8e6dcb4679"
+revision = "dd2aaceefda5"
 down_revision = "c58424978f8a"
 branch_labels = None
 depends_on = None
@@ -77,17 +78,27 @@ def upgrade():
         sa.Column("flavour", sa.String(), nullable=False),
         sa.Column("store", sa.String(), nullable=False),
         sa.Column("content_version", sa.String(), nullable=False),
-        sa.Column("tag", sa.String(), nullable=False),
-        sa.Column("commit_sha", sa.String(), nullable=False),
+        sa.Column("app_name", sa.String(), nullable=False),
+        sa.Column("zim_filename", sa.String(), nullable=False),
         sa.Column("repository", sa.String(), nullable=False),
         sa.Column("workflow", sa.String(), nullable=False),
+        sa.Column("branch", sa.String(), nullable=False),
+        sa.Column("tag", sa.String(), nullable=True),
+        sa.Column("commit_sha", sa.String(), nullable=True),
+        sa.Column("merge_commit_sha", sa.String(), nullable=True),
+        sa.Column("pr_number", sa.BigInteger(), nullable=True),
+        sa.Column("pr_url", sa.String(), nullable=True),
         sa.Column("status", sa.String(), server_default="pending", nullable=False),
+        sa.Column("phase", sa.String(), nullable=True),
+        sa.Column("phase_started_at", sa.DateTime(), nullable=True),
         sa.Column("release_id", sa.BigInteger(), nullable=True),
         sa.Column("release_url", sa.String(), nullable=True),
         sa.Column("run_id", sa.BigInteger(), nullable=True),
         sa.Column("run_url", sa.String(), nullable=True),
         sa.Column("error", sa.String(), nullable=True),
+        sa.Column("events", postgresql.ARRAY(sa.String()), nullable=False),
         sa.Column("requested_by_id", sa.Uuid(), nullable=True),
+        sa.Column("cancelled_by_id", sa.Uuid(), nullable=True),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
         ),
@@ -98,6 +109,12 @@ def upgrade():
             ["requested_by_id"],
             ["account.id"],
             name=op.f("fk_application_publication_requested_by_id_account"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["cancelled_by_id"],
+            ["account.id"],
+            name=op.f("fk_application_publication_cancelled_by_id_account"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(

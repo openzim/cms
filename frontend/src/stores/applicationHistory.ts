@@ -9,7 +9,6 @@ import { ref } from 'vue'
 export const useApplicationHistoryStore = defineStore('applicationHistory', () => {
   const history = ref<ApplicationHistory[]>([])
   const errors = ref<string[]>([])
-  const lastRevertedApplication = ref<Application | null>(null)
   const paginator = ref<Paginator>({
     page: 1,
     page_size: 20,
@@ -76,7 +75,6 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
         `/${name}/${store}/revert/${historyId}`,
         data,
       )
-      lastRevertedApplication.value = response
       errors.value = []
       return response
     } catch (_error) {
@@ -89,7 +87,6 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
   const clearHistory = () => {
     history.value = []
     errors.value = []
-    lastRevertedApplication.value = null
     paginator.value = {
       page: 1,
       page_size: 20,
@@ -103,7 +100,6 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
     history,
     paginator,
     errors,
-    lastRevertedApplication,
     fetchHistory,
     fetchHistoryEntry,
     clearHistory,

@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import publication as db_publication
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Account, ApplicationPublication, Title
+from cms_backend.db.models import (
+    Account,
+    ApplicationPublication,
+    PublicationPhase,
+    Title,
+)
 from cms_backend.schemas.models import ApplicationPublicationCreateSchema
 from cms_backend.utils.github import github_client
 
@@ -26,18 +31,19 @@ def test_create_publication(
             flavour="maxi",
             store="android",
             content_version="2026-05",
-            tag="phet_2026.05.0",
-            commit_sha="abc",
+            app_name="phet",
             repository="kiwix/kiwix-android-branded",
             workflow="cd.yml",
-            release_id=1,
-            release_url="https://github.test/release/1",
+            branch="cms/publication-test",
+            zim_filename="phet_mul_all_maxi_2026-05.zim",
             requested_by_id=account.id,
         ),
     )
 
     assert publication.status == "pending"
-    assert publication.tag == "phet_2026.05.0"
+    assert publication.phase == PublicationPhase.REQUESTED.value
+    assert publication.tag is None
+    assert "Publication requested" in publication.events[0]
     assert publication.requested_by_id == account.id
 
 
@@ -113,47 +119,14 @@ def test_get_publications_filters(
     assert len(result.records) == expected_count
 
 
-@pytest.mark.parametrize(
-    ("status", "tag", "app_name", "content_version", "expected"),
-    [
-        ("success", "phet_2026.05.0", "phet", "2026-05", True),
-        ("success", "phet_2026.05.2", "phet", "2026-05", True),
-        ("success", "phet_2026.05.2", "phet2", "2026-05", False),
-        ("success", "phet_2026.05.2", "phet", "2026-06", False),
-        ("failure", "phet_2026.05.0", "phet", "2026-05", False),
-    ],
-)
-def test_has_successful_publication(
-    dbsession: OrmSession,
-    publication: ApplicationPublication,
-    *,
-    status: str,
-    tag: str,
-    app_name: str,
-    content_version: str,
-    expected: bool,
-) -> None:
-    publication.status = status
-    publication.tag = tag
-
-    assert (
-        db_publication.has_successful_publication(
-            dbsession,
-            title_id=publication.title_id,
-            flavour=publication.flavour,
-            store=publication.store,
-            app_name=app_name,
-            content_version=content_version,
-        )
-        is expected
-    )
-
-
-def test_refresh_publication_success(
-    dbsession: OrmSession,
+def test_advance_publication_success(
     publication: ApplicationPublication,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    publication.phase = PublicationPhase.BUILDING.value
+    publication.merge_commit_sha = "deadbeef"
+    publication.tag = "phet_2026.05.0"
+
     def fake_get_run(**_kwargs: Any) -> dict[str, Any]:
         return {
             "id": 7,
@@ -164,18 +137,26 @@ def test_refresh_publication_success(
 
     monkeypatch.setattr(github_client, "get_run_for_publication", fake_get_run)
 
-    refreshed = db_publication.refresh_publication(dbsession, publication)
+    advanced = db_publication.advance_publication(publication)
 
-    assert refreshed.status == "success"
-    assert refreshed.run_id == 7
-    assert refreshed.run_url == "https://github.test/run/7"
+    assert advanced
+    assert publication.phase == PublicationPhase.STORE.value
+    assert publication.run_id == 7
+    assert publication.run_url == "https://github.test/run/7"
+
+    assert db_publication.advance_publication(publication)
+    assert publication.status == "success"
+    assert publication.phase is None
 
 
-def test_refresh_publication_failure(
-    dbsession: OrmSession,
+def test_advance_publication_failure(
     publication: ApplicationPublication,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    publication.phase = PublicationPhase.BUILDING.value
+    publication.merge_commit_sha = "deadbeef"
+    publication.tag = "phet_2026.05.0"
+
     def fake_get_run(**_kwargs: Any) -> dict[str, Any]:
         return {
             "id": 8,
@@ -186,7 +167,82 @@ def test_refresh_publication_failure(
 
     monkeypatch.setattr(github_client, "get_run_for_publication", fake_get_run)
 
-    refreshed = db_publication.refresh_publication(dbsession, publication)
+    advanced = db_publication.advance_publication(publication)
 
-    assert refreshed.status == "failure"
-    assert refreshed.error == "failure"
+    assert advanced
+    assert publication.status == "failure"
+    assert publication.error == "Build failed: failure"
+
+
+def test_get_successful_publication_for_content(
+    dbsession: OrmSession,
+    publication: ApplicationPublication,
+) -> None:
+    publication.status = "success"
+    publication.tag = "phet_2026.05.0"
+
+    found = db_publication.get_successful_publication_for_content(
+        dbsession,
+        title_id=publication.title_id,
+        flavour=publication.flavour,
+        store=publication.store,
+        app_name="phet",
+        content_version="2026-05",
+    )
+
+    assert found is not None
+    assert found.id == publication.id
+
+    assert (
+        db_publication.get_successful_publication_for_content(
+            dbsession,
+            title_id=publication.title_id,
+            flavour=publication.flavour,
+            store=publication.store,
+            app_name="phet",
+            content_version="2026-06",
+        )
+        is None
+    )
+
+
+def test_cancel_publication(
+    dbsession: OrmSession,
+    publication: ApplicationPublication,
+    account: Account,
+) -> None:
+    publication.status = "running"
+    publication.phase = PublicationPhase.CHECKS.value
+
+    db_publication.cancel_publication(dbsession, publication, cancelled_by=account)
+
+    assert publication.status == "cancelled"
+    assert publication.phase is None
+    assert publication.cancelled_by_id == account.id
+    assert f"cancelled by {account.display_name}" in publication.events[-1]
+
+
+def test_get_active_publication(
+    dbsession: OrmSession,
+    publication: ApplicationPublication,
+) -> None:
+    active = db_publication.get_active_publication_or_none(
+        dbsession,
+        title_id=publication.title_id,
+        flavour=publication.flavour,
+        store=publication.store,
+    )
+    assert active is not None
+    assert active.id == publication.id
+
+    publication.status = "success"
+    dbsession.flush()
+    assert (
+        db_publication.get_active_publication_or_none(
+            dbsession,
+            title_id=publication.title_id,
+            flavour=publication.flavour,
+            store=publication.store,
+        )
+        is None
+    )

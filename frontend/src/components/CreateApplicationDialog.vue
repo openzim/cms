@@ -127,7 +127,7 @@ const selectedTitle = ref<Title | null>(null)
 const flavour = ref<string | null>(null)
 const store = ref<PublicationStore>('android')
 const name = ref('')
-const enabled = ref(false)
+const enabled = ref(true)
 
 const SEARCH_DEBOUNCE_MS = 300
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -168,7 +168,7 @@ const reset = async () => {
   flavour.value = null
   store.value = 'android'
   name.value = ''
-  enabled.value = false
+  enabled.value = true
   error.value = ''
   formValid.value = false
   formRef.value?.resetValidation()

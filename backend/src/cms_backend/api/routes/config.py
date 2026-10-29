@@ -3,7 +3,6 @@ from http import HTTPStatus
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from cms_backend.api.context import Context as ApiContext
 from cms_backend.context import Context
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -24,7 +23,7 @@ def get_config() -> JSONResponse:
             ),
             "ZIM_TITLE_MAX_LENGTH": Context.zim_title_max_length,
             "ZIM_DESCRIPTION_MAX_LENGTH": Context.zim_description_max_length,
-            "PUBLICATION_STORES": ApiContext.publication_stores,
+            "PUBLICATION_STORES": Context.publication_stores,
         },
         status_code=HTTPStatus.OK,
     )
