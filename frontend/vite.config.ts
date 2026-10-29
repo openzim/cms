@@ -12,6 +12,8 @@ const sassBreakpoints = Object.entries(BREAKPOINTS)
   .map(([name, value]) => `'${name}': ${value}px`)
   .join(', ')
 
+const vuetifySettingsOverride = `@use 'vuetify/settings' as cms-settings with ($grid-breakpoints: (${sassBreakpoints}), $button-text-transform: uppercase);\n`
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), vueJsx(), vueDevTools(), vuetify({ styles: 'sass' })],
@@ -23,7 +25,10 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       sass: {
-        additionalData: `@use 'vuetify/settings' as cms-settings with ($grid-breakpoints: (${sassBreakpoints}), $button-text-transform: uppercase);\n`,
+        additionalData: vuetifySettingsOverride,
+      },
+      scss: {
+        additionalData: vuetifySettingsOverride,
       },
     },
   },
