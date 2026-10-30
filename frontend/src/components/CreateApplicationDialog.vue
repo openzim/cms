@@ -58,7 +58,7 @@
 
           <v-switch
             v-model="enabled"
-            :label="enabled ? 'Enabled for publication' : 'Disabled for publication'"
+            :label="enabled ? 'Enabled for build' : 'Disabled for build'"
             color="primary"
             hide-details
             class="mt-2"
@@ -92,7 +92,7 @@ import { useApplicationStore } from '@/stores/application'
 import { useTitleStore } from '@/stores/title'
 import type { Application, ApplicationCreate } from '@/types/application'
 import type { Title, TitleLight } from '@/types/title'
-import type { PublicationStore } from '@/types/publication'
+import type { ApplicationStore } from '@/types/appBuild'
 import { flavourLabel, storeLabel } from '@/utils/format'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
@@ -125,7 +125,7 @@ const titleOptions = ref<TitleLight[]>([])
 const selectedTitleId = ref<string | null>(null)
 const selectedTitle = ref<Title | null>(null)
 const flavour = ref<string | null>(null)
-const store = ref<PublicationStore>('android')
+const store = ref<ApplicationStore>('android')
 const name = ref('')
 const enabled = ref(true)
 

@@ -277,7 +277,7 @@ const getNamespaceIcon = (namespace: string): string => {
     account: 'mdi-account-group',
     stats: 'mdi-chart-line',
     application: 'mdi-cellphone',
-    publication: 'mdi-storefront-outline',
+    app_build: 'mdi-storefront-outline',
   }
   return iconMap[namespace] || 'mdi-folder'
 }

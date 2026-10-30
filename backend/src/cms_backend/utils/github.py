@@ -19,7 +19,7 @@ CHECK_GREEN_CONCLUSIONS = {"success", "neutral", "skipped"}
 
 
 @dataclass(frozen=True)
-class PublicationRepository:
+class AppBuildRepository:
     """GitHub repository and workflow used to publish to a given store."""
 
     repo: str
@@ -28,7 +28,7 @@ class PublicationRepository:
 
 
 @dataclass
-class PublicationResult:
+class AppBuildResult:
     tag: str
     commit_sha: str
     release_id: int
@@ -38,7 +38,7 @@ class PublicationResult:
 
 
 @dataclass
-class PublicationPullRequestResult:
+class AppBuildPullRequestResult:
     branch: str
     base_sha: str
     pr_number: int | None
@@ -72,25 +72,25 @@ def get_tag_prefix(*, app_name: str, content_version: str) -> str:
     )
 
 
-def get_repository_config(store: str) -> PublicationRepository:
-    """Get the configured repository for a publication store."""
+def get_repository_config(store: str) -> AppBuildRepository:
+    """Get the configured repository for a build store."""
     if store == "android":
-        config = PublicationRepository(
+        config = AppBuildRepository(
             repo=Context.github_android_repo,
             workflow=Context.github_android_workflow,
             branch=Context.github_android_branch,
         )
     elif store == "apple":
-        config = PublicationRepository(
+        config = AppBuildRepository(
             repo=Context.github_apple_repo,
             workflow=Context.github_apple_workflow,
             branch=Context.github_apple_branch,
         )
     else:
-        raise ValueError(f"Unsupported publication store '{store}'")
+        raise ValueError(f"Unsupported build store '{store}'")
 
     if not config.repo:
-        raise ValueError(f"Publication store '{store}' is not configured")
+        raise ValueError(f"Build store '{store}' is not configured")
     return config
 
 
@@ -227,7 +227,7 @@ class GitHubClient:
             )
         return response.json
 
-    def create_publication_pull_request(
+    def create_app_build_pull_request(
         self,
         *,
         store: str,
@@ -235,8 +235,8 @@ class GitHubClient:
         content_version: str,
         zim_filename: str,
         branch: str,
-        publication_id: str,
-    ) -> PublicationPullRequestResult:
+        build_id: str,
+    ) -> AppBuildPullRequestResult:
         """Prepare config changes and open a PR, or signal a rebuild is needed."""
         config = get_repository_config(store)
         base_sha = self.get_branch_sha(repo=config.repo, branch=config.branch)
@@ -260,7 +260,7 @@ class GitHubClient:
         new_url = urlunsplit(url_parts._replace(path=f"{base_path}/{zim_filename}"))
 
         if current_url == new_url:
-            return PublicationPullRequestResult(
+            return AppBuildPullRequestResult(
                 branch=config.branch,
                 base_sha=base_sha,
                 pr_number=None,
@@ -275,7 +275,7 @@ class GitHubClient:
             repo=config.repo,
             path=path,
             content=json.dumps(info, indent=2) + "\n",
-            message=f"Publish {app_name} {content_version}",
+            message=f"Build {app_name} {content_version}",
             branch=branch,
             sha=file_data.get("sha"),
         )
@@ -290,16 +290,16 @@ class GitHubClient:
                 repo=config.repo,
                 head=head,
                 base=config.branch,
-                title=f"Publish {app_name} {content_version}",
+                title=f"Build {app_name} {content_version}",
                 body=(
-                    f"Automated publication of **{app_name}** `{content_version}`.\n\n"
+                    f"Automated build of **{app_name}** `{content_version}`.\n\n"
                     f"- Content: `{zim_filename}`\n"
-                    f"- CMS publication: `{publication_id}`\n\n"
+                    f"- CMS build: `{build_id}`\n\n"
                     "This pull request was created by the CMS."
                 ),
             )
 
-        return PublicationPullRequestResult(
+        return AppBuildPullRequestResult(
             branch=branch,
             base_sha=base_sha,
             pr_number=int(pull["number"]),
@@ -428,7 +428,7 @@ class GitHubClient:
                 "target_commitish": sha,
                 "name": f"{app_name} {content_version}",
                 "body": (
-                    f"Branded app **{app_name}** publication.\n\n"
+                    f"Branded app **{app_name}** build.\n\n"
                     f"- Content version: `{content_version}`\n"
                     f"- Tag: `{tag}`"
                 ),
@@ -452,7 +452,7 @@ class GitHubClient:
         content_version: str,
         sha: str,
         workflow: str = "",
-    ) -> PublicationResult:
+    ) -> AppBuildResult:
         """Create the next free tag pointing at sha and its release."""
         base_tag = get_tag_prefix(app_name=app_name, content_version=content_version)
         for build_number in range(100):
@@ -468,7 +468,7 @@ class GitHubClient:
                 content_version=content_version,
             )
             logger.info(f"Created release for '{tag}' on {repo}")
-            return PublicationResult(
+            return AppBuildResult(
                 tag=tag,
                 commit_sha=sha,
                 release_id=release["id"],
@@ -480,7 +480,7 @@ class GitHubClient:
 
     def publish(
         self, *, store: str, app_name: str, content_version: str
-    ) -> PublicationResult:
+    ) -> AppBuildResult:
         """Create the tag then the release in the store's repository."""
         config = get_repository_config(store)
         sha = self.get_branch_sha(repo=config.repo, branch=config.branch)
@@ -492,7 +492,7 @@ class GitHubClient:
             workflow=config.workflow,
         )
 
-    def get_run_for_publication(
+    def get_run_for_build(
         self, *, repo: str, workflow: str, tag: str, commit_sha: str
     ) -> dict[str, Any] | None:
         """Find the workflow run triggered by a release"""

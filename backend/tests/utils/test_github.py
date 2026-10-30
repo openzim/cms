@@ -7,9 +7,9 @@ import pytest
 
 from cms_backend.context import Context
 from cms_backend.utils.github import (
+    AppBuildRepository,
+    AppBuildResult,
     GitHubClient,
-    PublicationRepository,
-    PublicationResult,
     get_repository_config,
 )
 from cms_backend.utils.requests import Response
@@ -36,7 +36,7 @@ def github_context(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_get_repository_config_android() -> None:
-    assert get_repository_config("android") == PublicationRepository(
+    assert get_repository_config("android") == AppBuildRepository(
         repo="kiwix/kiwix-android-branded", workflow="cd.yml", branch="main"
     )
 
@@ -61,7 +61,7 @@ def _info_json(zim_filename: str) -> str:
     )
 
 
-def test_create_publication_pull_request_replaces_only_filename(
+def test_create_app_build_pull_request_replaces_only_filename(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     current = _info_json("phet_mul_all_2026-05.zim")
@@ -97,13 +97,13 @@ def test_create_publication_pull_request_replaces_only_filename(
 
     monkeypatch.setattr("cms_backend.utils.github.query_api", fake_query_api)
 
-    result = GitHubClient().create_publication_pull_request(
+    result = GitHubClient().create_app_build_pull_request(
         store="android",
         app_name="phet",
         content_version="2026-08",
         zim_filename="phet_mul_all_2026-08.zim",
-        branch="cms/publication-test",
-        publication_id="publication-id",
+        branch="cms/app-build-test",
+        build_id="build-id",
     )
 
     assert result.base_sha == "base-sha"
@@ -116,7 +116,7 @@ def test_create_publication_pull_request_replaces_only_filename(
     )
 
 
-def test_create_publication_pull_request_skips_when_unchanged(
+def test_create_app_build_pull_request_skips_when_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     current = _info_json("phet_mul_all_2026-08.zim")
@@ -133,13 +133,13 @@ def test_create_publication_pull_request_skips_when_unchanged(
 
     monkeypatch.setattr("cms_backend.utils.github.query_api", fake_query_api)
 
-    result = GitHubClient().create_publication_pull_request(
+    result = GitHubClient().create_app_build_pull_request(
         store="android",
         app_name="phet",
         content_version="2026-08",
         zim_filename="phet_mul_all_2026-08.zim",
-        branch="cms/publication-test",
-        publication_id="publication-id",
+        branch="cms/app-build-test",
+        build_id="build-id",
     )
 
     assert result.base_sha == "base-sha"
@@ -172,7 +172,7 @@ def test_publish_creates_tag_then_release(
         store="android", app_name="phet", content_version="2026-05"
     )
 
-    assert result == PublicationResult(
+    assert result == AppBuildResult(
         tag="phet_2026.05.0",
         commit_sha="deadbeef",
         release_id=42,

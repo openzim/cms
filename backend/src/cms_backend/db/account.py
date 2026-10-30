@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import generate_password_hash
 
+from cms_backend.db.app_build_permission import delete_app_build_permissions
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.collection_permission import (
     create_collection_permission,
@@ -15,7 +16,6 @@ from cms_backend.db.exceptions import (
     RecordDoesNotExistError,
 )
 from cms_backend.db.models import Account
-from cms_backend.db.publication_permission import delete_publication_permissions
 from cms_backend.db.title_permission import delete_title_permissions
 from cms_backend.roles import ROLES, RoleEnum, merge_scopes
 from cms_backend.schemas.models import AccountCreateSchema, AccountUpdateSchema
@@ -235,7 +235,7 @@ def update_account(
     if request.role is not None:
         delete_collection_permissions(session, account_id=account.id)
         delete_title_permissions(session, account_id=account.id)
-        delete_publication_permissions(session, account_id=account.id)
+        delete_app_build_permissions(session, account_id=account.id)
 
     if request.collections and account.role in (
         RoleEnum.COLLECTION_EDITOR,

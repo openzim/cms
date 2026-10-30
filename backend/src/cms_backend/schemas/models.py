@@ -182,13 +182,13 @@ class TitleFlavourCreateSchema(BaseModel):
     recipe_id: UUID | None
 
 
-class ApplicationPublicationRequestSchema(BaseModel):
+class ApplicationBuildRequestSchema(BaseModel):
     title_identifier: NotEmptyString
     flavour: ZimFlavour
     store: ApplicationStore
 
 
-class ApplicationPublicationCreateSchema(BaseModel):
+class ApplicationBuildCreateSchema(BaseModel):
     application_id: UUID
     store: ApplicationStore
     content_version: NotEmptyString

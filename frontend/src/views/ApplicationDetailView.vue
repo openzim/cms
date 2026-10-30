@@ -97,44 +97,40 @@
         <v-window-item :value="store">
           <template v-if="application && application.store === store">
             <div
-              v-if="canManagePublishers || canPublish"
+              v-if="canManageBuilders || canBuild"
               class="d-flex flex-column flex-sm-row justify-end ga-2 mb-4"
             >
               <v-btn
-                v-if="canManagePublishers"
+                v-if="canManageBuilders"
                 color="primary"
                 variant="elevated"
                 prepend-icon="mdi-account-key"
-                @click="showPublishersDialog = true"
+                @click="showBuildersDialog = true"
               >
-                Manage Publication Access
+                Manage Build Access
               </v-btn>
 
               <v-btn
-                v-if="canPublish"
+                v-if="canBuild"
                 color="success"
                 variant="elevated"
                 :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
-                :loading="publicationsRef?.publishing"
-                :disabled="
-                  !application?.enabled ||
-                  publicationsRef?.publishing ||
-                  publicationsRef?.hasOngoing
-                "
-                @click="publicationsRef?.publish()"
+                :loading="buildsRef?.building"
+                :disabled="!application?.enabled || buildsRef?.building || buildsRef?.hasOngoing"
+                @click="buildsRef?.build()"
               >
-                Publish to {{ storeLabel(store) }}
+                Build for {{ storeLabel(store) }}
               </v-btn>
             </div>
 
-            <ApplicationPublications
-              ref="publicationsRef"
+            <ApplicationBuilds
+              ref="buildsRef"
               :title-id="application.title_id"
               :flavour="application.flavour"
               :name="application.name"
               :store="store"
               :enabled="application.enabled"
-              :can-publish="canPublish"
+              :can-build="canBuild"
             />
           </template>
           <v-alert v-else type="info" density="compact" variant="tonal">
@@ -175,7 +171,7 @@
 
                   <v-switch
                     v-model="editEnabled"
-                    :label="editEnabled ? 'Enabled for publication' : 'Disabled for publication'"
+                    :label="editEnabled ? 'Enabled for build' : 'Disabled for build'"
                     color="primary"
                     hide-details
                   />
@@ -251,9 +247,9 @@
       </v-window>
     </div>
 
-    <PublicationPublishersDialog
+    <AppBuildersDialog
       v-if="application"
-      v-model="showPublishersDialog"
+      v-model="showBuildersDialog"
       :title-id="application.title_id"
     />
 
@@ -324,17 +320,17 @@
 
 <script setup lang="ts">
 import ApplicationHistory from '@/components/ApplicationHistory.vue'
-import ApplicationPublications from '@/components/ApplicationPublications.vue'
+import ApplicationBuilds from '@/components/ApplicationBuilds.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
-import PublicationPublishersDialog from '@/components/PublicationPublishersDialog.vue'
+import AppBuildersDialog from '@/components/AppBuildersDialog.vue'
 import { useApplicationStore } from '@/stores/application'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
 import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import type { Application, ApplicationUpdate } from '@/types/application'
-import type { PublicationStore } from '@/types/publication'
+import type { ApplicationStore } from '@/types/appBuild'
 import type { EnhancedDiff } from '@/utils/diff'
 import { flavourLabel, storeLabel } from '@/utils/format'
 import { diff } from 'deep-diff'
@@ -359,15 +355,15 @@ const notificationStore = useNotificationStore()
 
 const application = ref<Application | null>(null)
 const dataLoaded = ref(false)
-const store = computed<PublicationStore>(() => application.value?.store ?? 'android')
+const store = computed<ApplicationStore>(() => application.value?.store ?? 'android')
 const currentTab = ref<string>(props.selectedTab ?? '')
 
 const canUpdate = computed(() => authStore.hasPermission('application', 'update'))
 const canDelete = computed(() => authStore.hasPermission('application', 'delete'))
-const canPublish = computed(() => authStore.hasPermission('publication', 'create'))
-const canManagePublishers = computed(() => authStore.hasPermission('title', 'update'))
-const showPublishersDialog = ref(false)
-const publicationsRef = ref<InstanceType<typeof ApplicationPublications> | null>(null)
+const canBuild = computed(() => authStore.hasPermission('app_build', 'create'))
+const canManageBuilders = computed(() => authStore.hasPermission('title', 'update'))
+const showBuildersDialog = ref(false)
+const buildsRef = ref<InstanceType<typeof ApplicationBuilds> | null>(null)
 
 const formRef = ref()
 const formValid = ref(false)

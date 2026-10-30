@@ -342,7 +342,7 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const fetchAvailablePublicationPublishers = async (
+  const fetchAvailableAppBuilders = async (
     titleId: string,
     skip: number = 0,
     limit: number = 200,
@@ -350,60 +350,54 @@ export const useTitleStore = defineStore('title', () => {
     const service = await authStore.getApiService('titles')
     try {
       const response = await service.get<null, ListResponse<User>>(
-        `/${titleId}/publishers/available`,
+        `/${titleId}/builders/available`,
         { params: { skip, limit } },
       )
       errors.value = []
       return response.items
     } catch (_error) {
-      console.error('Failed to fetch available publication publishers', _error)
+      console.error('Failed to fetch available build builders', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return []
     }
   }
 
-  const fetchPublicationPublishers = async (titleId: string): Promise<User[]> => {
+  const fetchAppBuilders = async (titleId: string): Promise<User[]> => {
     const service = await authStore.getApiService('titles')
     try {
-      const response = await service.get<null, ListResponse<User>>(`/${titleId}/publishers`)
+      const response = await service.get<null, ListResponse<User>>(`/${titleId}/builders`)
       errors.value = []
       return response.items
     } catch (_error) {
-      console.error('Failed to fetch publication publishers', _error)
+      console.error('Failed to fetch build builders', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return []
     }
   }
 
-  const grantPublicationPublisher = async (
-    titleId: string,
-    accountId: string,
-  ): Promise<boolean> => {
+  const grantAppBuilder = async (titleId: string, accountId: string): Promise<boolean> => {
     const service = await authStore.getApiService('titles')
     try {
-      await service.post<{ account_id: string }, null>(`/${titleId}/publishers`, {
+      await service.post<{ account_id: string }, null>(`/${titleId}/builders`, {
         account_id: accountId,
       })
       errors.value = []
       return true
     } catch (_error) {
-      console.error('Failed to grant publication publisher', _error)
+      console.error('Failed to grant build builder', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return false
     }
   }
 
-  const revokePublicationPublisher = async (
-    titleId: string,
-    accountId: string,
-  ): Promise<boolean> => {
+  const revokeAppBuilder = async (titleId: string, accountId: string): Promise<boolean> => {
     const service = await authStore.getApiService('titles')
     try {
-      await service.delete(`/${titleId}/publishers/${accountId}`)
+      await service.delete(`/${titleId}/builders/${accountId}`)
       errors.value = []
       return true
     } catch (_error) {
-      console.error('Failed to revoke publication publisher', _error)
+      console.error('Failed to revoke build builder', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return false
     }
@@ -435,9 +429,9 @@ export const useTitleStore = defineStore('title', () => {
     fetchAvailableTitleUploaders,
     grantTitleUploader,
     revokeTitleUploader,
-    fetchPublicationPublishers,
-    fetchAvailablePublicationPublishers,
-    grantPublicationPublisher,
-    revokePublicationPublisher,
+    fetchAppBuilders,
+    fetchAvailableAppBuilders,
+    grantAppBuilder,
+    revokeAppBuilder,
   }
 })

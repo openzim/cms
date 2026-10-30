@@ -11,7 +11,7 @@ from cms_backend import logger
 from cms_backend.__about__ import __version__
 from cms_backend.context import Context
 from cms_backend.db import Session
-from cms_backend.mill.advance_publications import advance_publications
+from cms_backend.mill.advance_app_builds import advance_app_builds
 from cms_backend.mill.check_book_transitions import check_book_transitions
 from cms_backend.mill.context import Context as MillContext
 from cms_backend.mill.delete_uploaded_zims import delete_uploaded_zims
@@ -20,8 +20,8 @@ from cms_backend.mill.fetch_lb_download_stats import fetch_download_stats
 from cms_backend.mill.mark_staging_books_for_deletion import (
     mark_staging_books_for_deletion,
 )
-from cms_backend.mill.process_publication_requests import (
-    process_publication_requests,
+from cms_backend.mill.process_app_build_requests import (
+    process_app_build_requests,
 )
 from cms_backend.mill.process_retention_rules import process_retention_rules
 from cms_backend.mill.process_title_modifications import process_title_modifications
@@ -44,14 +44,14 @@ tasks: list[TaskConfig] = [
         enabled=MillContext.process_title_modifications_enabled,
     ),
     TaskConfig(
-        func=process_publication_requests,
-        interval=MillContext.process_publication_requests_interval,
-        enabled=MillContext.process_publication_requests_enabled,
+        func=process_app_build_requests,
+        interval=MillContext.process_app_build_requests_interval,
+        enabled=MillContext.process_app_build_requests_enabled,
     ),
     TaskConfig(
-        func=advance_publications,
-        interval=MillContext.advance_publications_interval,
-        enabled=MillContext.advance_publications_enabled,
+        func=advance_app_builds,
+        interval=MillContext.advance_app_builds_interval,
+        enabled=MillContext.advance_app_builds_enabled,
     ),
     TaskConfig(
         func=check_book_transitions,

@@ -53,24 +53,22 @@ class Context:
         os.getenv("PROCESS_TITLE_MODIFICATIONS", default="true")
     )
 
-    process_publication_requests_interval: timedelta = timedelta(
+    process_app_build_requests_interval: timedelta = timedelta(
         seconds=parse_timespan(
-            os.getenv("PROCESS_PUBLICATION_REQUESTS_INTERVAL", default="10s")
+            os.getenv("PROCESS_APP_BUILD_REQUESTS_INTERVAL", default="10s")
         )
     )
 
-    process_publication_requests_enabled: bool = parse_bool(
-        os.getenv("PROCESS_PUBLICATION_REQUESTS", default="true")
+    process_app_build_requests_enabled: bool = parse_bool(
+        os.getenv("PROCESS_APP_BUILD_REQUESTS", default="true")
     )
 
-    advance_publications_interval: timedelta = timedelta(
-        seconds=parse_timespan(
-            os.getenv("ADVANCE_PUBLICATIONS_INTERVAL", default="30s")
-        )
+    advance_app_builds_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("ADVANCE_APP_BUILDS_INTERVAL", default="30s"))
     )
 
-    advance_publications_enabled: bool = parse_bool(
-        os.getenv("ADVANCE_PUBLICATIONS", default="true")
+    advance_app_builds_enabled: bool = parse_bool(
+        os.getenv("ADVANCE_APP_BUILDS", default="true")
     )
 
     check_book_transitions_interval: timedelta = timedelta(

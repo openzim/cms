@@ -15,8 +15,8 @@ from cms_backend.db import Session
 from cms_backend.db.models import (
     Account,
     Application,
+    ApplicationBuild,
     ApplicationHistory,
-    ApplicationPublication,
     Base,
     Book,
     BookHistory,
@@ -357,11 +357,11 @@ def application(
 
 
 @pytest.fixture
-def create_publication(
+def create_app_build(
     dbsession: OrmSession,
     account: Account,
-) -> Callable[..., ApplicationPublication]:
-    def _create_publication(
+) -> Callable[..., ApplicationBuild]:
+    def _create_app_build(
         *,
         application: Application,
         content_version: str = "2026-05",
@@ -377,13 +377,13 @@ def create_publication(
         run_id: int | None = None,
         run_url: str | None = None,
         error: str | None = None,
-        branch: str = "cms/publication-test",
+        branch: str = "cms/app-build-test",
         zim_filename: str = "phet_mul_all_maxi_2026-05.zim",
         pr_number: int | None = None,
         pr_url: str | None = None,
         merge_commit_sha: str | None = None,
         requested_by_id: UUID | None = None,
-    ) -> ApplicationPublication:
+    ) -> ApplicationBuild:
         app_name = application.name
         if tag is None:
             tag_prefix = get_tag_prefix(
@@ -391,7 +391,7 @@ def create_publication(
             )
             tag = f"{tag_prefix}.{build}"
 
-        publication = ApplicationPublication(
+        app_build = ApplicationBuild(
             application_id=application.id,
             store=application.store,
             content_version=content_version,
@@ -416,20 +416,20 @@ def create_publication(
                 requested_by_id if requested_by_id is not None else account.id
             ),
         )
-        dbsession.add(publication)
+        dbsession.add(app_build)
         dbsession.flush()
-        return publication
+        return app_build
 
-    return _create_publication
+    return _create_app_build
 
 
 @pytest.fixture
-def publication(
+def build(
     create_application: Callable[..., Application],
-    create_publication: Callable[..., ApplicationPublication],
-) -> ApplicationPublication:
+    create_app_build: Callable[..., ApplicationBuild],
+) -> ApplicationBuild:
     application = create_application(name="phet")
-    return create_publication(application=application)
+    return create_app_build(application=application)
 
 
 @pytest.fixture

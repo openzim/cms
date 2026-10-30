@@ -134,15 +134,15 @@ class BookTransitionStatus(StrEnum):
     CHECKING_LIBRARY = "checking_library"
 
 
-class PublicationPhase(StrEnum):
-    """Progress of a publication to an app store."""
+class AppBuildPhase(StrEnum):
+    """Progress of an application build towards an app store."""
 
     REQUESTED = "requested"
     CHECKS = "checks"
     MERGE = "merge"
     RELEASE = "release"
     BUILDING = "building"
-    STORE = "store"
+    UPLOADED = "uploaded"
 
 
 class Book(Base):
@@ -422,10 +422,10 @@ class ApplicationHistory(Base):
     author: Mapped[Account] = relationship(init=False)
 
 
-class ApplicationPublication(Base):
-    """A publication of a title flavour to an app store."""
+class ApplicationBuild(Base):
+    """A build of a title flavour to an app store."""
 
-    __tablename__ = "application_publication"
+    __tablename__ = "application_build"
 
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
@@ -474,7 +474,7 @@ class ApplicationPublication(Base):
         default_factory=getnow, onupdate=getnow, server_default=func.now()
     )
 
-    __table_args__ = (Index("ix_application_publication_tag", "tag", unique=True),)
+    __table_args__ = (Index("ix_application_build_tag", "tag", unique=True),)
 
 
 class DownloadStats(Base):
@@ -613,8 +613,8 @@ class TitlePermission(Base):
     )
 
 
-class PublicationPermission(Base):
-    __tablename__ = "publication_permission"
+class AppBuildPermission(Base):
+    __tablename__ = "app_build_permission"
     title_id: Mapped[UUID] = mapped_column(
         ForeignKey("title.id", ondelete="CASCADE"), primary_key=True
     )

@@ -49,7 +49,7 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "collection": ResourcePermissions.get_all(),
         "stats": ResourcePermissions.get_all(),
         "application": ResourcePermissions.get_all(),
-        "publication": ResourcePermissions.get_all(),
+        "app_build": ResourcePermissions.get_all(),
     },
     RoleEnum.GLOBAL_EDITOR: {
         "book": ResourcePermissions.get_all(),
@@ -57,14 +57,14 @@ ROLES: dict[str, dict[str, dict[str, bool]]] = {
         "account": ResourcePermissions.get(read=True),
         "collection": ResourcePermissions.get(read=True, update=True),
         "application": ResourcePermissions.get(create=True, read=True, update=True),
-        "publication": ResourcePermissions.get(create=True, read=True, update=True),
+        "app_build": ResourcePermissions.get(create=True, read=True, update=True),
     },
     RoleEnum.COLLECTION_EDITOR: {
         "book": ResourcePermissions.get_all(),
         "title": TitlePermissions.get(read=True, update=True),
         "collection": ResourcePermissions.get(read=True, update=True),
         "application": ResourcePermissions.get(create=True, read=True, update=True),
-        "publication": ResourcePermissions.get(create=True, read=True),
+        "app_build": ResourcePermissions.get(create=True, read=True),
     },
     RoleEnum.COLLECTION_VIEWER: {
         "book": ResourcePermissions.get(read=True),

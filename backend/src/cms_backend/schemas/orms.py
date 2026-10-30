@@ -52,7 +52,7 @@ class BaseTitleFlavourSchema(BaseModel):
     recipe_id: UUID | None
 
 
-class ApplicationPublicationSchema(BaseModel):
+class ApplicationBuildSchema(BaseModel):
     id: UUID
     title_id: UUID
     flavour: str
@@ -78,10 +78,10 @@ class ApplicationPublicationSchema(BaseModel):
     updated_at: datetime
 
 
-class PublicationCheckSchema(BaseModel):
+class AppBuildCheckSchema(BaseModel):
     content_version: str
-    published: bool
-    publication: ApplicationPublicationSchema | None = None
+    built: bool
+    app_build: ApplicationBuildSchema | None = None
 
 
 class TitleFlavourSchema(BaseTitleFlavourSchema):

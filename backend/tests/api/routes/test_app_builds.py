@@ -7,21 +7,21 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
+from cms_backend.db.app_build_permission import create_app_build_permission
 from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.models import (
     Account,
     Application,
-    ApplicationPublication,
+    ApplicationBuild,
     Book,
     Collection,
     Title,
 )
-from cms_backend.db.publication_permission import create_publication_permission
 from cms_backend.roles import RoleEnum
 from cms_backend.utils.datetime import getnow
 
 
-def test_create_publication(
+def test_create_app_build(
     client: TestClient,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -29,7 +29,7 @@ def test_create_publication(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -44,7 +44,7 @@ def test_create_publication(
     )
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -62,19 +62,19 @@ def test_create_publication(
     assert data["phase"] == "requested"
     assert data["repository"] == "kiwix/kiwix-android-branded"
     assert len(data["events"]) == 1
-    assert "Publication requested" in data["events"][0]
+    assert "Build requested" in data["events"][0]
 
 
-def test_create_publication_rejects_active_publication(
+def test_create_app_build_rejects_active_build(
     client: TestClient,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
     create_application: Callable[..., Application],
-    create_publication: Callable[..., ApplicationPublication],
+    create_app_build: Callable[..., ApplicationBuild],
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     application = create_application(
@@ -87,10 +87,10 @@ def test_create_publication_rejects_active_publication(
         location_kind="prod",
         date="2026-05-01",
     )
-    create_publication(application=application)
+    create_app_build(application=application)
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -102,7 +102,7 @@ def test_create_publication_rejects_active_publication(
     assert response.status_code == HTTPStatus.CONFLICT
 
 
-def test_create_publication_disabled(
+def test_create_app_build_disabled(
     client: TestClient,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -110,7 +110,7 @@ def test_create_publication_disabled(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -125,7 +125,7 @@ def test_create_publication_disabled(
     )
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -137,7 +137,7 @@ def test_create_publication_disabled(
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_create_publication_store_not_enabled(
+def test_create_app_build_store_not_enabled(
     client: TestClient,
     create_title: Callable[..., Title],
     create_book: Callable[..., Book],
@@ -145,7 +145,7 @@ def test_create_publication_store_not_enabled(
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -160,7 +160,7 @@ def test_create_publication_store_not_enabled(
     )
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -172,14 +172,14 @@ def test_create_publication_store_not_enabled(
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_create_publication_without_book(
+def test_create_app_build_without_book(
     client: TestClient,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -187,7 +187,7 @@ def test_create_publication_without_book(
     )
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -244,11 +244,11 @@ def test_create_publication_without_book(
         ),
     ],
 )
-def test_list_publications(
+def test_list_builds(
     client: TestClient,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
-    create_publication: Callable[..., ApplicationPublication],
+    create_app_build: Callable[..., ApplicationBuild],
     access_token: str,
     name: str,
     store: str,
@@ -267,12 +267,12 @@ def test_list_publications(
     wikipedia_apple = create_application(
         title=wikipedia_title, flavour="maxi", store="apple", name="wikipedia"
     )
-    create_publication(application=phet_maxi)
-    create_publication(application=phet_mini)
-    create_publication(application=wikipedia_apple)
+    create_app_build(application=phet_maxi)
+    create_app_build(application=phet_mini)
+    create_app_build(application=wikipedia_apple)
 
     response = client.get(
-        "/v1/publications",
+        "/v1/app-builds",
         params={"name": name, "store": store},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -286,11 +286,11 @@ def test_list_publications(
             assert [item["tag"] for item in data["items"]] == expected_tags
 
 
-def test_cancel_publication(
+def test_cancel_app_build(
     client: TestClient,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
-    create_publication: Callable[..., ApplicationPublication],
+    create_app_build: Callable[..., ApplicationBuild],
     account: Account,
     access_token: str,
 ) -> None:
@@ -298,14 +298,14 @@ def test_cancel_publication(
     application = create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
-    publication = create_publication(
+    build = create_app_build(
         application=application,
         status="running",
         phase="checks",
     )
 
     response = client.post(
-        f"/v1/publications/{publication.id}/cancel",
+        f"/v1/app-builds/{build.id}/cancel",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -317,31 +317,31 @@ def test_cancel_publication(
     assert f"cancelled by {account.display_name}" in data["events"][-1]
 
 
-def test_cancel_finished_publication(
+def test_cancel_finished_build(
     client: TestClient,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
-    create_publication: Callable[..., ApplicationPublication],
+    create_app_build: Callable[..., ApplicationBuild],
     access_token: str,
 ) -> None:
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     application = create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
-    publication = create_publication(
+    build = create_app_build(
         application=application,
         status="success",
     )
 
     response = client.post(
-        f"/v1/publications/{publication.id}/cancel",
+        f"/v1/app-builds/{build.id}/cancel",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_create_publication_forbidden_without_publication_grant(
+def test_create_app_build_forbidden_without_build_grant(
     client: TestClient,
     dbsession: OrmSession,
     create_title: Callable[..., Title],
@@ -351,7 +351,7 @@ def test_create_publication_forbidden_without_publication_grant(
     create_account: Callable[..., Account],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -370,7 +370,7 @@ def test_create_publication_forbidden_without_publication_grant(
     token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",
@@ -382,7 +382,7 @@ def test_create_publication_forbidden_without_publication_grant(
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_create_publication_allowed_with_publication_grant(
+def test_create_app_build_allowed_with_build_grant(
     client: TestClient,
     dbsession: OrmSession,
     create_title: Callable[..., Title],
@@ -392,7 +392,7 @@ def test_create_publication_allowed_with_publication_grant(
     create_account: Callable[..., Account],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(Context, "publication_stores", ["android"])
+    monkeypatch.setattr(Context, "app_build_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
     create_application(
@@ -408,11 +408,11 @@ def test_create_publication_allowed_with_publication_grant(
     collection = create_collection(title_ids_with_paths=[(title.id, "other")])
     editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
     create_collection_permission(dbsession, collection.id, editor.id)
-    create_publication_permission(dbsession, title.id, editor.id)
+    create_app_build_permission(dbsession, title.id, editor.id)
     token = generate_access_token(issue_time=getnow(), account_id=str(editor.id))
 
     response = client.post(
-        "/v1/publications",
+        "/v1/app-builds",
         json={
             "title_identifier": str(title.id),
             "flavour": "maxi",

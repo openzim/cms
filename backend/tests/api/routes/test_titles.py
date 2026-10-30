@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.api.context import Context as ApiContext
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
+from cms_backend.db.app_build_permission import (
+    create_app_build_permission,
+    get_app_build_permission_or_none,
+)
 from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.models import (
     Account,
@@ -25,10 +29,6 @@ from cms_backend.db.models import (
     TitlePermission,
     TitleUpload,
     Warehouse,
-)
-from cms_backend.db.publication_permission import (
-    create_publication_permission,
-    get_publication_permission_or_none,
 )
 from cms_backend.db.title import update_title
 from cms_backend.roles import RoleEnum
@@ -1662,18 +1662,18 @@ def test_get_available_title_uploaders(
     assert len(second_page["items"]) == 1
 
 
-def test_grant_publication_publisher(
+def test_grant_app_builder(
     client: TestClient,
     create_title: Callable[..., Title],
     create_account: Callable[..., Account],
     access_token: str,
 ):
-    """An admin can grant a collection editor's publication rights."""
+    """An admin can grant a collection editor's build rights."""
     wikipedia_en_all = create_title(name="wikipedia_en_all")
     editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
 
     response = client.post(
-        f"/v1/titles/{wikipedia_en_all.name}/publishers",
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
         json={"account_id": str(editor.id)},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -1681,20 +1681,20 @@ def test_grant_publication_publisher(
     assert response.status_code == HTTPStatus.NO_CONTENT
 
 
-def test_get_publication_publishers(
+def test_get_app_builders(
     client: TestClient,
     dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_account: Callable[..., Account],
     access_token: str,
 ):
-    """Granted collection editors are listed as publication publishers."""
+    """Granted collection editors are listed as build publishers."""
     wikipedia_en_all = create_title(name="wikipedia_en_all")
     editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
-    create_publication_permission(dbsession, wikipedia_en_all.id, editor.id)
+    create_app_build_permission(dbsession, wikipedia_en_all.id, editor.id)
 
     response = client.get(
-        f"/v1/titles/{wikipedia_en_all.name}/publishers",
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -1702,42 +1702,42 @@ def test_get_publication_publishers(
     assert [item["id"] for item in response.json()["items"]] == [str(editor.id)]
 
 
-def test_revoke_publication_publisher(
+def test_revoke_app_builder(
     client: TestClient,
     dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_account: Callable[..., Account],
     access_token: str,
 ):
-    """An admin can revoke a collection editor's publication rights."""
+    """An admin can revoke a collection editor's build rights."""
     wikipedia_en_all = create_title(name="wikipedia_en_all")
     editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
-    create_publication_permission(dbsession, wikipedia_en_all.id, editor.id)
+    create_app_build_permission(dbsession, wikipedia_en_all.id, editor.id)
 
     response = client.delete(
-        f"/v1/titles/{wikipedia_en_all.name}/publishers/{editor.id}",
+        f"/v1/titles/{wikipedia_en_all.name}/builders/{editor.id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.NO_CONTENT
     assert (
-        get_publication_permission_or_none(dbsession, wikipedia_en_all.id, editor.id)
+        get_app_build_permission_or_none(dbsession, wikipedia_en_all.id, editor.id)
         is None
     )
 
 
-def test_grant_publication_publisher_rejects_other_roles(
+def test_grant_app_builder_rejects_other_roles(
     client: TestClient,
     create_title: Callable[..., Title],
     create_account: Callable[..., Account],
     access_token: str,
 ):
-    """Only collection-editor accounts can be granted publication rights."""
+    """Only collection-editor accounts can be granted build rights."""
     wikipedia_en_all = create_title(name="wikipedia_en_all")
     editor = create_account(permission=RoleEnum.GLOBAL_EDITOR)
 
     response = client.post(
-        f"/v1/titles/{wikipedia_en_all.name}/publishers",
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
         json={"account_id": str(editor.id)},
         headers={"Authorization": f"Bearer {access_token}"},
     )

@@ -195,7 +195,7 @@ class Context:
         default=int(os.getenv("MIN_LANGUAGES_FOR_TITLE_SYNC", "5"))
     )
 
-    # GitHub integration used to publish branded apps, per platform
+    # GitHub integration used to build branded apps, per platform
     github_api_url: str = os.getenv("GITHUB_API_URL", default="https://api.github.com")
     github_token: str = os.getenv("GITHUB_TOKEN", default="")
     github_android_repo: str = os.getenv(
@@ -211,7 +211,7 @@ class Context:
     github_apple_workflow: str = os.getenv("GITHUB_APPLE_WORKFLOW", default="cd.yml")
     github_apple_branch: str = os.getenv("GITHUB_APPLE_BRANCH", default="main")
 
-    # App stores enabled for publication (comma-separated)
-    publication_stores: ClassVar[list[str]] = os.getenv(
-        "PUBLICATION_STORES", default="android,apple"
+    # App stores enabled for app builds (comma-separated)
+    app_build_stores: ClassVar[list[str]] = os.getenv(
+        "APP_BUILD_STORES", default="android,apple"
     ).split(",")

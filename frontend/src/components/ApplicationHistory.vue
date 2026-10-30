@@ -23,7 +23,7 @@ import type { HistoryItem } from '@/components/HistoryViewer.vue'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
 import type { ApplicationHistory } from '@/types/application'
 import type { Paginator } from '@/types/base'
-import type { PublicationStore } from '@/types/publication'
+import type { ApplicationStore } from '@/types/appBuild'
 import type { EnhancedDiff } from '@/utils/diff'
 import { storeLabel } from '@/utils/format'
 import { diff } from 'deep-diff'
@@ -35,7 +35,7 @@ const props = defineProps<{
   paginator: Paginator
   applicationId: string
   name: string
-  store: PublicationStore
+  store: ApplicationStore
 }>()
 
 const emit = defineEmits<{

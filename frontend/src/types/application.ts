@@ -1,11 +1,11 @@
-import type { PublicationStore } from '@/types/publication'
+import type { ApplicationStore } from '@/types/appBuild'
 
 export interface Application {
   id: string
   title_id: string
   title_name: string
   flavour: string
-  store: PublicationStore
+  store: ApplicationStore
   enabled: boolean
   name: string
 }
@@ -13,7 +13,7 @@ export interface Application {
 export interface ApplicationCreate {
   title_id: string
   flavour: string
-  store: PublicationStore
+  store: ApplicationStore
   enabled: boolean
   name: string
 }
@@ -29,7 +29,7 @@ export interface ApplicationHistory {
   title_id: string
   title_name: string
   flavour: string
-  store: PublicationStore
+  store: ApplicationStore
   name: string
   enabled: boolean
   author: string

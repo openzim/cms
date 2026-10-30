@@ -7,7 +7,7 @@ from cms_backend.db.models import Event
 from cms_backend.schemas.orms import EventLightSchema, ListResult
 from cms_backend.utils.datetime import getnow
 
-PUBLICATION_REQUESTED_TOPIC = "publication_requested"
+APP_BUILD_REQUESTED_TOPIC = "app_build_requested"
 
 
 def create_title_modified_event(
@@ -24,14 +24,12 @@ def create_title_modified_event(
     return event
 
 
-def create_publication_requested_event(
-    session: OrmSession, *, publication_id: UUID
-) -> Event:
-    """Create an event for application publications"""
+def create_app_build_requested_event(session: OrmSession, *, build_id: UUID) -> Event:
+    """Create an event for application builds"""
     event = Event(
         created_at=getnow(),
-        topic=PUBLICATION_REQUESTED_TOPIC,
-        payload={"id": str(publication_id)},
+        topic=APP_BUILD_REQUESTED_TOPIC,
+        payload={"id": str(build_id)},
     )
     session.add(event)
     session.flush()

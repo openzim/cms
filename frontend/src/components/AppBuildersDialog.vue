@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="text-title-large bg-primary">
         <v-icon class="mr-2">mdi-account-key</v-icon>
-        Publication Access
+        Build Access
       </v-card-title>
 
       <v-card-text class="pt-4">
@@ -11,21 +11,21 @@
           {{ errors.join(', ') }}
         </v-alert>
 
-        <div class="text-title-small mb-2">Users with publication access</div>
-        <div v-if="publishers.length === 0" class="text-body-medium text-medium-emphasis mb-4">
-          No user has publication access to this title yet. Only admins and global editors can
-          publish its applications.
+        <div class="text-title-small mb-2">Users with build access</div>
+        <div v-if="builders.length === 0" class="text-body-medium text-medium-emphasis mb-4">
+          No user has build access to this title yet. Only admins and global editors can build its
+          applications.
         </div>
         <v-list v-else density="compact" class="mb-4">
-          <v-list-item v-for="publisher in publishers" :key="publisher.id">
-            <v-list-item-title>{{ publisher.display_name }}</v-list-item-title>
+          <v-list-item v-for="builder in builders" :key="builder.id">
+            <v-list-item-title>{{ builder.display_name }}</v-list-item-title>
             <template #append>
               <v-btn
                 icon="mdi-delete"
                 size="small"
                 variant="text"
                 color="error"
-                @click="requestRevoke(publisher)"
+                @click="requestRevoke(builder)"
               />
             </template>
           </v-list-item>
@@ -64,7 +64,7 @@
 
   <ConfirmDialog
     v-model="showRevokeDialog"
-    title="Revoke Publication Access"
+    title="Revoke Build Access"
     :message="revokeMessage"
     confirm-text="Revoke"
     icon="mdi-account-remove"
@@ -103,40 +103,40 @@ const revoking = ref(false)
 const showRevokeDialog = ref(false)
 const pendingRevoke = ref<User | null>(null)
 const selectedAccountId = ref<string | null>(null)
-const publishers = ref<User[]>([])
+const builders = ref<User[]>([])
 const collectionEditorAccounts = ref<User[]>([])
 
 const availableAccounts = computed(() =>
   collectionEditorAccounts.value.filter(
-    (account) => !publishers.value.some((publisher) => publisher.id === account.id),
+    (account) => !builders.value.some((builder) => builder.id === account.id),
   ),
 )
 
 const revokeMessage = computed(() =>
-  pendingRevoke.value ? `Revoke publication access for "${pendingRevoke.value.display_name}"?` : '',
+  pendingRevoke.value ? `Revoke build access for "${pendingRevoke.value.display_name}"?` : '',
 )
 
 const loadData = async () => {
   loading.value = true
   errors.value = []
-  const [accounts, currentPublishers] = await Promise.all([
-    titleStore.fetchAvailablePublicationPublishers(props.titleId),
-    titleStore.fetchPublicationPublishers(props.titleId),
+  const [accounts, currentBuilders] = await Promise.all([
+    titleStore.fetchAvailableAppBuilders(props.titleId),
+    titleStore.fetchAppBuilders(props.titleId),
   ])
   collectionEditorAccounts.value = accounts ?? []
-  publishers.value = currentPublishers
+  builders.value = currentBuilders
   loading.value = false
 }
 
 const grant = async () => {
   if (!selectedAccountId.value) return
   granting.value = true
-  const success = await titleStore.grantPublicationPublisher(props.titleId, selectedAccountId.value)
+  const success = await titleStore.grantAppBuilder(props.titleId, selectedAccountId.value)
   granting.value = false
   if (success) {
-    notificationStore.showSuccess('Publication access granted.')
+    notificationStore.showSuccess('Build access granted.')
     selectedAccountId.value = null
-    publishers.value = await titleStore.fetchPublicationPublishers(props.titleId)
+    builders.value = await titleStore.fetchAppBuilders(props.titleId)
   } else {
     errors.value = titleStore.errors
   }
@@ -150,11 +150,11 @@ const requestRevoke = (account: User) => {
 const confirmRevoke = async () => {
   if (!pendingRevoke.value) return
   revoking.value = true
-  const success = await titleStore.revokePublicationPublisher(props.titleId, pendingRevoke.value.id)
+  const success = await titleStore.revokeAppBuilder(props.titleId, pendingRevoke.value.id)
   revoking.value = false
   if (success) {
-    notificationStore.showSuccess('Publication access revoked.')
-    publishers.value = await titleStore.fetchPublicationPublishers(props.titleId)
+    notificationStore.showSuccess('Build access revoked.')
+    builders.value = await titleStore.fetchAppBuilders(props.titleId)
   } else {
     errors.value = titleStore.errors
   }
