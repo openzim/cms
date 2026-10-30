@@ -20,12 +20,13 @@ def test_get_application(
     access_token: str,
 ) -> None:
     response = client.get(
-        f"/v1/applications/{application.name}/{application.store}",
+        f"/v1/applications/{application.id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.OK
     data = response.json()
+    assert data["id"] == str(application.id)
     assert data["title_id"] == str(application.title_id)
     assert data["flavour"] == application.flavour
     assert data["store"] == application.store
@@ -136,7 +137,7 @@ def test_update_application(
     access_token: str,
 ) -> None:
     response = client.patch(
-        f"/v1/applications/{application.name}/{application.store}",
+        f"/v1/applications/{application.id}",
         json={"enabled": False, "name": "updated_app"},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -147,7 +148,7 @@ def test_update_application(
     assert data["name"] == "updated_app"
 
     response = client.get(
-        f"/v1/applications/updated_app/{application.store}",
+        f"/v1/applications/{application.id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -161,14 +162,14 @@ def test_delete_application(
     access_token: str,
 ) -> None:
     response = client.delete(
-        f"/v1/applications/{application.name}/{application.store}",
+        f"/v1/applications/{application.id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
     assert response.status_code == HTTPStatus.NO_CONTENT
 
     response = client.get(
-        f"/v1/applications/{application.name}/{application.store}",
+        f"/v1/applications/{application.id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -197,20 +198,17 @@ def test_get_application_history(
 ):
     """Test retrieving application history"""
     application = create_application(name="phet", store="android", enabled=True)
-    name = application.name
-    store = application.store
 
     for i in range(5):
         db_application.update_application(
             dbsession,
-            name=name,
-            store=store,
+            application_id=application.id,
             author_id=account.id,
             payload=ApplicationUpdateSchema(enabled=i % 2 == 0, comment=f"Update {i}"),
         )
 
     response = client.get(
-        f"/v1/applications/{name}/{store}/history?skip={skip}&limit={limit}",
+        f"/v1/applications/{application.id}/history?skip={skip}&limit={limit}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -250,7 +248,7 @@ def test_get_application_history_required_permissions(
         account_id=str(account.id), issue_time=getnow()
     )
     response = client.get(
-        f"/v1/applications/{application.name}/{application.store}/history",
+        f"/v1/applications/{application.id}/history",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
@@ -264,13 +262,13 @@ def test_get_application_history_entry(
     """Test retrieving a specific application history entry"""
     application = create_application(name="phet", store="android")
     history_response = client.get(
-        f"/v1/applications/{application.name}/{application.store}/history",
+        f"/v1/applications/{application.id}/history",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     history_id = history_response.json()["items"][0]["id"]
 
     response = client.get(
-        f"/v1/applications/{application.name}/{application.store}/history/{history_id}",
+        f"/v1/applications/{application.id}/history/{history_id}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -287,7 +285,7 @@ def test_get_application_history_entry_not_found(
     access_token: str,
 ) -> None:
     response = client.get(
-        f"/v1/applications/{application.name}/{application.store}/history/{uuid4()}",
+        f"/v1/applications/{application.id}/history/{uuid4()}",
         headers={"Authorization": f"Bearer {access_token}"},
     )
 
@@ -303,12 +301,10 @@ def test_revert_application(
 ) -> None:
     """Test reverting an application to a previous history entry"""
     application = create_application(name="phet", store="android", enabled=True)
-    store = application.store
 
     db_application.update_application(
         dbsession,
-        name="phet",
-        store=store,
+        application_id=application.id,
         author_id=account.id,
         payload=ApplicationUpdateSchema(
             name="phet2", enabled=False, comment="Rename app"
@@ -316,7 +312,7 @@ def test_revert_application(
     )
 
     history_response = client.get(
-        f"/v1/applications/phet2/{store}/history",
+        f"/v1/applications/{application.id}/history",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     initial_entry = next(
@@ -326,7 +322,7 @@ def test_revert_application(
     )
 
     response = client.patch(
-        f"/v1/applications/phet2/{store}/revert/{initial_entry['id']}",
+        f"/v1/applications/{application.id}/revert/{initial_entry['id']}",
         json={"comment": "Reverting"},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -363,15 +359,13 @@ def test_revert_application_required_permissions(
     application = create_application(name="phet", store="android", enabled=True)
     db_application.update_application(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         author_id=account.id,
         payload=ApplicationUpdateSchema(enabled=False, comment="Update 1"),
     )
     history = db_application.get_application_history(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         skip=0,
         limit=10,
     )
@@ -382,7 +376,7 @@ def test_revert_application_required_permissions(
         account_id=str(account.id), issue_time=getnow()
     )
     response = client.patch(
-        f"/v1/applications/{application.name}/{application.store}/revert/{history_id}",
+        f"/v1/applications/{application.id}/revert/{history_id}",
         json={"comment": "Reverting"},
         headers={"Authorization": f"Bearer {access_token}"},
     )

@@ -1,6 +1,7 @@
 import type { PublicationStore } from '@/types/publication'
 
 export interface Application {
+  id: string
   title_id: string
   title_name: string
   flavour: string

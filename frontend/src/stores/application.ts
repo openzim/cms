@@ -45,10 +45,10 @@ export const useApplicationStore = defineStore('application', () => {
     }
   }
 
-  const fetchApplication = async (name: string, store: string) => {
+  const fetchApplicationById = async (id: string) => {
     const service = await authStore.getApiService('applications')
     try {
-      const response = await service.get<null, Application>(`/${name}/${store}`)
+      const response = await service.get<null, Application>(`/${id}`)
       errors.value = []
       return response
     } catch (_error) {
@@ -71,13 +71,10 @@ export const useApplicationStore = defineStore('application', () => {
     }
   }
 
-  const updateApplication = async (name: string, store: string, payload: ApplicationUpdate) => {
+  const updateApplication = async (id: string, payload: ApplicationUpdate) => {
     const service = await authStore.getApiService('applications')
     try {
-      const response = await service.patch<ApplicationUpdate, Application>(
-        `/${name}/${store}`,
-        payload,
-      )
+      const response = await service.patch<ApplicationUpdate, Application>(`/${id}`, payload)
       errors.value = []
       return response
     } catch (_error) {
@@ -87,10 +84,10 @@ export const useApplicationStore = defineStore('application', () => {
     }
   }
 
-  const deleteApplication = async (name: string, store: string) => {
+  const deleteApplication = async (id: string) => {
     const service = await authStore.getApiService('applications')
     try {
-      await service.delete<null, void>(`/${name}/${store}`)
+      await service.delete<null, void>(`/${id}`)
       errors.value = []
       return true
     } catch (_error) {
@@ -106,7 +103,7 @@ export const useApplicationStore = defineStore('application', () => {
     clearErrors,
     paginator,
     fetchApplications,
-    fetchApplication,
+    fetchApplicationById,
     createApplication,
     updateApplication,
     deleteApplication,

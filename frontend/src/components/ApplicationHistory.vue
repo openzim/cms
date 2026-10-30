@@ -21,36 +21,35 @@
 import HistoryViewer from '@/components/HistoryViewer.vue'
 import type { HistoryItem } from '@/components/HistoryViewer.vue'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
-import type { Application, ApplicationHistory } from '@/types/application'
+import type { ApplicationHistory } from '@/types/application'
 import type { Paginator } from '@/types/base'
 import type { PublicationStore } from '@/types/publication'
 import type { EnhancedDiff } from '@/utils/diff'
 import { storeLabel } from '@/utils/format'
 import { diff } from 'deep-diff'
-import { ref } from 'vue'
 
 const props = defineProps<{
   history: ApplicationHistory[]
   hasMore: boolean
   loading: boolean
   paginator: Paginator
+  applicationId: string
   name: string
   store: PublicationStore
 }>()
 
 const emit = defineEmits<{
   load: [{ limit: number; skip: number }]
-  revert: [application: Application | null]
+  revert: []
 }>()
 
 const applicationHistoryStore = useApplicationHistoryStore()
-const revertedApplication = ref<Application | null>(null)
 
 const fetchEntry = async (
   _entityId: string,
   historyId: string,
 ): Promise<ApplicationHistory | null> => {
-  return await applicationHistoryStore.fetchHistoryEntry(props.name, props.store, historyId)
+  return await applicationHistoryStore.fetchHistoryEntry(props.applicationId, historyId)
 }
 
 const revertEntry = async (
@@ -58,14 +57,7 @@ const revertEntry = async (
   historyId: string,
   comment?: string,
 ): Promise<boolean> => {
-  const reverted = await applicationHistoryStore.revertToHistory(
-    props.name,
-    props.store,
-    historyId,
-    comment,
-  )
-  revertedApplication.value = reverted
-  return reverted !== null
+  return await applicationHistoryStore.revertToHistory(props.applicationId, historyId, comment)
 }
 
 const getErrors = (): string[] => {
@@ -108,7 +100,6 @@ const handleLoad = (params: { limit: number; skip: number }) => {
 }
 
 const handleRevert = () => {
-  emit('revert', revertedApplication.value)
-  revertedApplication.value = null
+  emit('revert')
 }
 </script>

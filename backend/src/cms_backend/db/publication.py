@@ -37,8 +37,7 @@ def create_publication(
 ) -> ApplicationPublication:
     now = getnow()
     publication = ApplicationPublication(
-        title_id=payload.title_id,
-        flavour=payload.flavour,
+        application_id=payload.application_id,
         store=payload.store,
         content_version=payload.content_version,
         app_name=payload.app_name,
@@ -74,6 +73,7 @@ def get_publication_or_none(
             ApplicationPublication.id == publication_id,
         )
         .options(
+            selectinload(ApplicationPublication.application),
             selectinload(ApplicationPublication.requested_by),
             selectinload(ApplicationPublication.cancelled_by),
         )
@@ -92,17 +92,13 @@ def get_publication(
 def get_active_publication_or_none(
     session: OrmSession,
     *,
-    title_id: UUID,
-    flavour: str,
-    store: str,
+    application_id: UUID,
 ) -> ApplicationPublication | None:
     """Get a publication for this app which has not reached a terminal status."""
     return session.scalars(
         select(ApplicationPublication)
         .where(
-            ApplicationPublication.title_id == title_id,
-            ApplicationPublication.flavour == flavour,
-            ApplicationPublication.store == store,
+            ApplicationPublication.application_id == application_id,
             ApplicationPublication.status.in_(ACTIVE_STATUSES),
         )
         .limit(1)
@@ -136,9 +132,7 @@ def get_publications_in_progress(
 def get_successful_publication_for_content(
     session: OrmSession,
     *,
-    title_id: UUID,
-    flavour: str,
-    store: str,
+    application_id: UUID,
     app_name: str,
     content_version: str,
 ) -> ApplicationPublication | None:
@@ -147,15 +141,14 @@ def get_successful_publication_for_content(
     return session.scalars(
         select(ApplicationPublication)
         .where(
-            ApplicationPublication.title_id == title_id,
-            ApplicationPublication.flavour == flavour,
-            ApplicationPublication.store == store,
+            ApplicationPublication.application_id == application_id,
             ApplicationPublication.status == "success",
             or_(
                 ApplicationPublication.tag == base_tag,
                 ApplicationPublication.tag.startswith(f"{base_tag}.", autoescape=True),
             ),
         )
+        .options(selectinload(ApplicationPublication.application))
         .order_by(ApplicationPublication.created_at.desc())
         .limit(1)
     ).one_or_none()
@@ -164,8 +157,7 @@ def get_successful_publication_for_content(
 def get_publications(
     session: OrmSession,
     *,
-    title_id: UUID | None = None,
-    flavour: str | None = None,
+    application_id: UUID | None = None,
     store: str | None = None,
     skip: int = 0,
     limit: int = 20,
@@ -173,11 +165,12 @@ def get_publications(
     stmt = (
         select(ApplicationPublication)
         .where(
-            (ApplicationPublication.title_id == title_id) | (title_id is None),
-            (ApplicationPublication.flavour == flavour) | (flavour is None),
+            (ApplicationPublication.application_id == application_id)
+            | (application_id is None),
             (ApplicationPublication.store == store) | (store is None),
         )
         .options(
+            selectinload(ApplicationPublication.application),
             selectinload(ApplicationPublication.requested_by),
             selectinload(ApplicationPublication.cancelled_by),
         )
@@ -199,8 +192,8 @@ def create_publication_schema(
 ) -> ApplicationPublicationSchema:
     return ApplicationPublicationSchema(
         id=publication.id,
-        title_id=publication.title_id,
-        flavour=publication.flavour,
+        title_id=publication.application.title_id,
+        flavour=publication.application.flavour,
         store=publication.store,
         repository=publication.repository,
         app_name=publication.app_name,

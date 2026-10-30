@@ -48,6 +48,7 @@ def create_application_schema(
     application: Application,
 ) -> ApplicationSchema:
     return ApplicationSchema(
+        id=application.id,
         title_id=application.title_id,
         title_name=application.title_flavour.title.name,
         flavour=application.flavour,
@@ -60,9 +61,7 @@ def create_application_schema(
 def get_application_by_id_or_none(
     session: OrmSession,
     *,
-    title_id: UUID,
-    flavour: str,
-    store: str,
+    application_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
 ) -> Application | None:
@@ -72,12 +71,28 @@ def get_application_by_id_or_none(
             selectinload(Application.title_flavour).selectinload(TitleFlavour.title)
         )
         .where(
-            Application.title_id == title_id,
-            Application.flavour == flavour,
-            Application.store == store,
+            Application.id == application_id,
             _access_filter(accessible_collection_ids, accessible_title_ids),
         )
     ).one_or_none()
+
+
+def get_application_by_id(
+    session: OrmSession,
+    *,
+    application_id: UUID,
+    accessible_collection_ids: Sequence[UUID] | None = None,
+    accessible_title_ids: Sequence[UUID] | None = None,
+) -> Application:
+    application = get_application_by_id_or_none(
+        session,
+        application_id=application_id,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    if application is None:
+        raise RecordDoesNotExistError(f"Application {application_id} does not exist")
+    return application
 
 
 def get_application_or_none(
@@ -174,6 +189,7 @@ def create_application_history_entry(
     )
     history_entry.title_id = application.title_id
     history_entry.flavour = application.flavour
+    history_entry.application_id = application.id
     history_entry.author_id = author_id
     session.add(history_entry)
     return history_entry
@@ -199,17 +215,15 @@ def create_application_history_schema(
 def get_application_history(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     skip: int,
     limit: int,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
 ) -> ListResult[ApplicationHistorySchema]:
-    application = get_application(
+    application = get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
@@ -217,9 +231,7 @@ def get_application_history(
     stmt = (
         select(ApplicationHistory)
         .where(
-            ApplicationHistory.title_id == application.title_id,
-            ApplicationHistory.flavour == application.flavour,
-            ApplicationHistory.store == application.store,
+            ApplicationHistory.application_id == application.id,
         )
         .options(selectinload(ApplicationHistory.author))
         .order_by(ApplicationHistory.created_at.desc())
@@ -236,16 +248,14 @@ def get_application_history(
 def get_application_history_entry_or_none(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     history_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
 ) -> ApplicationHistory | None:
-    application = get_application(
+    application = get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
@@ -253,9 +263,7 @@ def get_application_history_entry_or_none(
         select(ApplicationHistory)
         .where(
             ApplicationHistory.id == history_id,
-            ApplicationHistory.title_id == application.title_id,
-            ApplicationHistory.flavour == application.flavour,
-            ApplicationHistory.store == application.store,
+            ApplicationHistory.application_id == application.id,
         )
         .options(selectinload(ApplicationHistory.author))
     ).one_or_none()
@@ -264,23 +272,22 @@ def get_application_history_entry_or_none(
 def get_application_history_entry(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     history_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
 ) -> ApplicationHistory:
     entry = get_application_history_entry_or_none(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         history_id=history_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
     if entry is None:
         raise RecordDoesNotExistError(
-            f"Application '{name}' does not have a history entry with id {history_id}"
+            f"Application {application_id} does not have a history entry with id "
+            f"{history_id}"
         )
     return entry
 
@@ -288,8 +295,7 @@ def get_application_history_entry(
 def revert_application(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     history_id: UUID,
     author_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
@@ -298,16 +304,14 @@ def revert_application(
 ) -> Application:
     entry = get_application_history_entry(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         history_id=history_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
     return update_application(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
         author_id=author_id,
@@ -355,22 +359,6 @@ def create_application(
         accessible_collection_ids=accessible_collection_ids,
     )
 
-    if (
-        get_application_by_id_or_none(
-            session,
-            title_id=title.id,
-            flavour=title_flavour.flavour,
-            store=payload.store,
-            accessible_collection_ids=accessible_collection_ids,
-            accessible_title_ids=accessible_title_ids,
-        )
-        is not None
-    ):
-        raise RecordAlreadyExistsError(
-            f"An application already exists for flavour '{title_flavour.flavour}' "
-            f"and store '{payload.store}'"
-        )
-
     application = Application(
         title_id=title.id,
         flavour=title_flavour.flavour,
@@ -383,9 +371,14 @@ def create_application(
         session.flush()
     except IntegrityError as exc:
         if isinstance(exc.orig, UniqueViolation):
+            if exc.orig.diag.constraint_name == "uq_application_name_store":
+                raise RecordAlreadyExistsError(
+                    f"An application with name '{payload.name}' already exists for "
+                    f"store '{payload.store}'"
+                ) from exc
             raise RecordAlreadyExistsError(
-                f"An application with name '{payload.name}' already exists for "
-                f"store '{payload.store}'"
+                f"An application already exists for flavour "
+                f"'{title_flavour.flavour}' and store '{payload.store}'"
             ) from exc
         raise
 
@@ -398,17 +391,15 @@ def create_application(
 def update_application(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
     author_id: UUID,
     payload: ApplicationUpdateSchema,
 ) -> Application:
-    application = get_application(
+    application = get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
@@ -433,7 +424,7 @@ def update_application(
             if isinstance(exc.orig, UniqueViolation):
                 raise RecordAlreadyExistsError(
                     f"An application with name '{payload.name}' already exists for "
-                    f"store '{store}'"
+                    f"store '{application.store}'"
                 ) from exc
             raise
     else:
@@ -442,10 +433,9 @@ def update_application(
     create_application_history_entry(session, application, author_id, payload.comment)
     session.flush()
 
-    return get_application(
+    return get_application_by_id(
         session,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
@@ -454,15 +444,13 @@ def update_application(
 def delete_application(
     session: OrmSession,
     *,
-    name: str,
-    store: str,
+    application_id: UUID,
     accessible_collection_ids: Sequence[UUID] | None = None,
     accessible_title_ids: Sequence[UUID] | None = None,
 ) -> None:
-    application = get_application(
+    application = get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )

@@ -7,7 +7,7 @@
 
     <div v-if="dataLoaded">
       <div class="mb-4">
-        <h2 class="text-title-large mb-2">{{ name }}</h2>
+        <h2 class="text-title-large mb-2">{{ application?.name }}</h2>
 
         <div v-if="application" class="d-flex flex-wrap align-center ga-2">
           <router-link
@@ -46,7 +46,7 @@
           :value="store"
           :to="{
             name: 'app-detail',
-            params: { name, store },
+            params: { id },
           }"
         >
           <v-icon class="mr-2">{{ store === 'android' ? 'mdi-android' : 'mdi-apple' }}</v-icon>
@@ -59,7 +59,7 @@
           value="history"
           :to="{
             name: 'app-detail-tab',
-            params: { name, store, selectedTab: 'history' },
+            params: { id, selectedTab: 'history' },
           }"
         >
           <v-icon class="mr-2">mdi-history</v-icon>
@@ -72,7 +72,7 @@
           value="edit"
           :to="{
             name: 'app-detail-tab',
-            params: { name, store, selectedTab: 'edit' },
+            params: { id, selectedTab: 'edit' },
           }"
         >
           <v-icon class="mr-2">mdi-pencil</v-icon>
@@ -85,7 +85,7 @@
           value="delete"
           :to="{
             name: 'app-detail-tab',
-            params: { name, store, selectedTab: 'delete' },
+            params: { id, selectedTab: 'delete' },
           }"
         >
           <v-icon class="mr-2">mdi-delete</v-icon>
@@ -138,18 +138,19 @@
             />
           </template>
           <v-alert v-else type="info" density="compact" variant="tonal">
-            No {{ storeLabel(store) }} application is configured for '{{ name }}'.
+            No {{ storeLabel(store) }} application is configured for '{{ application?.name }}'.
           </v-alert>
         </v-window-item>
 
         <v-window-item value="history">
           <ApplicationHistory
-            v-if="canUpdate"
+            v-if="canUpdate && application"
             :history="applicationHistoryStore.history"
             :has-more="canLoadMoreHistory"
             :loading="loadingHistory"
             :paginator="applicationHistoryStore.paginator"
-            :name="name"
+            :application-id="application.id"
+            :name="application.name"
             :store="store"
             @load="loadHistory"
             @revert="handleRevert"
@@ -205,7 +206,7 @@
               <v-alert v-else type="info" density="compact" variant="tonal">
                 {{
                   canUpdate
-                    ? `No ${storeLabel(store)} application is configured for '${name}'.`
+                    ? `No ${storeLabel(store)} application is configured for '${application?.name}'.`
                     : 'You do not have permission to edit this application.'
                 }}
               </v-alert>
@@ -240,7 +241,7 @@
               <v-alert v-else type="info" density="compact" variant="tonal">
                 {{
                   canDelete
-                    ? `No ${storeLabel(store)} application is configured for '${name}'.`
+                    ? `No ${storeLabel(store)} application is configured for '${application?.name}'.`
                     : 'You do not have permission to delete this application.'
                 }}
               </v-alert>
@@ -342,8 +343,7 @@ import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
 interface Props {
-  name: string
-  store: PublicationStore
+  id: string
   selectedTab?: string
 }
 
@@ -359,7 +359,8 @@ const notificationStore = useNotificationStore()
 
 const application = ref<Application | null>(null)
 const dataLoaded = ref(false)
-const currentTab = ref<string>(props.store)
+const store = computed<PublicationStore>(() => application.value?.store ?? 'android')
+const currentTab = ref<string>(props.selectedTab ?? '')
 
 const canUpdate = computed(() => authStore.hasPermission('application', 'update'))
 const canDelete = computed(() => authStore.hasPermission('application', 'delete'))
@@ -408,15 +409,11 @@ const enhancedApplicationDifferences = computed(() => {
 
 const loadHistory = async ({ limit, skip }: { limit: number; skip: number }) => {
   if (skip > 0 && !canLoadMoreHistory.value) return
+  if (!application.value) return
 
   loadingHistory.value = true
   try {
-    const response = await applicationHistoryStore.fetchHistory(
-      props.name,
-      props.store,
-      limit,
-      skip,
-    )
+    const response = await applicationHistoryStore.fetchHistory(application.value.id, limit, skip)
     if (!response) {
       notificationStore.showError(`Failed to ${skip > 0 ? 'load more' : 'load'} history items`)
     }
@@ -425,18 +422,7 @@ const loadHistory = async ({ limit, skip }: { limit: number; skip: number }) => 
   }
 }
 
-const handleRevert = async (reverted: Application | null) => {
-  if (reverted && reverted.name !== props.name) {
-    await router.replace({
-      name: 'app-detail-tab',
-      params: {
-        name: reverted.name,
-        store: reverted.store,
-        selectedTab: 'history',
-      },
-    })
-    return
-  }
+const handleRevert = async () => {
   await loadData(true)
 }
 
@@ -444,7 +430,7 @@ const loadData = async (fetchHistory: boolean = false) => {
   dataLoaded.value = false
   loadingStore.startLoading('Fetching application...')
   try {
-    application.value = await applicationStore.fetchApplication(props.name, props.store)
+    application.value = await applicationStore.fetchApplicationById(props.id)
     dataLoaded.value = true
 
     if (fetchHistory) {
@@ -503,14 +489,10 @@ const handleConfirmUpdate = async () => {
   saving.value = true
   saveError.value = ''
   try {
-    const result = await applicationStore.updateApplication(
-      currentApplication.name,
-      currentApplication.store,
-      {
-        ...pendingUpdatePayload.value,
-        comment: pendingComment.value || undefined,
-      },
-    )
+    const result = await applicationStore.updateApplication(currentApplication.id, {
+      ...pendingUpdatePayload.value,
+      comment: pendingComment.value || undefined,
+    })
     if (!result) {
       saveError.value = applicationStore.errors.join(', ') || 'Failed to save application'
       showConfirmDialog.value = false
@@ -522,18 +504,7 @@ const handleConfirmUpdate = async () => {
     pendingUpdatePayload.value = null
     pendingComment.value = ''
 
-    if (result.name !== props.name) {
-      await router.replace({
-        name: 'app-detail-tab',
-        params: {
-          name: result.name,
-          store: result.store,
-          selectedTab: props.selectedTab ?? 'edit',
-        },
-      })
-    } else {
-      await loadData()
-    }
+    await loadData()
   } finally {
     saving.value = false
   }
@@ -551,10 +522,7 @@ const deleteApplication = async () => {
 
   deleting.value = true
   try {
-    const success = await applicationStore.deleteApplication(
-      currentApplication.name,
-      currentApplication.store,
-    )
+    const success = await applicationStore.deleteApplication(currentApplication.id)
     if (!success) {
       notificationStore.showErrors(applicationStore.errors)
       return
@@ -568,7 +536,7 @@ const deleteApplication = async () => {
 }
 
 watch(
-  () => [props.store, props.selectedTab],
+  () => [application.value?.store, props.selectedTab],
   () => {
     if (props.selectedTab === 'history' && canUpdate.value) {
       currentTab.value = 'history'
@@ -577,7 +545,7 @@ watch(
     } else if (props.selectedTab === 'delete' && canDelete.value) {
       currentTab.value = 'delete'
     } else {
-      currentTab.value = props.store
+      currentTab.value = application.value?.store ?? ''
     }
   },
   { immediate: true },
@@ -602,7 +570,7 @@ watch(
 )
 
 watch(
-  () => [props.name, props.store],
+  () => props.id,
   async () => {
     await loadData(currentTab.value === 'history')
   },

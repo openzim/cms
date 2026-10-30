@@ -10,7 +10,12 @@ from cms_backend.db.event import (
     PUBLICATION_REQUESTED_TOPIC,
     create_publication_requested_event,
 )
-from cms_backend.db.models import ApplicationPublication, Event, PublicationPhase
+from cms_backend.db.models import (
+    Application,
+    ApplicationPublication,
+    Event,
+    PublicationPhase,
+)
 from cms_backend.mill.process_publication_requests import (
     process_publication_requests,
 )
@@ -54,10 +59,13 @@ def test_process_publication_requests_unknown_publication(
 
 def test_process_publication_requests_starts_publication(
     dbsession: OrmSession,
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="pending", phase=PublicationPhase.REQUESTED.value
+        application=application,
+        status="pending",
+        phase=PublicationPhase.REQUESTED.value,
     )
     event = create_publication_requested_event(dbsession, publication_id=publication.id)
     event_id = event.id
@@ -79,7 +87,7 @@ def test_process_publication_requests_starts_publication(
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
-        app_name="phet",
+        app_name=application.name,
         content_version="2026-05",
         zim_filename="phet_mul_all_maxi_2026-05.zim",
         branch="cms/publication-test",
@@ -97,9 +105,10 @@ def test_process_publication_requests_starts_publication(
 
 def test_process_publication_requests_fails_publication_on_error(
     dbsession: OrmSession,
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = create_publication()
+    publication = create_publication(application=application)
     event = create_publication_requested_event(dbsession, publication_id=publication.id)
     event_id = event.id
 

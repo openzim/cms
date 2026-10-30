@@ -110,7 +110,7 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
 function onRowClick(_event: Event, { item }: { item: Application }) {
   router.push({
     name: 'app-detail',
-    params: { name: item.name, store: item.store },
+    params: { id: item.id },
   })
 }
 </script>

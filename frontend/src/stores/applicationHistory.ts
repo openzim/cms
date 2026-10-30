@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/stores/auth'
-import type { Application, ApplicationHistory } from '@/types/application'
+import type { ApplicationHistory } from '@/types/application'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
@@ -19,11 +19,11 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
 
   const authStore = useAuthStore()
 
-  const fetchHistory = async (name: string, store: string, limit: number, skip: number) => {
+  const fetchHistory = async (applicationId: string, limit: number, skip: number) => {
     const service = await authStore.getApiService('applications')
     try {
       const response = await service.get<null, ListResponse<ApplicationHistory>>(
-        `/${name}/${store}/history`,
+        `/${applicationId}/history`,
         { params: { limit, skip } },
       )
       const existingIds = new Set(history.value.map((entry) => entry.id))
@@ -41,11 +41,11 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
     }
   }
 
-  const fetchHistoryEntry = async (name: string, store: string, historyId: string) => {
+  const fetchHistoryEntry = async (applicationId: string, historyId: string) => {
     const service = await authStore.getApiService('applications')
     try {
       const response = await service.get<null, ApplicationHistory>(
-        `/${name}/${store}/history/${historyId}`,
+        `/${applicationId}/history/${historyId}`,
       )
       const existingIds = new Set(history.value.map((entry) => entry.id))
       if (!existingIds.has(response.id)) {
@@ -62,25 +62,20 @@ export const useApplicationHistoryStore = defineStore('applicationHistory', () =
     }
   }
 
-  const revertToHistory = async (
-    name: string,
-    store: string,
-    historyId: string,
-    comment?: string,
-  ) => {
+  const revertToHistory = async (applicationId: string, historyId: string, comment?: string) => {
     const service = await authStore.getApiService('applications')
     try {
       const data = { comment: comment ? comment : null }
-      const response = await service.patch<{ comment?: string } | null, Application>(
-        `/${name}/${store}/revert/${historyId}`,
+      await service.patch<{ comment?: string } | null, { message: string }>(
+        `/${applicationId}/revert/${historyId}`,
         data,
       )
       errors.value = []
-      return response
+      return true
     } catch (_error) {
       console.error(`Failed to revert to application history entry ${historyId}`, _error)
       errors.value = translateErrors(_error as ErrorResponse)
-      return null
+      return false
     }
   }
 

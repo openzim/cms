@@ -103,8 +103,7 @@ def get_publications(
 
     results = db_publication.get_publications(
         session,
-        title_id=application.title_id,
-        flavour=application.flavour,
+        application_id=application.id,
         store=application.store,
         skip=params.skip,
         limit=params.limit,
@@ -183,9 +182,7 @@ def create_publication(
     if (
         db_publication.get_active_publication_or_none(
             session,
-            title_id=title.id,
-            flavour=title_flavour.flavour,
-            store=request.store,
+            application_id=setting.id,
         )
         is not None
     ):
@@ -196,8 +193,7 @@ def create_publication(
     publication = db_publication.create_publication(
         session,
         payload=ApplicationPublicationCreateSchema(
-            title_id=title.id,
-            flavour=title_flavour.flavour,
+            application_id=setting.id,
             store=request.store,
             content_version=content_version,
             app_name=app_name,
@@ -240,9 +236,7 @@ def check_publication(
     content_version = _resolve_content_version(cast(str, book.filename))
     publication = db_publication.get_successful_publication_for_content(
         session,
-        title_id=application.title_id,
-        flavour=application.flavour,
-        store=application.store,
+        application_id=application.id,
         app_name=application.name,
         content_version=content_version,
     )
@@ -281,7 +275,7 @@ def cancel_publication(
     """Cancel an in-progress publication and unblock its app."""
     publication = db_publication.get_publication(session, publication_id=publication_id)
     if not db_publication_permission.can_publish(
-        session, current_account, publication.title_id
+        session, current_account, publication.application.title_id
     ):
         raise ForbiddenError(
             "You do not have permission to publish applications for this title"

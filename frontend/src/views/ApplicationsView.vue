@@ -132,7 +132,7 @@ const handleApplicationCreated = (application: Application) => {
   notificationStore.showSuccess(`Application "${application.name}" has been created.`)
   router.push({
     name: 'app-detail',
-    params: { name: application.name, store: application.store },
+    params: { id: application.id },
   })
 }
 

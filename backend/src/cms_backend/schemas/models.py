@@ -189,8 +189,7 @@ class ApplicationPublicationRequestSchema(BaseModel):
 
 
 class ApplicationPublicationCreateSchema(BaseModel):
-    title_id: UUID
-    flavour: ZimFlavour
+    application_id: UUID
     store: ApplicationStore
     content_version: NotEmptyString
     app_name: NotEmptyString

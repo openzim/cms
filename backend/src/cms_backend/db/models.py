@@ -360,13 +360,25 @@ class Application(Base):
 
     __tablename__ = "application"
 
-    title_id: Mapped[UUID] = mapped_column(primary_key=True)
-    flavour: Mapped[str] = mapped_column(primary_key=True)
-    store: Mapped[str] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(
+        init=False, primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    title_id: Mapped[UUID]
+    flavour: Mapped[str]
+    store: Mapped[str]
     name: Mapped[str]
     enabled: Mapped[bool] = mapped_column(default=False, server_default=false())
     title_flavour: Mapped[TitleFlavour] = relationship(
         back_populates="applications", init=False
+    )
+    history_entries: Mapped[list[ApplicationHistory]] = relationship(
+        back_populates="application",
+        cascade="all, delete",
+        passive_deletes=True,
+        init=False,
+        default_factory=list,
+        # return the history entries in descending order of created_at
+        order_by="ApplicationHistory.created_at.desc()",
     )
 
     __table_args__ = (
@@ -374,6 +386,12 @@ class Application(Base):
             ["title_id", "flavour"],
             ["title_flavour.title_id", "title_flavour.flavour"],
             ondelete="CASCADE",
+        ),
+        UniqueConstraint(
+            "title_id",
+            "flavour",
+            "store",
+            name="uq_application_title_id_flavour_store",
         ),
         UniqueConstraint("name", "store", name="uq_application_name_store"),
     )
@@ -385,6 +403,9 @@ class ApplicationHistory(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
+    application_id: Mapped[UUID] = mapped_column(
+        ForeignKey("application.id", ondelete="CASCADE"), init=False
+    )
     title_id: Mapped[UUID] = mapped_column(init=False)
     flavour: Mapped[str] = mapped_column(init=False)
     store: Mapped[str]
@@ -394,6 +415,9 @@ class ApplicationHistory(Base):
     enabled: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(
         default_factory=getnow, server_default=func.now()
+    )
+    application: Mapped[Application] = relationship(
+        back_populates="history_entries", init=False
     )
     author: Mapped[Account] = relationship(init=False)
 
@@ -406,8 +430,9 @@ class ApplicationPublication(Base):
     id: Mapped[UUID] = mapped_column(
         init=False, primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    title_id: Mapped[UUID]
-    flavour: Mapped[str]
+    application_id: Mapped[UUID] = mapped_column(
+        ForeignKey("application.id", ondelete="CASCADE"), index=True
+    )
     store: Mapped[str]
     content_version: Mapped[str]
     app_name: Mapped[str]
@@ -429,6 +454,7 @@ class ApplicationPublication(Base):
     run_url: Mapped[str | None] = mapped_column(default=None)
     error: Mapped[str | None] = mapped_column(default=None)
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
+    application: Mapped[Application] = relationship(init=False)
     requested_by_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("account.id", ondelete="SET NULL"), default=None
     )
@@ -448,14 +474,7 @@ class ApplicationPublication(Base):
         default_factory=getnow, onupdate=getnow, server_default=func.now()
     )
 
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["title_id", "flavour"],
-            ["title_flavour.title_id", "title_flavour.flavour"],
-            ondelete="CASCADE",
-        ),
-        Index("ix_application_publication_tag", "tag", unique=True),
-    )
+    __table_args__ = (Index("ix_application_publication_tag", "tag", unique=True),)
 
 
 class DownloadStats(Base):

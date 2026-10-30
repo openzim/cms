@@ -25,6 +25,7 @@ class ListResult[T](BaseModel):
 
 
 class ApplicationSchema(BaseModel):
+    id: UUID
     title_id: UUID
     title_name: NotEmptyString
     flavour: ZimFlavour

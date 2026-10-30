@@ -70,12 +70,11 @@ def get_applications(
 
 
 @router.get(
-    "/{name}/{store}",
+    "/{application_id}",
     dependencies=[Depends(require_permission(namespace="application", name="read"))],
 )
 def get_application(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
@@ -84,10 +83,9 @@ def get_application(
     ],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ApplicationSchema:
-    application = db_application.get_application(
+    application = db_application.get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
@@ -121,12 +119,11 @@ def create_application(
 
 
 @router.patch(
-    "/{name}/{store}",
+    "/{application_id}",
     dependencies=[Depends(require_permission(namespace="application", name="update"))],
 )
 def update_application(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     request: ApplicationUpdateSchema,
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
@@ -139,8 +136,7 @@ def update_application(
 ) -> ApplicationSchema:
     application = db_application.update_application(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
         author_id=current_account.id,
@@ -150,13 +146,12 @@ def update_application(
 
 
 @router.delete(
-    "/{name}/{store}",
+    "/{application_id}",
     status_code=HTTPStatus.NO_CONTENT,
     dependencies=[Depends(require_permission(namespace="application", name="delete"))],
 )
 def delete_application(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
@@ -167,20 +162,18 @@ def delete_application(
 ) -> None:
     db_application.delete_application(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
 
 
 @router.get(
-    "/{name}/{store}/history",
+    "/{application_id}/history",
     dependencies=[Depends(require_permission(namespace="application", name="update"))],
 )
 def get_application_history(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
@@ -193,8 +186,7 @@ def get_application_history(
 ) -> ListResponse[ApplicationHistorySchema]:
     results = db_application.get_application_history(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         skip=skip,
         limit=limit,
         accessible_collection_ids=accessible_collection_ids,
@@ -212,12 +204,11 @@ def get_application_history(
 
 
 @router.get(
-    "/{name}/{store}/history/{history_id}",
+    "/{application_id}/history/{history_id}",
     dependencies=[Depends(require_permission(namespace="application", name="update"))],
 )
 def get_application_history_entry(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     history_id: Annotated[UUID, Path()],
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
@@ -227,17 +218,15 @@ def get_application_history_entry(
     ],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> ApplicationHistorySchema:
-    application = db_application.get_application(
+    application = db_application.get_application_by_id(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
     entry = db_application.get_application_history_entry(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         history_id=history_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
@@ -248,12 +237,11 @@ def get_application_history_entry(
 
 
 @router.patch(
-    "/{name}/{store}/revert/{history_id}",
+    "/{application_id}/revert/{history_id}",
     dependencies=[Depends(require_permission(namespace="application", name="update"))],
 )
 def revert_application(
-    name: Annotated[NotEmptyString, Path()],
-    store: Annotated[NotEmptyString, Path()],
+    application_id: Annotated[UUID, Path()],
     history_id: Annotated[UUID, Path()],
     request: RevertApplicationSchema,
     accessible_collection_ids: Annotated[
@@ -268,8 +256,7 @@ def revert_application(
     """Revert an application to a previous history entry."""
     application = db_application.revert_application(
         session,
-        name=name,
-        store=store,
+        application_id=application_id,
         history_id=history_id,
         author_id=current_account.id,
         comment=request.comment,

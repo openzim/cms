@@ -67,23 +67,23 @@ const routes = [
     meta: { title: 'CMS | Apps' },
   },
   {
-    path: '/apps/:name/:store',
+    path: '/apps/:id',
     name: 'app-detail',
     component: ApplicationDetailView,
     props: true,
     meta: {
       parentNavigation: 'apps',
-      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.name}`,
+      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.id}`,
     },
   },
   {
-    path: '/apps/:name/:store/:selectedTab',
+    path: '/apps/:id/:selectedTab',
     name: 'app-detail-tab',
     component: ApplicationDetailView,
     props: true,
     meta: {
       parentNavigation: 'apps',
-      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.name}`,
+      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.id}`,
     },
   },
   {

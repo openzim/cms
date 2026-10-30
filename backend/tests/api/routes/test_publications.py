@@ -77,7 +77,7 @@ def test_create_publication_rejects_active_publication(
     monkeypatch.setattr(Context, "publication_stores", ["android"])
 
     title = create_title(name="phet_mul_all", flavours=["maxi"])
-    create_application(
+    application = create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
     create_book(
@@ -87,7 +87,7 @@ def test_create_publication_rejects_active_publication(
         location_kind="prod",
         date="2026-05-01",
     )
-    create_publication(title=title, flavour="maxi", store="android", app_name="phet")
+    create_publication(application=application)
 
     response = client.post(
         "/v1/publications",
@@ -258,20 +258,18 @@ def test_list_publications(
 ) -> None:
     phet_title = create_title(name="phet_mul_all", flavours=["maxi", "mini"])
     wikipedia_title = create_title(name="wikipedia_en_all", flavours=["maxi"])
-    create_application(title=phet_title, flavour="maxi", store="android", name="phet")
-    create_application(title=phet_title, flavour="mini", store="android", name="phet2")
-    create_application(
+    phet_maxi = create_application(
+        title=phet_title, flavour="maxi", store="android", name="phet"
+    )
+    phet_mini = create_application(
+        title=phet_title, flavour="mini", store="android", name="phet2"
+    )
+    wikipedia_apple = create_application(
         title=wikipedia_title, flavour="maxi", store="apple", name="wikipedia"
     )
-    create_publication(
-        title=phet_title, flavour="maxi", store="android", app_name="phet"
-    )
-    create_publication(
-        title=phet_title, flavour="mini", store="android", app_name="phet2"
-    )
-    create_publication(
-        title=wikipedia_title, flavour="maxi", store="apple", app_name="wikipedia"
-    )
+    create_publication(application=phet_maxi)
+    create_publication(application=phet_mini)
+    create_publication(application=wikipedia_apple)
 
     response = client.get(
         "/v1/publications",
@@ -297,14 +295,11 @@ def test_cancel_publication(
     access_token: str,
 ) -> None:
     title = create_title(name="phet_mul_all", flavours=["maxi"])
-    create_application(
+    application = create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
     publication = create_publication(
-        title=title,
-        flavour="maxi",
-        store="android",
-        app_name="phet",
+        application=application,
         status="running",
         phase="checks",
     )
@@ -330,14 +325,11 @@ def test_cancel_finished_publication(
     access_token: str,
 ) -> None:
     title = create_title(name="phet_mul_all", flavours=["maxi"])
-    create_application(
+    application = create_application(
         title=title, flavour="maxi", store="android", name="phet", enabled=True
     )
     publication = create_publication(
-        title=title,
-        flavour="maxi",
-        store="android",
-        app_name="phet",
+        application=application,
         status="success",
     )
 

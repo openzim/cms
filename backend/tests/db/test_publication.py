@@ -4,12 +4,14 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import publication as db_publication
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
     Account,
+    Application,
     ApplicationPublication,
     PublicationPhase,
     Title,
@@ -26,15 +28,18 @@ from cms_backend.utils.github import (
 def test_create_publication(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    create_application: Callable[..., Application],
     account: Account,
 ) -> None:
     title = create_title(flavours=["maxi"])
+    application = create_application(
+        title=title, flavour="maxi", store="android", name="phet"
+    )
 
     publication = db_publication.create_publication(
         dbsession,
         payload=ApplicationPublicationCreateSchema(
-            title_id=title.id,
-            flavour="maxi",
+            application_id=application.id,
             store="android",
             content_version="2026-05",
             app_name="phet",
@@ -51,6 +56,7 @@ def test_create_publication(
     assert publication.tag is None
     assert "Publication requested" in publication.events[0]
     assert publication.requested_by_id == account.id
+    assert publication.application_id == application.id
 
 
 def test_get_publication(
@@ -60,8 +66,7 @@ def test_get_publication(
     result = db_publication.get_publication(dbsession, publication_id=publication.id)
 
     assert result.id == publication.id
-    assert result.title_id == publication.title_id
-    assert result.flavour == publication.flavour
+    assert result.application_id == publication.application_id
     assert result.store == publication.store
 
 
@@ -76,18 +81,19 @@ def test_get_publication_not_found(
     ("title_name", "flavour", "store", "expected_count"),
     [
         pytest.param(None, None, None, 3, id="no-filters"),
-        pytest.param("phet_mul_all", None, None, 2, id="title"),
-        pytest.param("wikipedia_en_all", None, None, 1, id="title-single"),
-        pytest.param("phet_mul_all", "mini", None, 1, id="title-and-flavour"),
+        pytest.param("phet_mul_all", "maxi", None, 1, id="application"),
+        pytest.param("phet_mul_all", "mini", None, 1, id="other-flavour"),
         pytest.param(None, None, "android", 2, id="store"),
-        pytest.param(None, "maxi", None, 2, id="flavour"),
-        pytest.param("phet_mul_all", "maxi", "android", 1, id="all-filters"),
+        pytest.param(
+            "wikipedia_en_all", "maxi", "apple", 1, id="application-and-store"
+        ),
         pytest.param("wikipedia_en_all", "maxi", "android", 0, id="no-match"),
     ],
 )
 def test_get_publications_filters(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    create_application: Callable[..., Application],
     create_publication: Callable[..., ApplicationPublication],
     title_name: str | None,
     flavour: str | None,
@@ -96,28 +102,37 @@ def test_get_publications_filters(
 ) -> None:
     phet_title = create_title(name="phet_mul_all", flavours=["maxi", "mini"])
     wikipedia_title = create_title(name="wikipedia_en_all", flavours=["maxi"])
-    create_publication(
-        title=phet_title, flavour="maxi", store="android", app_name="phet", build=0
+    phet_maxi = create_application(
+        title=phet_title, flavour="maxi", store="android", name="phet"
     )
-    create_publication(
-        title=phet_title, flavour="mini", store="android", app_name="phet", build=1
+    phet_mini = create_application(
+        title=phet_title, flavour="mini", store="android", name="phet2"
     )
-    create_publication(
-        title=wikipedia_title,
-        flavour="maxi",
-        store="apple",
-        app_name="wikipedia",
+    wikipedia_apple = create_application(
+        title=wikipedia_title, flavour="maxi", store="apple", name="wikipedia"
     )
+    create_publication(application=phet_maxi, build=0)
+    create_publication(application=phet_mini, build=1)
+    create_publication(application=wikipedia_apple)
 
-    title_id = {
-        "phet_mul_all": phet_title.id,
-        "wikipedia_en_all": wikipedia_title.id,
-    }.get(title_name or "")
+    application_id = None
+    if title_name is not None:
+        title_id = {
+            "phet_mul_all": phet_title.id,
+            "wikipedia_en_all": wikipedia_title.id,
+        }[title_name]
+        application = dbsession.scalars(
+            select(Application).where(
+                Application.title_id == title_id,
+                Application.flavour == flavour,
+                Application.store == (store or "android"),
+            )
+        ).one_or_none()
+        application_id = application.id if application is not None else uuid4()
 
     result = db_publication.get_publications(
         dbsession,
-        title_id=title_id,
-        flavour=flavour,
+        application_id=application_id,
         store=store,
     )
 
@@ -200,9 +215,7 @@ def test_get_successful_publication_for_content(
 
     found = db_publication.get_successful_publication_for_content(
         dbsession,
-        title_id=publication.title_id,
-        flavour=publication.flavour,
-        store=publication.store,
+        application_id=publication.application_id,
         app_name="phet",
         content_version="2026-05",
     )
@@ -213,9 +226,7 @@ def test_get_successful_publication_for_content(
     assert (
         db_publication.get_successful_publication_for_content(
             dbsession,
-            title_id=publication.title_id,
-            flavour=publication.flavour,
-            store=publication.store,
+            application_id=publication.application_id,
             app_name="phet",
             content_version="2026-06",
         )
@@ -245,9 +256,7 @@ def test_get_active_publication(
 ) -> None:
     active = db_publication.get_active_publication_or_none(
         dbsession,
-        title_id=publication.title_id,
-        flavour=publication.flavour,
-        store=publication.store,
+        application_id=publication.application_id,
     )
     assert active is not None
     assert active.id == publication.id
@@ -257,9 +266,7 @@ def test_get_active_publication(
     assert (
         db_publication.get_active_publication_or_none(
             dbsession,
-            title_id=publication.title_id,
-            flavour=publication.flavour,
-            store=publication.store,
+            application_id=publication.application_id,
         )
         is None
     )
@@ -267,6 +274,7 @@ def test_get_active_publication(
 
 def _checks_publication(
     create_publication: Callable[..., ApplicationPublication],
+    application: Application,
     **kwargs: Any,
 ) -> ApplicationPublication:
     params: dict[str, Any] = {
@@ -276,13 +284,16 @@ def _checks_publication(
         "pr_url": "https://github.test/pr/1",
     }
     params.update(kwargs)
-    return create_publication(**params)
+    return create_publication(application=application, **params)
 
 
 def test_advance_checks_without_pull_request(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication, pr_number=None, pr_url=None)
+    publication = _checks_publication(
+        create_publication, application, pr_number=None, pr_url=None
+    )
 
     assert db_publication.advance_publication(publication)
 
@@ -291,9 +302,10 @@ def test_advance_checks_without_pull_request(
 
 
 def test_advance_checks_pull_request_not_ready(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
 
     with patch.object(
         github_client, "get_pull_request", return_value=None
@@ -307,9 +319,10 @@ def test_advance_checks_pull_request_not_ready(
 
 
 def test_advance_checks_merged(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     pull = {"merged": True, "merge_commit_sha": "mergedsha"}
 
     with patch.object(
@@ -325,9 +338,10 @@ def test_advance_checks_merged(
 
 
 def test_advance_checks_missing_head_sha(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     pull: dict[str, Any] = {"merged": False, "head": {}}
 
     with patch.object(
@@ -341,9 +355,10 @@ def test_advance_checks_missing_head_sha(
 
 
 def test_advance_checks_failed(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=2, failed=["lint", "unit"])
 
@@ -364,9 +379,10 @@ def test_advance_checks_failed(
 
 
 def test_advance_checks_pending(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=2, pending=1)
 
@@ -404,10 +420,11 @@ def test_advance_checks_pending(
     ],
 )
 def test_advance_checks_cannot_merge(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
     pull_request: dict[str, Any],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     checks = ChecksSummary(total=1, passed=1)
 
     with (
@@ -427,9 +444,10 @@ def test_advance_checks_cannot_merge(
 
 
 def test_advance_checks_passed(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _checks_publication(create_publication)
+    publication = _checks_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=2, passed=2)
 
@@ -454,6 +472,7 @@ def test_advance_checks_passed(
 
 def _merge_publication(
     create_publication: Callable[..., ApplicationPublication],
+    application: Application,
     **kwargs: Any,
 ) -> ApplicationPublication:
     params: dict[str, Any] = {
@@ -463,13 +482,16 @@ def _merge_publication(
         "pr_url": "https://github.test/pr/1",
     }
     params.update(kwargs)
-    return create_publication(**params)
+    return create_publication(application=application, **params)
 
 
 def test_advance_merge_without_pull_request(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication, pr_number=None, pr_url=None)
+    publication = _merge_publication(
+        create_publication, application, pr_number=None, pr_url=None
+    )
 
     assert db_publication.advance_publication(publication)
 
@@ -478,9 +500,10 @@ def test_advance_merge_without_pull_request(
 
 
 def test_advance_merge_pull_request_not_ready(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
 
     with patch.object(
         github_client, "get_pull_request", return_value=None
@@ -493,9 +516,10 @@ def test_advance_merge_pull_request_not_ready(
 
 
 def test_advance_merge_already_merged(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pull = {"merged": True, "merge_commit_sha": "mergedsha"}
 
     with patch.object(
@@ -509,9 +533,10 @@ def test_advance_merge_already_merged(
 
 
 def test_advance_merge_missing_head_sha(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": ""}}
 
     with patch.object(
@@ -525,9 +550,10 @@ def test_advance_merge_missing_head_sha(
 
 
 def test_advance_merge_checks_failed(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=1, failed=["lint"])
 
@@ -548,9 +574,10 @@ def test_advance_merge_checks_failed(
 
 
 def test_advance_merge_checks_pending(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=2, pending=1)
 
@@ -596,10 +623,11 @@ def test_advance_merge_checks_pending(
     ],
 )
 def test_advance_merge_cannot_merge(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
     pull_request: dict[str, Any],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     checks = ChecksSummary(total=1, passed=1)
 
     with (
@@ -619,9 +647,10 @@ def test_advance_merge_cannot_merge(
 
 
 def test_advance_merge_refused(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pull = {"merged": False, "head": {"sha": "headsha"}}
     checks = ChecksSummary(total=1, passed=1)
 
@@ -649,9 +678,10 @@ def test_advance_merge_refused(
 
 
 def test_advance_merge_confirmed(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _merge_publication(create_publication)
+    publication = _merge_publication(create_publication, application)
     pulls = [
         {"merged": False, "head": {"sha": "headsha"}},
         {"merged": True, "merge_commit_sha": "mergedsha"},
@@ -682,9 +712,11 @@ def test_advance_merge_confirmed(
 
 
 def test_advance_release_without_merge_commit(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
+        application=application,
         status="running",
         phase=PublicationPhase.RELEASE.value,
         merge_commit_sha=None,
@@ -697,9 +729,11 @@ def test_advance_release_without_merge_commit(
 
 
 def test_advance_release_value_error(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
+        application=application,
         status="running",
         phase=PublicationPhase.RELEASE.value,
         merge_commit_sha="mergedsha",
@@ -723,9 +757,11 @@ def test_advance_release_value_error(
 
 
 def test_advance_release_success(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
+        application=application,
         status="running",
         phase=PublicationPhase.RELEASE.value,
         merge_commit_sha="mergedsha",
@@ -762,6 +798,7 @@ def test_advance_release_success(
 
 def _building_publication(
     create_publication: Callable[..., ApplicationPublication],
+    application: Application,
     **kwargs: Any,
 ) -> ApplicationPublication:
     params: dict[str, Any] = {
@@ -773,7 +810,7 @@ def _building_publication(
         "run_url": "https://github.test/run/55",
     }
     params.update(kwargs)
-    return create_publication(**params)
+    return create_publication(application=application, **params)
 
 
 @pytest.mark.parametrize(
@@ -841,13 +878,14 @@ def _building_publication(
     ],
 )
 def test_advance_building_run_states(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
     run: dict[str, Any],
     expected_status: str,
     expected_phase: str | None,
     expected_error: str | None,
 ) -> None:
-    publication = _building_publication(create_publication)
+    publication = _building_publication(create_publication, application)
 
     with (
         patch.object(
@@ -869,9 +907,12 @@ def test_advance_building_run_states(
 
 
 def test_advance_building_waits_for_run(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
-    publication = _building_publication(create_publication, run_id=None, run_url=None)
+    publication = _building_publication(
+        create_publication, application, run_id=None, run_url=None
+    )
 
     with patch.object(
         github_client, "get_run_for_publication", return_value=None
@@ -890,10 +931,13 @@ def test_advance_building_waits_for_run(
 
 
 def test_advance_publication_store_phase(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="running", phase=PublicationPhase.STORE.value
+        application=application,
+        status="running",
+        phase=PublicationPhase.STORE.value,
     )
 
     assert db_publication.advance_publication(publication)
@@ -905,10 +949,13 @@ def test_advance_publication_store_phase(
 
 
 def test_advance_publication_requested_is_not_advanced(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="pending", phase=PublicationPhase.REQUESTED.value
+        application=application,
+        status="pending",
+        phase=PublicationPhase.REQUESTED.value,
     )
 
     assert not db_publication.advance_publication(publication)
@@ -916,10 +963,13 @@ def test_advance_publication_requested_is_not_advanced(
 
 
 def test_start_publication_value_error(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="pending", phase=PublicationPhase.REQUESTED.value
+        application=application,
+        status="pending",
+        phase=PublicationPhase.REQUESTED.value,
     )
     error = ValueError(
         "Unable to find 'phet/info.json' in 'kiwix/kiwix-android-branded'"
@@ -932,7 +982,7 @@ def test_start_publication_value_error(
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
-        app_name="phet",
+        app_name=publication.app_name,
         content_version="2026-05",
         zim_filename="phet_mul_all_maxi_2026-05.zim",
         branch="cms/publication-test",
@@ -947,10 +997,13 @@ def test_start_publication_value_error(
 
 
 def test_start_publication_without_changes(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="pending", phase=PublicationPhase.REQUESTED.value
+        application=application,
+        status="pending",
+        phase=PublicationPhase.REQUESTED.value,
     )
     pull_request_result = PublicationPullRequestResult(
         branch="main", base_sha="basesha", pr_number=None, pr_url=None
@@ -965,7 +1018,7 @@ def test_start_publication_without_changes(
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
-        app_name="phet",
+        app_name=publication.app_name,
         content_version="2026-05",
         zim_filename="phet_mul_all_maxi_2026-05.zim",
         branch="cms/publication-test",
@@ -981,10 +1034,13 @@ def test_start_publication_without_changes(
 
 
 def test_start_publication_opens_pull_request(
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="pending", phase=PublicationPhase.REQUESTED.value
+        application=application,
+        status="pending",
+        phase=PublicationPhase.REQUESTED.value,
     )
     pull_request_result = PublicationPullRequestResult(
         branch="cms/publication-test",
@@ -1002,7 +1058,7 @@ def test_start_publication_opens_pull_request(
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
-        app_name="phet",
+        app_name=publication.app_name,
         content_version="2026-05",
         zim_filename="phet_mul_all_maxi_2026-05.zim",
         branch="cms/publication-test",

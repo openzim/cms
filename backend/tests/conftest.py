@@ -328,6 +328,8 @@ def create_application(
             name=name if name is not None else faker.word(),
             enabled=enabled,
         )
+        dbsession.add(application)
+        dbsession.flush()
 
         history_entry = ApplicationHistory(
             store=store,
@@ -337,9 +339,9 @@ def create_application(
         )
         history_entry.title_id = title.id
         history_entry.flavour = flavour
+        history_entry.application_id = application.id
         history_entry.author_id = author_id if author_id is not None else account.id
 
-        dbsession.add(application)
         dbsession.add(history_entry)
         dbsession.flush()
         return application
@@ -358,14 +360,10 @@ def application(
 def create_publication(
     dbsession: OrmSession,
     account: Account,
-    create_title: Callable[..., Title],
 ) -> Callable[..., ApplicationPublication]:
     def _create_publication(
         *,
-        title: Title | None = None,
-        flavour: str | None = None,
-        store: str = "android",
-        app_name: str = "phet",
+        application: Application,
         content_version: str = "2026-05",
         build: int = 0,
         tag: str | None = None,
@@ -386,10 +384,7 @@ def create_publication(
         merge_commit_sha: str | None = None,
         requested_by_id: UUID | None = None,
     ) -> ApplicationPublication:
-        if title is None:
-            title = create_title(flavours=["maxi"])
-        if flavour is None:
-            flavour = title.flavours[0].flavour
+        app_name = application.name
         if tag is None:
             tag_prefix = get_tag_prefix(
                 app_name=app_name, content_version=content_version
@@ -397,9 +392,8 @@ def create_publication(
             tag = f"{tag_prefix}.{build}"
 
         publication = ApplicationPublication(
-            title_id=title.id,
-            flavour=flavour,
-            store=store,
+            application_id=application.id,
+            store=application.store,
             content_version=content_version,
             app_name=app_name,
             tag=tag,
@@ -431,9 +425,11 @@ def create_publication(
 
 @pytest.fixture
 def publication(
+    create_application: Callable[..., Application],
     create_publication: Callable[..., ApplicationPublication],
 ) -> ApplicationPublication:
-    return create_publication()
+    application = create_application(name="phet")
+    return create_publication(application=application)
 
 
 @pytest.fixture

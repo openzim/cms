@@ -4,7 +4,12 @@ from unittest.mock import patch
 from sqlalchemy.orm import Session as OrmSession
 
 import cms_backend.mill.advance_publications as mill_advance
-from cms_backend.db.models import ApplicationPublication, PublicationPhase, Title
+from cms_backend.db.models import (
+    Application,
+    ApplicationPublication,
+    PublicationPhase,
+    Title,
+)
 from cms_backend.db.publication import get_publication
 from cms_backend.mill.advance_publications import advance_publications
 
@@ -12,19 +17,20 @@ from cms_backend.mill.advance_publications import advance_publications
 def test_advance_publications_advances_all_in_progress(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    create_application: Callable[..., Application],
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     title = create_title(flavours=["maxi", "mini"])
+    maxi_application = create_application(title=title, flavour="maxi", name="phet")
+    mini_application = create_application(title=title, flavour="mini", name="phet2")
     first = create_publication(
-        title=title,
-        flavour="maxi",
+        application=maxi_application,
         status="running",
         phase=PublicationPhase.CHECKS.value,
         build=0,
     )
     second = create_publication(
-        title=title,
-        flavour="mini",
+        application=mini_application,
         status="pending",
         phase=PublicationPhase.MERGE.value,
         build=1,
@@ -50,10 +56,13 @@ def test_advance_publications_advances_all_in_progress(
 
 def test_advance_publications_fails_on_error(
     dbsession: OrmSession,
+    application: Application,
     create_publication: Callable[..., ApplicationPublication],
 ) -> None:
     publication = create_publication(
-        status="running", phase=PublicationPhase.CHECKS.value
+        application=application,
+        status="running",
+        phase=PublicationPhase.CHECKS.value,
     )
     publication_id = publication.id
 

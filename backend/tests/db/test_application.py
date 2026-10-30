@@ -42,9 +42,7 @@ def test_get_application_by_id_or_none(
 ) -> None:
     result = db_application.get_application_by_id_or_none(
         dbsession,
-        title_id=application.title_id,
-        flavour=application.flavour,
-        store=application.store,
+        application_id=application.id,
     )
 
     assert result is not None
@@ -56,9 +54,7 @@ def test_get_application_by_id_or_none_not_found(
 ) -> None:
     result = db_application.get_application_by_id_or_none(
         dbsession,
-        title_id=uuid4(),
-        flavour="maxi",
-        store="android",
+        application_id=uuid4(),
     )
 
     assert result is None
@@ -148,6 +144,7 @@ def test_create_application(
     assert application.name == "phet"
 
     history_entry = dbsession.scalars(select(ApplicationHistory)).one()
+    assert history_entry.application_id == application.id
     assert history_entry.title_id == title.id
     assert history_entry.flavour == "maxi"
     assert history_entry.store == "android"
@@ -221,8 +218,7 @@ def test_update_application(
 
     updated = db_application.update_application(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         author_id=account.id,
         payload=ApplicationUpdateSchema(
             enabled=False, name="updated_app", comment="Disable app"
@@ -246,14 +242,11 @@ def test_delete_application(
 ) -> None:
     db_application.delete_application(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
     )
 
     with pytest.raises(RecordDoesNotExistError):
-        db_application.get_application(
-            dbsession, name=application.name, store=application.store
-        )
+        db_application.get_application_by_id(dbsession, application_id=application.id)
 
 
 def test_get_application_history_entry(
@@ -262,8 +255,7 @@ def test_get_application_history_entry(
 ) -> None:
     history = db_application.get_application_history(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         skip=0,
         limit=10,
     )
@@ -271,8 +263,7 @@ def test_get_application_history_entry(
 
     entry = db_application.get_application_history_entry(
         dbsession,
-        name=application.name,
-        store=application.store,
+        application_id=application.id,
         history_id=history_id,
     )
 
@@ -288,8 +279,7 @@ def test_get_application_history_entry_not_found(
     assert (
         db_application.get_application_history_entry_or_none(
             dbsession,
-            name=application.name,
-            store=application.store,
+            application_id=application.id,
             history_id=uuid4(),
         )
         is None
@@ -298,8 +288,7 @@ def test_get_application_history_entry_not_found(
     with pytest.raises(RecordDoesNotExistError):
         db_application.get_application_history_entry(
             dbsession,
-            name=application.name,
-            store=application.store,
+            application_id=application.id,
             history_id=uuid4(),
         )
 
@@ -310,12 +299,10 @@ def test_revert_application(
     account: Account,
 ) -> None:
     application = create_application(name="phet", store="android", enabled=True)
-    store = application.store
 
     db_application.update_application(
         dbsession,
-        name="phet",
-        store=store,
+        application_id=application.id,
         author_id=account.id,
         payload=ApplicationUpdateSchema(
             name="phet2", enabled=False, comment="Rename app"
@@ -323,7 +310,7 @@ def test_revert_application(
     )
 
     history = db_application.get_application_history(
-        dbsession, name="phet2", store=store, skip=0, limit=10
+        dbsession, application_id=application.id, skip=0, limit=10
     )
     initial_entry = next(
         entry for entry in history.records if entry.comment == "Initial history entry"
@@ -331,8 +318,7 @@ def test_revert_application(
 
     reverted = db_application.revert_application(
         dbsession,
-        name="phet2",
-        store=store,
+        application_id=application.id,
         history_id=initial_entry.id,
         author_id=account.id,
         comment="Revert app",
@@ -342,7 +328,7 @@ def test_revert_application(
     assert reverted.enabled is True
 
     history_after = db_application.get_application_history(
-        dbsession, name="phet", store=store, skip=0, limit=10
+        dbsession, application_id=application.id, skip=0, limit=10
     )
     assert history_after.nb_records == 3
     assert any(entry.comment == "Revert app" for entry in history_after.records)
