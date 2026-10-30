@@ -44,12 +44,11 @@ configured username already exists, it is reused as-is.
 Titles whose flavours are enabled for a given store (Android and/or Apple) can
 trigger a branded-app build from the CMS. The pipeline is asynchronous:
 
-1. `POST /app-builds` records the request and emits an `app_build_requested`
-   event. It is rejected with a conflict if another build for the same app
-   has not reached a terminal status.
-2. The mill consumes the event, updates the app's `info.json` `zim_url`
+1. `POST /app-builds` records the request. It is rejected with a conflict if
+   another build for the same app has not reached a terminal status.
+2. The mill picks the build up, updates the app's `info.json` `zim_url`
     and opens a pull request.
-3. A mill task advances the build through checks, merge, release and the
+3. A mill task moves the build through checks, merge, release and the
    CD workflow. The CMS merges the pull request itself once checks pass
 4. Once the CD workflow succeeds, the build is complete and the app is
    considered uploaded to the store. Store review is outside the CMS scope.
@@ -61,7 +60,7 @@ every retry (for example after a failed build)
 
 Android builds use
 [kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded) whereas
-apple builds use [kiwix-apple-branded](https://github.com/kiwix/kiwix-android-branded)
+apple builds use [kiwix-apple-branded](https://github.com/kiwix/kiwix-apple-branded)
 
 The GitHub token needs `contents: write`, `pull requests: write`, `actions: read`
 and `checks: read`. Branch protection must not require human approvals if the
@@ -80,8 +79,5 @@ Relevant environment variables:
 | `GITHUB_APPLE_WORKFLOW`             | `cd.yml`                      | Apple CD workflow used for status tracking           |
 | `GITHUB_APPLE_BRANCH`               | `main`                        | Base branch for Apple build pull requests      |
 | `APP_BUILD_STORES`                | `android,apple`                     | Comma-separated stores exposed to the UI             |
-
-| `PROCESS_APP_BUILD_REQUESTS`      | `true`                        | Enable the build request event processor       |
-| `PROCESS_APP_BUILD_REQUESTS_INTERVAL` | `10s`                     | Event processor interval                             |
-| `ADVANCE_APP_BUILDS`              | `true`                        | Enable the build state-machine task            |
-| `ADVANCE_APP_BUILDS_INTERVAL`     | `30s`                         | Build state-machine interval                  |
+| `PROCESS_APP_BUILDS`             | `true`                        | Enable the app build processing task                   |
+| `PROCESS_APP_BUILDS_INTERVAL`    | `30s`                         | App build processing interval                          |

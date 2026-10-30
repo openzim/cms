@@ -356,7 +356,7 @@ export const useTitleStore = defineStore('title', () => {
       errors.value = []
       return response.items
     } catch (_error) {
-      console.error('Failed to fetch available build builders', _error)
+      console.error('Failed to fetch available app builders', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return []
     }
@@ -369,7 +369,7 @@ export const useTitleStore = defineStore('title', () => {
       errors.value = []
       return response.items
     } catch (_error) {
-      console.error('Failed to fetch build builders', _error)
+      console.error('Failed to fetch app builders', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return []
     }
@@ -384,7 +384,7 @@ export const useTitleStore = defineStore('title', () => {
       errors.value = []
       return true
     } catch (_error) {
-      console.error('Failed to grant build builder', _error)
+      console.error('Failed to grant app build access', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return false
     }
@@ -397,7 +397,7 @@ export const useTitleStore = defineStore('title', () => {
       errors.value = []
       return true
     } catch (_error) {
-      console.error('Failed to revoke build builder', _error)
+      console.error('Failed to revoke app build access', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return false
     }

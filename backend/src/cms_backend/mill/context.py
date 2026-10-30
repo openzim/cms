@@ -53,22 +53,12 @@ class Context:
         os.getenv("PROCESS_TITLE_MODIFICATIONS", default="true")
     )
 
-    process_app_build_requests_interval: timedelta = timedelta(
-        seconds=parse_timespan(
-            os.getenv("PROCESS_APP_BUILD_REQUESTS_INTERVAL", default="10s")
-        )
+    process_app_builds_interval: timedelta = timedelta(
+        seconds=parse_timespan(os.getenv("PROCESS_APP_BUILDS_INTERVAL", default="30s"))
     )
 
-    process_app_build_requests_enabled: bool = parse_bool(
-        os.getenv("PROCESS_APP_BUILD_REQUESTS", default="true")
-    )
-
-    advance_app_builds_interval: timedelta = timedelta(
-        seconds=parse_timespan(os.getenv("ADVANCE_APP_BUILDS_INTERVAL", default="30s"))
-    )
-
-    advance_app_builds_enabled: bool = parse_bool(
-        os.getenv("ADVANCE_APP_BUILDS", default="true")
+    process_app_builds_enabled: bool = parse_bool(
+        os.getenv("PROCESS_APP_BUILDS", default="true")
     )
 
     check_book_transitions_interval: timedelta = timedelta(

@@ -23,7 +23,6 @@ from cms_backend.db import app_build as db_app_build
 from cms_backend.db import app_build_permission as db_app_build_permission
 from cms_backend.db import application as db_application
 from cms_backend.db import book as db_book
-from cms_backend.db import event as db_event
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
@@ -204,7 +203,6 @@ def create_app_build(
             requested_by_id=current_account.id,
         ),
     )
-    db_event.create_app_build_requested_event(session, build_id=build.id)
     return db_app_build.create_app_build_schema(build)
 
 

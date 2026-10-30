@@ -288,6 +288,7 @@ const formatNamespaceName = (namespace: string): string => {
     title: 'Titles',
     zimfarm_notification: 'Zimfarm Notification',
     account: 'Accounts',
+    app_build: 'App Builds',
   }
   return nameMap[namespace] || namespace.charAt(0).toUpperCase() + namespace.slice(1)
 }

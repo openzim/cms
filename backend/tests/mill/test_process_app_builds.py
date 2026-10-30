@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from sqlalchemy.orm import Session as OrmSession
 
-import cms_backend.mill.advance_app_builds as mill_advance
+import cms_backend.mill.process_app_builds as mill_process
 from cms_backend.db.app_build import get_build
 from cms_backend.db.models import (
     AppBuildPhase,
@@ -11,10 +11,10 @@ from cms_backend.db.models import (
     ApplicationBuild,
     Title,
 )
-from cms_backend.mill.advance_app_builds import advance_app_builds
+from cms_backend.mill.process_app_builds import process_app_builds
 
 
-def test_advance_app_builds_advances_all_in_progress(
+def test_process_app_builds_processes_all_pending_builds(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
     create_application: Callable[..., Application],
@@ -23,38 +23,38 @@ def test_advance_app_builds_advances_all_in_progress(
     title = create_title(flavours=["maxi", "mini"])
     maxi_application = create_application(title=title, flavour="maxi", name="phet")
     mini_application = create_application(title=title, flavour="mini", name="phet2")
-    first = create_app_build(
+    requested = create_app_build(
         application=maxi_application,
-        status="running",
-        phase=AppBuildPhase.CHECKS.value,
+        status="pending",
+        phase=AppBuildPhase.REQUESTED.value,
         build=0,
     )
-    second = create_app_build(
+    ongoing = create_app_build(
         application=mini_application,
-        status="pending",
+        status="running",
         phase=AppBuildPhase.MERGE.value,
         build=1,
     )
-    first_id = first.id
-    second_id = second.id
+    requested_id = requested.id
+    ongoing_id = ongoing.id
 
     with (
         patch.object(
-            mill_advance, "advance_app_build", return_value=True
-        ) as mock_advance,
-        patch.object(mill_advance, "fail_app_build") as mock_fail,
+            mill_process, "process_app_build", return_value=True
+        ) as mock_process,
+        patch.object(mill_process, "fail_app_build") as mock_fail,
     ):
-        advance_app_builds(dbsession)
+        process_app_builds(dbsession)
 
-    assert mock_advance.call_count == 2
-    assert {call.args[0].id for call in mock_advance.call_args_list} == {
-        first_id,
-        second_id,
+    assert mock_process.call_count == 2
+    assert {call.args[0].id for call in mock_process.call_args_list} == {
+        requested_id,
+        ongoing_id,
     }
     mock_fail.assert_not_called()
 
 
-def test_advance_app_builds_fails_on_error(
+def test_process_app_builds_fails_on_error(
     dbsession: OrmSession,
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
@@ -68,22 +68,22 @@ def test_advance_app_builds_fails_on_error(
 
     with (
         patch.object(
-            mill_advance,
-            "advance_app_build",
+            mill_process,
+            "process_app_build",
             side_effect=ValueError("error"),
-        ) as mock_advance,
+        ) as mock_process,
         patch.object(
-            mill_advance,
+            mill_process,
             "fail_app_build",
-            wraps=mill_advance.fail_app_build,
+            wraps=mill_process.fail_app_build,
         ) as mock_fail,
     ):
-        advance_app_builds(dbsession)
+        process_app_builds(dbsession)
 
-    mock_advance.assert_called_once_with(build)
+    mock_process.assert_called_once_with(build)
     mock_fail.assert_called_once_with(
         build,
-        "Unexpected error while advancing build: error",
+        "Unexpected error while processing build: error",
     )
 
     refreshed = get_build(dbsession, build_id=build_id)

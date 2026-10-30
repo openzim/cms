@@ -140,7 +140,7 @@ def test_get_app_builds_filters(
     assert len(result.records) == expected_count
 
 
-def test_advance_app_build_success(
+def test_process_app_build_success(
     build: ApplicationBuild,
 ) -> None:
     build.phase = AppBuildPhase.BUILDING.value
@@ -157,14 +157,14 @@ def test_advance_app_build_success(
     with patch.object(
         github_client, "get_run_for_build", return_value=run
     ) as mock_get_run:
-        advanced = db_app_build.advance_app_build(build)
+        processed = db_app_build.process_app_build(build)
 
-        assert advanced
+        assert processed
         assert build.phase == AppBuildPhase.UPLOADED.value
         assert build.run_id == 7
         assert build.run_url == "https://github.test/run/7"
 
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
         assert build.status == "success"
         assert build.phase is None
 
@@ -176,7 +176,7 @@ def test_advance_app_build_success(
     )
 
 
-def test_advance_app_build_failure(
+def test_process_app_build_failure(
     build: ApplicationBuild,
 ) -> None:
     build.phase = AppBuildPhase.BUILDING.value
@@ -193,9 +193,9 @@ def test_advance_app_build_failure(
     with patch.object(
         github_client, "get_run_for_build", return_value=run
     ) as mock_get_run:
-        advanced = db_app_build.advance_app_build(build)
+        processed = db_app_build.process_app_build(build)
 
-    assert advanced
+    assert processed
     assert build.status == "failure"
     assert build.error == "Build failed: failure"
     mock_get_run.assert_called_once_with(
@@ -287,19 +287,19 @@ def _checks_build(
     return create_app_build(application=application, **params)
 
 
-def test_advance_checks_without_pull_request(
+def test_process_checks_without_pull_request(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
     build = _checks_build(create_app_build, application, pr_number=None, pr_url=None)
 
-    assert db_app_build.advance_app_build(build)
+    assert db_app_build.process_app_build(build)
 
     assert build.status == "failure"
     assert build.error == "Build has no pull request"
 
 
-def test_advance_checks_pull_request_not_ready(
+def test_process_checks_pull_request_not_ready(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -308,7 +308,7 @@ def test_advance_checks_pull_request_not_ready(
     with patch.object(
         github_client, "get_pull_request", return_value=None
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.phase == AppBuildPhase.CHECKS.value
@@ -316,7 +316,7 @@ def test_advance_checks_pull_request_not_ready(
     assert build.error is None
 
 
-def test_advance_checks_merged(
+def test_process_checks_merged(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -326,7 +326,7 @@ def test_advance_checks_merged(
     with patch.object(
         github_client, "get_pull_request", return_value=pull
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.phase == AppBuildPhase.RELEASE.value
@@ -335,7 +335,7 @@ def test_advance_checks_merged(
     assert "https://github.test/pr/1" in build.events[-1]
 
 
-def test_advance_checks_missing_head_sha(
+def test_process_checks_missing_head_sha(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -345,14 +345,14 @@ def test_advance_checks_missing_head_sha(
     with patch.object(
         github_client, "get_pull_request", return_value=pull
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.status == "failure"
     assert build.error == "Unable to determine pull request head commit"
 
 
-def test_advance_checks_failed(
+def test_process_checks_failed(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -368,7 +368,7 @@ def test_advance_checks_failed(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -376,7 +376,7 @@ def test_advance_checks_failed(
     assert build.error == "Pull request checks failed: lint, unit"
 
 
-def test_advance_checks_pending(
+def test_process_checks_pending(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -392,7 +392,7 @@ def test_advance_checks_pending(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -417,7 +417,7 @@ def test_advance_checks_pending(
         ),
     ],
 )
-def test_advance_checks_cannot_merge(
+def test_process_checks_cannot_merge(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
     pull_request: dict[str, Any],
@@ -433,7 +433,7 @@ def test_advance_checks_cannot_merge(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -441,7 +441,7 @@ def test_advance_checks_cannot_merge(
     assert build.error == "Pull request cannot be merged"
 
 
-def test_advance_checks_passed(
+def test_process_checks_passed(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -457,7 +457,7 @@ def test_advance_checks_passed(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -483,19 +483,19 @@ def _merge_build(
     return create_app_build(application=application, **params)
 
 
-def test_advance_merge_without_pull_request(
+def test_process_merge_without_pull_request(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
     build = _merge_build(create_app_build, application, pr_number=None, pr_url=None)
 
-    assert db_app_build.advance_app_build(build)
+    assert db_app_build.process_app_build(build)
 
     assert build.status == "failure"
     assert build.error == "Build has no pull request"
 
 
-def test_advance_merge_pull_request_not_ready(
+def test_process_merge_pull_request_not_ready(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -504,14 +504,14 @@ def test_advance_merge_pull_request_not_ready(
     with patch.object(
         github_client, "get_pull_request", return_value=None
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.phase == AppBuildPhase.MERGE.value
     assert build.status == "running"
 
 
-def test_advance_merge_already_merged(
+def test_process_merge_already_merged(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -521,14 +521,14 @@ def test_advance_merge_already_merged(
     with patch.object(
         github_client, "get_pull_request", return_value=pull
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.phase == AppBuildPhase.RELEASE.value
     assert build.merge_commit_sha == "mergedsha"
 
 
-def test_advance_merge_missing_head_sha(
+def test_process_merge_missing_head_sha(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -538,14 +538,14 @@ def test_advance_merge_missing_head_sha(
     with patch.object(
         github_client, "get_pull_request", return_value=pull
     ) as mock_get_pull_request:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     assert build.status == "failure"
     assert build.error == "Unable to determine pull request head commit"
 
 
-def test_advance_merge_checks_failed(
+def test_process_merge_checks_failed(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -561,7 +561,7 @@ def test_advance_merge_checks_failed(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -569,7 +569,7 @@ def test_advance_merge_checks_failed(
     assert build.error == "Pull request checks failed: lint"
 
 
-def test_advance_merge_checks_pending(
+def test_process_merge_checks_pending(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -585,7 +585,7 @@ def test_advance_merge_checks_pending(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -618,7 +618,7 @@ def test_advance_merge_checks_pending(
         ),
     ],
 )
-def test_advance_merge_cannot_merge(
+def test_process_merge_cannot_merge(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
     pull_request: dict[str, Any],
@@ -634,7 +634,7 @@ def test_advance_merge_cannot_merge(
             github_client, "get_checks", return_value=checks
         ) as mock_get_checks,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -642,7 +642,7 @@ def test_advance_merge_cannot_merge(
     assert build.error == "Pull request cannot be merged"
 
 
-def test_advance_merge_refused(
+def test_process_merge_refused(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -661,7 +661,7 @@ def test_advance_merge_refused(
             github_client, "merge_pull_request", return_value=False
         ) as mock_merge_pull_request,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_pull_request.assert_called_once_with(repo=build.repository, number=1)
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -673,7 +673,7 @@ def test_advance_merge_refused(
     assert build.merge_commit_sha is None
 
 
-def test_advance_merge_confirmed(
+def test_process_merge_confirmed(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -695,7 +695,7 @@ def test_advance_merge_confirmed(
             github_client, "merge_pull_request", return_value=True
         ) as mock_merge_pull_request,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     assert mock_get_pull_request.call_count == 2
     mock_get_checks.assert_called_once_with(repo=build.repository, ref="headsha")
@@ -707,7 +707,7 @@ def test_advance_merge_confirmed(
     assert "Pull request merged" in build.events[-1]
 
 
-def test_advance_release_without_merge_commit(
+def test_process_release_without_merge_commit(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -718,13 +718,13 @@ def test_advance_release_without_merge_commit(
         merge_commit_sha=None,
     )
 
-    assert db_app_build.advance_app_build(build)
+    assert db_app_build.process_app_build(build)
 
     assert build.status == "failure"
     assert build.error == "Build has no merged commit"
 
 
-def test_advance_release_value_error(
+def test_process_release_value_error(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -739,7 +739,7 @@ def test_advance_release_value_error(
     with patch.object(
         github_client, "create_release_on_sha", side_effect=error
     ) as mock_create_release_on_sha:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_create_release_on_sha.assert_called_once_with(
         repo=build.repository,
@@ -752,7 +752,7 @@ def test_advance_release_value_error(
     assert build.error == "Unable to find a free tag for 'phet_2026.05'"
 
 
-def test_advance_release_success(
+def test_process_release_success(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -774,7 +774,7 @@ def test_advance_release_success(
     with patch.object(
         github_client, "create_release_on_sha", return_value=result
     ) as mock_create_release_on_sha:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_create_release_on_sha.assert_called_once_with(
         repo=build.repository,
@@ -873,7 +873,7 @@ def _building_build(
         ),
     ],
 )
-def test_advance_building_run_states(
+def test_process_building_run_states(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
     run: dict[str, Any],
@@ -889,7 +889,7 @@ def test_advance_building_run_states(
         ) as mock_get_workflow_run,
         patch.object(github_client, "get_run_for_build") as mock_get_run_for_build,
     ):
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_workflow_run.assert_called_once_with(repo=build.repository, run_id=55)
     mock_get_run_for_build.assert_not_called()
@@ -898,7 +898,7 @@ def test_advance_building_run_states(
     assert build.error == expected_error
 
 
-def test_advance_building_waits_for_run(
+def test_process_building_waits_for_run(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -907,7 +907,7 @@ def test_advance_building_waits_for_run(
     with patch.object(
         github_client, "get_run_for_build", return_value=None
     ) as mock_get_run_for_build:
-        assert db_app_build.advance_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_get_run_for_build.assert_called_once_with(
         repo=build.repository,
@@ -920,7 +920,7 @@ def test_advance_building_waits_for_run(
     assert build.run_id is None
 
 
-def test_advance_app_build_uploaded_phase(
+def test_process_app_build_uploaded_phase(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -930,7 +930,7 @@ def test_advance_app_build_uploaded_phase(
         phase=AppBuildPhase.UPLOADED.value,
     )
 
-    assert db_app_build.advance_app_build(build)
+    assert db_app_build.process_app_build(build)
 
     assert build.status == "success"
     assert build.phase is None
@@ -938,7 +938,7 @@ def test_advance_app_build_uploaded_phase(
     assert build.events[-1].endswith("Uploaded to android; awaiting store review")
 
 
-def test_advance_app_build_requested_is_not_advanced(
+def test_process_app_build_requested(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -948,11 +948,13 @@ def test_advance_app_build_requested_is_not_advanced(
         phase=AppBuildPhase.REQUESTED.value,
     )
 
-    assert not db_app_build.advance_app_build(build)
-    assert build.phase == AppBuildPhase.REQUESTED.value
+    with patch.object(db_app_build, "_process_requested") as mock_process_requested:
+        assert db_app_build.process_app_build(build)
+
+    mock_process_requested.assert_called_once_with(build)
 
 
-def test_start_app_build_value_error(
+def test_process_requested_value_error(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -968,7 +970,7 @@ def test_start_app_build_value_error(
     with patch.object(
         github_client, "create_app_build_pull_request", side_effect=error
     ) as mock_create_pull_request:
-        result = db_app_build.start_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
@@ -978,7 +980,6 @@ def test_start_app_build_value_error(
         branch="cms/app-build-test",
         build_id=str(build.id),
     )
-    assert result is build
     assert build.status == "failure"
     assert (
         build.error
@@ -986,7 +987,7 @@ def test_start_app_build_value_error(
     )
 
 
-def test_start_app_build_without_changes(
+def test_process_requested_without_changes(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -1004,7 +1005,7 @@ def test_start_app_build_without_changes(
         "create_app_build_pull_request",
         return_value=pull_request_result,
     ) as mock_create_pull_request:
-        result = db_app_build.start_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
@@ -1014,7 +1015,6 @@ def test_start_app_build_without_changes(
         branch="cms/app-build-test",
         build_id=str(build.id),
     )
-    assert result is build
     assert build.branch == "main"
     assert build.commit_sha == "basesha"
     assert build.merge_commit_sha == "basesha"
@@ -1023,7 +1023,7 @@ def test_start_app_build_without_changes(
     assert "Configuration already up to date" in build.events[-1]
 
 
-def test_start_app_build_opens_pull_request(
+def test_process_requested_opens_pull_request(
     application: Application,
     create_app_build: Callable[..., ApplicationBuild],
 ) -> None:
@@ -1044,7 +1044,7 @@ def test_start_app_build_opens_pull_request(
         "create_app_build_pull_request",
         return_value=pull_request_result,
     ) as mock_create_pull_request:
-        result = db_app_build.start_app_build(build)
+        assert db_app_build.process_app_build(build)
 
     mock_create_pull_request.assert_called_once_with(
         store="android",
@@ -1054,7 +1054,6 @@ def test_start_app_build_opens_pull_request(
         branch="cms/app-build-test",
         build_id=str(build.id),
     )
-    assert result is build
     assert build.branch == "cms/app-build-test"
     assert build.commit_sha == "basesha"
     assert build.pr_number == 12

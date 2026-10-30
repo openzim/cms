@@ -103,25 +103,14 @@ def get_active_app_build_or_none(
     ).one_or_none()
 
 
-def get_app_builds_in_progress(
+def get_app_builds_to_process(
     session: OrmSession,
 ) -> list[ApplicationBuild]:
-    """Get builds the mill should advance."""
+    """Get builds the mill should process."""
     return list(
         session.scalars(
             select(ApplicationBuild)
-            .where(
-                ApplicationBuild.status.in_(ACTIVE_STATUSES),
-                ApplicationBuild.phase.in_(
-                    [
-                        AppBuildPhase.CHECKS.value,
-                        AppBuildPhase.MERGE.value,
-                        AppBuildPhase.RELEASE.value,
-                        AppBuildPhase.BUILDING.value,
-                        AppBuildPhase.UPLOADED.value,
-                    ]
-                ),
-            )
+            .where(ApplicationBuild.status.in_(ACTIVE_STATUSES))
             .order_by(ApplicationBuild.updated_at)
         ).all()
     )
@@ -301,7 +290,7 @@ def _record_merged(build: ApplicationBuild, pull: dict[str, Any]) -> None:
     )
 
 
-def _advance_checks(build: ApplicationBuild) -> None:
+def _process_checks(build: ApplicationBuild) -> None:
     if build.pr_number is None:
         fail_app_build(build, "Build has no pull request")
         return
@@ -356,7 +345,7 @@ def _advance_checks(build: ApplicationBuild) -> None:
     _set_phase(build, AppBuildPhase.MERGE)
 
 
-def _advance_merge(build: ApplicationBuild) -> None:
+def _process_merge(build: ApplicationBuild) -> None:
     if build.pr_number is None:
         fail_app_build(build, "Build has no pull request")
         return
@@ -426,7 +415,7 @@ def _advance_merge(build: ApplicationBuild) -> None:
         )
 
 
-def _advance_release(build: ApplicationBuild) -> None:
+def _process_release(build: ApplicationBuild) -> None:
     if not build.merge_commit_sha:
         fail_app_build(build, "Build has no merged commit")
         return
@@ -460,7 +449,7 @@ def _advance_release(build: ApplicationBuild) -> None:
     _set_phase(build, AppBuildPhase.BUILDING)
 
 
-def _advance_building(build: ApplicationBuild) -> None:
+def _process_building(build: ApplicationBuild) -> None:
     run: dict[str, Any] | None = None
     if build.run_id is not None:
         run = github_client.get_workflow_run(repo=build.repository, run_id=build.run_id)
@@ -514,7 +503,7 @@ def _advance_building(build: ApplicationBuild) -> None:
             fail_app_build(build, f"Build failed: {conclusion or 'workflow failed'}")
 
 
-def _advance_uploaded(build: ApplicationBuild) -> None:
+def _process_uploaded(build: ApplicationBuild) -> None:
     build.events.append(f"{getnow()}: Uploaded to {build.store}; awaiting store review")
     build.phase = None
     build.phase_started_at = None
@@ -523,7 +512,7 @@ def _advance_uploaded(build: ApplicationBuild) -> None:
     logger.info(f"{_app_build_label(build)} completed: uploaded to {build.store}")
 
 
-def start_app_build(build: ApplicationBuild) -> ApplicationBuild:
+def _process_requested(build: ApplicationBuild) -> ApplicationBuild:
     """Prepare configuration changes and open the build pull request."""
     if build.phase != AppBuildPhase.REQUESTED.value:
         return build
@@ -572,28 +561,25 @@ def start_app_build(build: ApplicationBuild) -> ApplicationBuild:
     return build
 
 
-def advance_app_build(build: ApplicationBuild) -> bool:
-    """Advance a build by one phase. Returns True when it was processed."""
+def process_app_build(build: ApplicationBuild) -> bool:
+    """Process a build by one step. Returns True when it was processed."""
     if build.status in TERMINAL_STATUSES or build.phase is None:
         return False
 
     phase = build.phase
+    logger.debug(f"{_app_build_label(build)} processing phase '{phase}'")
     if phase == AppBuildPhase.REQUESTED.value:
-        # Starting is handled by the build request event processor.
-        return False
-
-    logger.debug(f"{_app_build_label(build)} advancing phase '{phase}'")
-    if phase == AppBuildPhase.CHECKS.value:
-        _advance_checks(build)
+        _process_requested(build)
+    elif phase == AppBuildPhase.CHECKS.value:
+        _process_checks(build)
     elif phase == AppBuildPhase.MERGE.value:
-        _advance_merge(build)
+        _process_merge(build)
     elif phase == AppBuildPhase.RELEASE.value:
-        _advance_release(build)
+        _process_release(build)
     elif phase == AppBuildPhase.BUILDING.value:
-        _advance_building(build)
+        _process_building(build)
     elif phase == AppBuildPhase.UPLOADED.value:
-        _advance_uploaded(build)
+        _process_uploaded(build)
     else:
         fail_app_build(build, f"Unknown build phase '{phase}'")
-
     return True
