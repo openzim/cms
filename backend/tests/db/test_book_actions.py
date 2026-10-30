@@ -1325,6 +1325,69 @@ def test_apply_actions_create_title(
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
+def test_apply_actions_create_title_flavour_keeps_existing_flavours(
+    mock_get_zimcheck_errors: MagicMock,
+    mock_get_book_unsupported_languages: MagicMock,
+    dbsession: OrmSession,
+    create_book: Callable[..., Book],
+    create_title: Callable[..., Title],
+    create_collection_title: Callable[..., CollectionTitle],
+    create_warehouse: Callable[..., Warehouse],
+    create_book_location: Callable[..., BookLocation],
+    illustration_48x48_at_1: str,
+    account: Account,
+):
+    """Applying a create_title_flavour action adds the book's flavour while
+    preserving the title's existing flavours."""
+    mock_get_zimcheck_errors.return_value = []
+    mock_get_book_unsupported_languages.return_value = []
+
+    warehouse = create_warehouse()
+    book = _create_valid_book(create_book, illustration_48x48_at_1)
+    book.flavour = "nopic"
+    dbsession.add(book)
+
+    title = _create_valid_title(
+        create_title, illustration_48x48_at_1, flavours=["maxi", "mini"]
+    )
+    title.maturity = "stable"
+    create_collection_title(title=title)
+    book.title = title
+    dbsession.add(book)
+    dbsession.flush()
+
+    create_book_location(
+        book=book,
+        warehouse_id=warehouse.id,
+        path=Path("zim"),
+        filename="test_en_all_2024-01.zim",
+        status="current",
+    )
+
+    actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
+    assert len(actions) == 1
+    assert actions[0].kind == "create_title_flavour"
+    assert actions[0].data["flavour"] == "nopic"
+
+    action = actions[0]
+    apply_book_promotion_actions(
+        dbsession,
+        book_id=book.id,
+        actions=[
+            BaseBookPromotionAction(
+                kind=action.kind, data=action.data, requirement=action.requirement
+            )
+        ],
+        account=account,
+    )
+
+    dbsession.refresh(title)
+    assert {tf.flavour for tf in title.flavours} == {"maxi", "mini", "nopic"}
+    assert dbsession.query(TitleFlavour).filter_by(title_id=title.id).count() == 3
+
+
+@patch("cms_backend.db.book_actions.get_book_unsupported_languages")
+@patch("cms_backend.db.book_actions.get_zimcheck_errors")
 def test_apply_actions_restore_title(
     mock_get_zimcheck_errors: MagicMock,
     mock_get_book_unsupported_languages: MagicMock,

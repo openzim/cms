@@ -572,25 +572,23 @@ def apply_book_promotion_actions(
                     ),
                     action,
                 )
-                if action.kind == "update_flavour_recipe":
-                    if book.title is None:
-                        raise ValueError("Book does not have an associated title")
-                    # When we update a title's list of flavours, any entries in DB
-                    # but not in payload are marked for deletion which has consequence
-                    # of deleting books associated with such flavours. Pass all existing
-                    # flavours back in the payload to avoid this since we only want to
-                    # update an existing flavour's recipe
-                    flavours = [
-                        {
-                            "flavour": tf.flavour,
-                            "recipe_id": tf.recipe_id,
-                        }
-                        for tf in book.title.flavours
-                        if tf.flavour != action.data["flavour"]
-                    ]
-                    flavours.append(action.data)
-                else:
-                    flavours = [action.data]
+                if book.title is None:
+                    raise ValueError("Book does not have an associated title")
+                # When we update a title's list of flavours, any entries in DB
+                # but not in payload are marked for deletion which has consequence
+                # of deleting books associated with such flavours. Pass all existing
+                # flavours back in the payload to avoid this since we only want to
+                # update an existing flavour's recipe or add new flavour
+
+                flavours = [
+                    {
+                        "flavour": tf.flavour,
+                        "recipe_id": tf.recipe_id,
+                    }
+                    for tf in book.title.flavours
+                    if tf.flavour != action.data["flavour"]
+                ]
+                flavours.append(action.data)
                 title_update_payload.update({"flavours": flavours})
             case "set_title_collections":
                 if get_missing_keys(action.data, "collection_titles") or (
