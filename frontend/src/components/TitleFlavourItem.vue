@@ -31,6 +31,11 @@
           Rotten
         </v-chip>
 
+        <v-chip v-if="flavour.archived" size="small" variant="tonal" color="grey">
+          <v-icon start size="small">mdi-eye-off</v-icon>
+          Hidden from catalog
+        </v-chip>
+
         <v-chip v-if="flavour.last_book_added_at" size="small" variant="outlined">
           <v-icon start size="small">mdi-calendar-plus</v-icon>
           Last book: {{ formatDt(flavour.last_book_added_at, 'ff') }}

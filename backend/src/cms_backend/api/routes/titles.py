@@ -30,6 +30,7 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.api.token import zimfarm_client_token_provider
 from cms_backend.context import Context
 from cms_backend.db import account as db_account
+from cms_backend.db import flavour as db_flavour
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
 from cms_backend.db import title_permission as db_title_permission
@@ -51,6 +52,7 @@ from cms_backend.schemas.models import (
 )
 from cms_backend.schemas.orms import (
     AccountSchema,
+    TitleFlavourSchema,
     TitleFullSchema,
     TitleHistorySchema,
     TitleLightSchema,
@@ -316,6 +318,47 @@ def restore_archived_title(
         accessible_collection_ids=accessible_collection_ids,
     )
     return db_title.create_title_light_schema(title)
+
+
+class TitleFlavourArchiveSchema(BaseModel):
+    flavour: str
+    archived: bool
+
+
+@router.patch(
+    "/{title_identifier}/flavours/archive",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def set_title_flavour_archived(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    request: TitleFlavourArchiveSchema,
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+    session: OrmSession = Depends(gen_dbsession),
+) -> TitleFlavourSchema:
+    """Hide a title flavour from the catalog, or restore it.
+
+    The flavour and its books are kept untouched; this only controls whether the
+    flavour is published in the catalog(s).
+    """
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    title_flavour = db_flavour.set_title_flavour_archived(
+        session,
+        title=title,
+        flavour=request.flavour,
+        archived=request.archived,
+        accessible_collection_ids=accessible_collection_ids,
+    )
+    return db_flavour.create_title_flavour_schema(title_flavour)
 
 
 @router.get(

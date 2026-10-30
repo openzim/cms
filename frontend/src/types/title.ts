@@ -22,6 +22,7 @@ export interface TitleFlavour {
   recipe_api_link: string | null
   last_book_added_at: string | null
   is_rotten: boolean
+  archived: boolean
 }
 
 export interface TitleFlavourCreate {

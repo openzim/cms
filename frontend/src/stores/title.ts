@@ -7,7 +7,7 @@ import type {
 } from '@/types/s3'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
-import type { Title, TitleCreate, TitleLight, TitleUpdate } from '@/types/title'
+import type { Title, TitleCreate, TitleFlavour, TitleLight, TitleUpdate } from '@/types/title'
 import type { TitleUploadLight } from '@/types/titleUpload'
 import type { User } from '@/types/user'
 import { translateErrors } from '@/utils/errors'
@@ -166,6 +166,26 @@ export const useTitleStore = defineStore('title', () => {
       return true
     } catch (_error) {
       console.error('Failed to restore title', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const setTitleFlavourArchived = async (
+    titleId: string,
+    flavour: string,
+    archived: boolean,
+  ): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.patch<{ flavour: string; archived: boolean }, TitleFlavour>(
+        `/${titleId}/flavours/archive`,
+        { flavour, archived },
+      )
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to update title flavour', _error)
       errors.value = translateErrors(_error as ErrorResponse)
       return false
     }
@@ -358,6 +378,7 @@ export const useTitleStore = defineStore('title', () => {
     updateTitle,
     archiveTitle,
     restoreTitle,
+    setTitleFlavourArchived,
     archiveTitles,
     restoreTitles,
     mergeTitles,
