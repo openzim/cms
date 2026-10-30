@@ -30,6 +30,7 @@ from cms_backend.api.routes.models import ListResponse, calculate_pagination_met
 from cms_backend.api.token import zimfarm_client_token_provider
 from cms_backend.context import Context
 from cms_backend.db import account as db_account
+from cms_backend.db import app_build_permission as db_app_build_permission
 from cms_backend.db import gen_dbsession
 from cms_backend.db import title as db_title
 from cms_backend.db import title_permission as db_title_permission
@@ -799,6 +800,150 @@ def revoke_title_uploader(
     )
     account = db_account.get_account_by_id(session, account_id=account_id)
     db_title_permission.delete_title_permission(session, title.id, account.id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+class AppBuilderGrantSchema(BaseModel):
+    account_id: UUID
+
+
+class AvailableAppBuildersGetSchema(BaseModel):
+    skip: SkipField = 0
+    limit: LimitFieldMax200 = 20
+
+
+@router.get(
+    "/{title_identifier}/builders",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_app_builders(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> ListResponse[AccountSchema]:
+    """List the accounts allowed to build this title's applications."""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    accounts = db_app_build_permission.get_app_builders(session, title.id)
+    return ListResponse[AccountSchema](
+        meta=calculate_pagination_metadata(
+            nb_records=len(accounts),
+            skip=0,
+            limit=len(accounts),
+            page_size=len(accounts),
+        ),
+        items=[db_account.create_account_schema(account) for account in accounts],
+    )
+
+
+@router.get(
+    "/{title_identifier}/builders/available",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def get_available_app_builders(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    params: Annotated[AvailableAppBuildersGetSchema, Query()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> ListResponse[AccountSchema]:
+    """List collection-editor accounts which may be granted building rights."""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    results = db_app_build_permission.get_available_app_builders(
+        session, title.id, skip=params.skip, limit=params.limit
+    )
+    return ListResponse[AccountSchema](
+        meta=calculate_pagination_metadata(
+            nb_records=results.nb_records,
+            skip=params.skip,
+            limit=params.limit,
+            page_size=len(results.records),
+        ),
+        items=results.records,
+    )
+
+
+@router.post(
+    "/{title_identifier}/builders",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def grant_app_builder(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+    request: AppBuilderGrantSchema,
+) -> Response:
+    """Allow a collection-editor account to build this title's applications."""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    account = db_account.get_account_by_id(session, account_id=request.account_id)
+    if account.deleted or account.role != RoleEnum.COLLECTION_EDITOR:
+        raise BadRequestError(
+            "Only collection-editor accounts can be granted building rights"
+        )
+    if (
+        db_app_build_permission.get_app_build_permission_or_none(
+            session, title.id, account.id
+        )
+        is None
+    ):
+        db_app_build_permission.create_app_build_permission(
+            session, title.id, account.id
+        )
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.delete(
+    "/{title_identifier}/builders/{account_id}",
+    dependencies=[Depends(require_permission(namespace="title", name="update"))],
+)
+def revoke_app_builder(
+    title_identifier: Annotated[NotEmptyString, Path()],
+    account_id: Annotated[UUID, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+    accessible_title_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_title_ids)
+    ],
+) -> Response:
+    """Revoke an account's permission to build this title's applications."""
+    title = db_title.get_title(
+        session,
+        title_identifier=title_identifier,
+        accessible_collection_ids=accessible_collection_ids,
+        accessible_title_ids=accessible_title_ids,
+    )
+    account = db_account.get_account_by_id(session, account_id=account_id)
+    db_app_build_permission.delete_app_build_permission(session, title.id, account.id)
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 

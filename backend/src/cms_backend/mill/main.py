@@ -19,6 +19,7 @@ from cms_backend.mill.fetch_lb_download_stats import fetch_download_stats
 from cms_backend.mill.mark_staging_books_for_deletion import (
     mark_staging_books_for_deletion,
 )
+from cms_backend.mill.process_app_builds import process_app_builds
 from cms_backend.mill.process_retention_rules import process_retention_rules
 from cms_backend.mill.process_title_modifications import process_title_modifications
 from cms_backend.mill.process_zimfarm_notifications import process_zimfarm_notifications
@@ -38,6 +39,11 @@ tasks: list[TaskConfig] = [
         func=process_title_modifications,
         interval=MillContext.process_events_interval,
         enabled=MillContext.process_title_modifications_enabled,
+    ),
+    TaskConfig(
+        func=process_app_builds,
+        interval=MillContext.process_app_builds_interval,
+        enabled=MillContext.process_app_builds_enabled,
     ),
     TaskConfig(
         func=check_book_transitions,

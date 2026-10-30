@@ -1011,24 +1011,40 @@ def get_book_unsupported_languages(book: Book) -> list[InvalidLanguageCode]:
     return unknown_languages
 
 
-def get_latest_prod_book(session: OrmSession, book: Book):
-    """Get the latest prod book that has the same title and flavour as book.
-
-    If none is found, the book is returned.
-    """
-    latest_book = session.scalars(
+def get_latest_prod_book(
+    session: OrmSession,
+    *,
+    title_id: UUID | None,
+    flavour: str,
+    exclude_book_id: UUID | None = None,
+) -> Book | None:
+    """Get the latest prod book if any for the title+flavour combination."""
+    stmt = (
         select(Book)
         .where(
             Book.location_kind == "prod",
-            Book.id != book.id,
-            Book.title_id == book.title_id,
-            Book.flavour == book.flavour,
+            Book.title_id == title_id,
+            Book.flavour == flavour,
         )
         .order_by(Book.created_at.desc())
-    ).first()
-    if latest_book is None:
-        latest_book = book
-    return latest_book
+    )
+    if exclude_book_id is not None:
+        stmt = stmt.where(Book.id != exclude_book_id)
+
+    return session.scalars(stmt).first()
+
+
+def get_latest_prod_book_or_current_book(session: OrmSession, current_book: Book):
+    """Get the latest prod book or current one if unavailable"""
+    return (
+        get_latest_prod_book(
+            session,
+            title_id=current_book.title_id,
+            flavour=current_book.flavour,
+            exclude_book_id=current_book.id,
+        )
+        or current_book
+    )
 
 
 KnownIssues = (
@@ -1050,7 +1066,7 @@ def get_book_issues(
 
     Makes the same assumptions as the update_book_issues function
     """
-    if book.title is None:
+    if book.title is None or book.title_id is None:
         raise ValueError("Book must have a title in order to compute issues")
     issues: dict[str, KnownIssues] = {}
     unknown_languages = get_book_unsupported_languages(book)
@@ -1099,7 +1115,7 @@ def get_book_issues(
     if metadata_issues:
         issues["bad metadata"] = BookIssue[BadMetadata](issues=metadata_issues)
 
-    previous_book = get_latest_prod_book(session, book)
+    previous_book = get_latest_prod_book_or_current_book(session, book)
 
     article_count_issues = get_book_article_count_issues(
         book=book, previous_book=previous_book

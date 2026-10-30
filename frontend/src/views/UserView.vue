@@ -275,6 +275,9 @@ const getNamespaceIcon = (namespace: string): string => {
     title: 'mdi-format-title',
     zimfarm_notification: 'mdi-bell',
     account: 'mdi-account-group',
+    stats: 'mdi-chart-line',
+    application: 'mdi-cellphone',
+    app_build: 'mdi-storefront-outline',
   }
   return iconMap[namespace] || 'mdi-folder'
 }
@@ -285,6 +288,7 @@ const formatNamespaceName = (namespace: string): string => {
     title: 'Titles',
     zimfarm_notification: 'Zimfarm Notification',
     account: 'Accounts',
+    app_build: 'App Builds',
   }
   return nameMap[namespace] || namespace.charAt(0).toUpperCase() + namespace.slice(1)
 }

@@ -38,3 +38,46 @@ configured username already exists, it is reused as-is.
 | Variable                | Default | Description                                                        |
 | ----------------------- | ------- | ------------------------------------------------------------------ |
 | `MILL_ACCOUNT_USERNAME` | `mill`  | Username of the technical account used for automated mill actions. |
+
+## App build
+
+Titles whose flavours are enabled for a given store (Android and/or Apple) can
+trigger a branded-app build from the CMS. The pipeline is asynchronous:
+
+1. `POST /app-builds` records the request. It is rejected with a conflict if
+   another build for the same app has not reached a terminal status.
+2. The mill picks the build up, updates the app's `info.json` `zim_url`
+    and opens a pull request.
+3. A mill task moves the build through checks, merge, release and the
+   CD workflow. The CMS merges the pull request itself once checks pass
+4. Once the CD workflow succeeds, the build is complete and the app is
+   considered uploaded to the store. Store review is outside the CMS scope.
+
+Tags are created after the pull request is merged and follow the
+`<app>_<YYYY>.<MM>[suffix].<build>` convention for every store. `<build>` starts
+at 0 for the first build of a given content version and is incremented on
+every retry (for example after a failed build)
+
+Android builds use
+[kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded) whereas
+apple builds use [kiwix-apple-branded](https://github.com/kiwix/kiwix-apple-branded)
+
+The GitHub token needs `contents: write`, `pull requests: write`, `actions: read`
+and `checks: read`. Branch protection must not require human approvals if the
+bot is expected to merge without review.
+
+Relevant environment variables:
+
+| Variable                            | Default                       | Description                                          |
+| ----------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `GITHUB_API_URL`                    | `https://api.github.com`      | GitHub API base URL                                  |
+| `GITHUB_TOKEN`                      | (empty)                       | Token for contents, pull requests, actions and checks |
+| `GITHUB_ANDROID_REPO`               | `kiwix/kiwix-android-branded` | Android branded apps repository                      |
+| `GITHUB_ANDROID_WORKFLOW`           | `cd.yml`                      | Android CD workflow used for status tracking         |
+| `GITHUB_ANDROID_BRANCH`             | `main`                        | Base branch for Android build pull requests    |
+| `GITHUB_APPLE_REPO`                 | `kiwix/kiwix-apple-branded`
+| `GITHUB_APPLE_WORKFLOW`             | `cd.yml`                      | Apple CD workflow used for status tracking           |
+| `GITHUB_APPLE_BRANCH`               | `main`                        | Base branch for Apple build pull requests      |
+| `APP_BUILD_STORES`                | `android,apple`                     | Comma-separated stores exposed to the UI             |
+| `PROCESS_APP_BUILDS`             | `true`                        | Enable the app build processing task                   |
+| `PROCESS_APP_BUILDS_INTERVAL`    | `30s`                         | App build processing interval                          |

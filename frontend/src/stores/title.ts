@@ -342,6 +342,67 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
+  const fetchAvailableAppBuilders = async (
+    titleId: string,
+    skip: number = 0,
+    limit: number = 200,
+  ): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(
+        `/${titleId}/builders/available`,
+        { params: { skip, limit } },
+      )
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch available app builders', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
+  const fetchAppBuilders = async (titleId: string): Promise<User[]> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      const response = await service.get<null, ListResponse<User>>(`/${titleId}/builders`)
+      errors.value = []
+      return response.items
+    } catch (_error) {
+      console.error('Failed to fetch app builders', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return []
+    }
+  }
+
+  const grantAppBuilder = async (titleId: string, accountId: string): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.post<{ account_id: string }, null>(`/${titleId}/builders`, {
+        account_id: accountId,
+      })
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to grant app build access', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
+  const revokeAppBuilder = async (titleId: string, accountId: string): Promise<boolean> => {
+    const service = await authStore.getApiService('titles')
+    try {
+      await service.delete(`/${titleId}/builders/${accountId}`)
+      errors.value = []
+      return true
+    } catch (_error) {
+      console.error('Failed to revoke app build access', _error)
+      errors.value = translateErrors(_error as ErrorResponse)
+      return false
+    }
+  }
+
   return {
     // State
     title,
@@ -368,5 +429,9 @@ export const useTitleStore = defineStore('title', () => {
     fetchAvailableTitleUploaders,
     grantTitleUploader,
     revokeTitleUploader,
+    fetchAppBuilders,
+    fetchAvailableAppBuilders,
+    grantAppBuilder,
+    revokeAppBuilder,
   }
 })

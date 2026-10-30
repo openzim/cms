@@ -6,8 +6,15 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import CollectionTitle, Title, TitleFlavour
-from cms_backend.schemas.orms import ListResult, TitleFlavourSchema
+from cms_backend.db.models import (
+    CollectionTitle,
+    Title,
+    TitleFlavour,
+)
+from cms_backend.schemas.orms import (
+    ListResult,
+    TitleFlavourSchema,
+)
 
 
 def get_title_flavours(
@@ -46,7 +53,10 @@ def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
 
 
 def create_title_flavour(
-    session: OrmSession, title: Title, recipe_id: UUID | None, flavour: str
+    session: OrmSession,
+    title: Title,
+    recipe_id: UUID | None,
+    flavour: str,
 ):
     title_flavour = TitleFlavour(
         flavour=flavour,

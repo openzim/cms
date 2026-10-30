@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.api.context import Context as ApiContext
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
+from cms_backend.db.app_build_permission import (
+    create_app_build_permission,
+    get_app_build_permission_or_none,
+)
 from cms_backend.db.collection_permission import create_collection_permission
 from cms_backend.db.models import (
     Account,
@@ -1656,3 +1660,85 @@ def test_get_available_title_uploaders(
     assert second_page["meta"]["count"] == 2
     assert second_page["meta"]["skip"] == 1
     assert len(second_page["items"]) == 1
+
+
+def test_grant_app_builder(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """An admin can grant a collection editor's build rights."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
+        json={"account_id": str(editor.id)},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+
+def test_get_app_builders(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """Granted collection editors are listed as build publishers."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_app_build_permission(dbsession, wikipedia_en_all.id, editor.id)
+
+    response = client.get(
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert [item["id"] for item in response.json()["items"]] == [str(editor.id)]
+
+
+def test_revoke_app_builder(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """An admin can revoke a collection editor's build rights."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    editor = create_account(permission=RoleEnum.COLLECTION_EDITOR)
+    create_app_build_permission(dbsession, wikipedia_en_all.id, editor.id)
+
+    response = client.delete(
+        f"/v1/titles/{wikipedia_en_all.name}/builders/{editor.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    assert (
+        get_app_build_permission_or_none(dbsession, wikipedia_en_all.id, editor.id)
+        is None
+    )
+
+
+def test_grant_app_builder_rejects_other_roles(
+    client: TestClient,
+    create_title: Callable[..., Title],
+    create_account: Callable[..., Account],
+    access_token: str,
+):
+    """Only collection-editor accounts can be granted build rights."""
+    wikipedia_en_all = create_title(name="wikipedia_en_all")
+    editor = create_account(permission=RoleEnum.GLOBAL_EDITOR)
+
+    response = client.post(
+        f"/v1/titles/{wikipedia_en_all.name}/builders",
+        json={"account_id": str(editor.id)},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.BAD_REQUEST

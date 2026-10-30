@@ -13,7 +13,7 @@ from cms_backend import (
 )
 from cms_backend.context import Context
 from cms_backend.schemas import BaseModel
-from cms_backend.schemas.fields import NotEmptyString
+from cms_backend.schemas.fields import NotEmptyString, ZimFlavour
 from cms_backend.utils.datetime import getnow
 
 T = TypeVar("T")
@@ -24,9 +24,64 @@ class ListResult[T](BaseModel):
     records: list[T]
 
 
+class ApplicationSchema(BaseModel):
+    id: UUID
+    title_id: UUID
+    title_name: NotEmptyString
+    flavour: ZimFlavour
+    store: NotEmptyString
+    enabled: bool = False
+    name: NotEmptyString
+
+
+class ApplicationHistorySchema(BaseModel):
+    id: UUID
+    title_id: UUID
+    title_name: NotEmptyString
+    flavour: ZimFlavour
+    store: NotEmptyString
+    name: NotEmptyString
+    enabled: bool
+    author: NotEmptyString
+    comment: str | None
+    created_at: datetime
+
+
 class BaseTitleFlavourSchema(BaseModel):
     flavour: str
     recipe_id: UUID | None
+
+
+class ApplicationBuildSchema(BaseModel):
+    id: UUID
+    title_id: UUID
+    flavour: str
+    store: str
+    repository: str
+    app_name: str
+    status: str
+    phase: str | None
+    phase_started_at: datetime | None
+    content_version: str
+    tag: str | None
+    branch: str
+    pr_number: int | None
+    pr_url: str | None
+    merge_commit_sha: str | None
+    release_url: str | None
+    run_url: str | None
+    error: str | None
+    events: list[str]
+    requested_by: str | None
+    cancelled_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AppBuildCheckSchema(BaseModel):
+    content_version: str
+    built: bool
+    app_build: ApplicationBuildSchema | None = None
 
 
 class TitleFlavourSchema(BaseTitleFlavourSchema):
