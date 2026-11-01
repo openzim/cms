@@ -433,6 +433,8 @@ class ApplicationBuild(Base):
     application_id: Mapped[UUID] = mapped_column(
         ForeignKey("application.id", ondelete="CASCADE"), index=True
     )
+    title_id: Mapped[UUID]
+    flavour: Mapped[str]
     store: Mapped[str]
     content_version: Mapped[str]
     app_name: Mapped[str]

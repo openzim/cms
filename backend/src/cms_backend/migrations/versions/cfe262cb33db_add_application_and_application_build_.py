@@ -75,6 +75,8 @@ def upgrade():
             nullable=False,
         ),
         sa.Column("application_id", sa.Uuid(), nullable=False),
+        sa.Column("title_id", sa.Uuid(), nullable=False),
+        sa.Column("flavour", sa.String(), nullable=False),
         sa.Column("store", sa.String(), nullable=False),
         sa.Column("content_version", sa.String(), nullable=False),
         sa.Column("app_name", sa.String(), nullable=False),

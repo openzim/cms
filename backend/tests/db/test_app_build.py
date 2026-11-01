@@ -57,6 +57,8 @@ def test_create_app_build(
     assert "Build requested" in build.events[0]
     assert build.requested_by_id == account.id
     assert build.application_id == application.id
+    assert build.title_id == title.id
+    assert build.flavour == "maxi"
 
 
 def test_get_build(

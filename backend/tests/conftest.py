@@ -393,6 +393,8 @@ def create_app_build(
 
         app_build = ApplicationBuild(
             application_id=application.id,
+            title_id=application.title_id,
+            flavour=application.flavour,
             store=application.store,
             content_version=content_version,
             app_name=app_name,

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
+from cms_backend.db import application as db_application
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import (
@@ -35,9 +36,15 @@ def create_app_build(
     *,
     payload: ApplicationBuildCreateSchema,
 ) -> ApplicationBuild:
+    application = db_application.get_application_by_id(
+        session, application_id=payload.application_id
+    )
+
     now = getnow()
     build = ApplicationBuild(
-        application_id=payload.application_id,
+        application_id=application.id,
+        title_id=application.title_id,
+        flavour=application.flavour,
         store=payload.store,
         content_version=payload.content_version,
         app_name=payload.app_name,
@@ -177,8 +184,8 @@ def create_app_build_schema(
 ) -> ApplicationBuildSchema:
     return ApplicationBuildSchema(
         id=build.id,
-        title_id=build.application.title_id,
-        flavour=build.application.flavour,
+        title_id=build.title_id,
+        flavour=build.flavour,
         store=build.store,
         repository=build.repository,
         app_name=build.app_name,
