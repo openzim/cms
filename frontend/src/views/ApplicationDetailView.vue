@@ -5,32 +5,49 @@
       <div class="mt-4 text-body-large">{{ loadingStore.loadingText }}</div>
     </div>
 
-    <div v-if="dataLoaded">
-      <div class="mb-4">
-        <h2 class="text-title-large mb-2">{{ application?.name }}</h2>
-
-        <div v-if="application" class="d-flex flex-wrap align-center ga-2">
-          <router-link
-            :to="{ name: 'title-detail', params: { id: application.title_id } }"
-            class="text-decoration-none"
+    <div v-if="dataLoaded && application">
+      <v-row>
+        <v-col>
+          <h2
+            class="text-title-large text-md-headline-small mb-2 d-flex flex-wrap align-center ga-2"
           >
-            <v-chip size="small" variant="tonal" color="primary" prepend-icon="mdi-bookshelf">
-              {{ application.title_name }}
+            <code>{{ application.name }}</code>
+            <v-chip
+              size="small"
+              variant="tonal"
+              :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
+            >
+              {{ storeLabel(store) }}
             </v-chip>
-          </router-link>
+          </h2>
+        </v-col>
+      </v-row>
 
-          <v-chip size="small" variant="tonal" prepend-icon="mdi-tag-outline">
-            {{ flavourLabel(application.flavour) }}
-          </v-chip>
+      <div
+        v-if="canManageBuilders || canBuild"
+        class="d-flex flex-md-row flex-column justify-md-end ga-2"
+      >
+        <v-btn
+          v-if="canManageBuilders"
+          color="primary"
+          variant="elevated"
+          prepend-icon="mdi-account-key"
+          @click="showBuildersDialog = true"
+        >
+          Manage Build Access
+        </v-btn>
 
-          <v-chip
-            size="small"
-            variant="tonal"
-            :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
-          >
-            {{ storeLabel(store) }}
-          </v-chip>
-        </div>
+        <v-btn
+          v-if="canBuild"
+          color="success"
+          variant="elevated"
+          :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
+          :loading="buildsRef?.building"
+          :disabled="!application.enabled || buildsRef?.building || buildsRef?.hasOngoing"
+          @click="buildsRef?.build()"
+        >
+          Build for {{ storeLabel(store) }}
+        </v-btn>
       </div>
 
       <v-tabs
@@ -43,14 +60,14 @@
       >
         <v-tab
           base-color="primary"
-          :value="store"
+          :value="'info'"
           :to="{
             name: 'app-detail',
             params: { id },
           }"
         >
-          <v-icon class="mr-2">{{ store === 'android' ? 'mdi-android' : 'mdi-apple' }}</v-icon>
-          {{ storeLabel(store) }}
+          <v-icon class="mr-2">mdi-information</v-icon>
+          Info
         </v-tab>
 
         <v-tab
@@ -94,48 +111,78 @@
       </v-tabs>
 
       <v-window v-model="currentTab">
-        <v-window-item :value="store">
-          <template v-if="application && application.store === store">
-            <div
-              v-if="canManageBuilders || canBuild"
-              class="d-flex flex-column flex-sm-row justify-end ga-2 mb-4"
-            >
-              <v-btn
-                v-if="canManageBuilders"
-                color="primary"
-                variant="elevated"
-                prepend-icon="mdi-account-key"
-                @click="showBuildersDialog = true"
-              >
-                Manage Build Access
-              </v-btn>
+        <v-window-item :value="'info'">
+          <v-card flat>
+            <v-card-text class="pa-0">
+              <v-row no-gutters class="py-2">
+                <v-col cols="12" md="3">
+                  <div class="text-title-small">Title</div>
+                </v-col>
+                <v-col cols="12" md="9">
+                  <router-link
+                    :to="{ name: 'title-detail', params: { id: application.title_id } }"
+                    class="text-decoration-none"
+                  >
+                    {{ application.title_name }}
+                  </router-link>
+                </v-col>
+              </v-row>
+              <v-divider class="my-2"></v-divider>
 
-              <v-btn
-                v-if="canBuild"
-                color="success"
-                variant="elevated"
-                :prepend-icon="store === 'android' ? 'mdi-android' : 'mdi-apple'"
-                :loading="buildsRef?.building"
-                :disabled="!application?.enabled || buildsRef?.building || buildsRef?.hasOngoing"
-                @click="buildsRef?.build()"
-              >
-                Build for {{ storeLabel(store) }}
-              </v-btn>
-            </div>
+              <v-row no-gutters class="py-2" v-if="application.flavour">
+                <v-col cols="12" md="3">
+                  <div class="text-title-small">Flavour</div>
+                </v-col>
+                <v-col cols="12" md="9">
+                  {{ flavourLabel(application.flavour) }}
+                </v-col>
+              </v-row>
+              <v-divider v-if="application.flavour" class="my-2"></v-divider>
 
-            <ApplicationBuilds
-              ref="buildsRef"
-              :title-id="application.title_id"
-              :flavour="application.flavour"
-              :name="application.name"
-              :store="store"
-              :enabled="application.enabled"
-              :can-build="canBuild"
-            />
-          </template>
-          <v-alert v-else type="info" density="compact" variant="tonal">
-            No {{ storeLabel(store) }} application is configured for '{{ application?.name }}'.
-          </v-alert>
+              <template v-if="application.book">
+                <v-row no-gutters class="py-2">
+                  <v-col cols="12" md="3">
+                    <div class="text-title-small">Latest book</div>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <div class="d-flex flex-wrap align-center ga-2">
+                      <v-btn
+                        :to="{ name: 'book-detail', params: { id: application.book.id } }"
+                        prepend-icon="mdi-information-outline"
+                        variant="outlined"
+                        size="small"
+                      >
+                        Detail
+                      </v-btn>
+                      <v-btn
+                        v-if="application.book.recipe_link"
+                        :href="application.book.recipe_link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        prepend-icon="mdi-open-in-new"
+                        variant="outlined"
+                        size="small"
+                      >
+                        Recipe
+                      </v-btn>
+                      <ZimUrlButtons :urls="bookUrls" :loading="loadingBookUrls" empty-text="" />
+                    </div>
+                  </v-col>
+                </v-row>
+                <v-divider class="my-2"></v-divider>
+              </template>
+
+              <ApplicationBuilds
+                ref="buildsRef"
+                :title-id="application.title_id"
+                :flavour="application.flavour"
+                :name="application.name"
+                :store="store"
+                :enabled="application.enabled"
+                :can-build="canBuild"
+              />
+            </v-card-text>
+          </v-card>
         </v-window-item>
 
         <v-window-item value="history">
@@ -324,13 +371,16 @@ import ApplicationBuilds from '@/components/ApplicationBuilds.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import AppBuildersDialog from '@/components/AppBuildersDialog.vue'
+import ZimUrlButtons from '@/components/ZimUrlButtons.vue'
 import { useApplicationStore } from '@/stores/application'
 import { useApplicationHistoryStore } from '@/stores/applicationHistory'
 import { useAuthStore } from '@/stores/auth'
+import { useBookStore } from '@/stores/book'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
-import type { Application, ApplicationUpdate } from '@/types/application'
+import type { ApplicationFull, ApplicationUpdate } from '@/types/application'
 import type { ApplicationStore } from '@/types/appBuild'
+import type { ZimUrl } from '@/types/book'
 import type { EnhancedDiff } from '@/utils/diff'
 import { flavourLabel, storeLabel } from '@/utils/format'
 import { diff } from 'deep-diff'
@@ -350,11 +400,14 @@ const router = useRouter()
 const loadingStore = useLoadingStore()
 const applicationStore = useApplicationStore()
 const applicationHistoryStore = useApplicationHistoryStore()
+const bookStore = useBookStore()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
-const application = ref<Application | null>(null)
+const application = ref<ApplicationFull | null>(null)
 const dataLoaded = ref(false)
+const bookUrls = ref<ZimUrl[]>([])
+const loadingBookUrls = ref(false)
 const store = computed<ApplicationStore>(() => application.value?.store ?? 'android')
 const currentTab = ref<string>(props.selectedTab ?? '')
 
@@ -422,12 +475,30 @@ const handleRevert = async () => {
   await loadData(true)
 }
 
+const loadBookUrls = async () => {
+  const book = application.value?.book
+  bookUrls.value = []
+  if (!book) return
+
+  loadingBookUrls.value = true
+  try {
+    const response = await bookStore.fetchZimUrls([book.id])
+    if (application.value?.book?.id === book.id) {
+      bookUrls.value = response?.urls?.[book.id] ?? []
+    }
+  } finally {
+    loadingBookUrls.value = false
+  }
+}
+
 const loadData = async (fetchHistory: boolean = false) => {
   dataLoaded.value = false
   loadingStore.startLoading('Fetching application...')
   try {
     application.value = await applicationStore.fetchApplicationById(props.id)
     dataLoaded.value = true
+
+    await loadBookUrls()
 
     if (fetchHistory) {
       applicationHistoryStore.clearHistory()

@@ -19,7 +19,11 @@ from cms_backend.db.models import Account
 from cms_backend.schemas import BaseModel
 from cms_backend.schemas.fields import LimitFieldMax200, NotEmptyString, SkipField
 from cms_backend.schemas.models import ApplicationCreateSchema, ApplicationUpdateSchema
-from cms_backend.schemas.orms import ApplicationHistorySchema, ApplicationSchema
+from cms_backend.schemas.orms import (
+    ApplicationFullSchema,
+    ApplicationHistorySchema,
+    ApplicationLightSchema,
+)
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -48,7 +52,7 @@ def get_applications(
         Sequence[UUID] | None, Depends(get_accessible_title_ids)
     ],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ListResponse[ApplicationSchema]:
+) -> ListResponse[ApplicationLightSchema]:
     results = db_application.get_applications(
         session,
         accessible_collection_ids=accessible_collection_ids,
@@ -58,7 +62,7 @@ def get_applications(
         skip=params.skip,
         limit=params.limit,
     )
-    return ListResponse[ApplicationSchema](
+    return ListResponse[ApplicationLightSchema](
         meta=calculate_pagination_metadata(
             nb_records=results.nb_records,
             skip=params.skip,
@@ -82,14 +86,14 @@ def get_application(
         Sequence[UUID] | None, Depends(get_accessible_title_ids)
     ],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ApplicationSchema:
+) -> ApplicationFullSchema:
     application = db_application.get_application_by_id(
         session,
         application_id=application_id,
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
-    return db_application.create_application_schema(application)
+    return db_application.create_application_full_schema(session, application)
 
 
 @router.post(
@@ -107,7 +111,7 @@ def create_application(
     ],
     current_account: Annotated[Account, Depends(get_current_account)],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ApplicationSchema:
+) -> ApplicationFullSchema:
     application = db_application.create_application(
         session,
         payload=request,
@@ -115,7 +119,7 @@ def create_application(
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
-    return db_application.create_application_schema(application)
+    return db_application.create_application_full_schema(session, application)
 
 
 @router.patch(
@@ -133,7 +137,7 @@ def update_application(
     ],
     current_account: Annotated[Account, Depends(get_current_account)],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
-) -> ApplicationSchema:
+) -> ApplicationFullSchema:
     application = db_application.update_application(
         session,
         application_id=application_id,
@@ -142,7 +146,7 @@ def update_application(
         author_id=current_account.id,
         payload=request,
     )
-    return db_application.create_application_schema(application)
+    return db_application.create_application_full_schema(session, application)
 
 
 @router.delete(
@@ -252,7 +256,7 @@ def revert_application(
     ],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     current_account: Annotated[Account, Depends(get_current_account)],
-) -> ApplicationSchema:
+) -> ApplicationFullSchema:
     """Revert an application to a previous history entry."""
     application = db_application.revert_application(
         session,
@@ -263,4 +267,4 @@ def revert_application(
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
-    return db_application.create_application_schema(application)
+    return db_application.create_application_full_schema(session, application)

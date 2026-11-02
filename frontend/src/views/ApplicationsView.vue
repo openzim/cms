@@ -44,7 +44,7 @@ import { useApplicationStore } from '@/stores/application'
 import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
-import type { Application } from '@/types/application'
+import type { ApplicationFull, ApplicationLight } from '@/types/application'
 
 const router = useRouter()
 const route = useRoute()
@@ -53,7 +53,7 @@ const applicationStore = useApplicationStore()
 const loadingStore = useLoadingStore()
 const notificationStore = useNotificationStore()
 
-const applications = ref<Application[]>([])
+const applications = ref<ApplicationLight[]>([])
 const filters = ref({ name: '', store: '' })
 const showCreateDialog = ref(false)
 
@@ -128,7 +128,7 @@ const handleClearFilters = () => {
   router.push({ query: {} })
 }
 
-const handleApplicationCreated = (application: Application) => {
+const handleApplicationCreated = (application: ApplicationFull) => {
   notificationStore.showSuccess(`Application "${application.name}" has been created.`)
   router.push({
     name: 'app-detail',

@@ -1,8 +1,6 @@
 <template>
   <div v-if="(canBuild && enabled) || builds.length > 0" class="mb-4">
-    <div class="d-flex align-center flex-wrap ga-2 mb-2">
-      <span class="text-title-small">{{ storeLabel(store) }} builds</span>
-    </div>
+    <div class="d-flex align-center flex-wrap ga-2 mb-2">Builds</div>
 
     <v-alert v-if="canBuild && !enabled" type="info" density="compact" variant="tonal" class="mb-2">
       This application is not enabled for build.
@@ -33,11 +31,12 @@
             by {{ build.requested_by }}
           </span>
 
-          <div class="d-flex flex-wrap align-center ga-1 ms-auto">
+          <div class="d-flex flex-wrap align-center ga-2 ms-auto">
             <v-btn
               v-if="build.pr_url"
-              size="x-small"
-              variant="text"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-source-pull"
               :href="build.pr_url"
               target="_blank"
               rel="noopener noreferrer"
@@ -46,8 +45,9 @@
             </v-btn>
             <v-btn
               v-if="build.release_url"
-              size="x-small"
-              variant="text"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-tag-outline"
               :href="build.release_url"
               target="_blank"
               rel="noopener noreferrer"
@@ -55,8 +55,9 @@
               Release
             </v-btn>
             <v-btn
-              size="x-small"
-              variant="text"
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-github"
               :href="workflowUrl(build)"
               target="_blank"
               rel="noopener noreferrer"
@@ -95,6 +96,24 @@
       </v-card>
     </div>
     <span v-else class="text-body-small text-medium-emphasis">No builds yet.</span>
+
+    <ConfirmDialog
+      v-model="showConfirmDialog"
+      title="Start a new build?"
+      confirm-text="Start build"
+      confirm-color="success"
+      icon="mdi-hammer-wrench"
+      icon-color="success"
+      @confirm="confirmBuild"
+    >
+      <template #content>
+        <p>
+          This will start a new build of <strong>{{ name }}</strong> for
+          <strong>{{ storeLabel(store) }}</strong
+          >. The build runs in CI and may take several minutes to complete.
+        </p>
+      </template>
+    </ConfirmDialog>
 
     <v-dialog v-model="showDuplicateDialog" max-width="520">
       <v-card>
@@ -140,6 +159,7 @@ import type {
   AppBuildStatus,
   ApplicationStore,
 } from '@/types/appBuild'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EventsList from '@/components/EventsList.vue'
 import { formatDt, storeLabel } from '@/utils/format'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -162,6 +182,7 @@ const notificationStore = useNotificationStore()
 const builds = ref<ApplicationBuild[]>([])
 const errors = ref<string[]>([])
 const building = ref(false)
+const showConfirmDialog = ref(false)
 const showDuplicateDialog = ref(false)
 const duplicateBuild = ref<ApplicationBuild | null>(null)
 const expandedBuilds = ref<Set<string>>(new Set())
@@ -314,6 +335,15 @@ const triggerBuild = async () => {
       showDuplicateDialog.value = true
       return
     }
+    showConfirmDialog.value = true
+  } finally {
+    building.value = false
+  }
+}
+
+const confirmBuild = async () => {
+  building.value = true
+  try {
     await build()
   } finally {
     building.value = false

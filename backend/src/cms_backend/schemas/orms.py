@@ -24,16 +24,6 @@ class ListResult[T](BaseModel):
     records: list[T]
 
 
-class ApplicationSchema(BaseModel):
-    id: UUID
-    title_id: UUID
-    title_name: NotEmptyString
-    flavour: ZimFlavour
-    store: NotEmptyString
-    enabled: bool = False
-    name: NotEmptyString
-
-
 class ApplicationHistorySchema(BaseModel):
     id: UUID
     title_id: UUID
@@ -381,3 +371,17 @@ class TitleUploadLightSchema(BaseModel):
         if self.status == "requested":
             return None
         return construct_task_link(self.id)
+
+
+class ApplicationLightSchema(BaseModel):
+    id: UUID
+    title_id: UUID
+    title_name: NotEmptyString
+    flavour: ZimFlavour
+    store: NotEmptyString
+    enabled: bool = False
+    name: NotEmptyString
+
+
+class ApplicationFullSchema(ApplicationLightSchema):
+    book: BookFullSchema | None

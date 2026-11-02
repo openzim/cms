@@ -67,7 +67,7 @@
 
 <script setup lang="ts">
 import ErrorMessage from '@/components/ErrorMessage.vue'
-import type { Application } from '@/types/application'
+import type { ApplicationLight } from '@/types/application'
 import type { Paginator } from '@/types/base'
 import { flavourLabel, storeLabel } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
@@ -75,7 +75,7 @@ import { useDisplay } from 'vuetify'
 
 const props = defineProps<{
   headers: { title: string; key: string; sortable?: boolean }[]
-  applications: Application[]
+  applications: ApplicationLight[]
   paginator: Paginator
   loading: boolean
   errors: string[]
@@ -107,7 +107,7 @@ function onUpdateOptions(options: { page: number; itemsPerPage: number }) {
   }
 }
 
-function onRowClick(_event: Event, { item }: { item: Application }) {
+function onRowClick(_event: Event, { item }: { item: ApplicationLight }) {
   router.push({
     name: 'app-detail',
     params: { id: item.id },

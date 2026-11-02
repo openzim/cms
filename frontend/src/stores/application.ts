@@ -1,5 +1,10 @@
 import { useAuthStore } from '@/stores/auth'
-import type { Application, ApplicationCreate, ApplicationUpdate } from '@/types/application'
+import type {
+  ApplicationCreate,
+  ApplicationFull,
+  ApplicationLight,
+  ApplicationUpdate,
+} from '@/types/application'
 import type { ListResponse, Paginator } from '@/types/base'
 import type { ErrorResponse } from '@/types/errors'
 import { translateErrors } from '@/utils/errors'
@@ -8,7 +13,7 @@ import { ref } from 'vue'
 
 export const useApplicationStore = defineStore('application', () => {
   const errors = ref<string[]>([])
-  const applications = ref<Application[]>([])
+  const applications = ref<ApplicationLight[]>([])
   const paginator = ref<Paginator>({
     page: 1,
     page_size: 50,
@@ -33,7 +38,7 @@ export const useApplicationStore = defineStore('application', () => {
       const params: Record<string, string | number> = { limit, skip }
       if (name) params.name = name
       if (store) params.store = store
-      const response = await service.get<null, ListResponse<Application>>('', { params })
+      const response = await service.get<null, ListResponse<ApplicationLight>>('', { params })
       applications.value = response.items
       paginator.value = response.meta
       errors.value = []
@@ -48,7 +53,7 @@ export const useApplicationStore = defineStore('application', () => {
   const fetchApplicationById = async (id: string) => {
     const service = await authStore.getApiService('applications')
     try {
-      const response = await service.get<null, Application>(`/${id}`)
+      const response = await service.get<null, ApplicationFull>(`/${id}`)
       errors.value = []
       return response
     } catch (_error) {
@@ -61,7 +66,7 @@ export const useApplicationStore = defineStore('application', () => {
   const createApplication = async (payload: ApplicationCreate) => {
     const service = await authStore.getApiService('applications')
     try {
-      const response = await service.post<ApplicationCreate, Application>('', payload)
+      const response = await service.post<ApplicationCreate, ApplicationFull>('', payload)
       errors.value = []
       return response
     } catch (_error) {
@@ -74,7 +79,7 @@ export const useApplicationStore = defineStore('application', () => {
   const updateApplication = async (id: string, payload: ApplicationUpdate) => {
     const service = await authStore.getApiService('applications')
     try {
-      const response = await service.patch<ApplicationUpdate, Application>(`/${id}`, payload)
+      const response = await service.patch<ApplicationUpdate, ApplicationFull>(`/${id}`, payload)
       errors.value = []
       return response
     } catch (_error) {

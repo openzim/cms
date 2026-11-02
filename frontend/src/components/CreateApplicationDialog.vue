@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { useApplicationStore } from '@/stores/application'
 import { useTitleStore } from '@/stores/title'
-import type { Application, ApplicationCreate } from '@/types/application'
+import type { ApplicationCreate, ApplicationFull } from '@/types/application'
 import type { Title, TitleLight } from '@/types/title'
 import type { ApplicationStore } from '@/types/appBuild'
 import { flavourLabel, storeLabel } from '@/utils/format'
@@ -104,7 +104,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  created: [application: Application]
+  created: [application: ApplicationFull]
 }>()
 
 const applicationStore = useApplicationStore()

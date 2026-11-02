@@ -1,6 +1,7 @@
 import type { ApplicationStore } from '@/types/appBuild'
+import type { Book } from '@/types/book'
 
-export interface Application {
+export interface ApplicationLight {
   id: string
   title_id: string
   title_name: string
@@ -8,6 +9,10 @@ export interface Application {
   store: ApplicationStore
   enabled: boolean
   name: string
+}
+
+export interface ApplicationFull extends ApplicationLight {
+  book: Book | null
 }
 
 export interface ApplicationCreate {

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
+from cms_backend.db import book as db_book
 from cms_backend.db import count_from_stmt
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db import title as db_title
@@ -24,8 +25,9 @@ from cms_backend.db.models import (
 )
 from cms_backend.schemas.models import ApplicationCreateSchema, ApplicationUpdateSchema
 from cms_backend.schemas.orms import (
+    ApplicationFullSchema,
     ApplicationHistorySchema,
-    ApplicationSchema,
+    ApplicationLightSchema,
     ListResult,
 )
 
@@ -44,10 +46,30 @@ def _access_filter(
     )
 
 
-def create_application_schema(
+def create_application_full_schema(
+    session: OrmSession, application: Application
+) -> ApplicationFullSchema:
+
+    book = db_book.get_latest_prod_book(
+        session, title_id=application.title_id, flavour=application.flavour
+    )
+
+    return ApplicationFullSchema(
+        id=application.id,
+        title_id=application.title_id,
+        title_name=application.title_flavour.title.name,
+        flavour=application.flavour,
+        store=application.store,
+        enabled=application.enabled,
+        book=None if book is None else db_book.create_book_full_schema(book),
+        name=application.name,
+    )
+
+
+def create_application_light_schema(
     application: Application,
-) -> ApplicationSchema:
-    return ApplicationSchema(
+) -> ApplicationLightSchema:
+    return ApplicationLightSchema(
         id=application.id,
         title_id=application.title_id,
         title_name=application.title_flavour.title.name,
@@ -147,7 +169,7 @@ def get_applications(
     name: str | None = None,
     skip: int = 0,
     limit: int = 50,
-) -> ListResult[ApplicationSchema]:
+) -> ListResult[ApplicationLightSchema]:
     stmt = (
         select(Application)
         .join(Application.title_flavour)
@@ -162,10 +184,10 @@ def get_applications(
         )
     )
 
-    return ListResult[ApplicationSchema](
+    return ListResult[ApplicationLightSchema](
         nb_records=count_from_stmt(session, stmt),
         records=[
-            create_application_schema(application)
+            create_application_light_schema(application)
             for application in session.scalars(
                 stmt.order_by(Title.name, TitleFlavour.flavour, Application.store)
                 .offset(skip)
