@@ -10,7 +10,7 @@ You are welcome to use it, report bugs and request features!
 ## Documentation
 
 - **[Editors Guide](EDITORS_GUIDE.md)**: For CMS users — learn about titles, books,
-  collections, and how to use the UI to manage content.
+  collections, applications, the role model, and how to use the UI to manage content.
 - **[Integrators Guide](INTEGRATORS_GUIDE.md)**: For integrators who install,
   configure, deploy and maintain the CMS platform infrastructure.
 
@@ -25,10 +25,11 @@ PostgreSQL database. It is packaged into three Docker images, each responsible f
 distinct role:
 
 - **`api`** (`ghcr.io/openzim/cms-api`): the REST API consumed by the UI and by the
-  zimfarm backend. It also exposes `catalog.xml` endpoints so Kiwix readers can
-  discover the books in each collection.
+  zimfarm backend. It also exposes `catalog.xml` and `opds.xml` endpoints so Kiwix
+  readers can discover the books in each collection.
 - **`mill`** (`ghcr.io/openzim/cms-mill`): processes background tasks, such as turning
-  incoming zimfarm notifications into books.
+  incoming zimfarm notifications into books, advancing app builds, and fetching
+  download statistics.
 - **`shuttle`** (`ghcr.io/openzim/cms-shuttle`): moves and deletes ZIM files across
   warehouses.
 
@@ -36,7 +37,7 @@ distinct role:
 
 The [frontend](frontend/) is a Vue.js single-page application
 (`ghcr.io/openzim/cms-ui`). It is a consumer of the backend API and is used to review
-and organize the books cataloged in the CMS.
+and organize the books cataloged in the CMS, and to manage applications and app builds.
 
 ## Getting Started
 

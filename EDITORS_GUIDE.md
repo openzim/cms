@@ -16,17 +16,21 @@ If you are looking for how to install, configure and deploy the CMS, read the
   - [Flavours](#flavours)
   - [Collections](#collections)
   - [Warehouses](#warehouses)
+  - [Applications](#applications)
+  - [App Builds](#app-builds)
+  - [Download Statistics](#download-statistics)
   - [Zimfarm Notifications](#zimfarm-notifications)
+  - [Events](#events)
   - [Title Uploads](#title-uploads)
 - [The Lifecycle of a Book](#the-lifecycle-of-a-book)
 - [Roles & Permissions](#roles--permissions)
 - [Using the UI](#using-the-ui)
   - [Inbox](#inbox)
-  - [Titles](#titles)
-  - [Books](#books)
-  - [Collections](#collections)
+  - [Titles](#titles-1)
+  - [Books](#books-1)
+  - [Collections](#collections-1)
+  - [Apps](#apps)
   - [Users](#users)
-  - [Zimfarm Notifications](#zimfarm-notifications-1)
 
 ## What is the CMS?
 
@@ -35,6 +39,9 @@ The CMS is the component of the Kiwix stack that catalogs the ZIM files produced
 new ZIM is produced, checks that the ZIM meets openZIM's requirements, and
 associates it with a **title** (a series of related ZIM files) placed in one or more
 **collections** (the catalogs exposed to Kiwix readers).
+
+It is also the place where branded applications for Android and Apple are configured
+and from which their builds are triggered.
 
 The web interface is available at [cms.openzim.org](https://cms.openzim.org/).
 
@@ -53,10 +60,10 @@ workflow:
   title yet. These books appear in the _Inbox_.
 - **`staging`**: the book is attached to a title but is not yet ready to be published
   (e.g. the title is still marked `unstable`, or the book has issues).
-- **`prod`**: the book is published. A book is published automatically if it's
-  associated title is marked `stable` and it has no issues. In the failure of
-  automatic movement to `prod` due to book issues, editor has to manually move book
-  and resolve any fixable issues along the way.
+- **`prod`**: the book is published. A book is published automatically if its
+  associated title is marked `stable` and it has no issues. If automatic movement to
+  `prod` fails because of book issues, an editor has to manually move the book and
+  resolve any fixable issues along the way.
 - **`to_delete`**: the book has been scheduled for deletion.
 - **`deleted`**: the book's files have been removed.
 
@@ -64,6 +71,13 @@ Books can also carry **issues**, which describe problems that prevent a book fro
 promoted to `prod`. Common issues include missing mandatory metadata, unsupported
 languages, unexpected article/media count changes, recipe mismatches, or zimcheck
 errors.
+
+When a book is moved to `staging` or `prod`, it goes through a short **transition**.
+The book is immediately shown with its destination location kind, but its download and
+view links are not advertised yet. The transition advances as the files are physically
+moved, then as the book becomes available on mirrors, and finally as it becomes live in
+the library. A book still in transition carries a `transition_status` value
+(`moving_files`, `checking_mirrors`, or `checking_library`).
 
 ### Titles
 
@@ -77,7 +91,11 @@ A title has:
 - the ZIM metadata used to describe the content: `title`, `creator`, `publisher`,
   `description`, `language`, `illustration`, `long_description`, `license`,
   `relation`, `source`
-- a **maturity**, either `unstable` or `stable`. Books belonging to titles with maturiy of `stable` will be automatically moved to `staging` if they have no issues while those marked as `unstable` will unconditionally be moved to `staging`.
+- a **maturity**, either `unstable` or `stable`. Books belonging to `stable` titles are
+  moved to `prod` automatically when they have no issues; books belonging to
+  `unstable` titles are always moved to `staging`.
+- a **popularity** score (1 to 100), derived from recent download statistics.
+    It is used to sort titles in the UI.
 - an **archived** flag. Archiving is the equivalent of deleting a title while keeping
   its history.
 - one or more **flavours** and **collections**.
@@ -95,7 +113,7 @@ title.
 ### Collections
 
 A **collection** is a curated catalog of titles exposed to Kiwix readers through a
-`catalog.xml` file.
+`catalog.xml` file (and an equivalent `opds.xml` feed).
 
 Each collection:
 
@@ -115,12 +133,60 @@ used to separate concerns such as the quarantine area, the staging area, product
 collections and backups. Each book is associated with one or more **locations**, each
 pointing to a warehouse, a path and a filename.
 
+### Applications
+
+An **application** is the configuration used to build and publish a branded app for
+one flavour of a title to a store. Each application has:
+
+- a **title** and a **flavour**
+- a **store**, either `android` or `apple`
+- an **application name**, which identifies the branded app (lowercase letters, digits,
+  hyphens and underscores only)
+- an **enabled** flag
+
+A given title flavour can have at most one application per store, and an application
+name must be unique within a store. Applications are listed in the **Apps** screen.
+
+### App Builds
+
+An **app build** is a request to package the latest production book of a title flavour
+into a branded application and publish it to a store.
+
+When a build is requested, the CMS:
+
+1. checks that the application is enabled and that no other build for the same
+   application is already in progress,
+2. derives the content version from the latest `prod` book of the flavour,
+3. opens a pull request against the branded app repository,
+4. waits for the pull request checks, merges it, and creates a release/tag,
+5. triggers the CD workflow which builds and uploads the app,
+6. marks the build as uploaded once the CD workflow succeeds.
+
+
+### Download Statistics
+
+The CMS periodically fetches the daily number of downloads of every title flavour from
+the Kiwix download load balancer (through Matomo). These statistics power two things:
+
+- the **Stats** tab of a title, which shows monthly downloads per flavour for the
+  current and previous calendar year,
+- the **popularity** score of titles, which is periodically recomputed from the most
+  recent days of downloads and shown in the titles list and title details.
+
 ### Zimfarm Notifications
 
 A **Zimfarm notification** is the message sent by the zimfarm backend to the CMS when a
 ZIM file has been produced and verified. The CMS stores each notification, then the
-`mill` processes it into a **book**. Notifications can be inspected in the UI, which is
-useful to understand why a book was (or was not) created.
+`mill` processes it into a **book**. Notifications can be inspected in the
+_Zimfarm Notifications_ tab of the _Inbox_, which is useful to understand why a book was
+(or was not) created.
+
+### Events
+
+An **event** is an internal message recorded by the CMS to trigger background work. For
+example, editing a title records a `title_modified` event that the `mill` consumes to
+propagate the changes. Events are listed in the _Events_ tab of the _Inbox_; they are
+mostly useful for diagnosing why a change has not been processed yet.
 
 ### Title Uploads
 
@@ -128,6 +194,9 @@ A **title upload** is a ZIM file uploaded manually through the CMS (rather than 
 produced by a regular Zimfarm recipe). When you upload a ZIM this way, the CMS creates
 (or reuses) a dedicated `zimwright` recipe on zimfarm and requests a task to process the
 file. You can follow the progress of these uploads in the _Upload_ tab of a title.
+
+Uploads can be performed by editors, or by accounts with the `title-uploader` role that
+have been granted access to the title. See [Roles & Permissions](#roles--permissions).
 
 ## The Lifecycle of a Book
 
@@ -138,7 +207,10 @@ file. You can follow the progress of these uploads in the _Upload_ tab of a titl
 4. If the book matches a title, it is attached to it and either:
    - moved to **staging** if the title is still `unstable` or the book has issues, or
    - moved to **prod** if the title is `stable` and the book has no issues.
-5. The `shuttle` physically moves the ZIM file to its target warehouse location(s).
+5. The book enters a **transition**: the `shuttle` physically moves the ZIM file to its
+   target warehouse location(s), then the `mill` checks that the book is available on
+   enough mirrors and live in the library. Download and view links become available
+   near the end of this transition.
 6. Retention rules are applied to `prod` books, and books that are no longer needed are
    scheduled for deletion.
 
@@ -148,49 +220,72 @@ the **Inbox** for an editor to review.
 ## Roles & Permissions
 
 The CMS uses a role-based access control system. Each account has a single role that
-determines what it can do:
+determines what it can do. Collection-scoped roles are further restricted to the
+collections explicitly granted to the account, and the `title-uploader` role is
+restricted to the titles explicitly granted to it.
 
-| Role                  | Description                                                                                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **admin**             | Full access to everything, including user management and all CRUD operations on titles, books and collections.                                              |
-| **global-editor**     | Full access to all books and titles (including archiving), can read accounts, and read/update all collections.                                              |
-| **collection-editor** | Can manage books and read/update titles and collections, but only for the collections they are granted access to. Cannot archive titles or manage accounts. |
-| **viewer**            | Read-only. Can authenticate but cannot modify anything.                                                                                                     |
+| Role                  | Scope                          | Description                                                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **admin**             | Everything                     | Full access to everything. Only role that can create and delete collections, delete applications, and create/update/delete accounts.                                                                                                                                                 |
+| **global-editor**     | All collections and titles     | Full access to all books and titles (including archiving), can read accounts, and read/update all collections. Can create/update applications and trigger builds on any title.                                                                                                       |
+| **collection-editor** | Granted collections and titles | Can manage books, and read/update titles (but not archive them) and collections, within the collections they are granted access to. Can create/update applications for these titles, but can only trigger a build after being granted build access to the title. Cannot manage accounts. |
+| **collection-viewer** | Granted collections and titles | Read-only access to books, titles and collections within the collections they are granted access to.                                                                                                                                                                                 |
+| **global-viewer**     | All collections and titles     | Read-only access to all books, titles and collections. Can also read accounts.                                                                                                                                                                                                       |
+| **title-uploader**    | Granted titles                 | Can view the titles it has been granted access to and upload ZIM files to them. Cannot access the Collections, Apps or Users screens.                                                                                                                                                |
+| **public-viewer**     | Public content                 | Lowest-privilege authenticated role. It grants no CMS permission beyond what an unauthenticated visitor can access (public catalogs). This is the role given to accounts automatically created on first OAuth login.                                                              |
+| **zimfarm**           | Machine account                | Can read and create Zimfarm notifications. Reserved for the Zimfarm backend machine account and cannot be created through the UI.                                                                                                                                                    |
 
-> **Note:** the `zimfarm` role also exists but is reserved for the machine account used
-> by the Zimfarm backend to push notifications. It cannot be created through the UI.
+Additional role-level rules:
+
+- **Granting upload access**: accounts with `title:update` permission on a title (admins,
+  global editors, and collection editors for titles in their collections) can grant a
+  `title-uploader` account access to that title from the title's _Upload_ tab.
+- **Granting build access**: collection editors can only trigger app builds for titles
+  they have been explicitly granted build access to. Admins and global editors in addition to
+  triggering any application builds can grant build access to collection editors.
+  Build access is granted from the _Apps_ screen (see [Apps](#apps)).
+- **Visibility**: users only see the titles, books, collections and applications they
+  have access to.
 
 ## Using the UI
 
 ### Inbox
 
-The **Inbox** lists books in **quarantine** that need attention — books with errors,
-books that could not be matched to a title, and books awaiting a decision. From the
-inbox you can:
+The **Inbox** has three tabs:
 
-- open a book to inspect its metadata and issues
-- attach a book to a title
-- delete a book
-- promote a book to `prod` once its issues are resolved
+- **Books**: the list of books you have access to. By default it shows _active_ books
+  (quarantine, staging and prod). Use the filters to narrow the list by name, status
+  (quarantine, staging, to be deleted, deleted, all), flag (needs file operation, needs
+  processing, has error, pending title), offliner, or issue.
+- **Zimfarm Notifications**: the notifications received from zimfarm. Opening one shows
+  its content and events, which is helpful for diagnosing why a book was created,
+  rejected, or is still pending.
+- **Events**: the internal events recorded by the CMS.
+
+From a book you can inspect its metadata and issues, attach it to a title, delete it, or
+promote it once its issues are resolved.
 
 ### Titles
 
-The **Titles** screen lists all non-archived titles. From here you can create, edit,
-archive and merge titles, and open a title to manage its details.
+The **Titles** screen lists all non-archived titles, sorted by popularity or by name.
+From here you can create titles, and archive or merge several titles at once. Archived
+titles are available through the _Archived Titles_ screen.
 
 A title detail page is organized into tabs:
 
-- **Details**: the title's metadata, its collections, its events, and the books
-  attached to it.
-- **Flavours**: the flavours of the title and their linked zimfarm recipe. You can
-  remove a flavour from here. Deleting a flavour has the implication that books are
-  marked for deletion.
+- **Info**: the title's metadata, popularity, collections, events, and associated
+  books.
+- **Books**: the books attached to the title, grouped by flavour, with a status filter.
+- **Stats**: monthly download statistics per flavour for the current and previous
+  calendar year.
 - **History**: the change history of the title. Useful to see who made changes to a
-  title and the reason why they made a change.
-- **Edit**: edit the title's metadata and associated collections.
+  title and why, and to revert a change.
+- **Edit**: edit the title's metadata, associated collections, and flavours. Removing a
+  flavour has the implication that its books are marked for deletion.
 - **Upload**: upload a ZIM file manually and follow the processing status of the
-  title's uploads.
-- **Archive**: archive the title.
+  title's uploads. Editors can also use _Manage Upload Access_ to grant
+  `title-uploader` accounts access to this title.
+- **Archive**: archive or restore the title.
 
 When you edit a title's metadata, the CMS can offer to propagate the change to the
 underlying zimfarm recipe (this requires your own Zimfarm credentials — see the
@@ -214,19 +309,43 @@ and history. Depending on your permissions, you can:
 
 ### Collections
 
-The **Collections** screen lists collections. You can create a collection, edit its
-name, download/view base URLs, privacy, and thresholds, and browse the titles it
-contains. Each collection exposes a `catalog.xml` file (at
-`/collections/{id_or_name}/catalog.xml`) that Kiwix readers consume.
+The **Collections** screen lists collections and lets you filter by name and visibility
+(public/private). Admins can create collections; global editors and collection editors
+can edit the collections they have access to.
+
+On a collection detail page you can view its info (warehouse, base URLs, privacy,
+thresholds), browse its history, and edit its settings. Each collection exposes:
+
+- a `catalog.xml` file at `/collections/{id_or_name}/catalog.xml`, consumed by Kiwix
+  readers,
+- an `opds.xml` feed at `/collections/{id_or_name}/opds.xml`.
+
+### Apps
+
+The **Apps** screen lists the applications configured for Android and Apple. You can
+filter them by name and store, and open an application to:
+
+- view its title, flavour, latest production book, and build history,
+- **build** the application for its store,
+- **manage build access**, i.e. grant or revoke the collection editors allowed to build
+  applications,
+- edit the application name and enabled flag,
+- view and revert its history,
+- delete it (admins only).
+
+When a build is requested, the CMS first checks whether the current content version was
+already built successfully and, if so, asks whether you want to build it again. Only one
+build per application can be in progress at a time. The build list shows the status,
+phase, content version, pull request, release and workflow links, and the build events.
+
 
 ### Users
 
 The **Users** screen lists accounts. Admins can create accounts, change roles, grant
-`collection-editor` accounts access to specific collections, reset passwords, and
-delete accounts.
+`collection-editor` and `collection-viewer` accounts access to specific collections,
+reset passwords, and delete accounts. The role selector includes all the roles described
+in [Roles & Permissions](#roles--permissions).
 
-### Zimfarm Notifications
-
-The **Zimfarm Notifications** screen lists the notifications received from zimfarm.
-Opening a notification shows its content and events, which is helpful for diagnosing
-why a book was created, rejected, or is still pending.
+Public viewers are hidden by default; use _Show Viewers_ to display them. The Zimfarm
+machine account is not shown in the UI. Creating a collection-scoped account requires
+selecting at least one collection.
