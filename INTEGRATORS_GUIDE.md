@@ -32,6 +32,7 @@ environment variables are passed.
 - [Warehouses & Filesystem](#warehouses--filesystem)
 - [Base URLs](#base-urls)
 - [Catalogs & Feeds](#catalogs--feeds)
+- [CORS](#cors)
 - [Applications & App Builds](#applications--app-builds)
 - [Download Statistics](#download-statistics)
 - [Authentication](#authentication)
@@ -62,7 +63,10 @@ for:
 - `DATABASE_URL`: SQLAlchemy connection string (e.g.
   `postgresql+psycopg://cms:cmspass@postgresdb:5432/cms`).
 - `ALEMBIC_UPGRADE_HEAD_ON_START`: set to `"true"` to run migrations on startup.
-- `ALLOWED_ORIGINS`: comma-separated list of CORS origins.
+- `ALLOWED_ORIGINS`: comma-separated list of origins allowed to make
+  credentialed CORS requests to non-public endpoints. Public read-only
+  endpoints marked with `@cors_public` are always readable from any origin
+  (see [CORS](#cors)).
 - `INIT_USERNAME` / `INIT_PASSWORD`: credentials of the initial `admin` account
   created on startup if it does not exist.
 - `STAGING_WAREHOUSE_ID`, `STAGING_BASE_PATH`, `STAGING_DOWNLOAD_BASE_URL`,
@@ -434,6 +438,34 @@ The OPDS feed embeds the book illustration as a base64 data URL by default. Set
 `OPDS_INLINE_ILLUSTRATION` to `"false"` and configure
 `OPDS_ILLUSTRATION_URL_TEMPLATE` (with the `{book_id}` placeholder) to reference the
 illustration by URL instead. This is usually done to keep the feed small.
+
+## CORS
+
+The API uses two CORS policies:
+
+- **Public read-only endpoints** are the routes decorated with `@cors_public` in
+  the backend. They are answered with `Access-Control-Allow-Origin: *` and
+  without `Access-Control-Allow-Credentials`, so any browser page can read them.
+  This covers the staging and collection catalogs (`catalog.xml`, `opds.xml`),
+  the collection, book, title, event, warehouse, config and healthcheck
+  listings, and per-title download statistics.
+- **Everything else** keeps the `ALLOWED_ORIGINS` whitelist with credentials
+  enabled. This includes every endpoint behind a permission and every
+  state-changing endpoint, as well as any route that is not explicitly marked.
+
+If `ALLOWED_ORIGINS` is unset, non-public endpoints send no CORS headers at all,
+while public endpoints still send `Access-Control-Allow-Origin: *`.
+
+Marking a `POST`, `PATCH` or `DELETE` route with `@cors_public` makes the API
+fail at startup instead of silently opening a write endpoint. A newly added
+route is restrictive by default and you need to decorate it with `@cors_public`
+to genuinely make it public and read-only.
+
+```python
+@router.get("/zims")
+@cors_public
+def get_zim_urls(...): ...
+```
 
 ## Applications & App Builds
 
