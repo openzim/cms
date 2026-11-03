@@ -500,7 +500,7 @@
         </div>
         <p
           v-if="action.requirement === 'information' && action.message"
-          class="text-body-2 text-medium-emphasis ml-8 mb-2"
+          class="text-body-medium text-medium-emphasis ml-8 mb-2"
         >
           {{ action.message }}
         </p>

@@ -1,4 +1,5 @@
 import constants from '@/constants'
+import type { ApplicationStore } from '@/types/appBuild'
 import httpRequest from '@/utils/httpRequest'
 import type { PiniaPluginContext } from 'pinia'
 import { inject } from 'vue'
@@ -21,6 +22,7 @@ export interface Config {
   ARTICLE_COUNT_DECREASE_THRESHOLD: number | undefined
   ZIM_TITLE_MAX_LENGTH: number | undefined
   ZIM_DESCRIPTION_MAX_LENGTH: number | undefined
+  APP_BUILD_STORES?: Array<ApplicationStore>
 }
 
 export const ConfigService = {

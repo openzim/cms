@@ -340,7 +340,7 @@ def get_book_issues(
     book = db_book.get_book(
         session, book_id, accessible_collection_ids=accessible_collection_ids
     )
-    previous_book = db_book.get_latest_prod_book(session, book)
+    previous_book = db_book.get_latest_prod_book_or_current_book(session, book)
     issues = db_book.update_book_issues(session, book)
     return JSONResponse(
         content={

@@ -201,18 +201,16 @@
           <h3 class="text-title-large">Flavours</h3>
         </div>
 
-        <div
-          v-for="(flavour, index) in editableFlavours"
-          :key="index"
-          class="d-flex align-center ga-2 mb-3"
-        >
-          <TitleFlavourItem :flavour="flavour" class="flex-grow-1" />
-          <v-btn
-            icon="mdi-delete"
-            variant="text"
-            color="error"
-            @click="removeFlavour(Number(index))"
-          />
+        <div v-for="(flavour, index) in editableFlavours" :key="index" class="mb-4">
+          <div class="d-flex align-center ga-2">
+            <TitleFlavourItem :flavour="flavour" class="flex-grow-1" />
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              color="error"
+              @click="removeFlavour(Number(index))"
+            />
+          </div>
         </div>
       </div>
 
@@ -381,7 +379,10 @@ const hasCollectionChanges = computed(() => {
 })
 
 const flavourPayload = computed<TitleFlavourCreate[]>(() =>
-  editableFlavours.value.map((f) => ({ flavour: f.flavour, recipe_id: f.recipe_id })),
+  editableFlavours.value.map((f) => ({
+    flavour: f.flavour,
+    recipe_id: f.recipe_id,
+  })),
 )
 
 const hasFlavoursChanges = computed(() => {

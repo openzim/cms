@@ -8,6 +8,8 @@ import UserView from '@/views/UserView.vue'
 import CollectionsView from '@/views/CollectionsView.vue'
 import CollectionView from '@/views/CollectionView.vue'
 import ArchivedTitlesView from '@/views/ArchivedTitlesView.vue'
+import ApplicationsView from '@/views/ApplicationsView.vue'
+import ApplicationDetailView from '@/views/ApplicationDetailView.vue'
 import BackupBooksView from '@/views/BackupBooksView.vue'
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import TitlesView from '@/views/TitlesView.vue'
@@ -57,6 +59,32 @@ const routes = [
     name: 'backup-books',
     component: BackupBooksView,
     meta: { title: 'CMS | Backup Books', parentNavigation: 'books' },
+  },
+  {
+    path: '/apps',
+    name: 'apps',
+    component: ApplicationsView,
+    meta: { title: 'CMS | Apps' },
+  },
+  {
+    path: '/apps/:id',
+    name: 'app-detail',
+    component: ApplicationDetailView,
+    props: true,
+    meta: {
+      parentNavigation: 'apps',
+      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.id}`,
+    },
+  },
+  {
+    path: '/apps/:id/:selectedTab',
+    name: 'app-detail-tab',
+    component: ApplicationDetailView,
+    props: true,
+    meta: {
+      parentNavigation: 'apps',
+      title: (to: RouteLocationNormalized) => `CMS | App • ${to.params.id}`,
+    },
   },
   {
     path: '/titles',

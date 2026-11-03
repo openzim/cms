@@ -194,3 +194,24 @@ class Context:
     min_languages_for_title_sync: int = field(
         default=int(os.getenv("MIN_LANGUAGES_FOR_TITLE_SYNC", "5"))
     )
+
+    # GitHub integration used to build branded apps, per platform
+    github_api_url: str = os.getenv("GITHUB_API_URL", default="https://api.github.com")
+    github_token: str = os.getenv("GITHUB_TOKEN", default="")
+    github_android_repo: str = os.getenv(
+        "GITHUB_ANDROID_REPO", default="kiwix/kiwix-android-branded"
+    )
+    github_android_workflow: str = os.getenv(
+        "GITHUB_ANDROID_WORKFLOW", default="cd.yml"
+    )
+    github_android_branch: str = os.getenv("GITHUB_ANDROID_BRANCH", default="main")
+    github_apple_repo: str = os.getenv(
+        "GITHUB_APPLE_REPO", default="kiwix/kiwix-apple-branded"
+    )
+    github_apple_workflow: str = os.getenv("GITHUB_APPLE_WORKFLOW", default="cd.yml")
+    github_apple_branch: str = os.getenv("GITHUB_APPLE_BRANCH", default="main")
+
+    # App stores enabled for app builds (comma-separated)
+    app_build_stores: ClassVar[list[str]] = os.getenv(
+        "APP_BUILD_STORES", default="android,apple"
+    ).split(",")
