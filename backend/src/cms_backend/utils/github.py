@@ -60,16 +60,13 @@ class ChecksSummary:
 def get_tag_prefix(*, app_name: str, content_version: str) -> str:
     """Return the tag prefix, without the build number.
 
-    Tags follow the `<app>_<YYYY>.<MM>[suffix].<build>` convention for every
+    Tags follow the `<app>_<YYYY>.<MM>.<build>` convention for every
     store. The build number starts at 0 and is incremented on every attempt.
     """
     match = CONTENT_VERSION_PATTERN.fullmatch(content_version)
     if match is None:
         raise ValueError(f"Invalid content version '{content_version}'")
-    return (
-        f"{app_name}_{match.group('year')}.{match.group('month')}"
-        f"{match.group('suffix')}"
-    )
+    return f"{app_name}_{match.group('year')}.{match.group('month')}"
 
 
 def get_repository_config(store: str) -> AppBuildRepository:

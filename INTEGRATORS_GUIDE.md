@@ -449,7 +449,7 @@ the same conventions:
 - Android builds use
   [kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded).
 - Apple builds use [kiwix-apple-branded](https://github.com/kiwix/kiwix-apple-branded).
-- Tags follow the `<app>_<YYYY>.<MM>[suffix].<build>` convention. `<build>` starts at 0
+- Tags follow the `<app>_<YYYY>.<MM>.<build>` convention. `<build>` starts at 0
   for the first build of a content version and is incremented on every retry.
 
 The GitHub token needs `contents: write`, `pull requests: write`, `actions: read` and
