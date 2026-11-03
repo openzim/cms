@@ -11,6 +11,7 @@ from cms_backend.utils.github import (
     AppBuildResult,
     GitHubClient,
     get_repository_config,
+    get_tag_prefix,
 )
 from cms_backend.utils.requests import Response
 
@@ -218,3 +219,16 @@ def test_publish_increments_build_number_when_tag_exists(
         "refs/tags/phet_2026.05.0",
         "refs/tags/phet_2026.05.1",
     ]
+
+
+@pytest.mark.parametrize(
+    "app_name,content_version,expected",
+    [
+        pytest.param("phet", "2026-05", "phet_2026.05"),
+        pytest.param("phet", "2026-05a", "phet_2026.05"),
+    ],
+)
+def test_get_tag_prefix(app_name: str, content_version: str, expected: str):
+    assert (
+        get_tag_prefix(app_name=app_name, content_version=content_version) == expected
+    )
