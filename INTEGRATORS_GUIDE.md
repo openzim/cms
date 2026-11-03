@@ -31,6 +31,9 @@ environment variables are passed.
   - [S3 credentials requirements](#s3-credentials-requirements)
 - [Warehouses & Filesystem](#warehouses--filesystem)
 - [Base URLs](#base-urls)
+- [Catalogs & Feeds](#catalogs--feeds)
+- [Applications & App Builds](#applications--app-builds)
+- [Download Statistics](#download-statistics)
 - [Authentication](#authentication)
 
 ## Architecture & Components Overview
@@ -46,11 +49,13 @@ The API (image `ghcr.io/openzim/cms-api`) is the RESTful FastAPI service consume
 frontend and by the zimfarm backend. It is responsible
 for:
 
-- persisting titles, books, collections, warehouses, accounts and Zimfarm
-  notifications.
-- exposing `catalog.xml` endpoints for each collection and for staging.
+- persisting titles, books, collections, warehouses, accounts, Zimfarm
+  notifications, applications and app builds.
+- exposing `catalog.xml` and `opds.xml` endpoints for each collection and for staging.
 - authenticating users and enforcing role-based permissions.
-- orchestrating manual ZIM uploads (see [Zimfarm API Integration](#zimfarm-api-integration)
+- orchestrating manual ZIM uploads (see [Zimfarm API Integration](#zimfarm-api-integration))
+  and app builds (see [Applications & App Builds](#applications--app-builds)).
+- storing and serving download statistics per title flavour.
 
 **Key Environment Variables:**
 
@@ -81,12 +86,24 @@ for:
   metadata.
 - `CUSTOM_LANGUAGE_CODES`, `DISALLOWED_LANGUAGE_CODES`: comma-separated ISO-639-3
   language codes to add/remove from the accepted list.
+- `MIN_LANGUAGES_FOR_TITLE_SYNC`: minimum number of languages in book metadata before
+  the title's language metadata is updated from a book (default: `5`).
 - `ZIMCHECK_SCRAPERS_WHITELIST_REGEX`: regex of scrapers to ignore for zimcheck
   quality checks.
 - `ROTTEN_FLAVOUR_THRESHOLD`: duration after which a flavour with no new book is
   considered "rotten".
 - `REQUESTS_TIMEOUT`: global HTTP request timeout (e.g. `30s`).
 - `BOOK_DELETION_DELAY`: delay before a book scheduled for deletion is removed.
+- `OPDS_INLINE_ILLUSTRATION`: set to `"false"` to reference book illustrations by URL
+  in OPDS feeds instead of embedding them as base64 data URLs (default: `"true"`).
+- `OPDS_ILLUSTRATION_URL_TEMPLATE`: URL template used when illustrations are not
+  embedded. The only supported placeholder is `{book_id}`.
+- `GITHUB_API_URL`, `GITHUB_TOKEN`, `GITHUB_ANDROID_REPO`,
+  `GITHUB_ANDROID_WORKFLOW`, `GITHUB_ANDROID_BRANCH`, `GITHUB_APPLE_REPO`,
+  `GITHUB_APPLE_WORKFLOW`, `GITHUB_APPLE_BRANCH`: GitHub integration used to prepare
+  app build requests (see [Applications & App Builds](#applications--app-builds)).
+- `APP_BUILD_STORES`: comma-separated list of stores exposed for app builds (default:
+  `android,apple`).
 
 ### Mill
 
@@ -95,26 +112,62 @@ runs tasks. It is responsible for:
 
 - processing incoming zimfarm notifications into books.
 - processing title modification events.
+- advancing app builds through their GitHub pull request, release and CD phases.
+- checking books in transition (files moved, available on mirrors, live in library).
 - applying retention rules to titles.
 - marking stale staging books for deletion.
 - updating the status of title uploads from zimfarm.
 - deleting uploaded ZIMs and zimcheck results from S3.
+- fetching download statistics from Matomo and recomputing titles popularity.
+
+Each task can be disabled with a dedicated boolean environment variable; its execution
+interval is controlled by a separate `*_INTERVAL` variable.
+
+#### Mill technical account
+
+Automated actions performed by the mill are attributed to a technical account. The mill creates this account with the `admin` role on startup if it does not already exist. If an account with the configured username already exists, it is reused as-is.
+
+| Variable                | Default | Description                                                        |
+| ----------------------- | ------- | ------------------------------------------------------------------ |
+| `MILL_ACCOUNT_USERNAME` | `mill`  | Username of the technical account used for automated mill actions. |
+
 
 **Key Environment Variables:**
 
 - `DATABASE_URL`, `ALEMBIC_UPGRADE_HEAD_ON_START`.
+- `PAUSE_IN_THE_LOOP`: delay between two runs of the task loop (default: `10s`).
 - `QUARANTINE_WAREHOUSE_ID`, `QUARANTINE_BASE_PATH`, `STAGING_WAREHOUSE_ID`,
   `STAGING_BASE_PATH`, `STAGING_DOWNLOAD_BASE_URL`, `STAGING_VIEW_BASE_URL`,
   `BACKUP_WAREHOUSE_ID`, `BACKUP_BASE_PATH`, `BACKUP_DOWNLOAD_BASE_URL`,
   `BACKUP_VIEW_BASE_URL`.
 - `ZIMCHECK_RESULTS_S3_BUCKET_URI`: S3 bucket where zimcheck results are stored.
 - `ZIM_UPLOAD_S3_BUCKET_URI`: S3 bucket for manually uploaded ZIMs.
-- `PROCESS_ZIMFARM_NOTIFICATIONS_INTERVAL`, `PROCESS_EVENTS_INTERVAL`,
-  `PROCESS_RETENTION_RULES_INTERVAL`, `MARK_STAGING_BOOKS_FOR_DELETION_INTERVAL`,
-  `UPDATE_TITLE_UPLOAD_STATUS_INTERVAL`, `DELETE_UPLOADED_ZIMS_INTERVAL`,
-  `DELETE_ZIMCHECK_FILES_INTERVAL`: execution intervals for each task.
+- `PROCESS_ZIMFARM_NOTIFICATIONS` / `PROCESS_ZIMFARM_NOTIFICATIONS_INTERVAL`.
+- `PROCESS_TITLE_MODIFICATIONS` / `PROCESS_EVENTS_INTERVAL`.
+- `PROCESS_APP_BUILDS` / `PROCESS_APP_BUILDS_INTERVAL`.
+- `CHECK_BOOK_TRANSITIONS` / `CHECK_BOOK_TRANSITIONS_INTERVAL`.
+- `PROCESS_RETENTION_RULES` / `PROCESS_RETENTION_RULES_INTERVAL`.
+- `MARK_STAGING_BOOKS_FOR_DELETION` / `MARK_STAGING_BOOKS_FOR_DELETION_INTERVAL`.
+- `UPDATE_TITLE_UPLOADS_STATUS` / `UPDATE_TITLE_UPLOAD_STATUS_INTERVAL`.
+- `DELETE_UPLOADED_ZIMS` / `DELETE_UPLOADED_ZIMS_INTERVAL`.
+- `DELETE_ZIMCHECK_S3_RESULTS` / `DELETE_ZIMCHECK_FILES_INTERVAL`.
+- `FETCH_DOWNLOAD_STATS` / `FETCH_DOWNLOAD_STATS_INTERVAL`.
 - `STAGING_BOOKS_LIFESPAN`, `STAGING_BOOKS_DELETION_GRACE_PERIOD`: how long staging
   books live and how long before they are actually deleted.
+- `DOWNLOAD_LB_HOST`: load-balancer host used to decide whether a book is available on
+  enough mirrors (default: `lb.download.kiwix.org`).
+- `INTERNAL_HOST_MAPPING`: comma-separated `public.host:internal.host` mapping used
+  when probing public URLs from inside the infrastructure (e.g. mirror checks).
+- `MIN_LANGUAGES_FOR_TITLE_SYNC`: minimum number of languages in book metadata before
+  the title's language metadata is updated from a book (default: `5`).
+- `GITHUB_API_URL`, `GITHUB_TOKEN`, `GITHUB_ANDROID_REPO`,
+  `GITHUB_ANDROID_WORKFLOW`, `GITHUB_ANDROID_BRANCH`, `GITHUB_APPLE_REPO`,
+  `GITHUB_APPLE_WORKFLOW`, `GITHUB_APPLE_BRANCH`, `APP_BUILD_STORES`: app build
+  configuration (see [Applications & App Builds](#applications--app-builds)).
+- `MATOMO_URL`, `MATOMO_SITE_ID`, `DOWNLOAD_STATS_DAYS_AGO`,
+  `DOWNLOAD_STATS_YESTERDAY_HOUR`, `DOWNLOAD_STATS_POPULARITY_WINDOW_DAYS`,
+  `DOWNLOAD_STATS_REQUEST_DELAY`: download statistics configuration (see
+  [Download Statistics](#download-statistics)).
 
 ### Shuttle
 
@@ -171,15 +224,27 @@ The healthchecks it performs are:
 - check that no zimfarm notification is stuck in pending state. The
   `ZIMFARM_NOTIFICATION_PENDING_DELAY` environment variable determines how long a
   zimfarm notification in pending state should be flagged as an issue.
-- check that books in `quarantine` or `staging` are not stuck requring file operations.
+- check that books in `quarantine` or `staging` are not stuck requiring file operations.
   The `BOOKS_PENDING_MOVE_DELAY` environment variable specifies the duration after which
   books flagged for movement should be marked as problematic if they still require file
   operations
-- check that books in `to_delete` locations are not stuck requring file operations. The
-  `BOOKS_PENDING_DELETE_DELAY` environment variable specififes the duration after which
+- check that books in `to_delete` locations are not stuck requiring file operations. The
+  `BOOKS_PENDING_DELETE_DELAY` environment variable specifies the duration after which
   books flagged for deletion should be marked as problematic if they still require file
   operations
 - check that catalog generation works for all collections
+
+### PostgreSQL Database
+
+All backend components share a single PostgreSQL database. It is the source of truth for
+titles, books, file locations, collections, warehouses, accounts and permissions,
+applications and app builds, as well as download statistics.
+
+The connection is configured with `DATABASE_URL`. The API and mill can apply pending
+Alembic migrations at startup when `ALEMBIC_UPGRADE_HEAD_ON_START` is `"true"`; this is
+convenient in development but should be handled deliberately in production. The
+`uuid-ossp` extension must be available in the database because primary keys default to
+`uuid_generate_v4()`.
 
 ## Zimfarm API Integration
 
@@ -345,7 +410,77 @@ Typical values:
 - `Kiwix` collection: `https://download.kiwix.org/zim/` /
   `https://browse.library.kiwix.org/viewer#`
 
+## Catalogs & Feeds
+
+Each collection exposes two catalog formats, generated on the fly by the API:
+
+- `/collections/{id_or_name}/catalog.xml`: the library catalog consumed by Kiwix
+  readers,
+- `/collections/{id_or_name}/opds.xml`: the same catalog as an OPDS feed.
+
+
+**NOTE**: `catalog.xml` format is maintained for legacy purposes and will be phased out in favour
+of the `opds.xml` format once [kiwix-serve](https://wiki.kiwix.org/wiki/Kiwix-serve) is updated.
+
+The staging catalog is exposed at `/staging/catalog.xml` and `/staging/opds.xml`. For
+private collections, the API only includes titles from collections the current account
+can access; an unauthenticated caller only sees public collections.
+
+All catalog endpoints accept an optional `path_prefix` query parameter which is
+prepended to the book paths in the generated XML/OPDS feed. Both formats are also
+available through `HEAD` requests, with an `ETag` computed from the content.
+
+The OPDS feed embeds the book illustration as a base64 data URL by default. Set
+`OPDS_INLINE_ILLUSTRATION` to `"false"` and configure
+`OPDS_ILLUSTRATION_URL_TEMPLATE` (with the `{book_id}` placeholder) to reference the
+illustration by URL instead. This is usually done to keep the feed small.
+
+## Applications & App Builds
+
+An **application** is the per-store configuration used to build a branded app for one
+title flavour. An **app build** is the asynchronous process which updates the branded
+app repository, opens and merges a pull request, creates a release, and runs the CD
+workflow which publishes the app.
+
+App builds are configured with the `GITHUB_*` environment variables (on the **API** and
+**mill**) and are limited to the stores listed in `APP_BUILD_STORES`. Both stores share
+the same conventions:
+
+- Android builds use
+  [kiwix-android-branded](https://github.com/kiwix/kiwix-android-branded).
+- Apple builds use [kiwix-apple-branded](https://github.com/kiwix/kiwix-apple-branded).
+- Tags follow the `<app>_<YYYY>.<MM>[suffix].<build>` convention. `<build>` starts at 0
+  for the first build of a content version and is incremented on every retry.
+
+The GitHub token needs `contents: write`, `pull requests: write`, `actions: read` and
+`checks: read`. Branch protection must not require human approvals if the bot is
+expected to merge the pull request without review.
+
+Permissions are described in the [Editors Guide](EDITORS_GUIDE.md#roles--permissions).
+
+## Download Statistics
+
+The **mill** fetches, for every title flavour, the daily number of downloads recorded
+by the Kiwix download load balancer (`lb.download.kiwix.org`) in the Matomo instance
+configured by `MATOMO_URL` / `MATOMO_SITE_ID`.
+
+On each run, the mill:
+
+- fetches every missing day from `DOWNLOAD_STATS_DAYS_AGO` days ago up to yesterday,
+  where yesterday is only considered available after `DOWNLOAD_STATS_YESTERDAY_HOUR`
+  UTC,
+- waits `DOWNLOAD_STATS_REQUEST_DELAY` seconds between two Matomo requests,
+- keeps the current and previous calendar years, and purges older data,
+- recomputes the popularity of titles from the most recent
+  `DOWNLOAD_STATS_POPULARITY_WINDOW_DAYS` fetched days.
+
 ## Authentication
+
+Authentication establishes the account; authorization is role-based. Role definitions
+and their permissions are centralised in `backend/src/cms_backend/roles.py` and
+documented in the [Editors Guide](EDITORS_GUIDE.md#roles--permissions). Accounts can be
+created by admins, or automatically with the `public-viewer` role on first OAuth login
+when `OAUTH_CREATE_NEW_ACCOUNT` is enabled.
 
 The CMS supports two authentication modes, controlled independently on the backend and
 on the frontend.
@@ -365,7 +500,7 @@ When `oauth-oidc` and/or `oauth-session` are activated, you need to configure:
 
 - `OAUTH_JWKS_URI`: The JWKS endpoint for token verification
 - `OAUTH_ISSUER`: The OAuth issuer URL
-- `OAUTH_CREATE_NEW_ACCOUNT`: Set to `"true"` to automatically create accounts whenever a new valid JWT is presented to the backend ; new account while have `VIEWER` role (no more permission than when not authenticated) ; this is convenient to then let admins grant proper role to this user through the UI
+- `OAUTH_CREATE_NEW_ACCOUNT`: Set to `"true"` to automatically create accounts whenever a new valid JWT is presented to the backend. New accounts get the `public-viewer` role (no more permission than when not authenticated); this is convenient to then let admins grant a proper role to this user through the UI.
 
 For `oauth-oidc` you also need to configure:
 
@@ -384,17 +519,20 @@ OAuth supports both humans and machine-to-machine identities. Humans are detecte
 
 Enforcement of 2FA is of-course possible only on human identities, not on machine-to-machine.
 
-#### Frontend
+#### Frontend
 
-The frontedn supports two authentication modes, controlled by the `LOGIN_MODES`
-setting (comma-separated list, possible to activate as many modes as required):
+The frontend supports two authentication modes, controlled by the `LOGIN_MODES`
+setting (comma-separated list; activate as many modes as required):
 
-- **`local`**: Username/password authentication towards Zimfarm API
-- **`oauth`**: External authentication to an IdP provider
+- **`local`**: Username/password authentication against the CMS API.
+- **`oauth`**: External authentication to an IdP provider.
 
-Both modes can be active, letting user decides how we wanna authenticate.
+Both modes can be active, letting the user choose how to authenticate. The frontend
+also uses a separate Zimfarm token (see
+[Frontend calls with user credentials](#frontend-calls-with-user-credentials)).
 
-When `oauth` mode is activated, it is necessary to choose between session flows (exchange IdP session for a JWT) and OIDC flows (standard OIDC exchanges) and designate :
+When `oauth` mode is activated, choose between session flows (exchange an IdP session
+for a JWT) and OIDC flows (standard OIDC exchanges), and configure:
 
 - **`OAUTH_MODE`**: either `session` or `oidc`
 - **`OAUTH_BASE_URL`**: base URL to the IdP, e.g. `https://ory.login.kiwix.org`
