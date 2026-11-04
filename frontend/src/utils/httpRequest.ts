@@ -11,7 +11,7 @@ export default function httpRequest(
       ...headers,
       'Content-Type': 'application/json',
     },
-    withCredentials: true,
+    withCredentials: false,
     paramsSerializer: {
       indexes: null, // This prevents the [] notation in array parameters
     },
