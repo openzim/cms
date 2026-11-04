@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import get_accessible_collection_ids
 from cms_backend.api.routes.utils import build_library_xml
 from cms_backend.db import gen_dbsession
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/staging", tags=["staging"])
 
 
 @router.get("/catalog.xml")
+@cors_public
 async def get_library_catalog_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     accessible_collection_ids: Annotated[
@@ -42,6 +44,7 @@ async def get_library_catalog_xml(
 
 
 @router.head("/catalog.xml")
+@cors_public
 async def head_library_catalog_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     accessible_collection_ids: Annotated[
@@ -62,6 +65,7 @@ async def head_library_catalog_xml(
 
 
 @router.get("/opds.xml")
+@cors_public
 async def get_staging_opds_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     accessible_collection_ids: Annotated[
@@ -85,6 +89,7 @@ async def get_staging_opds_xml(
 
 
 @router.head("/opds.xml")
+@cors_public
 async def head_staging_opds_xml(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     accessible_collection_ids: Annotated[

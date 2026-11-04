@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import gen_dbsession
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import warehouse as db_warehouse
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/warehouses", tags=["warehouses"])
 
 
 @router.get("")
+@cors_public
 def get_warehouses(
     session: OrmSession = Depends(gen_dbsession),
     skip: Annotated[SkipField, Query()] = 0,

@@ -3,12 +3,14 @@ from http import HTTPStatus
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.context import Context
 
 router = APIRouter(prefix="/config", tags=["config"])
 
 
 @router.get("")
+@cors_public
 def get_config() -> JSONResponse:
     """Get the configuration settings and values defined by the API"""
     return JSONResponse(

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import AnyUrl, Field
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
     get_current_account,
@@ -45,6 +46,7 @@ class RevertCollectionSchema(BaseModel):
 
 
 @router.get("")
+@cors_public
 def get_collections(
     params: Annotated[CollectionsGetSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -125,6 +127,7 @@ def create_collection(
 
 
 @router.get("/{collection_id_or_name}")
+@cors_public
 def get_collection(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -213,6 +216,7 @@ def _get_opds_xml_content(
 
 
 @router.get("/{collection_id_or_name}/catalog.xml")
+@cors_public
 def get_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -236,6 +240,7 @@ def get_library_catalog_xml(
 
 
 @router.head("/{collection_id_or_name}/catalog.xml")
+@cors_public
 def head_library_catalog_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -257,6 +262,7 @@ def head_library_catalog_xml(
 
 
 @router.get("/{collection_id_or_name}/opds.xml")
+@cors_public
 def get_collection_opds_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -280,6 +286,7 @@ def get_collection_opds_xml(
 
 
 @router.head("/{collection_id_or_name}/opds.xml")
+@cors_public
 def head_collection_opds_xml(
     collection_id_or_name: Annotated[str, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],

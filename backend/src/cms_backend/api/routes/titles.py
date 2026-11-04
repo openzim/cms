@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
 from cms_backend.api.context import Context as ApiContext
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
     get_accessible_title_ids,
@@ -92,6 +93,7 @@ class MergeTitlesSchema(BaseModel):
 
 
 @router.get("")
+@cors_public
 def get_titles(
     params: Annotated[TitlesGetSchema, Query()],
     accessible_collection_ids: Annotated[
@@ -162,6 +164,7 @@ def merge_titles(
 
 
 @router.get("/{title_identifier}")
+@cors_public
 def get_title(
     title_identifier: Annotated[NotEmptyString, Path()],
     accessible_collection_ids: Annotated[

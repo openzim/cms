@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.models import ListResponse, calculate_pagination_metadata
 from cms_backend.db import event as db_event
 from cms_backend.db import gen_dbsession
@@ -22,6 +23,7 @@ class EventsGetSchema(BaseModel):
 
 
 @router.get("")
+@cors_public
 def get_events(
     params: Annotated[EventsGetSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import Field
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
     get_accessible_title_ids,
@@ -47,6 +48,7 @@ class RevertBookSchema(BaseModel):
 
 
 @router.get("")
+@cors_public
 def get_books(
     params: Annotated[GetBooksSchema, Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -78,6 +80,7 @@ def get_books(
 
 
 @router.get("/zims")
+@cors_public
 def get_zim_urls(
     zim_ids: Annotated[list[UUID], Query()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -97,6 +100,7 @@ def get_zim_urls(
 
 
 @router.get("/languages")
+@cors_public
 def get_book_languages(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
 ) -> BookLanguagesSchema:
@@ -104,6 +108,7 @@ def get_book_languages(
 
 
 @router.get("/flavours")
+@cors_public
 def get_book_flavours(
     session: Annotated[OrmSession, Depends(gen_dbsession)],
     title_id: Annotated[UUID | None, Query()] = None,
@@ -121,6 +126,7 @@ def get_book_flavours(
 
 
 @router.get("/{book_id}")
+@cors_public
 def get_book(
     book_id: Annotated[UUID, Path()],
     session: Annotated[OrmSession, Depends(gen_dbsession)],
@@ -146,6 +152,7 @@ ILLUSTRATION_METADATA_PREFIX = "Illustration"
 
 
 @router.get("/{book_id}/raw_metadata/{metadata}")
+@cors_public
 def get_book_raw_metadata(
     book_id: Annotated[UUID, Path()],
     metadata: Annotated[str, Path()],

@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session as OrmSession
 
+from cms_backend.api.middleware.cors import cors_public
 from cms_backend.api.routes.dependencies import (
     get_accessible_collection_ids,
     get_accessible_title_ids,
@@ -73,6 +74,7 @@ def delete_downloaded_day(
 
 
 @router.get("/downloads/titles/{title_identifier}")
+@cors_public
 def get_title_flavour_downloads(
     title_identifier: Annotated[NotEmptyString, Path()],
     accessible_collection_ids: Annotated[

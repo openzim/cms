@@ -5,11 +5,15 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from cms_backend.api.middleware.cors import (
+    PublicRouteCORSMiddleware,
+    effective_route_contexts,
+    validate_public_cors_routes,
+)
 from cms_backend.api.routes.account import router as account_router
 from cms_backend.api.routes.app_builds import router as app_builds_router
 from cms_backend.api.routes.applications import router as applications_router
@@ -50,7 +54,9 @@ async def lifespan(_: FastAPI):
     yield
 
 
-def create_app(*, debug: bool = True):
+def create_app(
+    *, debug: bool = True, allowed_origins: list[str] | None = None
+) -> FastAPI:
     app = FastAPI(
         debug=debug,
         docs_url="/",
@@ -61,14 +67,6 @@ def create_app(*, debug: bool = True):
     )
 
     app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
-    if origins := os.getenv("ALLOWED_ORIGINS", None):
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=origins.split(","),
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
 
     main_router = APIRouter(prefix="/v1")
     main_router.include_router(router=config_router)
@@ -88,6 +86,22 @@ def create_app(*, debug: bool = True):
     main_router.include_router(router=stats_router)
 
     app.include_router(router=main_router)
+
+    if allowed_origins is None:
+        origins = os.getenv("ALLOWED_ORIGINS")
+        if origins:
+            allowed_origins = [
+                origin.strip() for origin in origins.split(",") if origin.strip()
+            ]
+
+    # Must be built after all routers are included, and before the app starts.
+    route_contexts = effective_route_contexts(app.routes)
+    validate_public_cors_routes(route_contexts)
+    app.add_middleware(
+        PublicRouteCORSMiddleware,
+        route_contexts=route_contexts,
+        allowed_origins=allowed_origins,
+    )
 
     return app
 
