@@ -264,7 +264,7 @@ def test_get_collection_catalog_xml_single_book(
     assert book_elem.get("favicon") == favicon
     assert (
         book_elem.get("url")
-        == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
+        == "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
     )
     assert book_elem.get("flavour") == "test"
     assert book_elem.get("path") == "/data/dev/wikipedia/test_en_all.zim"
@@ -329,7 +329,8 @@ def test_get_collection_catalog_xml_root_path(
 
     book_elem = books[0]
     assert (
-        book_elem.get("url") == "https://download.kiwix.org/zim/test_en_all.zim.meta4"
+        book_elem.get("url")
+        == "https://lb.download.kiwix.org/zim/test_en_all.zim.meta4"
     )
 
 
@@ -1015,7 +1016,7 @@ def test_get_prod_and_staging_catalog_xml(
     assert books[0].get("id") == str(older_book.id)
     assert (
         books[0].get("url")
-        == "https://download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
+        == "https://lb.download.kiwix.org/zim/wikipedia/wiki_2024-12.zim.meta4"
     )
     assert books[0].get("path") == "/data/dev/wikipedia/wiki_2024-12.zim"
 

@@ -529,7 +529,7 @@ def create_collection(
         *,
         name: str | None = None,
         warehouse: Warehouse | None = None,
-        download_base_url: str = "https://download.kiwix.org/zim/",
+        download_base_url: str = "https://lb.download.kiwix.org/zim/",
         view_base_url: str = "https://browse.library.kiwix.org/viewer#",
         title_ids_with_paths: list[tuple[UUID, str]] | None = None,
         media_count_increase_threshold: float | None = None,

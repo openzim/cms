@@ -167,20 +167,21 @@ def _append_entry(
             mimetype=ZIM_MIMETYPE,
             length=book.size,
         )
-        _append_link(
-            entry_elem,
-            ACQUISITION_REL,
-            f"{download_url}.meta4",
-            mimetype=METALINK_MIMETYPE,
-            length=book.size,
-        )
-        _append_link(
-            entry_elem,
-            ACQUISITION_REL,
-            f"{download_url}.torrent",
-            mimetype=BITTORRENT_MIMETYPE,
-            length=book.size,
-        )
+        if Context.download_lb_host in download_base_url:
+            _append_link(
+                entry_elem,
+                ACQUISITION_REL,
+                f"{download_url}.meta4",
+                mimetype=METALINK_MIMETYPE,
+                length=book.size,
+            )
+            _append_link(
+                entry_elem,
+                ACQUISITION_REL,
+                f"{download_url}.torrent",
+                mimetype=BITTORRENT_MIMETYPE,
+                length=book.size,
+            )
 
     if path_prefix is not None:
         if path_prefix.endswith("/"):

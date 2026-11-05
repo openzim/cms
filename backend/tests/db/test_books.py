@@ -386,7 +386,7 @@ def test_get_zim_urls(
 
     download_url = next((u for u in result.urls[book.id] if u.kind == "download"), None)
     assert download_url is not None
-    assert str(download_url.url) == "https://download.kiwix.org/zim/test_en_all.zim"
+    assert str(download_url.url) == "https://lb.download.kiwix.org/zim/test_en_all.zim"
     assert download_url.collection == collection.name
 
     view_url = next((u for u in result.urls[book.id] if u.kind == "view"), None)
@@ -473,7 +473,7 @@ def test_get_zim_urls_book_with_subpath(
     assert download_url is not None
     assert (
         str(download_url.url)
-        == "https://download.kiwix.org/zim/wikipedia/test_en_all.zim"
+        == "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim"
     )
     assert download_url.collection == collection.name
 
