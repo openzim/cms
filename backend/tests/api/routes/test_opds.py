@@ -224,14 +224,86 @@ def test_get_collection_opds_xml_single_book(
         link.get("type"): link for link in links if link.get("rel") == ACQUISITION_REL
     }
     assert acquisition_links[ZIM_MIMETYPE].get("href") == (
-        "https://download.kiwix.org/zim/wikipedia/test_en_all.zim"
+        "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim"
     )
     assert acquisition_links[METALINK_MIMETYPE].get("href") == (
-        "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
+        "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim.meta4"
     )
     assert acquisition_links[BITTORRENT_MIMETYPE].get("href") == (
-        "https://download.kiwix.org/zim/wikipedia/test_en_all.zim.torrent"
+        "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim.torrent"
     )
+    for link in acquisition_links.values():
+        assert link.get("length") == str(book.size)
+
+    thumbnail = next(link for link in links if link.get("rel") == THUMBNAIL_REL)
+    assert thumbnail.get("type") == THUMBNAIL_MIMETYPE
+    assert thumbnail.get("href") == (
+        f"data:{ILLUSTRATION_MIMETYPE};base64,{illustration_48x48_at_1}"
+    )
+
+
+def test_get_collection_opds_xml_different_download_url_from_download_lb_host(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    illustration_48x48_at_1: str,
+    access_token: str,
+):
+    warehouse = create_warehouse()
+    collection = create_collection(
+        warehouse=warehouse, download_base_url="https://download.kiwix.org/zim/"
+    )
+    title = create_title(name="test_title")
+
+    book = create_book(
+        zim_metadata={
+            **ZIM_METADATA,
+            "Tags": "_category:test;_pictures:no",
+            "Illustration_48x48@1": illustration_48x48_at_1,
+            "Flavour": "test",
+        },
+    )
+    _add_prod_book(
+        dbsession,
+        collection,
+        title,
+        book,
+        path="wikipedia",
+        warehouse=warehouse,
+        filename="test_en_all.zim",
+        create_book_location=create_book_location,
+    )
+
+    response = client.get(
+        f"/v1/collections/{collection.id}/opds.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-type"] == OPDS_MEDIA_TYPE
+
+    expected_etag = xxhash.xxh64(response.content).hexdigest()
+    assert response.headers["ETag"] == expected_etag
+
+    root = ET.fromstring(response.text)
+    entries = list(root.findall(f"{{{ATOM_NAMESPACE}}}entry"))
+    assert len(entries) == 1
+
+    entry = entries[0]
+
+    links = entry.findall(f"{{{ATOM_NAMESPACE}}}link")
+    acquisition_links = {
+        link.get("type"): link for link in links if link.get("rel") == ACQUISITION_REL
+    }
+    assert len(acquisition_links) == 1
+    assert acquisition_links[ZIM_MIMETYPE].get("href") == (
+        "https://download.kiwix.org/zim/wikipedia/test_en_all.zim"
+    )
+    assert METALINK_MIMETYPE not in acquisition_links
+    assert BITTORRENT_MIMETYPE not in acquisition_links
     for link in acquisition_links.values():
         assert link.get("length") == str(book.size)
 
