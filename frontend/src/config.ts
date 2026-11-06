@@ -11,7 +11,7 @@ export interface Config {
   MATOMO_HOST: string
   MATOMO_SITE_ID: number
   MATOMO_TRACKER_FILE_NAME: string
-  OAUTH_AUDIENCE: string
+  OAUTH_AUDIENCE: string | Array<string>
   OAUTH_CLIENT_ID: string
   OAUTH_BASE_URL: string
   LOGIN_MODES: Array<string>

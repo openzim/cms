@@ -40,7 +40,7 @@ services:
       OAUTH_JWKS_URI: https://ory.login-staging.kiwix.org/.well-known/jwks.json
       OAUTH_ISSUER: https://ory.login-staging.kiwix.org
       OAUTH_OIDC_LOGIN_REQUIRE_2FA: true
-      OAUTH_OIDC_AUDIENCE: c688aac9-df70-400b-9c1c-a08d6ae3d287
+      OAUTH_OIDC_AUDIENCE: a4dafae8-ab5b-4dc9-b054-979740abed83
       OAUTH_SESSION_AUDIENCE: 309693e7-ad5e-4379-bf93-ba89314230fd
       OAUTH_SESSION_LOGIN_REQUIRE_2FA: true
       OAUTH_CREATE_NEW_ACCOUNT: true

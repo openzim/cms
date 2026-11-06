@@ -5,7 +5,7 @@ import httpRequest from '@/utils/httpRequest'
 
 export interface OAuthConfig {
   clientId: string
-  audience: string
+  audience: string | Array<string>
   authorizeUrl: string
   tokenUrl: string
   userInfoUrl: string
