@@ -180,15 +180,26 @@
       />
 
       <v-alert
-        v-if="isEditMode && hasCollectionChanges"
+        v-if="isEditMode && hasCollectionMembershipChanges"
         type="warning"
         density="compact"
         class="mt-4"
         icon="mdi-alert"
       >
-        Modifying title collections settings will cause books in production to be altered as
-        specified. Beware of potential impact of removing a book from a location already in use by
-        the library or currently being downloaded by users.
+        Adding or removing a collection relocates books already in production to match. In-progress
+        downloads are not affected, but any link to a removed collection's location stops working as
+        soon as the change is saved.
+      </v-alert>
+
+      <v-alert
+        v-else-if="isEditMode && hasCollectionChanges"
+        type="info"
+        density="compact"
+        class="mt-4"
+        icon="mdi-information"
+      >
+        Renaming a collection's path does not affect books already in production — they keep their
+        current location. Only books entering production after this change will use the new path.
       </v-alert>
     </div>
 
@@ -374,6 +385,21 @@ const hasCollectionChanges = computed(() => {
 
   for (const item of currentSet) {
     if (!originalSet.has(item)) return true
+  }
+  return false
+})
+
+// Only true when a collection is added or removed, not when an existing
+// collection's path is merely renamed (which does not move prod books).
+const hasCollectionMembershipChanges = computed(() => {
+  if (!isEditMode.value) return false
+  const currentNames = new Set(formData.value.collection_titles.map((c) => c.collection_name))
+  const originalNames = new Set(originalCollections.value.map((c) => c.collection_name))
+
+  if (currentNames.size !== originalNames.size) return true
+
+  for (const name of currentNames) {
+    if (!originalNames.has(name)) return true
   }
   return false
 })
