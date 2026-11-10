@@ -201,6 +201,66 @@ def test_update_title_collection_titles(
     assert len(target_locations) == 2
 
 
+def test_update_title_collection_titles_path_rename_only(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_book_location: Callable[..., BookLocation],
+    create_book: Callable[..., Book],
+    create_collection: Callable[..., Collection],
+    create_collection_title: Callable[..., CollectionTitle],
+    account: Account,
+):
+    """Renaming a collection's path (no collection added/removed) must not
+    move already-prod books: only the CollectionTitle.path is updated."""
+    collection = create_collection(name="wikipedia")
+    title = create_title(name="wikipedia_en_test")
+    create_collection_title(title, collection, path="wikis")
+
+    # Create a book in prod
+    book = create_book(
+        zim_metadata={"Name": "wikipedia_en_test", "Date": "2024-01"},
+    )
+    book.location_kind = "prod"
+    title.books.append(book)
+
+    # Create current location for the book
+    create_book_location(
+        book=book,
+        warehouse_id=collection.warehouse_id,
+        path="wikis",
+        filename="test.zim",
+        status="current",
+    )
+    dbsession.flush()
+
+    update_title(
+        dbsession,
+        title_identifier=str(title.id),
+        author_id=account.id,
+        payload=TitleUpdateSchema(
+            collection_titles=[
+                BaseTitleCollectionSchema(
+                    collection_name="wikipedia", path="new_wikis"
+                ),
+            ],
+        ),
+    )
+
+    dbsession.refresh(title)
+    assert len(title.collections) == 1
+    assert title.collections[0].path == Path("new_wikis")
+
+    dbsession.refresh(book)
+    assert book.needs_file_operation is False
+
+    current_locations = [loc for loc in book.locations if loc.status == "current"]
+    assert len(current_locations) == 1
+    assert current_locations[0].path == Path("wikis")
+
+    target_locations = [loc for loc in book.locations if loc.status == "target"]
+    assert len(target_locations) == 0
+
+
 def test_archive_title(
     dbsession: OrmSession,
     create_title: Callable[..., Title],

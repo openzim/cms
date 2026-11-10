@@ -534,9 +534,14 @@ def update_title(
     """Update a title's details
 
     When collection_titles changes:
-    - Finds all books associated with this title where location_kind == 'prod'
-    - Updates their locations according to the new collection configuration
-    - Sets the needs_file_operation flag to true for these books
+    - A pure path rename (same set of collections, only the path differs) just
+      updates the CollectionTitle row in place; already-prod books are left
+      where they are and only pick up the new path next time they transition
+      to prod.
+    - Adding or removing a collection:
+      - Finds all books associated with this title where location_kind == 'prod'
+      - Updates their locations according to the new collection configuration
+      - Sets the needs_file_operation flag to true for these books
     """
     title = get_title(
         session, title_identifier, accessible_collection_ids=accessible_collection_ids
@@ -598,46 +603,66 @@ def update_title(
             elif tf.flavour in retained_flavours:
                 existing_flavour_map[tf.flavour].recipe_id = tf.recipe_id
 
-    # Determine if collection titles changed
+    # Determine how collection_titles changed: a pure path rename of a
+    # collection the title already belongs to is handled separately from a
+    # collection being added or removed.
     collection_titles_changed = False
+    added_names: set[str] = set()
+    removed_names: set[str] = set()
 
     if payload.collection_titles is not None:
-        if len(title.collections) != len(payload.collection_titles):
-            collection_titles_changed = True
-        else:
-            current_collections: set[str] = {
-                f"{tc.collection.name}:{tc.path}" for tc in title.collections
-            }
-            new_collections: set[str] = {
-                f"{entry.collection_name}:{entry.path}"
-                for entry in payload.collection_titles
-            }
+        current_by_name: dict[str, Path] = {
+            tc.collection.name: tc.path for tc in title.collections
+        }
+        new_by_name: dict[str, Path] = {
+            entry.collection_name: Path(entry.path)
+            for entry in payload.collection_titles
+        }
 
-            if current_collections != new_collections:
-                collection_titles_changed = True
+        added_names = new_by_name.keys() - current_by_name.keys()
+        removed_names = current_by_name.keys() - new_by_name.keys()
+        renamed_names = {
+            name
+            for name in current_by_name.keys() & new_by_name.keys()
+            if current_by_name[name] != new_by_name[name]
+        }
+
+        collection_titles_changed = bool(added_names or removed_names)
+
+        # Pure path rename: update the row in place. Already-prod books keep
+        # their current location; only books entering prod afterwards use
+        # the new path.
+        if renamed_names:
+            for tc in title.collections:
+                if tc.collection.name in renamed_names:
+                    tc.path = new_by_name[tc.collection.name]
 
     if collection_titles_changed and payload.collection_titles is not None:
-        # Remove existing collection_titles
-        for tc in title.collections:
-            session.delete(tc)
+        # Remove collections no longer associated with the title
+        for tc in list(title.collections):
+            if tc.collection.name in removed_names:
+                session.delete(tc)
+                title.collections.remove(tc)
 
-        title.collections.clear()
         session.flush()
 
+        # Add newly associated collections
         for entry in payload.collection_titles:
-            collection = get_collection_by_name(
-                session,
-                collection_name=entry.collection_name,
-                accessible_collection_ids=accessible_collection_ids,
-            )
+            if entry.collection_name in added_names:
+                collection = get_collection_by_name(
+                    session,
+                    collection_name=entry.collection_name,
+                    accessible_collection_ids=accessible_collection_ids,
+                )
 
-            collection_title = CollectionTitle(path=Path(entry.path))
-            collection_title.collection = collection
-            collection_title.title = title
+                collection_title = CollectionTitle(path=Path(entry.path))
+                collection_title.collection = collection
+                collection_title.title = title
 
-            session.add(collection_title)
+                session.add(collection_title)
 
-        # If collection_titles changed, update book locations for prod books
+        # Collections were added or removed: update book locations for
+        # prod books so they reflect the new set of collections.
         prod_books = [book for book in title.books if book.location_kind == "prod"]
         for book in prod_books:
             # Since book is already in prod, it should have at least one
