@@ -411,6 +411,65 @@ def test_get_collection_opds_xml_path_prefix(
     assert "/data/dev/wikipedia/test_en_all.zim" in hrefs
 
 
+def test_get_collection_opds_xml_after_collection_path_rename(
+    client: TestClient,
+    dbsession: OrmSession,
+    create_collection: Callable[..., Collection],
+    create_title: Callable[..., Title],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+    create_warehouse: Callable[..., Warehouse],
+    access_token: str,
+):
+    """A book still shows up after its collection path is renamed without moving it.
+
+    Renaming a collection's path for a title does not relocate already-prod
+    books (see #639): the book's BookLocation keeps the old path while
+    CollectionTitle.path is updated to the new one. The book must still be
+    served, at its actual (old) location.
+    """
+    warehouse = create_warehouse()
+    collection = create_collection(warehouse=warehouse)
+    title = create_title(name="test_title")
+    book = create_book(zim_metadata=dict(ZIM_METADATA))
+    _add_prod_book(
+        dbsession,
+        collection,
+        title,
+        book,
+        path="wikipedia",
+        warehouse=warehouse,
+        filename="test_en_all.zim",
+        create_book_location=create_book_location,
+    )
+
+    # Simulate a pure collection-path rename: only CollectionTitle.path changes,
+    # the book's BookLocation is left untouched at the old path.
+    collection_title = next(
+        tc for tc in title.collections if tc.collection == collection
+    )
+    collection_title.path = Path("wikipedia-renamed")
+    dbsession.flush()
+
+    response = client.get(
+        f"/v1/collections/{collection.id}/opds.xml",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+
+    root = ET.fromstring(response.text)
+    entries = list(root.findall(f"{{{ATOM_NAMESPACE}}}entry"))
+    assert len(entries) == 1
+
+    links = entries[0].findall(f"{{{ATOM_NAMESPACE}}}link")
+    acquisition_links = {
+        link.get("type"): link for link in links if link.get("rel") == ACQUISITION_REL
+    }
+    assert acquisition_links[ZIM_MIMETYPE].get("href") == (
+        "https://lb.download.kiwix.org/zim/wikipedia/test_en_all.zim"
+    )
+
+
 def test_get_staging_opds_xml_empty(
     client: TestClient,
     access_token: str,

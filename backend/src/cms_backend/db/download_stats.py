@@ -6,6 +6,7 @@ from sqlalchemy import CursorResult, Result, and_, delete, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db.models import (
     Book,
     BookLocation,
@@ -53,7 +54,7 @@ def get_prod_download_location_map(
             Book.title_id,
             Book.flavour,
             Collection.download_base_url,
-            CollectionTitle.path,
+            BookLocation.path,
             BookLocation.filename,
         )
         .join(Title, Book.title_id == Title.id)
@@ -65,8 +66,11 @@ def get_prod_download_location_map(
                 BookLocation.book_id == Book.id,
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Collection.warehouse_id,
-                BookLocation.path == CollectionTitle.path,
                 BookLocation.is_backup.is_not(True),
+                ~and_(
+                    BookLocation.warehouse_id == Context.staging_warehouse_id,
+                    BookLocation.path == Context.staging_base_path,
+                ),
             ),
         )
         .where(

@@ -97,6 +97,43 @@ def test_get_prod_download_location_map(
     }
 
 
+def test_get_prod_download_location_map_after_collection_path_rename(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    create_collection: Callable[..., Collection],
+    create_book: Callable[..., Book],
+    create_book_location: Callable[..., BookLocation],
+):
+    """The map still resolves a book whose collection path was renamed without
+    moving it (see #639): the book stays reachable at its actual BookLocation
+    path, not at CollectionTitle's new (unapplied) path.
+    """
+    title, collection = _create_prod_book(
+        create_title=create_title,
+        create_collection=create_collection,
+        create_book=create_book,
+        create_book_location=create_book_location,
+        dbsession=dbsession,
+    )
+
+    collection_title = dbsession.scalars(
+        select(CollectionTitle).where(CollectionTitle.collection_id == collection.id)
+    ).one()
+    collection_title.path = Path("zim-renamed/")
+    dbsession.flush()
+
+    expected_location = normalize_download_location(
+        construct_download_url(
+            "https://lb.download.kiwix.org/",
+            Path("zim/"),
+            "foo_en_all_2026-01.zim",
+        )
+    )
+    assert get_prod_download_location_map(dbsession) == {
+        expected_location: TitleFlavourKey(title_id=title.id, flavour="all")
+    }
+
+
 def test_get_prod_download_location_map_ignores_non_prod(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
