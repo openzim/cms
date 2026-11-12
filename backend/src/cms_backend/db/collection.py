@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import selectinload
 
 from cms_backend import logger
+from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
 from cms_backend.db.exceptions import RecordAlreadyExistsError, RecordDoesNotExistError
 from cms_backend.db.models import (
@@ -178,7 +179,7 @@ def get_latest_books_for_collection(
             Book,
             Title,
             Collection.download_base_url,
-            CollectionTitle.path.label("subpath"),
+            BookLocation.path.label("subpath"),
             BookLocation.filename,
         )
         .join(BookLocation)
@@ -190,7 +191,10 @@ def get_latest_books_for_collection(
                 Book.location_kind == "prod",
                 BookLocation.status == "current",
                 BookLocation.warehouse_id == Collection.warehouse_id,
-                BookLocation.path == CollectionTitle.path,
+                ~and_(
+                    BookLocation.warehouse_id == Context.staging_warehouse_id,
+                    BookLocation.path == Context.staging_base_path,
+                ),
                 Book.needs_processing.is_(False),
                 Book.has_error.is_(False),
                 Book.needs_file_operation.is_(False),
