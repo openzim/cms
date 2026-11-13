@@ -61,7 +61,7 @@
           </div>
         </template>
 
-        <template #[`header.maturity`]="{ column }">
+        <template #[`header.manual_review`]="{ column }">
           <div>
             <span>{{ column.title }}</span>
             <v-tooltip location="top">
@@ -72,13 +72,19 @@
               </template>
               <div>
                 <div>
-                  <strong>Unstable:</strong> ZIM files go through staging first before moving to
+                  <strong>Yes:</strong> ZIM files go through staging first before moving to
                   production
                 </div>
-                <div><strong>Stable:</strong> ZIM files go directly to production</div>
+                <div><strong>No:</strong> ZIM files go directly to production</div>
               </div>
             </v-tooltip>
           </div>
+        </template>
+
+        <template #[`item.manual_review`]="{ item }">
+          <v-chip size="small" :color="item.manual_review ? 'warning' : 'success'" variant="tonal">
+            {{ item.manual_review ? 'Yes' : 'No' }}
+          </v-chip>
         </template>
 
         <template #[`item.name`]="{ item }">

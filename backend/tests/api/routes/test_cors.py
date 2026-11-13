@@ -1,3 +1,4 @@
+# pyright: strict, reportUnusedFunction=false
 from http import HTTPStatus
 
 import pytest

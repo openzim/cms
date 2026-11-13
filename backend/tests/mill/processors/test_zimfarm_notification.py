@@ -276,10 +276,10 @@ class TestValidNotificationMissingZimMetadata:
         assert book.needs_file_operation is False
 
 
-class TestValidNotificationWithMatchingTitleUnstableMaturity:
-    """Test valid notifications that match an existing title with unstable maturity.
+class TestValidNotificationWithMatchingTitleManualReviewEnabled:
+    """Test valid notifications that match an existing title with manual review enabled.
 
-    Unstable maturity titles should have their books moved to staging.
+    Manual review enabled titles should have their books moved to staging.
     """
 
     @patch("cms_backend.db.book.book_has_flavour_mismatch")
@@ -313,7 +313,7 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
             language="ger",
             illustration_48x48_at_1=illustration_48x48_at_1,
         )
-        title.maturity = "unstable"
+        title.manual_review = True
         dbsession.flush()
 
         notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -342,12 +342,13 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         create_title: Callable[..., Title],
     ):
         """
-        Valid notification + matching unstable maturity title → book moves to staging.
+        Valid notification + matching manual review enabled title → book moves to
+        staging.
         """
         mock_get_zimcheck_errors.return_value = []
         # Create title that matches book name
         title = create_title(name="test_en_all")
-        title.maturity = "unstable"
+        title.manual_review = True
         dbsession.flush()
 
         notification = create_zimfarm_notification(content=VALID_NOTIFICATION_CONTENT)
@@ -389,12 +390,12 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
     ):
         mock_get_zimcheck_errors.return_value = []
         """
-        Valid notification with empty folder_name + unstable maturity title → book
+        Valid notification with empty folder_name + manual review enabled title → book
         moves to staging.
         """
         # Create title that matches book name
         title = create_title(name="test_en_all")
-        title.maturity = "unstable"
+        title.manual_review = True
         dbsession.flush()
 
         content = VALID_NOTIFICATION_CONTENT.copy()
@@ -427,10 +428,11 @@ class TestValidNotificationWithMatchingTitleUnstableMaturity:
         assert book.needs_processing is False
 
 
-class TestValidNotificationWithMatchingTitleStableMaturity:
-    """Test valid notifications that match a stable maturity title.
+class TestValidNotificationWithMatchingTitleManualReviewDisabled:
+    """Test valid notifications that match a manual review disabled title.
 
-    Stable maturity titles have their books moved directly to production collections.
+    Manual review disabled titles have their books moved directly to production
+    collections.
     """
 
     @patch("cms_backend.db.book.book_has_flavour_mismatch")
@@ -454,7 +456,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_book_has_flavour_mismatch.return_value = False
 
         title = create_title(name="test_en_all")
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -519,7 +521,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_book_has_flavour_mismatch.return_value = False
 
         title = create_title(name="test_en_all")
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -596,7 +598,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             language="ger",
             illustration_48x48_at_1=illustration_48x48_at_1,
         )
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -653,7 +655,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
         mock_book_has_flavour_mismatch.return_value = False
 
         title = create_title(name="test_en_all")
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -735,7 +737,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             language=content["metadata"]["Language"],
             illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
         )
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -802,7 +804,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             language=content["metadata"]["Language"],
             illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
         )
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -873,7 +875,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
             language=content["metadata"]["Language"],
             illustration_48x48_at_1=content["metadata"]["Illustration_48x48@1"],
         )
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -945,7 +947,7 @@ class TestValidNotificationWithMatchingTitleStableMaturity:
                 "Illustration_48x48@1"
             ],
         )
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")
@@ -1037,7 +1039,7 @@ class TestValidNotificationOnArchivedTitle:
         create_warehouse: Callable[..., Warehouse],
     ):
         title = create_title(name="test_en_all", archived=True)
-        title.maturity = "stable"
+        title.manual_review = False
 
         prod = create_warehouse(
             name="prod", warehouse_id=UUID("00000000-0000-0000-0000-000000000003")

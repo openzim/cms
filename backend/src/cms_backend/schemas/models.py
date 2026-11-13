@@ -249,12 +249,12 @@ class BaseTitleCreateUpdateSchema(BaseModel):
 
 class TitleCreateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString = Field(pattern=ZIM_TITLE_NAME_REGEX)
-    maturity: Literal["unstable", "stable"] = "unstable"
+    manual_review: bool = True
 
 
 class TitleUpdateSchema(BaseTitleCreateUpdateSchema):
     name: NotEmptyString | None = Field(pattern=ZIM_TITLE_NAME_REGEX, default=None)
-    maturity: Literal["unstable", "stable"] | None = None
+    manual_review: bool | None = None
     comment: NotEmptyString | None = None
 
 
@@ -274,7 +274,7 @@ type BookPromotionActionKind = Literal[
     "restore_title",
     "update_title_metadata",
     "update_title_language",
-    "update_title_maturity",
+    "remove_manual_review",
     "create_title_flavour",
     "set_title_collections",
     "update_flavour_recipe",

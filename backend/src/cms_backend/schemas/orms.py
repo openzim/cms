@@ -40,6 +40,8 @@ class ApplicationHistorySchema(BaseModel):
 class BaseTitleFlavourSchema(BaseModel):
     flavour: str
     recipe_id: UUID | None
+    archived: bool = False
+    temporary_manual_review: bool = False
 
 
 class ApplicationBuildSchema(BaseModel):
@@ -76,7 +78,6 @@ class AppBuildCheckSchema(BaseModel):
 
 class TitleFlavourSchema(BaseTitleFlavourSchema):
     last_book_added_at: datetime | None
-    archived: bool
 
     @computed_field
     @property
@@ -116,7 +117,7 @@ class BaseTitleSchema(BaseModel):
 
     id: UUID
     name: str
-    maturity: str | None
+    manual_review: bool
     archived: bool
     title: str | None
     creator: str | None

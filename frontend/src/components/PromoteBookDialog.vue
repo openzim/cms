@@ -356,12 +356,13 @@
                       </v-row>
                     </template>
 
-                    <!-- update_title_maturity -->
-                    <template v-else-if="action.kind === 'update_title_maturity'">
-                      <TitleMaturityField
-                        :model-value="actionData[index].maturity"
-                        @update:model-value="actionData[index].maturity = $event"
-                      />
+                    <!-- remove_manual_review -->
+                    <template v-else-if="action.kind === 'remove_manual_review'">
+                      <v-alert type="info" variant="tonal" density="compact">
+                        Temporary manual review will be removed for flavour
+                        <strong>{{ actionData[index].flavour }}</strong
+                        >.
+                      </v-alert>
                     </template>
 
                     <!-- set_title_collections -->
@@ -535,7 +536,7 @@ import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
 import TitleCollectionsField from '@/components/TitleCollectionsField.vue'
-import TitleMaturityField from '@/components/TitleMaturityField.vue'
+
 import TitleNameField from '@/components/TitleNameField.vue'
 import TitleForm from '@/components/TitleForm.vue'
 import MetadataFieldWithDiff from '@/components/MetadataFieldWithDiff.vue'
@@ -702,9 +703,14 @@ const titleDiffs = computed(() => {
         }
         break
       }
-      case 'update_title_maturity': {
-        current = { maturity: existingTitle.value!.maturity }
-        next = { maturity: data.maturity }
+      case 'remove_manual_review': {
+        const existingFlavour = existingTitle.value!.flavours.find(
+          (f) => f.flavour === data.flavour,
+        )
+        current = {
+          temporary_manual_review: existingFlavour?.temporary_manual_review ?? true,
+        }
+        next = { temporary_manual_review: data.temporary_manual_review }
         break
       }
       case 'set_title_collections': {
@@ -758,7 +764,7 @@ const titleDiffs = computed(() => {
 
 const DIFFABLE_ACTION_KINDS = [
   'update_title_metadata',
-  'update_title_maturity',
+  'remove_manual_review',
   'set_title_collections',
   'restore_title',
   'create_title_flavour',
@@ -782,7 +788,7 @@ function getSyntheticTitle(index: number): Title {
   return {
     id: '',
     name: data.name || '',
-    maturity: data.maturity || 'stable',
+    manual_review: data.manual_review ?? false,
     archived: false,
     popularity: 1,
     title: data.title || null,

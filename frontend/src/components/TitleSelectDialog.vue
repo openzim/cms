@@ -105,8 +105,8 @@ const emit = defineEmits<{
 const headers = [
   { title: 'Name', value: 'name' },
   {
-    title: 'Maturity',
-    value: 'maturity',
+    title: 'Manual review',
+    value: 'manual_review',
   },
 ]
 

@@ -185,7 +185,7 @@ def test_add_book_to_title_defers_language_update_for_staging_book(
         flavours=["maxi"],
         recipe_id=uuid4(),
     )
-    title.maturity = "unstable"
+    title.manual_review = True
     book = create_book(
         flavour="maxi",
         zim_metadata={
@@ -243,7 +243,7 @@ def test_add_book_to_title_updates_language_for_prod_book(
         flavours=["maxi"],
         recipe_id=uuid4(),
     )
-    title.maturity = "stable"
+    title.manual_review = False
     book = create_book(
         flavour="maxi",
         zim_metadata={
@@ -1493,7 +1493,7 @@ def test_reprocess_book_moves_errored_quarantined_book_to_staging(
         language=content["metadata"]["Language"],
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "unstable"
+    title.manual_review = True
 
     book = create_book(
         zim_metadata=content["metadata"],

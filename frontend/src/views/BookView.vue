@@ -1058,7 +1058,7 @@ const titleDataFromBook = computed<Title | null>(() => {
   return {
     id: '', // Will be assigned on creation
     name: book.value.name || '',
-    maturity: 'unstable',
+    manual_review: true,
     archived: false,
     popularity: 1,
     collection_titles: [],

@@ -40,18 +40,77 @@
         Hidden from catalog
       </v-chip>
 
-      <v-spacer v-if="canManageFlavours" />
+      <v-chip
+        v-if="flavourInfo.temporary_manual_review"
+        size="small"
+        variant="tonal"
+        color="warning"
+      >
+        <v-icon start size="small">mdi-alert-circle</v-icon>
+        Temporary manual review
+      </v-chip>
+    </div>
 
+    <div v-if="canManageFlavours && flavourInfo" class="d-flex flex-wrap align-center ga-2 mb-3">
       <v-btn
-        v-if="canManageFlavours"
         size="small"
         variant="text"
-        :prepend-icon="flavourInfo.archived ? 'mdi-eye' : 'mdi-eye-off'"
-        @click="$emit('toggle-archive', flavour, !flavourInfo.archived)"
+        :prepend-icon="
+          flavourInfo!.temporary_manual_review ? 'mdi-close-circle' : 'mdi-shield-alert-outline'
+        "
+        @click="showManualReviewConfirm = true"
       >
-        {{ flavourInfo.archived ? 'Show in catalog' : 'Hide from catalog' }}
+        {{
+          flavourInfo!.temporary_manual_review
+            ? 'Remove temporary manual review'
+            : 'Require manual review temporarily'
+        }}
+      </v-btn>
+
+      <v-btn
+        size="small"
+        variant="text"
+        :prepend-icon="flavourInfo!.archived ? 'mdi-eye' : 'mdi-eye-off'"
+        @click="showArchiveConfirm = true"
+      >
+        {{ flavourInfo!.archived ? 'Show in catalog' : 'Hide from catalog' }}
       </v-btn>
     </div>
+
+    <ConfirmDialog
+      v-if="flavourInfo"
+      v-model="showManualReviewConfirm"
+      :title="
+        flavourInfo.temporary_manual_review
+          ? 'Remove Temporary Manual Review'
+          : 'Enable Temporary Manual Review'
+      "
+      :message="
+        flavourInfo.temporary_manual_review
+          ? `Remove temporary manual review for flavour '${flavourLabel}'? Books of this flavour will no longer be held for manual review until it is enabled again.`
+          : `Require manual review for flavour '${flavourLabel}' until its next book is moved to production?`
+      "
+      :confirm-text="flavourInfo.temporary_manual_review ? 'Remove' : 'Enable'"
+      :icon="flavourInfo.temporary_manual_review ? 'mdi-close-circle' : 'mdi-shield-alert'"
+      @confirm="
+        $emit('toggle-temporary-manual-review', flavour, !flavourInfo.temporary_manual_review)
+      "
+    />
+
+    <ConfirmDialog
+      v-if="flavourInfo"
+      v-model="showArchiveConfirm"
+      :title="flavourInfo.archived ? 'Show in Catalog' : 'Hide from Catalog'"
+      :message="
+        flavourInfo.archived
+          ? `Show flavour '${flavourLabel}' in the catalog again?`
+          : `Hide flavour '${flavourLabel}' from the catalog? Its books will stay available, but the flavour will no longer be published.`
+      "
+      :confirm-text="flavourInfo.archived ? 'Show' : 'Hide'"
+      :confirm-color="flavourInfo.archived ? 'primary' : 'warning'"
+      :icon="flavourInfo.archived ? 'mdi-eye' : 'mdi-eye-off'"
+      @confirm="$emit('toggle-archive', flavour, !flavourInfo.archived)"
+    />
 
     <v-row v-if="books.length > 0">
       <v-col v-for="book in books" :key="book.id" cols="12" sm="6" md="4" lg="3">
@@ -71,10 +130,11 @@
 
 <script setup lang="ts">
 import BookCard from '@/components/BookCard.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { BookLight, ZimUrl } from '@/types/book'
 import type { TitleFlavour } from '@/types/title'
 import { formatDt } from '@/utils/format'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Props {
   flavour: string
@@ -98,7 +158,11 @@ const props = withDefaults(defineProps<Props>(), {
 
 defineEmits<{
   'toggle-archive': [flavour: string, archived: boolean]
+  'toggle-temporary-manual-review': [flavour: string, temporaryManualReview: boolean]
 }>()
+
+const showManualReviewConfirm = ref(false)
+const showArchiveConfirm = ref(false)
 
 const flavourLabel = computed(() => (props.flavour === '' ? 'Empty' : props.flavour))
 </script>

@@ -23,6 +23,7 @@ export interface TitleFlavour {
   last_book_added_at: string | null
   is_rotten: boolean
   archived: boolean
+  temporary_manual_review: boolean
 }
 
 export interface TitleFlavourCreate {
@@ -33,7 +34,7 @@ export interface TitleFlavourCreate {
 export interface TitleLight {
   id: string
   name: string
-  maturity: string
+  manual_review: boolean
   archived: boolean
   popularity: number
   title: string | null
@@ -66,7 +67,7 @@ export interface TitleHistorySchema {
 
 export interface TitleCreate {
   name: string
-  maturity: string
+  manual_review: boolean
   collection_titles: BaseTitleCollection[]
   title?: string | null
   creator?: string | null
@@ -82,7 +83,7 @@ export interface TitleCreate {
 
 export interface TitleUpdate {
   name?: string
-  maturity: string
+  manual_review: boolean
   collection_titles: BaseTitleCollection[]
   flavours?: TitleFlavourCreate[]
   title?: string | null

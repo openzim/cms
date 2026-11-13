@@ -230,7 +230,7 @@ def test_promotion_actions_no_title(
     assert actions[0].kind == "create_title"
     assert actions[0].requirement == "mandatory"
     assert actions[0].data["name"] == "test_en_all"
-    assert actions[0].data["maturity"] == "stable"
+    assert actions[0].data["manual_review"] is False
     assert len(actions[0].data["flavours"]) != 0
     assert len(actions[0].data["collection_titles"]) == 0
 
@@ -407,7 +407,7 @@ def test_promotion_actions_differing_metadata(
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
 @patch("cms_backend.db.book_actions.get_zimcheck_errors")
-def test_promotion_actions_maturity_not_stable(
+def test_promotion_actions_remove_manual_review(
     mock_get_book_unsupported_languages: MagicMock,
     mock_get_zimcheck_errors: MagicMock,
     dbsession: OrmSession,
@@ -416,10 +416,11 @@ def test_promotion_actions_maturity_not_stable(
     illustration_48x48_at_1: str,
     account: Account,
 ):
-    """Title with non-stable maturity produces an update_title_maturity action."""
+    """A flavour under temporary manual review produces a remove action."""
     mock_get_zimcheck_errors.return_value = []
     mock_get_book_unsupported_languages.return_value = []
     book = create_book(
+        flavour="maxi",
         zim_metadata={
             "Name": "test_en_all",
             "Title": "Test Article",
@@ -434,6 +435,7 @@ def test_promotion_actions_maturity_not_stable(
     )
     title = create_title(
         name="test_en_all",
+        flavours=["maxi"],
         title="Test Article",
         creator="Test Creator",
         publisher="Test Publisher",
@@ -441,18 +443,22 @@ def test_promotion_actions_maturity_not_stable(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
+    title.flavours[0].temporary_manual_review = True
     book.title = title
     dbsession.add(book)
     dbsession.flush()
 
     actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
 
-    maturity_actions = [
-        action for action in actions if action.kind == "update_title_maturity"
+    manual_review_actions = [
+        action for action in actions if action.kind == "remove_manual_review"
     ]
-    assert len(maturity_actions) == 1
-    assert maturity_actions[0].requirement == "optional"
-    assert maturity_actions[0].data == {"maturity": "stable"}
+    assert len(manual_review_actions) == 1
+    assert manual_review_actions[0].requirement == "optional"
+    assert manual_review_actions[0].data == {
+        "flavour": "maxi",
+        "temporary_manual_review": False,
+    }
 
 
 @patch("cms_backend.db.book_actions.get_book_unsupported_languages")
@@ -705,7 +711,7 @@ def test_promotion_actions_multiple_actions(
         "warning_count": 0,
         "retcode": 1,
     }
-    # Title: no collections, different metadata (missing Title), not stable maturity
+    # Title: no collections, different metadata (missing Title), manual review
     title = create_title(
         name="test_en_all",
         flavours=["maxi"],
@@ -726,7 +732,7 @@ def test_promotion_actions_multiple_actions(
     assert "unknown_languages" in kinds
     assert "zimcheck_issues" in kinds
     assert "update_title_metadata" in kinds
-    assert "update_title_maturity" in kinds
+    assert "remove_manual_review" not in kinds
     assert "set_title_collections" in kinds
     assert "create_title_flavour" in kinds
 
@@ -769,7 +775,7 @@ def test_promotion_media_count_issue(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "stable"  # override default "unstable"
+    title.manual_review = False  # override default "unstable"
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -835,7 +841,7 @@ def test_promotion_article_count_issue(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "stable"  # override default "unstable"
+    title.manual_review = False  # override default "unstable"
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -899,7 +905,7 @@ def test_promotion_actions_ready_for_prod(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "stable"  # override default "unstable"
+    title.manual_review = False  # override default "unstable"
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -957,7 +963,7 @@ def test_promote_book_with_no_actions_move_directly_to_prod(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "stable"
+    title.manual_review = False
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -983,27 +989,25 @@ def test_apply_actions_duplicate_actions_raises_error(
 ):
     """Providing duplicate action kinds raises ValueError."""
     book = _create_valid_book(create_book, illustration_48x48_at_1)
-    title = _create_valid_title(create_title, illustration_48x48_at_1)
+    book.flavour = "maxi"
+    title = _create_valid_title(
+        create_title, illustration_48x48_at_1, flavours=["maxi"]
+    )
+    title.flavours[0].temporary_manual_review = True
     book.title = title
     dbsession.add(book)
     dbsession.flush()
 
+    action = BaseBookPromotionAction(
+        kind="remove_manual_review",
+        data={"flavour": "maxi", "temporary_manual_review": False},
+        requirement="optional",
+    )
     with pytest.raises(ValueError, match=r"duplicates"):
         apply_book_promotion_actions(
             dbsession,
             book_id=book.id,
-            actions=[
-                BaseBookPromotionAction(
-                    kind="update_title_maturity",
-                    data={"maturity": "stable"},
-                    requirement="optional",
-                ),
-                BaseBookPromotionAction(
-                    kind="update_title_maturity",
-                    data={"maturity": "stable"},
-                    requirement="optional",
-                ),
-            ],
+            actions=[action, action],
             account=account,
         )
 
@@ -1026,7 +1030,7 @@ def test_apply_actions_unknown_action_raises_error(
 
     book = _create_valid_book(create_book, illustration_48x48_at_1)
     title = _create_valid_title(create_title, illustration_48x48_at_1)
-    title.maturity = "stable"
+    title.manual_review = False
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -1063,7 +1067,11 @@ def test_apply_actions_required_mismatch_raises_error(
     mock_get_book_unsupported_languages.return_value = []
 
     book = _create_valid_book(create_book, illustration_48x48_at_1)
-    title = _create_valid_title(create_title, illustration_48x48_at_1)
+    book.flavour = "maxi"
+    title = _create_valid_title(
+        create_title, illustration_48x48_at_1, flavours=["maxi"]
+    )
+    title.flavours[0].temporary_manual_review = True
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -1074,8 +1082,8 @@ def test_apply_actions_required_mismatch_raises_error(
             book_id=book.id,
             actions=[
                 BaseBookPromotionAction(
-                    kind="update_title_maturity",
-                    data={"maturity": "stable"},
+                    kind="remove_manual_review",
+                    data={"flavour": "maxi", "temporary_manual_review": False},
                     requirement="mandatory",  # should be "optional"
                 ),
             ],
@@ -1161,7 +1169,7 @@ def test_apply_actions_update_collections_without_entries_raises_error(
 
     book = _create_valid_book(create_book, illustration_48x48_at_1)
     title = _create_valid_title(create_title, illustration_48x48_at_1)
-    title.maturity = "stable"
+    title.manual_review = False
     book.title = title
     dbsession.add(book)
     dbsession.flush()
@@ -1218,7 +1226,7 @@ def test_apply_action_update_recipe_flavour(
         flavours=["maxi", "mini"],
         recipe_id=uuid4(),
     )
-    title.maturity = "stable"
+    title.manual_review = False
     dbsession.add(title)
 
     create_collection_title(title=title)
@@ -1313,7 +1321,7 @@ def test_apply_actions_create_title(
     title = dbsession.query(Title).filter(Title.name == "test_en_all").one_or_none()
     assert title is not None
     assert title.title == "Test Article"
-    assert title.maturity == "stable"
+    assert title.manual_review is False
     assert len(title.collections) == 1
     dbsession.refresh(book)
     assert book.title_id == title.id
@@ -1350,7 +1358,7 @@ def test_apply_actions_create_title_flavour_keeps_existing_flavours(
     title = _create_valid_title(
         create_title, illustration_48x48_at_1, flavours=["maxi", "mini"]
     )
-    title.maturity = "stable"
+    title.manual_review = False
     create_collection_title(title=title)
     book.title = title
     dbsession.add(book)
@@ -1514,7 +1522,6 @@ def test_apply_actions_batched_updates(
     actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     kinds = {a.kind for a in actions}
     assert "update_title_metadata" in kinds  # creator differs/missing
-    assert "update_title_maturity" in kinds  # default "unstable"
     assert "set_title_collections" in kinds  # no collections
     assert "create_title_flavour" in kinds  # flavour mismatch
 
@@ -1543,7 +1550,7 @@ def test_apply_actions_batched_updates(
 
     dbsession.refresh(title)
     assert title.creator == "Test Creator 2"
-    assert title.maturity == "stable"
+    assert title.manual_review is True
     assert len(title.collections) == 1
     dbsession.refresh(book)
     assert book.location_kind == "prod"
