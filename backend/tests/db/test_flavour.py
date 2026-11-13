@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db.exceptions import RecordDoesNotExistError
-from cms_backend.db.models import Book, Title, TitleFlavour
+from cms_backend.db.models import Account, Book, Title, TitleFlavour
 from cms_backend.db.title import delete_title_flavour
 
 
@@ -46,22 +46,25 @@ def test_get_title_flavours_pagination(
     assert len(results.records) == expected_count
 
 
-def test_set_title_flavour_archived_and_restore(
+def test_update_title_flavour_archived_and_restore(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    account: Account,
 ):
     """Archiving a flavour only flags it, keeping the flavour and its books."""
     title = create_title(name="wikipedia_en_all", flavours=["maxi", "mini"])
+    initial_history_count = len(title.history_entries)
 
-    archived = db_flavour.set_title_flavour_archived(
-        dbsession, title, "maxi", archived=True
+    archived = db_flavour.update_title_flavour(
+        dbsession, title, "maxi", author_id=account.id, archived=True
     )
     assert archived.archived is True
     assert db_flavour.get_title_flavour(dbsession, title.id, "maxi").archived is True
     assert any("hidden from catalog" in event for event in title.events)
+    assert len(title.history_entries) == initial_history_count + 1
 
-    restored = db_flavour.set_title_flavour_archived(
-        dbsession, title, "maxi", archived=False
+    restored = db_flavour.update_title_flavour(
+        dbsession, title, "maxi", author_id=account.id, archived=False
     )
     assert restored.archived is False
     assert db_flavour.get_title_flavour(dbsession, title.id, "maxi").archived is False
@@ -70,26 +73,75 @@ def test_set_title_flavour_archived_and_restore(
     assert {tf.flavour for tf in title.flavours} == {"maxi", "mini"}
 
 
-def test_set_title_flavour_archived_unknown_flavour(
+def test_update_title_flavour_temporary_manual_review(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    account: Account,
+):
+    """Temporary manual review can be enabled and disabled for a flavour."""
+    title = create_title(name="wikipedia_en_all", flavours=["maxi", "mini"])
+
+    enabled = db_flavour.update_title_flavour(
+        dbsession,
+        title,
+        "maxi",
+        author_id=account.id,
+        temporary_manual_review=True,
+    )
+    assert enabled.temporary_manual_review is True
+    assert any("temporary manual review enabled" in event for event in title.events)
+
+    disabled = db_flavour.update_title_flavour(
+        dbsession,
+        title,
+        "maxi",
+        author_id=account.id,
+        temporary_manual_review=False,
+    )
+    assert disabled.temporary_manual_review is False
+    assert any("temporary manual review disabled" in event for event in title.events)
+
+
+def test_update_title_flavour_unknown_flavour(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
 ):
     title = create_title(name="wikipedia_en_all", flavours=["maxi"])
     with pytest.raises(RecordDoesNotExistError):
-        db_flavour.set_title_flavour_archived(dbsession, title, "mini", archived=True)
+        db_flavour.update_title_flavour(
+            dbsession, title, "mini", author_id=account.id, archived=True
+        )
 
 
-def test_set_title_flavour_archived_already_in_state(
+def test_update_title_flavour_requires_a_field(
     dbsession: OrmSession,
     create_title: Callable[..., Title],
+    account: Account,
+):
+    title = create_title(name="wikipedia_en_all", flavours=["maxi"])
+    with pytest.raises(ValueError, match=r"At least one"):
+        db_flavour.update_title_flavour(dbsession, title, "maxi", author_id=account.id)
+
+
+def test_update_title_flavour_already_in_state(
+    dbsession: OrmSession,
+    create_title: Callable[..., Title],
+    account: Account,
 ):
     title = create_title(name="wikipedia_en_all", flavours=["maxi"])
     with pytest.raises(RecordDoesNotExistError):
-        db_flavour.set_title_flavour_archived(dbsession, title, "maxi", archived=False)
+        db_flavour.update_title_flavour(
+            dbsession, title, "maxi", author_id=account.id, archived=False
+        )
 
-    db_flavour.set_title_flavour_archived(dbsession, title, "maxi", archived=True)
+    db_flavour.update_title_flavour(
+        dbsession, title, "maxi", author_id=account.id, archived=True
+    )
     with pytest.raises(RecordDoesNotExistError):
-        db_flavour.set_title_flavour_archived(dbsession, title, "maxi", archived=True)
+        db_flavour.update_title_flavour(
+            dbsession, title, "maxi", author_id=account.id, archived=True
+        )
 
 
 @patch("cms_backend.db.book.delete_book")

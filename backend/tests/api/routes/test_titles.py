@@ -132,7 +132,8 @@ def test_get_titles(
     assert set(data["items"][0].keys()) == {
         "id",
         "name",
-        "maturity",
+        "manual_review",
+        "temporary_manual_review",
         "archived",
         "popularity",
         "title",
@@ -255,7 +256,7 @@ def test_create_title_all_fields(
     collection = create_collection(name="wikipedia")
     title_data = {
         "name": "wikipedia_en_test",
-        "maturity": "unstable",
+        "manual_review": True,
         "title": "Wikipedia in English",
         "creator": "Wikipedia Contributors",
         "publisher": "Kiwix",
@@ -285,8 +286,8 @@ def test_create_title_all_fields(
     assert "id" in data
     assert "name" in data
     assert data["name"] == "wikipedia_en_test"
-    assert "maturity" in data
-    assert data["maturity"] == "unstable"
+    assert "manual_review" in data
+    assert data["manual_review"] is True
     assert data["title"] == "Wikipedia in English"
     assert data["creator"] == "Wikipedia Contributors"
     assert data["publisher"] == "Kiwix"
@@ -336,7 +337,7 @@ def test_create_title_with_duplicate_collection_name(
     """Test creating a title with the same collection repeated."""
     title_data = {
         "name": "wikipedia_en_test",
-        "maturity": "unstable",
+        "manual_review": True,
         "title": "Wikipedia in English",
         "creator": "Wikipedia Contributors",
         "publisher": "Kiwix",
@@ -414,7 +415,8 @@ def test_get_title_by_id(
     assert set(data.keys()) == {
         "id",
         "name",
-        "maturity",
+        "manual_review",
+        "temporary_manual_review",
         "events",
         "books",
         "collections",
@@ -531,7 +533,7 @@ def test_update_title_required_permissions(
     """Test updating a title with different roles"""
     title = create_title(name="wikipedia_en_test")
     update_data = {
-        "maturity": "stable",
+        "manual_review": False,
     }
 
     account = create_account(permission=permission)
@@ -554,10 +556,10 @@ def test_update_title(
 ):
     """Test updating a title's data"""
     title = create_title(name="wikipedia_en_test")
-    assert title.maturity == "unstable"
+    assert title.manual_review is True
 
     update_data = {
-        "maturity": "stable",
+        "manual_review": False,
         "name": "wikipedia_en_all",
     }
 
@@ -571,7 +573,7 @@ def test_update_title(
 
     assert data["id"] == str(title.id)
     assert data["name"] == "wikipedia_en_all"
-    assert data["maturity"] == "stable"
+    assert data["manual_review"] is False
 
     events = dbsession.scalars(
         select(Event).where(Event.topic == "title_modified")
@@ -591,7 +593,7 @@ def test_update_title_with_existing_title_name(
     create_title(name="wikipedia_fr_test")
     title = create_title(name="wikipedia_en_test")
     update_data = {
-        "maturity": "stable",
+        "manual_review": False,
         "name": "wikipedia_fr_test",
     }
 
@@ -813,7 +815,7 @@ def test_restore_multiple_titles_required_permissions(
         ),
     ],
 )
-def test_set_title_flavour_archived_required_permissions(
+def test_update_title_flavour_required_permissions(
     client: TestClient,
     create_account: Callable[..., Account],
     create_title: Callable[..., Title],
@@ -827,14 +829,14 @@ def test_set_title_flavour_archived_required_permissions(
         account_id=str(account.id), issue_time=getnow()
     )
     response = client.patch(
-        f"/v1/titles/{title.id}/flavours/archive",
+        f"/v1/titles/{title.id}/flavours",
         json={"flavour": "maxi", "archived": True},
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert response.status_code == expected_status_code
 
 
-def test_set_title_flavour_archived_hides_and_restores(
+def test_update_title_flavour_hides_and_restores(
     client: TestClient,
     access_token: str,
     create_title: Callable[..., Title],
@@ -843,7 +845,7 @@ def test_set_title_flavour_archived_hides_and_restores(
     title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
 
     response = client.patch(
-        f"/v1/titles/{title.id}/flavours/archive",
+        f"/v1/titles/{title.id}/flavours",
         json={"flavour": "maxi", "archived": True},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -853,7 +855,7 @@ def test_set_title_flavour_archived_hides_and_restores(
     assert data["archived"] is True
 
     response = client.patch(
-        f"/v1/titles/{title.id}/flavours/archive",
+        f"/v1/titles/{title.id}/flavours",
         json={"flavour": "maxi", "archived": False},
         headers={"Authorization": f"Bearer {access_token}"},
     )
@@ -861,7 +863,57 @@ def test_set_title_flavour_archived_hides_and_restores(
     assert response.json()["archived"] is False
 
 
-def test_set_title_flavour_archived_unknown_flavour(
+def test_update_title_flavour_temporary_manual_review(
+    client: TestClient,
+    access_token: str,
+    create_title: Callable[..., Title],
+):
+    """Test that temporary manual review can be enabled and disabled."""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi", "mini"])
+
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours",
+        json={"flavour": "maxi", "temporary_manual_review": True},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["flavour"] == "maxi"
+    assert data["temporary_manual_review"] is True
+
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours",
+        json={"flavour": "maxi", "temporary_manual_review": False},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["temporary_manual_review"] is False
+
+
+def test_update_title_flavour_multiple_fields(
+    client: TestClient,
+    access_token: str,
+    create_title: Callable[..., Title],
+):
+    """Both flavour fields can be updated in a single request."""
+    title = create_title(name="wikipedia_en_test", flavours=["maxi"])
+
+    response = client.patch(
+        f"/v1/titles/{title.id}/flavours",
+        json={
+            "flavour": "maxi",
+            "archived": True,
+            "temporary_manual_review": True,
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert data["archived"] is True
+    assert data["temporary_manual_review"] is True
+
+
+def test_update_title_flavour_unknown_flavour(
     client: TestClient,
     access_token: str,
     create_title: Callable[..., Title],
@@ -869,7 +921,7 @@ def test_set_title_flavour_archived_unknown_flavour(
     """Test that hiding an unknown flavour returns an error"""
     title = create_title(name="wikipedia_en_test", flavours=["maxi"])
     response = client.patch(
-        f"/v1/titles/{title.id}/flavours/archive",
+        f"/v1/titles/{title.id}/flavours",
         json={"flavour": "mini", "archived": True},
         headers={"Authorization": f"Bearer {access_token}"},
     )
