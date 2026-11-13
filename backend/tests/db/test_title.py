@@ -774,7 +774,7 @@ def test_revert_title(
             license="CC-BY-SA 3.0",
             relation="wikipedia_v1",
             source="https://en.wikipedia.org/v1",
-            maturity="stable",
+            manual_review=False,
             comment="First version",
         ),
     )
@@ -799,7 +799,7 @@ def test_revert_title(
             license="CC-BY-SA 4.0",
             relation="wikipedia_v2",
             source="https://en.wikipedia.org/v2",
-            maturity="unstable",
+            manual_review=True,
             collection_titles=[
                 BaseTitleCollectionSchema(collection_name="wikipedia", path="wikis"),
                 BaseTitleCollectionSchema(collection_name="gutenberg", path="books"),
@@ -818,7 +818,7 @@ def test_revert_title(
     assert title.license == "CC-BY-SA 4.0"
     assert title.relation == "wikipedia_v2"
     assert title.source == "https://en.wikipedia.org/v2"
-    assert title.maturity == "unstable"
+    assert title.manual_review is True
     assert len(title.collections) == 2
 
     # Revert to the first version
@@ -841,7 +841,7 @@ def test_revert_title(
     assert reverted_title.license == "CC-BY-SA 3.0"
     assert reverted_title.relation == "wikipedia_v1"
     assert reverted_title.source == "https://en.wikipedia.org/v1"
-    assert reverted_title.maturity == "stable"
+    assert reverted_title.manual_review is False
     assert len(reverted_title.collections) == 1
 
 

@@ -5,6 +5,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session as OrmSession
 
 from cms_backend.db import count_from_stmt
+from cms_backend.db import title as db_title
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import CollectionTitle, Title, TitleFlavour
 from cms_backend.schemas.orms import ListResult, TitleFlavourSchema
@@ -44,6 +45,7 @@ def create_title_flavour_schema(tf: TitleFlavour) -> TitleFlavourSchema:
         recipe_id=tf.recipe_id,
         last_book_added_at=tf.last_book_added_at,
         archived=tf.archived,
+        temporary_manual_review=tf.temporary_manual_review,
     )
 
 
@@ -62,19 +64,23 @@ def create_title_flavour(
     return title_flavour
 
 
-def set_title_flavour_archived(
+def update_title_flavour(
     session: OrmSession,
     title: Title,
     flavour: str,
     *,
-    archived: bool,
+    author_id: UUID,
+    archived: bool | None = None,
+    temporary_manual_review: bool | None = None,
+    comment: str | None = None,
     accessible_collection_ids: Sequence[UUID] | None = None,
 ) -> TitleFlavour:
-    """Hide (or unhide) a title flavour from the catalog.
+    """Update a title flavour's catalog visibility and manual review override."""
+    if archived is None and temporary_manual_review is None:
+        raise ValueError(
+            "At least one of archived or temporary_manual_review must be provided"
+        )
 
-    The flavour and its books are kept as-is so that ongoing downloads and
-    backups keep working; only catalog publication is affected.
-    """
     tf = get_title_flavour_or_none(
         session,
         title_id=title.id,
@@ -85,19 +91,38 @@ def set_title_flavour_archived(
         raise RecordDoesNotExistError(
             f"Title flavour '{flavour}' for title {title.id} does not exist"
         )
-    if tf.archived == archived:
-        raise RecordDoesNotExistError(
-            f"Title flavour '{flavour}' is already "
-            f"{'archived' if archived else 'not archived'}"
+
+    changes: list[str] = []
+    if archived is not None and tf.archived != archived:
+        tf.archived = archived
+        changes.append(
+            f"flavour '{flavour}' "
+            f"{'hidden from' if archived else 'restored to'} catalog"
         )
-    tf.archived = archived
-    title.events.append(
-        f"{getnow()}: flavour '{flavour}' "
-        f"{'hidden from' if archived else 'restored to'} catalog"
-    )
+    if (
+        temporary_manual_review is not None
+        and tf.temporary_manual_review != temporary_manual_review
+    ):
+        tf.temporary_manual_review = temporary_manual_review
+        changes.append(
+            f"flavour '{flavour}' temporary manual review "
+            f"{'enabled' if temporary_manual_review else 'disabled'}"
+        )
+
+    if not changes:
+        raise RecordDoesNotExistError(
+            f"Title flavour '{flavour}' already has the requested state"
+        )
+
+    now = getnow()
+    title.events.extend(f"{now}: {change}" for change in changes)
     session.add(tf)
     session.add(title)
     session.flush()
+
+    db_title.create_title_history_entry(
+        session, title, author_id, comment or "; ".join(changes)
+    )
     return tf
 
 

@@ -8,7 +8,7 @@
           <TitleNameField v-model="formData.name" />
         </v-col>
         <v-col cols="12" :md="inDialog ? 12 : 6">
-          <TitleMaturityField v-model="formData.maturity" />
+          <TitleManualReviewField v-model="formData.manual_review" />
         </v-col>
       </v-row>
     </div>
@@ -252,7 +252,7 @@
 
 <script setup lang="ts">
 import TitleNameField from '@/components/TitleNameField.vue'
-import TitleMaturityField from '@/components/TitleMaturityField.vue'
+import TitleManualReviewField from '@/components/TitleManualReviewField.vue'
 import TitleTextField from '@/components/TitleTextField.vue'
 import TitleLanguageField from '@/components/TitleLanguageField.vue'
 import TitleIllustrationField from '@/components/TitleIllustrationField.vue'
@@ -304,7 +304,7 @@ const formValid = ref(false)
 
 const formData = ref<TitleUpdate>({
   name: '',
-  maturity: 'unstable',
+  manual_review: true,
   collection_titles: [],
   title: null,
   creator: null,
@@ -430,7 +430,7 @@ const hasChanges = computed(() => {
 
   return (
     formData.value.name !== props.title?.name ||
-    formData.value.maturity !== props.title?.maturity ||
+    formData.value.manual_review !== props.title?.manual_review ||
     formData.value.title !== props.title?.title ||
     formData.value.creator !== props.title?.creator ||
     formData.value.publisher !== props.title?.publisher ||
@@ -470,7 +470,7 @@ function resetFormToTitle(title: Title) {
 
   formData.value = {
     name: title.name,
-    maturity: title.maturity,
+    manual_review: title.manual_review,
     collection_titles: collections.map((c) => ({ ...c })),
     title: title.title,
     creator: title.creator,
@@ -492,7 +492,7 @@ function resetFormToTitle(title: Title) {
 function resetForm() {
   formData.value = {
     name: '',
-    maturity: 'unstable',
+    manual_review: true,
     collection_titles: [],
     title: null,
     creator: null,
@@ -514,7 +514,7 @@ function getFormData(): TitleUpdate {
   if (!isEditMode.value) {
     return {
       name: formData.value.name || '',
-      maturity: formData.value.maturity || 'unstable',
+      manual_review: formData.value.manual_review,
       collection_titles: formData.value.collection_titles,
       title: formData.value.title || null,
       creator: formData.value.creator || null,
@@ -537,7 +537,8 @@ function getUpdatePayload(): Partial<TitleUpdate> {
   const payload: Partial<TitleUpdate> = {}
 
   if (formData.value.name !== props.title.name) payload.name = formData.value.name
-  if (formData.value.maturity !== props.title.maturity) payload.maturity = formData.value.maturity
+  if (formData.value.manual_review !== props.title.manual_review)
+    payload.manual_review = formData.value.manual_review
   if (formData.value.title !== props.title.title) payload.title = formData.value.title
   if (formData.value.creator !== props.title.creator) payload.creator = formData.value.creator
   if (formData.value.publisher !== props.title.publisher)

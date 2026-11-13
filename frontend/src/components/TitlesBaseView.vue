@@ -174,8 +174,8 @@ const headers = [
     value: 'popularity',
   },
   {
-    title: 'Maturity',
-    value: 'maturity',
+    title: 'Manual review',
+    value: 'manual_review',
   },
 ]
 

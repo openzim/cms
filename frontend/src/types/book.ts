@@ -11,7 +11,7 @@ export type BookPromotionActionKind =
   | 'restore_title'
   | 'update_title_metadata'
   | 'update_title_language'
-  | 'update_title_maturity'
+  | 'remove_manual_review'
   | 'set_title_collections'
   | 'update_title_flavours'
   | 'create_title_flavour'
