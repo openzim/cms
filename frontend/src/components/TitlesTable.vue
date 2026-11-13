@@ -76,15 +76,37 @@
                   production
                 </div>
                 <div><strong>No:</strong> ZIM files go directly to production</div>
+                <div class="mt-1">
+                  <strong>Temporary:</strong> one or more flavours have temporary manual review
+                  enabled until their next book is promoted
+                </div>
               </div>
             </v-tooltip>
           </div>
         </template>
 
         <template #[`item.manual_review`]="{ item }">
-          <v-chip size="small" :color="item.manual_review ? 'warning' : 'success'" variant="tonal">
-            {{ item.manual_review ? 'Yes' : 'No' }}
-          </v-chip>
+          <div
+            class="d-flex align-center flex-nowrap ga-1"
+            :class="smAndDown ? 'justify-end' : undefined"
+          >
+            <v-chip
+              size="small"
+              :color="item.manual_review ? 'warning' : 'success'"
+              variant="tonal"
+            >
+              {{ item.manual_review ? 'Yes' : 'No' }}
+            </v-chip>
+            <v-tooltip v-if="item.temporary_manual_review" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip v-bind="tooltipProps" size="small" color="info" variant="tonal">
+                  <v-icon start size="small">mdi-clock-alert-outline</v-icon>
+                  Temporary
+                </v-chip>
+              </template>
+              Temporary manual review is enabled on one or more flavours.
+            </v-tooltip>
+          </div>
         </template>
 
         <template #[`item.name`]="{ item }">

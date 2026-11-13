@@ -789,6 +789,7 @@ function getSyntheticTitle(index: number): Title {
     id: '',
     name: data.name || '',
     manual_review: data.manual_review ?? false,
+    temporary_manual_review: false,
     archived: false,
     popularity: 1,
     title: data.title || null,

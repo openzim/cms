@@ -176,7 +176,20 @@
                     <div class="text-title-small">Manual review</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    {{ title.manual_review ? 'Yes' : 'No' }}
+                    <div class="d-flex flex-column ga-1">
+                      <span>{{ title.manual_review ? 'Yes' : 'No' }}</span>
+                      <v-chip
+                        v-if="temporaryManualReviewFlavours.length"
+                        size="small"
+                        color="info"
+                        variant="tonal"
+                        class="align-self-start"
+                      >
+                        <v-icon start size="small">mdi-clock-alert-outline</v-icon>
+                        Temporary manual review:
+                        {{ temporaryManualReviewFlavours.join(', ') }}
+                      </v-chip>
+                    </div>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -794,6 +807,13 @@ const flavourMap = computed(() => {
   }
   return map
 })
+
+const temporaryManualReviewFlavours = computed(() =>
+  (title.value?.flavours ?? [])
+    .filter((flavour) => flavour.temporary_manual_review)
+    .map((flavour) => (flavour.flavour === '' ? 'Empty' : flavour.flavour))
+    .sort((a, b) => a.localeCompare(b)),
+)
 
 const flavourGroups = computed(() => {
   const groups = new Map<string, BookLight[]>()

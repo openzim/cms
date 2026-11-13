@@ -58,6 +58,9 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         id=title.id,
         name=title.name,
         manual_review=title.manual_review,
+        temporary_manual_review=any(
+            tf.temporary_manual_review for tf in title.flavours
+        ),
         events=title.events,
         title=title.title,
         creator=title.creator,
@@ -121,6 +124,9 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         id=title.id,
         name=title.name,
         manual_review=title.manual_review,
+        temporary_manual_review=any(
+            tf.temporary_manual_review for tf in title.flavours
+        ),
         archived=title.archived,
         popularity=title.popularity,
         title=title.title,
@@ -309,6 +315,12 @@ def get_titles(
             Title.id.label("title_id"),
             Title.name.label("title_name"),
             Title.manual_review.label("title_manual_review"),
+            exists()
+            .where(
+                TitleFlavour.title_id == Title.id,
+                TitleFlavour.temporary_manual_review.is_(True),
+            )
+            .label("title_temporary_manual_review"),
             Title.archived.label("title_archived"),
             Title.title.label("title_title"),
             Title.creator.label("title_creator"),
@@ -375,6 +387,7 @@ def get_titles(
                 id=title_id,
                 name=title_name,
                 manual_review=title_manual_review,
+                temporary_manual_review=title_temporary_manual_review,
                 archived=title_archived,
                 popularity=title_popularity,
                 title=title_title,
@@ -392,6 +405,7 @@ def get_titles(
                 title_id,
                 title_name,
                 title_manual_review,
+                title_temporary_manual_review,
                 title_archived,
                 title_title,
                 title_creator,
@@ -934,6 +948,9 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         archived=entry.archived,
         name=entry.name,
         manual_review=entry.manual_review,
+        temporary_manual_review=any(
+            tf.get("temporary_manual_review", False) for tf in entry.flavours
+        ),
         author=entry.author.display_name,
         title=entry.title,
         creator=entry.creator,

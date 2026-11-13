@@ -118,6 +118,7 @@ class BaseTitleSchema(BaseModel):
     id: UUID
     name: str
     manual_review: bool
+    temporary_manual_review: bool = False
     archived: bool
     title: str | None
     creator: str | None

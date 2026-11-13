@@ -35,6 +35,7 @@ export interface TitleLight {
   id: string
   name: string
   manual_review: boolean
+  temporary_manual_review: boolean
   archived: boolean
   popularity: number
   title: string | null
