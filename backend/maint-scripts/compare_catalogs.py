@@ -101,8 +101,6 @@ def compare_elements(
     attrs1 = elem1["attrib"]
     attrs2 = elem2["attrib"]
 
-    _ignorable_errors = (ValueError, TypeError)
-
     for key in set(list(attrs1.keys()) + list(attrs2.keys())):
         if attrs1.get(key) != attrs2.get(key):
             # Special case: ignore size attribute difference of exactly 1 byte
@@ -112,7 +110,7 @@ def compare_elements(
                     size2 = int(attrs2.get(key, 0))
                     if abs(size1 - size2) == 1:
                         continue
-                except _ignorable_errors:
+                except ValueError, TypeError:
                     pass
 
             diffs.append(
