@@ -726,6 +726,9 @@ class Account(Base):
     password_hash: Mapped[str | None]
     deleted: Mapped[bool] = mapped_column(default=False, server_default=false())
     idp_sub: Mapped[UUID | None] = mapped_column(index=True, unique=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
 
     refresh_tokens: Mapped[list[Refreshtoken]] = relationship(
         back_populates="account", cascade="all, delete-orphan", init=False

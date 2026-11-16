@@ -325,6 +325,7 @@ const isFormValid = computed(() => {
 const headers = [
   { title: 'Name', key: 'display_name', sortable: false },
   { title: 'Role', key: 'role', sortable: false },
+  { title: 'Created', key: 'created_at', sortable: false },
 ]
 
 // Form validation rules

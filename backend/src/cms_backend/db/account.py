@@ -109,6 +109,7 @@ def create_account_schema(account: Account) -> AccountSchema:
         role=account.role,
         scope=merge_scopes(ROLES.get(account.role, {}), ROLES[RoleEnum.ADMIN]),
         has_password=account.password_hash is not None,
+        created_at=account.created_at,
     )
 
 
@@ -178,7 +179,9 @@ def get_accounts(
         )
         .offset(skip)
         .limit(limit)
-        .order_by(Account.display_name.asc(), Account.id.asc())
+        .order_by(
+            Account.created_at.desc(), Account.display_name.asc(), Account.id.asc()
+        )
     )
 
     results = ListResult[AccountSchema](nb_records=0, records=[])
