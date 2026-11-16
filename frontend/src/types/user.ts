@@ -6,4 +6,5 @@ export interface User {
   idp_sub: string | null
   username: string | null
   scope: Record<string, Record<string, boolean>>
+  created_at: string
 }

@@ -50,6 +50,15 @@
           </v-chip>
         </template>
 
+        <template #[`item.created_at`]="{ item }">
+          <v-tooltip location="bottom">
+            <template #activator="{ props }">
+              <span v-bind="props">{{ formatDt(item.created_at, 'ff') }}</span>
+            </template>
+            <span>{{ fromNow(item.created_at) }}</span>
+          </v-tooltip>
+        </template>
+
         <template #no-data>
           <div class="text-center pa-4">
             <v-icon size="large" class="mb-2">mdi-account-group-outline</v-icon>
@@ -66,6 +75,7 @@
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import type { Paginator } from '@/types/base'
 import type { User } from '@/types/user'
+import { formatDt, fromNow } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 

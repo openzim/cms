@@ -343,6 +343,7 @@ class AccountSchema(BaseModel):
     scope: dict[str, dict[str, bool]]
     idp_sub: UUID | None
     has_password: bool
+    created_at: datetime
 
 
 class EventLightSchema(BaseModel):
