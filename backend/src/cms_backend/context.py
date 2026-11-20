@@ -98,9 +98,10 @@ class Context:
         default=parse_bool(os.getenv("OPDS_INLINE_ILLUSTRATION", "True"))
     )
     # Template used to build the illustration URL when opds_inline_illustration
-    # is False. The only placeholder supported is {book_id} which is replaced
-    # with the book UUID. Example:
-    # https://api.cms.openzim.org/v1/books/{book_id}/raw_metadata/Illustration_48x48%401
+    # is False. The preferred placeholder is {hex_digest}, replaced by the
+    # illustration digest. The legacy {book_id} placeholder is still supported
+    # and replaced by the book UUID when present. Example:
+    # https://api.cms.openzim.org/v1/illustrations/{hex_digest}
     opds_illustration_url_template: str | None = field(
         default=os.getenv("OPDS_ILLUSTRATION_URL_TEMPLATE") or None
     )

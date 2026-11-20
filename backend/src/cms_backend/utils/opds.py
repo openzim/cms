@@ -81,9 +81,9 @@ def build_illustration_href(
     """Build the OPDS thumbnail href for an illustration.
 
     Depending on the configuration, the illustration is either embedded as a
-    base64 data URL or referenced through the configured URL template (with
-    ``{hex_digest}`` replaced by the illustration digest, and the legacy
-    ``{book_id}`` placeholder still supported).
+    base64 data URL or referenced through the configured URL template.
+    ``{hex_digest}`` is replaced by the illustration digest; the legacy
+    ``{book_id}`` placeholder is still supported and replaced by the book UUID.
     """
     if Context.opds_inline_illustration or not Context.opds_illustration_url_template:
         if data is None:
