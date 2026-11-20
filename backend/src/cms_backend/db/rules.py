@@ -134,6 +134,6 @@ def title_is_missing_mandatory_metadata(title: Title) -> bool:
             title.publisher,
             title.description,
             title.language,
-            title.illustration_48x48_at_1,
+            title.illustration_48x48_at_1_hex_digest,
         ]
     )

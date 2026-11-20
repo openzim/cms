@@ -1,10 +1,10 @@
 <template>
   <InlineImageEditor
-    :model-value="normalizedModelValue"
+    :model-value="resolvedModelValue"
     :label="label"
     :required="required"
     :description="description"
-    :loading="loading"
+    :loading="loading || resolving"
     :error-message="errorMessage"
     @update:model-value="handleUpdate"
   />
@@ -20,8 +20,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { inject, ref, watch } from 'vue'
 import InlineImageEditor from '@/components/InlineImageEditor.vue'
+import constants from '@/constants'
+import type { Config } from '@/config'
+import { fetchImageAsDataUrl, getIllustrationUrl, isIllustrationHexDigest } from '@/utils/image'
 
 interface Props {
   modelValue: string | null | undefined
@@ -30,7 +33,7 @@ interface Props {
   description?: string | null
 }
 
-const { modelValue, label, required, description } = defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]
@@ -39,20 +42,38 @@ const emit = defineEmits<{
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const errorMessage = ref<string>('')
 const loading = ref(false)
+const resolving = ref(false)
+const resolvedModelValue = ref<string | undefined>(undefined)
+const config = inject<Config | null>(constants.config, null)
 
-// Convert raw base64 to data URL if needed
-const normalizedModelValue = computed(() => {
-  if (!modelValue) return undefined
+watch(
+  () => props.modelValue,
+  async (value) => {
+    if (!value) {
+      resolvedModelValue.value = undefined
+      return
+    }
 
-  // If already a data URL, return as is
-  if (modelValue.startsWith('data:')) {
-    return modelValue
-  }
+    if (isIllustrationHexDigest(value)) {
+      if (!config) {
+        resolvedModelValue.value = undefined
+        return
+      }
+      resolving.value = true
+      try {
+        resolvedModelValue.value = await fetchImageAsDataUrl(
+          getIllustrationUrl(config.CMS_API, value),
+        )
+      } finally {
+        resolving.value = false
+      }
+      return
+    }
 
-  // If it's raw base64, add the data URL prefix
-  // Assume PNG format for base64 strings (most common)
-  return `data:image/png;base64,${modelValue}`
-})
+    resolvedModelValue.value = value.startsWith('data:') ? value : `data:image/png;base64,${value}`
+  },
+  { immediate: true },
+)
 
 const handleUpdate = (value: string) => {
   if (!value) {

@@ -279,8 +279,9 @@
                             />
                             <template #diff-content>
                               <IllustrationPreview
-                                :illustration="existingTitle?.illustration_48x48_at_1"
+                                :illustration="existingTitle?.illustration_48x48_at_1_hex_digest"
                                 empty-text="(no value)"
+                                show-digest
                               />
                             </template>
                           </MetadataFieldWithDiff>
@@ -556,6 +557,7 @@ import { diff } from 'deep-diff'
 import type { EnhancedDiff } from '@/utils/diff'
 import { extractRecipeMetadataValues } from '@/utils/recipe'
 import httpRequest from '@/utils/httpRequest'
+import { fetchImageAsDataUrl, getIllustrationUrl } from '@/utils/image'
 import { isLanguageValid, isTitleNameValid, isWithinGraphemeLimit } from '@/utils/validation'
 import DiffViewer from '@/components/DiffViewer.vue'
 import RecipeUpdateDialog from '@/components/RecipeUpdateDialog.vue'
@@ -597,6 +599,7 @@ const actionChecked = ref<Record<number, boolean>>({})
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const actionData = ref<Record<number, Record<string, any>>>({})
 const existingTitle = ref<Title | null>(null)
+const existingTitleIllustration = ref<string | null>(null)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const showConfirmDialog = ref(false)
@@ -697,6 +700,16 @@ const titleDiffs = computed(() => {
         current = {}
         next = {}
         for (const key of Object.keys(data)) {
+          if (key === 'illustration_48x48_at_1') {
+            // Keeping the title illustration resolves to the same base64, so
+            // there is nothing to report.
+            if (data[key] === existingTitleIllustration.value) continue
+            // The title stores a digest while the action data carries base64;
+            // use the digest as the previous value so both are viewable.
+            current[key] = existingTitle.value!.illustration_48x48_at_1_hex_digest ?? null
+            next[key] = data[key] ?? null
+            continue
+          }
           current[key] = existingTitle.value![key as keyof Title] ?? null
           next[key] = data[key] ?? null
         }
@@ -790,7 +803,7 @@ function getSyntheticTitle(index: number): Title {
     publisher: data.publisher || null,
     description: data.description || null,
     language: data.language || null,
-    illustration_48x48_at_1: data.illustration_48x48_at_1 || null,
+    illustration_48x48_at_1_hex_digest: data.illustration_48x48_at_1 || null,
     long_description: null,
     license: null,
     relation: null,
@@ -816,23 +829,34 @@ function toggleAction(index: number) {
   actionChecked.value[index] = !actionChecked.value[index]
 }
 
-// Fields that can be compared between the action data and the existing title
-type TitleMetadataFields = Record<TitleMetadataFieldKey, string | undefined>
-
-function isFieldDifferentFromTitle(index: number, field: keyof TitleMetadataFields): boolean {
-  if (!existingTitle.value) return false
-  const titleValue = existingTitle.value[field]
-  const actionValue = actionData.value[index]?.[field]
-  if (titleValue === undefined) return false
-  return titleValue !== actionValue
+async function loadExistingTitleIllustration(title: Title | null): Promise<void> {
+  existingTitleIllustration.value = null
+  const hexDigest = title?.illustration_48x48_at_1_hex_digest
+  if (!hexDigest) return
+  const dataUrl = await fetchImageAsDataUrl(getIllustrationUrl(config.CMS_API, hexDigest))
+  existingTitleIllustration.value = dataUrl?.includes(',') ? dataUrl.split(',')[1] : null
 }
 
-function useTitleValue(index: number, field: keyof TitleMetadataFields): void {
-  if (!existingTitle.value) return
-  const value = existingTitle.value[field]
-  if (value !== undefined) {
-    actionData.value[index][field] = value
+function isFieldDifferentFromTitle(index: number, field: TitleMetadataFieldKey): boolean {
+  if (!existingTitle.value) return false
+  if (field === 'illustration_48x48_at_1') {
+    return actionData.value[index]?.illustration_48x48_at_1 !== existingTitleIllustration.value
   }
+  const titleValue = existingTitle.value[field]
+  if (titleValue === undefined) return false
+  return titleValue !== actionData.value[index]?.[field]
+}
+
+async function useTitleValue(index: number, field: TitleMetadataFieldKey): Promise<void> {
+  if (field === 'illustration_48x48_at_1') {
+    if (!existingTitleIllustration.value) {
+      await loadExistingTitleIllustration(existingTitle.value)
+    }
+    actionData.value[index].illustration_48x48_at_1 = existingTitleIllustration.value
+    return
+  }
+  const value = existingTitle.value?.[field]
+  if (value !== undefined) actionData.value[index][field] = value
 }
 
 async function loadRecipeMetadata(recipeId: string) {
@@ -897,6 +921,7 @@ async function loadDryRun() {
   loadingDryRun.value = true
   dryRunError.value = null
   existingTitle.value = null
+  existingTitleIllustration.value = null
   actions.value = []
   actionChecked.value = {}
   actionData.value = {}
@@ -904,6 +929,7 @@ async function loadDryRun() {
 
   if (props.book.title_id) {
     existingTitle.value = await titleStore.fetchTitleById(props.book.title_id)
+    await loadExistingTitleIllustration(existingTitle.value)
   }
 
   try {

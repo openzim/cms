@@ -15,6 +15,7 @@ from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import book as db_book
 from cms_backend.db import count_from_stmt
+from cms_backend.db import illustration as db_illustration
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.collection import get_collection_by_name
 from cms_backend.db.event import create_title_modified_event
@@ -64,7 +65,7 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
         publisher=title.publisher,
         description=title.description,
         language=title.language,
-        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        illustration_48x48_at_1_hex_digest=title.illustration_48x48_at_1_hex_digest,
         long_description=title.long_description,
         license=title.license,
         relation=title.relation,
@@ -128,7 +129,7 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
         publisher=title.publisher,
         description=title.description,
         language=title.language,
-        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        illustration_48x48_at_1_hex_digest=title.illustration_48x48_at_1_hex_digest,
         long_description=title.long_description,
         license=title.license,
         relation=title.relation,
@@ -151,9 +152,10 @@ def get_title_by_id_or_none(
     return session.scalars(
         select(Title)
         .options(
-            selectinload(Title.books),
+            selectinload(Title.books).selectinload(Book.illustration),
             selectinload(Title.collections),
             selectinload(Title.flavours),
+            selectinload(Title.illustration),
         )
         .where(
             Title.id == title_id,
@@ -203,9 +205,10 @@ def get_title_by_name_or_none(
     return session.scalars(
         select(Title)
         .options(
-            selectinload(Title.books),
+            selectinload(Title.books).selectinload(Book.illustration),
             selectinload(Title.collections),
             selectinload(Title.flavours),
+            selectinload(Title.illustration),
         )
         .where(
             Title.name == name,
@@ -315,7 +318,9 @@ def get_titles(
             Title.publisher.label("title_publisher"),
             Title.description.label("title_description"),
             Title.language.label("title_language"),
-            Title.illustration_48x48_at_1.label("title_illustration_48x48_at_1"),
+            Title.illustration_48x48_at_1_hex_digest.label(
+                "title_illustration_48x48_at_1_hex_digest"
+            ),
             Title.long_description.label("title_long_description"),
             Title.license.label("title_license"),
             Title.relation.label("title_relation"),
@@ -382,7 +387,9 @@ def get_titles(
                 publisher=title_publisher,
                 description=title_description,
                 language=title_language,
-                illustration_48x48_at_1=title_illustration_48x48_at_1,
+                illustration_48x48_at_1_hex_digest=(
+                    title_illustration_48x48_at_1_hex_digest
+                ),
                 long_description=title_long_description,
                 license=title_license,
                 relation=title_relation,
@@ -398,7 +405,7 @@ def get_titles(
                 title_publisher,
                 title_description,
                 title_language,
-                title_illustration_48x48_at_1,
+                title_illustration_48x48_at_1_hex_digest,
                 title_long_description,
                 title_license,
                 title_relation,
@@ -427,7 +434,13 @@ def create_title(
     title.creator = payload.creator
     title.publisher = payload.publisher
     title.language = payload.language
-    title.illustration_48x48_at_1 = payload.illustration_48x48_at_1
+    title.illustration_48x48_at_1_hex_digest = (
+        db_illustration.create_illustration(
+            session, data=payload.illustration_48x48_at_1
+        ).hex_digest
+        if payload.illustration_48x48_at_1 is not None
+        else None
+    )
     title.license = payload.license
     title.relation = payload.relation
     title.source = payload.source
@@ -494,7 +507,7 @@ def create_title_history_entry(
         publisher=title.publisher,
         description=title.description,
         language=title.language,
-        illustration_48x48_at_1=title.illustration_48x48_at_1,
+        illustration_48x48_at_1_hex_digest=title.illustration_48x48_at_1_hex_digest,
         long_description=title.long_description,
         license=title.license,
         relation=title.relation,
@@ -566,6 +579,13 @@ def update_title(
         exclude={"collection_titles", "comment", "flavours"},
         mode="json",
     )
+    if "illustration_48x48_at_1" in update_data:
+        illustration = update_data.pop("illustration_48x48_at_1")
+        update_data["illustration_48x48_at_1_hex_digest"] = (
+            db_illustration.create_illustration(session, data=illustration).hex_digest
+            if illustration is not None
+            else None
+        )
     name_changed = payload.name is not None and payload.name != title.name
 
     if update_data:
@@ -719,21 +739,6 @@ def update_title(
         title_id=title.id,
         accessible_collection_ids=accessible_collection_ids,
     )
-
-
-def update_title_metadata_from_book(title: Title, book: Book):
-    """Update a title's metadata from book"""
-
-    title.title = book.zim_metadata["Title"]
-    title.creator = book.zim_metadata["Creator"]
-    title.publisher = book.zim_metadata["Publisher"]
-    title.description = book.zim_metadata["Description"]
-    title.language = book.zim_metadata["Language"]
-    title.illustration_48x48_at_1 = book.zim_metadata["Illustration_48x48@1"]
-    title.long_description = book.zim_metadata.get("LongDescription")
-    title.license = book.zim_metadata.get("License")
-    title.relation = book.zim_metadata.get("Relation")
-    title.source = book.zim_metadata.get("Source")
 
 
 def get_known_languages(language: str | None) -> list[str]:
@@ -939,7 +944,7 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         publisher=entry.publisher,
         description=entry.description,
         language=entry.language,
-        illustration_48x48_at_1=entry.illustration_48x48_at_1,
+        illustration_48x48_at_1_hex_digest=entry.illustration_48x48_at_1_hex_digest,
         long_description=entry.long_description,
         license=entry.license,
         relation=entry.relation,
@@ -1067,7 +1072,13 @@ def revert_title(
             description=entry.description,
             publisher=entry.publisher,
             language=entry.language,
-            illustration_48x48_at_1=entry.illustration_48x48_at_1,
+            illustration_48x48_at_1=(
+                db_illustration.get_illustration(
+                    session, entry.illustration_48x48_at_1_hex_digest
+                ).data
+                if entry.illustration_48x48_at_1_hex_digest
+                else None
+            ),
         ),
     )
     return title

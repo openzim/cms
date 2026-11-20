@@ -3,8 +3,9 @@ from pathlib import Path
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import aliased
 
 from cms_backend.context import Context
 from cms_backend.db.collection import LibraryBookData
@@ -13,6 +14,7 @@ from cms_backend.db.models import (
     BookLocation,
     BookTransitionStatus,
     CollectionTitle,
+    Illustration,
     Title,
 )
 
@@ -35,15 +37,32 @@ def get_staging_books_library_data(
     """
     # Get all books in the library's warehouse paths that are published
     # and currently located there
+    title_illustration = aliased(Illustration)
+    book_illustration = aliased(Illustration)
     stmt = (
         select(
             Book,
             Title,
             BookLocation.filename,
+            func.coalesce(title_illustration.data, book_illustration.data).label(
+                "illustration_data"
+            ),
+            func.coalesce(
+                title_illustration.hex_digest, book_illustration.hex_digest
+            ).label("illustration_hex_digest"),
         )
         .join(BookLocation)
         .join(Title, Book.title_id == Title.id)
         .join(CollectionTitle, CollectionTitle.title_id == Title.id, isouter=True)
+        .outerjoin(
+            title_illustration,
+            title_illustration.hex_digest == Title.illustration_48x48_at_1_hex_digest,
+        )
+        .outerjoin(
+            book_illustration,
+            book_illustration.hex_digest
+            == Book.zim_metadata["Illustration_48x48@1_hex_digest"].astext,
+        )
         .where(
             and_(
                 Book.location_kind == "staging",
@@ -74,6 +93,8 @@ def get_staging_books_library_data(
             path=Path(""),
             download_base_url=Context.staging_download_base_url,
             filename=row.filename,
+            illustration_data=row.illustration_data,
+            illustration_hex_digest=row.illustration_hex_digest,
         )
         for row in session.execute(stmt).all()
     ]

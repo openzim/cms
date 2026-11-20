@@ -1,3 +1,4 @@
+# pyright: strict, reportUnusedFunction=false
 from http import HTTPStatus
 
 import pytest
@@ -193,6 +194,8 @@ EXPECTED_PUBLIC_ROUTES = {
     ("/v1/books/flavours", "GET"),
     ("/v1/books/{book_id}", "GET"),
     ("/v1/books/{book_id}/raw_metadata/{metadata}", "GET"),
+    ("/v1/illustrations/{hex_digest}", "GET"),
+    ("/v1/illustrations/{hex_digest}", "HEAD"),
     ("/v1/titles", "GET"),
     ("/v1/titles/{title_identifier}", "GET"),
     ("/v1/config", "GET"),

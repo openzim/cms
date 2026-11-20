@@ -343,6 +343,7 @@ def test_update_title_metadata(
     create_title: Callable[..., Title],
     account: Account,
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
 ):
     """Test updating title metadata fields"""
     title = create_title(name="wikipedia_en_test")
@@ -372,7 +373,10 @@ def test_update_title_metadata(
     assert updated_title.language == "eng"
     assert updated_title.description == "A free encyclopedia"
     assert updated_title.long_description == "Wikipedia is a free online encyclopedia."
-    assert updated_title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert (
+        updated_title.illustration_48x48_at_1_hex_digest
+        == illustration_48x48_at_1_hex_digest
+    )
     assert updated_title.license == "CC-BY-SA"
     assert updated_title.relation == "wikipedia"
     assert updated_title.source == "https://en.wikipedia.org"
@@ -751,6 +755,7 @@ def test_revert_title(
     create_collection_title: Callable[..., CollectionTitle],
     account: Account,
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
 ):
     """Test reverting a title to a previous state"""
     collection1 = create_collection(name="wikipedia")
@@ -837,7 +842,10 @@ def test_revert_title(
     assert reverted_title.language == "eng"
     assert reverted_title.description == "Description V1"
     assert reverted_title.long_description == "Long description V1"
-    assert reverted_title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert (
+        reverted_title.illustration_48x48_at_1_hex_digest
+        == illustration_48x48_at_1_hex_digest
+    )
     assert reverted_title.license == "CC-BY-SA 3.0"
     assert reverted_title.relation == "wikipedia_v1"
     assert reverted_title.source == "https://en.wikipedia.org/v1"
