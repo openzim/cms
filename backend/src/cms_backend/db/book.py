@@ -1402,7 +1402,7 @@ def book_goes_to_staging(book: Book) -> bool:
     """Determine if a book goes to staging.
 
     Assumes book already has an associated title. A book goes to `prod` if:
-    - book title maturity is 'stable', and
+    - manual review is disabled for the book title and its flavour, and
     - book has no issues
     """
     if not book.title:
@@ -1411,7 +1411,13 @@ def book_goes_to_staging(book: Book) -> bool:
     if book.location_kind == "prod":
         return False
 
-    return book.title.maturity != "stable" or len(book.issues) != 0
+    has_temporary_manual_review = any(
+        tf.flavour == book.flavour and tf.temporary_manual_review
+        for tf in book.title.flavours
+    )
+    return (
+        book.title.manual_review or has_temporary_manual_review or len(book.issues) != 0
+    )
 
 
 def process_book(
@@ -1562,7 +1568,7 @@ def _recover_deleted_book(session: OrmSession, book: Book) -> Book:
     book.location_kind = "staging"
     update_book_issues(session, book)
     goes_to_staging = book_goes_to_staging(book)
-    # reset book location based on issues and title maturity
+    # reset book location based on issues and manual review settings
     book.location_kind = "staging" if goes_to_staging else "prod"
     book.deletion_date = None
 

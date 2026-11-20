@@ -25,6 +25,7 @@ from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.flavour import (
     get_title_flavour,
     get_title_flavour_or_none,
+    update_title_flavour,
 )
 from cms_backend.db.models import Account, Book
 from cms_backend.db.title import (
@@ -185,7 +186,7 @@ def _get_create_title_action(book: Book) -> BookPromotionAction | None:
             requirement="mandatory",
             data={
                 "name": book.name,
-                "maturity": "stable",
+                "manual_review": False,
                 "title": book.zim_metadata["Title"],
                 "creator": book.zim_metadata["Creator"],
                 "publisher": book.zim_metadata["Publisher"],
@@ -218,18 +219,24 @@ def _get_restore_title_action(book: Book) -> BookPromotionAction | None:
         )
 
 
-def _get_update_title_maturity_action(book: Book) -> BookPromotionAction | None:
+def _get_remove_manual_review_action(book: Book) -> BookPromotionAction | None:
     if book.title is None:
         raise ValueError("Book must be associated with a title")
 
-    if book.title.maturity != "stable":
+    title_flavour = next(
+        (tf for tf in book.title.flavours if tf.flavour == book.flavour), None
+    )
+    if title_flavour is not None and title_flavour.temporary_manual_review:
         return BookPromotionAction(
-            kind="update_title_maturity",
+            kind="remove_manual_review",
             requirement="optional",
             data={
-                "maturity": "stable",
+                "flavour": title_flavour.flavour,
+                "temporary_manual_review": False,
             },
-            message=f"Mark title '{book.title.maturity}' as stable.",
+            message=(
+                f"Remove temporary manual review for flavour '{title_flavour.flavour}'."
+            ),
         )
 
 
@@ -351,7 +358,7 @@ def get_book_promotion_actions(
     if action := _get_update_title_language_action(book):
         actions.append(action)
 
-    if action := _get_update_title_maturity_action(book):
+    if action := _get_remove_manual_review_action(book):
         actions.append(action)
 
     if action := _get_set_title_collections_action(book):
@@ -557,12 +564,28 @@ def apply_book_promotion_actions(
                         f"{' '.join(missing_keys)}"
                     )
                 title_update_payload.update(**action.data)
-            case "update_title_maturity":
-                if get_missing_keys(action.data, "maturity"):
+            case "remove_manual_review":
+                if get_missing_keys(action.data, "temporary_manual_review"):
                     raise ValueError(
-                        "Action to update title maturity must set maturity value"
+                        "Action to remove manual review must set "
+                        "temporary_manual_review value"
                     )
-                title_update_payload.update(**action.data)
+                if action.data["temporary_manual_review"] is not False:
+                    raise ValueError(
+                        "Action to remove manual review must disable "
+                        "temporary manual review"
+                    )
+                if book.title is None:
+                    raise ValueError("Book does not have an associated title")
+                update_title_flavour(
+                    session,
+                    title=book.title,
+                    flavour=book.flavour,
+                    author_id=account.id,
+                    temporary_manual_review=False,
+                    comment="Temporary manual review removed on book promotion",
+                    accessible_collection_ids=accessible_collection_ids,
+                )
             case "create_title_flavour" | "update_flavour_recipe":
                 _validate_title_flavour_action(
                     next(

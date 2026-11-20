@@ -1,15 +1,15 @@
 <template>
   <v-switch
-    :model-value="modelValue === 'stable'"
+    :model-value="modelValue"
     color="primary"
     density="comfortable"
     :hint="hint"
     persistent-hint
-    @update:model-value="$emit('update:modelValue', $event ? 'stable' : 'unstable')"
+    @update:model-value="$emit('update:modelValue', $event === true)"
   >
     <template #label>
       <span class="text-body-large">
-        Maturity: <strong>{{ modelValue }}</strong>
+        Manual review: <strong>{{ modelValue ? 'yes' : 'no' }}</strong>
       </span>
     </template>
   </v-switch>
@@ -19,17 +19,17 @@
 import { computed } from 'vue'
 
 interface Props {
-  modelValue: string
+  modelValue: boolean
 }
 
 const props = defineProps<Props>()
 
 defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: boolean]
 }>()
 
 const hint = computed(() => {
-  if (props.modelValue === 'unstable') {
+  if (props.modelValue) {
     return 'ZIM files will go through staging first before moving to production.'
   }
   return 'ZIM files will go directly to production.'

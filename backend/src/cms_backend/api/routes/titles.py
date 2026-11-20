@@ -324,18 +324,19 @@ def restore_archived_title(
     return db_title.create_title_light_schema(title)
 
 
-class TitleFlavourArchiveSchema(BaseModel):
+class TitleFlavourUpdateSchema(BaseModel):
     flavour: str
-    archived: bool
+    archived: bool | None = None
+    temporary_manual_review: bool | None = None
 
 
 @router.patch(
-    "/{title_identifier}/flavours/archive",
+    "/{title_identifier}/flavours",
     dependencies=[Depends(require_permission(namespace="title", name="update"))],
 )
-def set_title_flavour_archived(
+def update_title_flavour(
     title_identifier: Annotated[NotEmptyString, Path()],
-    request: TitleFlavourArchiveSchema,
+    request: TitleFlavourUpdateSchema,
     accessible_collection_ids: Annotated[
         Sequence[UUID] | None, Depends(get_accessible_collection_ids)
     ],
@@ -343,11 +344,13 @@ def set_title_flavour_archived(
         Sequence[UUID] | None, Depends(get_accessible_title_ids)
     ],
     session: OrmSession = Depends(gen_dbsession),
+    current_account: Account = Depends(get_current_account),
 ) -> TitleFlavourSchema:
-    """Hide a title flavour from the catalog, or restore it.
+    """Update a title flavour's catalog visibility and manual review override.
 
     The flavour and its books are kept untouched; this only controls whether the
-    flavour is published in the catalog(s).
+    flavour is published in the catalog(s) and whether its books require manual
+    review.
     """
     title = db_title.get_title(
         session,
@@ -355,11 +358,13 @@ def set_title_flavour_archived(
         accessible_collection_ids=accessible_collection_ids,
         accessible_title_ids=accessible_title_ids,
     )
-    title_flavour = db_flavour.set_title_flavour_archived(
+    title_flavour = db_flavour.update_title_flavour(
         session,
         title=title,
         flavour=request.flavour,
+        author_id=current_account.id,
         archived=request.archived,
+        temporary_manual_review=request.temporary_manual_review,
         accessible_collection_ids=accessible_collection_ids,
     )
     return db_flavour.create_title_flavour_schema(title_flavour)

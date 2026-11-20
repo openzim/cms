@@ -21,6 +21,7 @@ from sqlalchemy import (
     false,
     func,
     text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB
 from sqlalchemy.ext.mutable import MutableDict, MutableList
@@ -298,7 +299,9 @@ class Title(Base):
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)
     source: Mapped[str | None] = mapped_column(default=None)
-    maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
+    manual_review: Mapped[bool] = mapped_column(
+        init=False, index=True, default=True, server_default=true()
+    )
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
     popularity: Mapped[int] = mapped_column(init=False, default=1, server_default="1")
@@ -347,6 +350,9 @@ class TitleFlavour(Base):
         default=None, server_default=func.now()
     )
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
+    temporary_manual_review: Mapped[bool] = mapped_column(
+        default=False, server_default=false()
+    )
     title: Mapped[Title] = relationship(back_populates="flavours", init=False)
     applications: Mapped[list[Application]] = relationship(
         back_populates="title_flavour",
@@ -544,7 +550,7 @@ class TitleHistory(Base):
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)
     source: Mapped[str | None] = mapped_column(default=None)
-    maturity: Mapped[str] = mapped_column(default="unstable")
+    manual_review: Mapped[bool] = mapped_column(default=True, server_default=true())
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
     flavours: Mapped[list[dict[str, Any]]] = mapped_column(
         default_factory=list, server_default="{}"

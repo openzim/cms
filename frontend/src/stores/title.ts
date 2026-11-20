@@ -171,17 +171,21 @@ export const useTitleStore = defineStore('title', () => {
     }
   }
 
-  const setTitleFlavourArchived = async (
+  const updateTitleFlavour = async (
     titleId: string,
     flavour: string,
-    archived: boolean,
+    updates: { archived?: boolean; temporary_manual_review?: boolean },
   ): Promise<boolean> => {
     const service = await authStore.getApiService('titles')
     try {
-      await service.patch<{ flavour: string; archived: boolean }, TitleFlavour>(
-        `/${titleId}/flavours/archive`,
-        { flavour, archived },
-      )
+      await service.patch<
+        {
+          flavour: string
+          archived?: boolean
+          temporary_manual_review?: boolean
+        },
+        TitleFlavour
+      >(`/${titleId}/flavours`, { flavour, ...updates })
       errors.value = []
       return true
     } catch (_error) {
@@ -439,7 +443,7 @@ export const useTitleStore = defineStore('title', () => {
     updateTitle,
     archiveTitle,
     restoreTitle,
-    setTitleFlavourArchived,
+    updateTitleFlavour,
     archiveTitles,
     restoreTitles,
     mergeTitles,

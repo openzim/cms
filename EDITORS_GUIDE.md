@@ -59,9 +59,9 @@ workflow:
 - **`quarantine`**: the book has just arrived and has not been validated/attached to a
   title yet. These books appear in the _Inbox_.
 - **`staging`**: the book is attached to a title but is not yet ready to be published
-  (e.g. the title is still marked `unstable`, or the book has issues).
-- **`prod`**: the book is published. A book is published automatically if its
-  associated title is marked `stable` and it has no issues. If automatic movement to
+  (e.g. the title has manual review enabled, or the book has issues).
+- **`prod`**: the book is published. A book is published automatically if manual review
+  is disabled for its title and flavour, and it has no issues. If automatic movement to
   `prod` fails because of book issues, an editor has to manually move the book and
   resolve any fixable issues along the way.
 - **`to_delete`**: the book has been scheduled for deletion.
@@ -91,9 +91,10 @@ A title has:
 - the ZIM metadata used to describe the content: `title`, `creator`, `publisher`,
   `description`, `language`, `illustration`, `long_description`, `license`,
   `relation`, `source`
-- a **maturity**, either `unstable` or `stable`. Books belonging to `stable` titles are
-  moved to `prod` automatically when they have no issues; books belonging to
-  `unstable` titles are always moved to `staging`.
+- a **manual review** flag (`yes` or `no`). Books belonging to titles with manual
+  review disabled are moved to `prod` automatically when they have no issues; books
+  belonging to titles with manual review enabled are always moved to `staging`. This is
+  typically `yes` for community titles and `no` for Kiwix titles.
 - a **popularity** score (1 to 100), derived from recent download statistics.
     It is used to sort titles in the UI.
 - an **archived** flag. Archiving is the equivalent of deleting a title while keeping
@@ -116,6 +117,11 @@ favour of `full`. Hiding a flavour removes its books from the collection catalog
 without deleting anything: the ZIM files stay on the filesystem so ongoing downloads
 keep working, and the flavour can be shown again at any time. Once new books cover the
 expected flavours, the old flavour can still be deleted if desired.
+
+A flavour can also be put under **temporary manual review**. This overrides the
+manual review setting of its title for that flavour only, until the next book of the
+flavour is moved to production. When that book is promoted, the CMS proposes to remove
+the temporary manual review; the editor may keep it if they prefer.
 
 ### Collections
 
@@ -212,8 +218,9 @@ have been granted access to the title. See [Roles & Permissions](#roles--permiss
 3. The CMS checks the book against the ZIM specification (mandatory metadata, article
    count, …) and tries to match it to an existing title by name.
 4. If the book matches a title, it is attached to it and either:
-   - moved to **staging** if the title is still `unstable` or the book has issues, or
-   - moved to **prod** if the title is `stable` and the book has no issues.
+   - moved to **staging** if manual review is enabled for the title or its flavour, or
+     the book has issues, or
+   - moved to **prod** if manual review is disabled and the book has no issues.
 5. The book enters a **transition**: the `shuttle` physically moves the ZIM file to its
    target warehouse location(s), then the [mill](INTEGRATORS_GUIDE.md#mill) checks that the book is available on
    enough mirrors and live in the library. Download and view links become available

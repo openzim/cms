@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session as OrmSession
 from cms_backend.context import Context
 from cms_backend.db import flavour as db_flavour
 from cms_backend.db.models import (
+    Account,
     Book,
     BookLocation,
     Collection,
@@ -530,6 +531,7 @@ def test_get_collection_opds_xml_excludes_archived_flavour(
     create_book: Callable[..., Book],
     create_book_location: Callable[..., BookLocation],
     warehouse: Warehouse,
+    account: Account,
     access_token: str,
 ):
     collection = create_collection(warehouse=warehouse)
@@ -565,10 +567,14 @@ def test_get_collection_opds_xml_excludes_archived_flavour(
 
     assert sorted(_catalogued_flavours()) == ["maxi", "mini"]
 
-    db_flavour.set_title_flavour_archived(dbsession, title, "mini", archived=True)
+    db_flavour.update_title_flavour(
+        dbsession, title, "mini", author_id=account.id, archived=True
+    )
     dbsession.flush()
     assert _catalogued_flavours() == ["maxi"]
 
-    db_flavour.set_title_flavour_archived(dbsession, title, "mini", archived=False)
+    db_flavour.update_title_flavour(
+        dbsession, title, "mini", author_id=account.id, archived=False
+    )
     dbsession.flush()
     assert sorted(_catalogued_flavours()) == ["maxi", "mini"]

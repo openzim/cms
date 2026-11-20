@@ -229,6 +229,7 @@ def create_title(
         *,
         name: str = "test_en_all",
         archived: bool = False,
+        manual_review: bool = True,
         title: str | None = None,
         creator: str | None = None,
         publisher: str | None = None,
@@ -256,6 +257,7 @@ def create_title(
             relation=relation,
             source=source,
         )
+        db_title.manual_review = manual_review
         if flavours:
             for flavour in flavours:
                 title_flavour = TitleFlavour(
@@ -277,8 +279,14 @@ def create_title(
             license=license,
             relation=relation,
             source=source,
+            manual_review=manual_review,
             flavours=[
-                {"flavour": tf.flavour, "recipe_id": str(tf.recipe_id)}
+                {
+                    "flavour": tf.flavour,
+                    "recipe_id": str(tf.recipe_id),
+                    "archived": tf.archived,
+                    "temporary_manual_review": tf.temporary_manual_review,
+                }
                 for tf in db_title.flavours
             ],
             comment="Initial history entry",

@@ -173,10 +173,23 @@
 
                 <v-row no-gutters class="py-2">
                   <v-col cols="12" md="3">
-                    <div class="text-title-small">Maturity</div>
+                    <div class="text-title-small">Manual review</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    {{ title.maturity }}
+                    <div class="d-flex flex-column ga-1">
+                      <span>{{ title.manual_review ? 'Yes' : 'No' }}</span>
+                      <v-chip
+                        v-if="temporaryManualReviewFlavours.length"
+                        size="small"
+                        color="info"
+                        variant="tonal"
+                        class="align-self-start"
+                      >
+                        <v-icon start size="small">mdi-clock-alert-outline</v-icon>
+                        Temporary manual review:
+                        {{ temporaryManualReviewFlavours.join(', ') }}
+                      </v-chip>
+                    </div>
                   </v-col>
                 </v-row>
                 <v-divider class="my-2"></v-divider>
@@ -342,6 +355,7 @@
                     :loading-urls="loadingUrls"
                     :offliners="offlinerStore.offliners"
                     @toggle-archive="toggleFlavourArchive"
+                    @toggle-temporary-manual-review="toggleTemporaryManualReview"
                   />
                 </template>
                 <span v-else class="text-grey">No books</span>
@@ -794,6 +808,13 @@ const flavourMap = computed(() => {
   return map
 })
 
+const temporaryManualReviewFlavours = computed(() =>
+  (title.value?.flavours ?? [])
+    .filter((flavour) => flavour.temporary_manual_review)
+    .map((flavour) => (flavour.flavour === '' ? 'Empty' : flavour.flavour))
+    .sort((a, b) => a.localeCompare(b)),
+)
+
 const flavourGroups = computed(() => {
   const groups = new Map<string, BookLight[]>()
   for (const flavour of flavourMap.value.keys()) {
@@ -934,9 +955,29 @@ const restoreTitle = async () => {
   }
 }
 
+const toggleTemporaryManualReview = async (flavour: string, temporaryManualReview: boolean) => {
+  if (!title.value) return
+  const response = await titleStore.updateTitleFlavour(title.value.id, flavour, {
+    temporary_manual_review: temporaryManualReview,
+  })
+  if (response) {
+    const label = flavour === '' ? 'Empty' : flavour
+    notificationStore.showSuccess(
+      temporaryManualReview
+        ? `Temporary manual review enabled for flavour <code>${label}</code>.`
+        : `Temporary manual review removed for flavour <code>${label}</code>.`,
+    )
+    await loadData(true)
+  } else {
+    notificationStore.showErrors(titleStore.errors)
+  }
+}
+
 const toggleFlavourArchive = async (flavour: string, archived: boolean) => {
   if (!title.value) return
-  const response = await titleStore.setTitleFlavourArchived(title.value.id, flavour, archived)
+  const response = await titleStore.updateTitleFlavour(title.value.id, flavour, {
+    archived,
+  })
   if (response) {
     const label = flavour === '' ? 'Empty' : flavour
     notificationStore.showSuccess(
