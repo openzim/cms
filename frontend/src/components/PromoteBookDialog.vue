@@ -281,6 +281,7 @@
                               <IllustrationPreview
                                 :illustration="existingTitle?.illustration_48x48_at_1"
                                 empty-text="(no value)"
+                                show-digest
                               />
                             </template>
                           </MetadataFieldWithDiff>

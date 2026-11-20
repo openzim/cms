@@ -158,6 +158,11 @@ class Context:
         _validate_regex(os.getenv("ZIMCHECK_SCRAPERS_WHITELIST_REGEX"))
     )
 
+    # Requests carrying this X-Pull header value come from our CDN. They are
+    # only allowed on the illustrations API so that the CDN cannot be used to
+    # serve any other endpoint.
+    x_pull_header: str = field(default=os.getenv("X_PULL_HEADER", "KeyCDN"))
+
     zimfarm_url: str = field(
         default=os.getenv("ZIMFARM_URL", "https://farm.openzim.org")
     )

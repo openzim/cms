@@ -1,3 +1,4 @@
+import base64
 from collections.abc import Callable, Generator
 from datetime import datetime
 from pathlib import Path
@@ -5,6 +6,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+import xxhash
 from faker import Faker
 from sqlalchemy.orm import Session as OrmSession
 from werkzeug.security import generate_password_hash
@@ -12,6 +14,7 @@ from werkzeug.security import generate_password_hash
 from cms_backend.api.token import generate_access_token
 from cms_backend.context import Context
 from cms_backend.db import Session
+from cms_backend.db import illustration as db_illustration
 from cms_backend.db.models import (
     Account,
     Application,
@@ -160,6 +163,10 @@ def create_book(
         if zim_metadata is None:
             zim_metadata = {}
 
+        zim_metadata = db_illustration.extract_illustrations_from_metadata(
+            dbsession, zim_metadata
+        )
+
         # Extract name from zim_metadata if not explicitly provided
         if name is None:
             name = zim_metadata.get("Name")
@@ -250,7 +257,9 @@ def create_title(
             publisher=publisher,
             description=description,
             language=language,
-            illustration_48x48_at_1=illustration_48x48_at_1,
+            illustration_48x48_at_1=db_illustration.resolve_illustration_hex_digest(
+                dbsession, illustration_48x48_at_1
+            ),
             long_description=long_description,
             license=license,
             relation=relation,
@@ -272,7 +281,9 @@ def create_title(
             publisher=publisher,
             description=description,
             language=language,
-            illustration_48x48_at_1=illustration_48x48_at_1,
+            illustration_48x48_at_1=db_illustration.resolve_illustration_hex_digest(
+                dbsession, illustration_48x48_at_1
+            ),
             long_description=long_description,
             license=license,
             relation=relation,
@@ -700,3 +711,8 @@ def illustration_48x48_at_1() -> str:
         "wfRf2u1gB4kfQeYKCHcNAAAAAAAAAAAAgL96bPf7EgAAAAAAAIC/egF5uwED0gQ8ugAAAA"
         "BJRU5ErkJggg=="
     )
+
+
+@pytest.fixture()
+def illustration_48x48_at_1_hex_digest(illustration_48x48_at_1: str) -> str:
+    return xxhash.xxh3_64_hexdigest(base64.b64decode(illustration_48x48_at_1))

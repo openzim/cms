@@ -1068,7 +1068,7 @@ const titleDataFromBook = computed<Title | null>(() => {
     description: (metadata.Description as string | null | undefined) || null,
     language: (metadata.Language as string | null | undefined) || null,
     illustration_48x48_at_1:
-      (metadata['Illustration_48x48@1'] as string | null | undefined) || null,
+      (metadata['Illustration_48x48@1_hex_digest'] as string | null | undefined) || null,
     long_description: (metadata.LongDescription as string | null | undefined) || null,
     license: (metadata.License as string | null | undefined) || null,
     relation: (metadata.Relation as string | null | undefined) || null,

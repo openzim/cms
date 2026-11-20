@@ -14,6 +14,7 @@ from cms_backend.api.middleware.cors import (
     effective_route_contexts,
     validate_public_cors_routes,
 )
+from cms_backend.api.middleware.x_pull import XPullRestrictionMiddleware
 from cms_backend.api.routes.account import router as account_router
 from cms_backend.api.routes.app_builds import router as app_builds_router
 from cms_backend.api.routes.applications import router as applications_router
@@ -24,6 +25,7 @@ from cms_backend.api.routes.config import router as config_router
 from cms_backend.api.routes.events import router as events_router
 from cms_backend.api.routes.healthcheck import router as healthcheck_router
 from cms_backend.api.routes.http_errors import BadRequestError
+from cms_backend.api.routes.illustrations import router as illustrations_router
 from cms_backend.api.routes.staging import router as staging_router
 from cms_backend.api.routes.stats import router as stats_router
 from cms_backend.api.routes.title_uploads import router as title_uploads_router
@@ -73,6 +75,7 @@ def create_app(
     main_router.include_router(router=zimfarm_notification_router)
     main_router.include_router(router=healthcheck_router)
     main_router.include_router(router=titles_router)
+    main_router.include_router(router=illustrations_router)
     main_router.include_router(router=applications_router)
     main_router.include_router(router=app_builds_router)
     main_router.include_router(router=books_router)
@@ -102,6 +105,7 @@ def create_app(
         route_contexts=route_contexts,
         allowed_origins=allowed_origins,
     )
+    app.add_middleware(XPullRestrictionMiddleware)
 
     return app
 

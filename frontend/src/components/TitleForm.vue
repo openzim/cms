@@ -272,6 +272,7 @@ import type { Book } from '@/types/book'
 import { computed, inject, ref, watch } from 'vue'
 import constants, { TITLE_METADATA_FIELDS, type TitleMetadataFieldKey } from '@/constants'
 import type { Config } from '@/config'
+import { fetchImageAsDataUrl, getIllustrationUrl, isIllustrationHexDigest } from '@/utils/image'
 
 interface Props {
   title?: Title | null
@@ -320,6 +321,7 @@ const formData = ref<TitleUpdate>({
 
 const originalCollections = ref<BaseTitleCollection[]>([])
 const editableFlavours = ref<TitleFlavour[]>([])
+const originalIllustration = ref<string | null>(null)
 
 const isEditMode = computed(() => props.title !== null && props.title.id !== '')
 
@@ -338,17 +340,34 @@ const bookMetadata = computed<BookMetadataFields | null>(() => {
     long_description: metadata.LongDescription as string | undefined,
     language: metadata.Language as string | undefined,
     license: metadata.License as string | undefined,
-    illustration_48x48_at_1: metadata['Illustration_48x48@1'] as string | undefined,
+    illustration_48x48_at_1: metadata['Illustration_48x48@1_hex_digest'] as string | undefined,
     relation: metadata.Relation as string | undefined,
     source: metadata.Source as string | undefined,
   }
 })
 
+async function loadIllustrationValue(value: string | null | undefined): Promise<string | null> {
+  if (!value) return null
+  if (!isIllustrationHexDigest(value)) return value
+  const dataUrl = await fetchImageAsDataUrl(getIllustrationUrl(config.CMS_API, value))
+  if (!dataUrl || !dataUrl.includes(',')) return null
+  return dataUrl.split(',')[1]
+}
+
 const isFieldDifferent = (field: keyof BookMetadataFields) => {
   if (!bookMetadata.value || !isEditMode.value) return false
   const bookValue = bookMetadata.value[field]
-  const titleValue = formData.value[field as keyof typeof formData.value]
   if (bookValue === undefined) return false
+  if (field === 'illustration_48x48_at_1') {
+    // The form contains base64 data while the book metadata contains a digest,
+    // so a changed form value is always different from the book. Otherwise,
+    // compare the saved title digest with the book digest.
+    if (formData.value.illustration_48x48_at_1 !== originalIllustration.value) {
+      return true
+    }
+    return bookValue !== props.title?.illustration_48x48_at_1
+  }
+  const titleValue = formData.value[field as keyof typeof formData.value]
   return bookValue !== titleValue
 }
 
@@ -357,12 +376,15 @@ const hasAnyDifferences = computed(() => {
   return TITLE_METADATA_FIELDS.some((field) => isFieldDifferent(field))
 })
 
-const useBookValue = (field: keyof BookMetadataFields) => {
+const useBookValue = async (field: keyof BookMetadataFields) => {
   if (!bookMetadata.value) return
   const value = bookMetadata.value[field]
-  if (value !== undefined) {
-    ;(formData.value[field as keyof typeof formData.value] as string | null) = value
+  if (value === undefined) return
+  if (field === 'illustration_48x48_at_1') {
+    formData.value.illustration_48x48_at_1 = await loadIllustrationValue(value)
+    return
   }
+  ;(formData.value[field as keyof typeof formData.value] as string | null) = value
 }
 
 const useAllBookValues = () => {
@@ -436,7 +458,7 @@ const hasChanges = computed(() => {
     formData.value.publisher !== props.title?.publisher ||
     formData.value.description !== props.title?.description ||
     formData.value.language !== props.title?.language ||
-    formData.value.illustration_48x48_at_1 !== props.title?.illustration_48x48_at_1 ||
+    formData.value.illustration_48x48_at_1 !== originalIllustration.value ||
     formData.value.long_description !== props.title?.long_description ||
     formData.value.license !== props.title?.license ||
     formData.value.relation !== props.title?.relation ||
@@ -477,11 +499,20 @@ function resetFormToTitle(title: Title) {
     publisher: title.publisher,
     description: title.description,
     language: title.language,
-    illustration_48x48_at_1: title.illustration_48x48_at_1,
+    illustration_48x48_at_1: null,
     long_description: title.long_description,
     license: title.license,
     relation: title.relation,
     source: title.source,
+  }
+  originalIllustration.value = null
+  if (title.illustration_48x48_at_1) {
+    const titleId = title.id
+    loadIllustrationValue(title.illustration_48x48_at_1).then((value) => {
+      if (props.title?.id !== titleId) return
+      originalIllustration.value = value
+      formData.value.illustration_48x48_at_1 = value
+    })
   }
 
   originalCollections.value = collections.map((c) => ({ ...c }))
@@ -507,6 +538,7 @@ function resetForm() {
   }
   originalCollections.value = []
   editableFlavours.value = []
+  originalIllustration.value = null
   formRef.value?.resetValidation()
 }
 
@@ -545,7 +577,7 @@ function getUpdatePayload(): Partial<TitleUpdate> {
   if (formData.value.description !== props.title.description)
     payload.description = formData.value.description
   if (formData.value.language !== props.title.language) payload.language = formData.value.language
-  if (formData.value.illustration_48x48_at_1 !== props.title.illustration_48x48_at_1)
+  if (formData.value.illustration_48x48_at_1 !== originalIllustration.value)
     payload.illustration_48x48_at_1 = formData.value.illustration_48x48_at_1
   if (formData.value.long_description !== props.title.long_description)
     payload.long_description = formData.value.long_description
