@@ -14,6 +14,7 @@ from cms_backend.db.book import (
     get_book,
     get_book_article_count_issues,
     get_book_media_count_issues,
+    get_book_metadata,
     get_book_or_none,
     get_book_unsupported_languages,
     get_differing_metadata_keys,
@@ -84,7 +85,7 @@ def _get_update_title_metadata_action(
             kind="update_title_metadata",
             requirement="optional",
             data={
-                metadata_to_identifier_map[key]: book.zim_metadata.get(key)
+                metadata_to_identifier_map[key]: get_book_metadata(book, key)
                 for key in differing_metadata_keys
             },
             message="Update title metadata from book",
@@ -191,7 +192,9 @@ def _get_create_title_action(book: Book) -> BookPromotionAction | None:
                 "publisher": book.zim_metadata["Publisher"],
                 "description": book.zim_metadata["Description"],
                 "language": book.zim_metadata["Language"],
-                "illustration_48x48_at_1": book.zim_metadata["Illustration_48x48@1"],
+                "illustration_48x48_at_1": get_book_metadata(
+                    book, "Illustration_48x48@1"
+                ),
                 "flavours": [
                     {
                         "flavour": book.flavour,

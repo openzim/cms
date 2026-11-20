@@ -8,7 +8,7 @@ from pydantic import AnyUrl
 from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from cms_backend import logger
 from cms_backend.context import Context
@@ -22,6 +22,7 @@ from cms_backend.db.models import (
     CollectionHistory,
     CollectionPermission,
     CollectionTitle,
+    Illustration,
     Title,
     TitleFlavour,
 )
@@ -152,6 +153,8 @@ class LibraryBookData(NamedTuple):
     download_base_url: str | None
     path: Path
     filename: str
+    illustration_data: str | None = None
+    illustration_hex_digest: str | None = None
 
 
 def get_latest_books_for_collection(
@@ -174,6 +177,8 @@ def get_latest_books_for_collection(
     """
     # Get all books in the library's warehouse paths that are published
     # and currently located there
+    title_illustration = aliased(Illustration)
+    book_illustration = aliased(Illustration)
     stmt = (
         select(
             Book,
@@ -181,11 +186,26 @@ def get_latest_books_for_collection(
             Collection.download_base_url,
             BookLocation.path.label("subpath"),
             BookLocation.filename,
+            func.coalesce(title_illustration.data, book_illustration.data).label(
+                "illustration_data"
+            ),
+            func.coalesce(
+                title_illustration.hex_digest, book_illustration.hex_digest
+            ).label("illustration_hex_digest"),
         )
         .join(BookLocation)
         .join(Title, Book.title_id == Title.id)
         .join(CollectionTitle)
         .join(Collection)
+        .outerjoin(
+            title_illustration,
+            title_illustration.hex_digest == Title.illustration_48x48_at_1,
+        )
+        .outerjoin(
+            book_illustration,
+            book_illustration.hex_digest
+            == Book.zim_metadata["Illustration_48x48@1_hex_digest"].astext,
+        )
         .where(
             and_(
                 Book.location_kind == "prod",
@@ -232,6 +252,8 @@ def get_latest_books_for_collection(
                     path=row.subpath,
                     download_base_url=row.download_base_url,
                     filename=row.filename,
+                    illustration_data=row.illustration_data,
+                    illustration_hex_digest=row.illustration_hex_digest,
                 )
             )
 

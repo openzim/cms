@@ -5,6 +5,9 @@ from cms_backend import logger
 from cms_backend.context import parse_bool
 from cms_backend.schemas.orms import ZimcheckSummarySchema
 
+ILLUSTRATION_METADATA_PREFIX = "Illustration"
+ILLUSTRATION_HEX_DIGEST_SUFFIX = "_hex_digest"
+
 
 def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:
     """Get the list of missing keys from payload."""
@@ -16,7 +19,12 @@ def get_missing_keys(payload: dict[str, Any], *keys: str) -> list[str]:
 
 
 def get_missing_metadata_keys(zim_metadata: dict[str, Any]) -> list[str]:
-    """Get the the list of missing metadata keys from a zim."""
+    """Get the list of missing mandatory metadata keys from a stored book.
+
+    Do not use this with raw zimfarm notification metadata: notifications carry
+    the illustration as base64 under ``Illustration_48x48@1``, while stored book
+    metadata references it by digest under ``Illustration_48x48@1_hex_digest``.
+    """
     return get_missing_keys(
         zim_metadata,
         "Name",
@@ -26,7 +34,7 @@ def get_missing_metadata_keys(zim_metadata: dict[str, Any]) -> list[str]:
         "Date",
         "Description",
         "Language",
-        "Illustration_48x48@1",
+        f"Illustration_48x48@1{ILLUSTRATION_HEX_DIGEST_SUFFIX}",
     )
 
 

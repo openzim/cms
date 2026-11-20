@@ -6,16 +6,15 @@ Development zimfarm notifications setup script.
 Creates ZimfarmNotification records for testing the mill processor.
 """
 
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
-import urllib.parse
 from uuid import uuid4
 
 from cms_backend.context import get_mandatory_env
 from cms_backend.db import Session
 from cms_backend.db.models import ZimfarmNotification
 from cms_backend.utils.s3 import get_kiwix_storage_client
-
 
 # Base directory where warehouse folders are located (inside container)
 WAREHOUSE_BASE_PATH = Path("/warehouses")

@@ -9,6 +9,7 @@
               <div class="text-body-small text-medium-emphasis mb-2">Previous</div>
               <IllustrationPreview
                 :illustration="oldBlobContent"
+                show-digest
                 width="100%"
                 max-height="400px"
                 alt="Previous image/illustration"
@@ -25,6 +26,7 @@
               <div class="text-body-small text-medium-emphasis mb-2">Current</div>
               <IllustrationPreview
                 :illustration="newBlobContent"
+                show-digest
                 width="100%"
                 max-height="400px"
                 alt="Current image/illustration"
