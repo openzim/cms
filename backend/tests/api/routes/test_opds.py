@@ -323,11 +323,12 @@ def test_get_collection_opds_xml_illustration_url(
     create_book_location: Callable[..., BookLocation],
     create_warehouse: Callable[..., Warehouse],
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
     access_token: str,
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Illustrations can be referenced by URL instead of being embedded."""
-    template = "https://cdn.kiwix.org/books/{book_id}/illustration"
+    template = "https://cdn.kiwix.org/illustrations/{hex_digest}"
     monkeypatch.setattr("cms_backend.context.Context.opds_inline_illustration", False)
     monkeypatch.setattr(
         "cms_backend.context.Context.opds_illustration_url_template", template
@@ -366,7 +367,9 @@ def test_get_collection_opds_xml_illustration_url(
         for link in entry.findall(f"{{{ATOM_NAMESPACE}}}link")
         if link.get("rel") == THUMBNAIL_REL
     )
-    assert thumbnail.get("href") == template.replace("{book_id}", str(book.id))
+    assert thumbnail.get("href") == template.replace(
+        "{hex_digest}", illustration_48x48_at_1_hex_digest
+    )
 
 
 def test_get_collection_opds_xml_path_prefix(

@@ -14,7 +14,11 @@ def build_library_xml(
     library_elem.set("version", "20110515")
 
     for entry in entries:
-        book, title, download_base_url, path, filename = entry
+        book = entry.book
+        title = entry.title
+        download_base_url = entry.download_base_url
+        path = entry.path
+        filename = entry.filename
         if not book.zim_metadata:
             continue
 
@@ -44,9 +48,7 @@ def build_library_xml(
         tags = zim_meta.get("Tags", "")
         book_elem.set("tags", ";".join(convert_tags(tags)))
 
-        favicon = title.illustration_48x48_at_1 or zim_meta.get(
-            "Illustration_48x48@1", ""
-        )
+        favicon = entry.illustration_data or ""
         if favicon:
             book_elem.set("favicon", favicon)
             book_elem.set("faviconMimeType", "image/png")

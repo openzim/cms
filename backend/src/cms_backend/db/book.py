@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from cms_backend import logger
 from cms_backend.context import Context
 from cms_backend.db import count_from_stmt
+from cms_backend.db import illustration as db_illustration
 from cms_backend.db import title as db_title
 from cms_backend.db.book_location import create_book_target_locations
 from cms_backend.db.exceptions import RecordDoesNotExistError
@@ -148,9 +149,10 @@ def get_book_or_none(
         )
     return session.scalars(
         stmt.options(
-            selectinload(Book.title),
+            selectinload(Book.title).selectinload(Title.illustration),
             selectinload(Book.zimfarm_notification),
             selectinload(Book.locations),
+            selectinload(Book.illustration),
         )
     ).one_or_none()
 
@@ -269,6 +271,11 @@ def create_book(
     name = zim_metadata.get("Name")
     date = zim_metadata.get("Date")
     flavour = zim_metadata.get("Flavour", "")
+
+    # Illustrations are stored in their own table and referenced by digest.
+    zim_metadata = db_illustration.extract_illustrations_from_metadata(
+        session, zim_metadata
+    )
 
     book = Book(
         id=book_id,
@@ -611,6 +618,8 @@ def get_book_metadata(book: Book, key: MetadataKey) -> str | None:
     """Get the value of a metadata in book"""
     if key == "Name":
         return book.name
+    if key.startswith("Illustration"):
+        return book.illustration.data if book.illustration else None
     return book.zim_metadata.get(key)
 
 
@@ -626,7 +635,9 @@ def get_book_title_metadata(book: Book, key: MetadataKey) -> str | None:
         "Publisher": book.title.publisher,
         "Description": book.title.description,
         "Language": book.title.language,
-        "Illustration_48x48@1": book.title.illustration_48x48_at_1,
+        "Illustration_48x48@1": (
+            book.title.illustration.data if book.title.illustration else None
+        ),
         "LongDescription": book.title.long_description,
         "License": book.title.license,
         "Relation": book.title.relation,

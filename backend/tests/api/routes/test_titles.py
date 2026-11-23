@@ -140,7 +140,7 @@ def test_get_titles(
         "publisher",
         "description",
         "language",
-        "illustration_48x48_at_1",
+        "illustration_48x48_at_1_hex_digest",
         "long_description",
         "relation",
         "source",
@@ -196,6 +196,7 @@ def test_create_title_required_fields_only(
     dbsession: OrmSession,
     access_token: str,
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
 ):
     """Test creating a title with only required fields"""
     title_data = {
@@ -224,7 +225,9 @@ def test_create_title_required_fields_only(
     assert data["publisher"] == "Kiwix"
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert (
+        data["illustration_48x48_at_1_hex_digest"] == illustration_48x48_at_1_hex_digest
+    )
 
     # Verify the title was created in the database
     title = dbsession.get(Title, data["id"])
@@ -246,6 +249,7 @@ def test_create_title_all_fields(
     create_collection: Callable[..., Collection],
     access_token: str,
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
 ):
     """Test creating a title with all fields"""
     collection = create_collection(name="wikipedia")
@@ -289,7 +293,9 @@ def test_create_title_all_fields(
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
     assert data["long_description"] == "Wikipedia is a free online encyclopedia."
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert (
+        data["illustration_48x48_at_1_hex_digest"] == illustration_48x48_at_1_hex_digest
+    )
     assert data["license"] == "CC-BY-SA"
     assert data["relation"] == "wikipedia"
     assert data["source"] == "https://en.wikipedia.org"
@@ -304,7 +310,9 @@ def test_create_title_all_fields(
     assert title.language == "eng"
     assert title.description == "A free encyclopedia"
     assert title.long_description == "Wikipedia is a free online encyclopedia."
-    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert (
+        title.illustration_48x48_at_1_hex_digest == illustration_48x48_at_1_hex_digest
+    )
     assert title.license == "CC-BY-SA"
     assert title.relation == "wikipedia"
     assert title.source == "https://en.wikipedia.org"
@@ -417,7 +425,7 @@ def test_get_title_by_id(
         "publisher",
         "description",
         "language",
-        "illustration_48x48_at_1",
+        "illustration_48x48_at_1_hex_digest",
         "long_description",
         "relation",
         "source",
@@ -601,6 +609,7 @@ def test_update_title_metadata(
     create_title: Callable[..., Title],
     access_token: str,
     illustration_48x48_at_1: str,
+    illustration_48x48_at_1_hex_digest: str,
 ):
     """Test updating a title's metadata fields"""
     title = create_title(name="wikipedia_en_test")
@@ -634,7 +643,9 @@ def test_update_title_metadata(
     assert data["language"] == "eng"
     assert data["description"] == "A free encyclopedia"
     assert data["long_description"] == "Wikipedia is a free online encyclopedia."
-    assert data["illustration_48x48_at_1"] == illustration_48x48_at_1
+    assert (
+        data["illustration_48x48_at_1_hex_digest"] == illustration_48x48_at_1_hex_digest
+    )
     assert data["license"] == "CC-BY-SA"
     assert data["relation"] == "wikipedia"
     assert data["source"] == "https://en.wikipedia.org"
@@ -647,7 +658,9 @@ def test_update_title_metadata(
     assert title.language == "eng"
     assert title.description == "A free encyclopedia"
     assert title.long_description == "Wikipedia is a free online encyclopedia."
-    assert title.illustration_48x48_at_1 == illustration_48x48_at_1
+    assert (
+        title.illustration_48x48_at_1_hex_digest == illustration_48x48_at_1_hex_digest
+    )
     assert title.license == "CC-BY-SA"
     assert title.relation == "wikipedia"
     assert title.source == "https://en.wikipedia.org"

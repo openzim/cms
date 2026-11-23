@@ -75,17 +75,22 @@ def _extract_category(tags: str) -> str | None:
     return None
 
 
-def build_illustration_href(book: Book, illustration: str) -> str:
-    """Build the OPDS thumbnail href for a book illustration.
+def build_illustration_href(hex_digest: str, data: str | None) -> str:
+    """Build the OPDS thumbnail href for an illustration.
 
-    The illustration is either embedded as a base64 data URL or referenced
-    through the configured URL template (with {book_id} replaced by the book
-    UUID). When the URL template is missing, we fall back to embedding.
+    Depending on the configuration, the illustration is either embedded as a
+    base64 data URL or referenced through the configured URL template, where
+    ``{hex_digest}`` is replaced by the illustration digest.
     """
     if Context.opds_inline_illustration or not Context.opds_illustration_url_template:
-        return f"data:{ILLUSTRATION_MIMETYPE};base64,{illustration}"
+        if data is None:
+            return f"/v1/illustrations/{hex_digest}"
+        return f"data:{ILLUSTRATION_MIMETYPE};base64,{data}"
 
-    return Context.opds_illustration_url_template.replace("{book_id}", str(book.id))
+    template = Context.opds_illustration_url_template
+    if "{hex_digest}" not in template:
+        raise ValueError("Illustration URL template must contain {hex_digest}")
+    return template.replace("{hex_digest}", hex_digest)
 
 
 def _append_link(
@@ -108,7 +113,11 @@ def _append_link(
 def _append_entry(
     feed: ET.Element, entry: LibraryBookData, *, path_prefix: str | None
 ) -> None:
-    book, title, download_base_url, path, filename = entry
+    book = entry.book
+    title = entry.title
+    download_base_url = entry.download_base_url
+    path = entry.path
+    filename = entry.filename
 
     zim_metadata = book.zim_metadata
     if not zim_metadata:
@@ -194,14 +203,12 @@ def _append_entry(
             length=book.size,
         )
 
-    illustration = title.illustration_48x48_at_1 or zim_metadata.get(
-        "Illustration_48x48@1"
-    )
-    if illustration:
+    illustration_hex_digest = entry.illustration_hex_digest
+    if illustration_hex_digest:
         _append_link(
             entry_elem,
             THUMBNAIL_REL,
-            build_illustration_href(book, _text(illustration)),
+            build_illustration_href(illustration_hex_digest, entry.illustration_data),
             mimetype=THUMBNAIL_MIMETYPE,
         )
 

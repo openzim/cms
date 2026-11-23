@@ -98,11 +98,21 @@ class Context:
         default=parse_bool(os.getenv("OPDS_INLINE_ILLUSTRATION", "True"))
     )
     # Template used to build the illustration URL when opds_inline_illustration
-    # is False. The only placeholder supported is {book_id} which is replaced
-    # with the book UUID. Example:
-    # https://api.cms.openzim.org/v1/books/{book_id}/raw_metadata/Illustration_48x48%401
+    # is False. The {hex_digest} placeholder is replaced by the illustration
+    # digest. Example:
+    # https://api.cms.openzim.org/v1/illustrations/{hex_digest}
     opds_illustration_url_template: str | None = field(
         default=os.getenv("OPDS_ILLUSTRATION_URL_TEMPLATE") or None
+    )
+    illustration_mimetype: str = field(
+        default=os.getenv("ILLUSTRATION_MIMETYPE", "image/png")
+    )
+    illustration_cache_max_age: timedelta = field(
+        default=timedelta(
+            seconds=parse_timespan(
+                os.getenv("ILLUSTRATION_CACHE_MAX_AGE", default="365d")
+            )
+        )
     )
     quarantine_warehouse_id: UUID = field(
         default=UUID(get_mandatory_env("QUARANTINE_WAREHOUSE_ID"))
@@ -157,6 +167,11 @@ class Context:
     zimcheck_scrapers_whitelist_regex: ClassVar[re.Pattern[str] | None] = (
         _validate_regex(os.getenv("ZIMCHECK_SCRAPERS_WHITELIST_REGEX"))
     )
+
+    # Requests carrying this X-Pull header value come from our CDN. They are
+    # only allowed on the illustrations API so that the CDN cannot be used to
+    # serve any other endpoint.
+    x_pull_header: str = field(default=os.getenv("X_PULL_HEADER", "KeyCDN"))
 
     zimfarm_url: str = field(
         default=os.getenv("ZIMFARM_URL", "https://farm.openzim.org")

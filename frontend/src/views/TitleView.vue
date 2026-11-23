@@ -287,14 +287,12 @@
                     <div class="text-title-small">Illustration</div>
                   </v-col>
                   <v-col cols="12" md="9">
-                    <div v-if="title.illustration_48x48_at_1">
-                      <v-img
-                        :src="getIllustrationSrc"
-                        max-width="48"
-                        max-height="48"
-                        alt="Title illustration"
-                      />
-                    </div>
+                    <IllustrationPreview
+                      v-if="title.illustration_48x48_at_1_hex_digest"
+                      :illustration="title.illustration_48x48_at_1_hex_digest"
+                      :width="48"
+                      alt="Title illustration"
+                    />
                     <span v-else class="text-grey">No illustration</span>
                   </v-col>
                 </v-row>
@@ -557,6 +555,7 @@ import ZimUploadZone from '@/components/ZimUploadZone.vue'
 import ZimUrlUploadForm from '@/components/ZimUrlUploadForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import IllustrationPreview from '@/components/IllustrationPreview.vue'
 import PopularityFlames from '@/components/PopularityFlames.vue'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
@@ -693,6 +692,14 @@ const titleDifferences = computed(() => {
     updatedTitle.flavours = pendingUpdatePayload.value.flavours.map((f) => f.flavour)
   }
 
+  // The title stores the illustration digest while the form submits base64.
+  // Put both under the same key so the diff viewer can show the previous and
+  // the new illustration.
+  if (pendingUpdatePayload.value.illustration_48x48_at_1 !== undefined) {
+    currentTitle.illustration_48x48_at_1 = currentTitle.illustration_48x48_at_1_hex_digest
+    updatedTitle.illustration_48x48_at_1 = pendingUpdatePayload.value.illustration_48x48_at_1
+  }
+
   return diff(currentTitle, updatedTitle)
 })
 
@@ -751,19 +758,6 @@ const handleUploadComplete = () => {
 const canLoadMoreHistory = computed(() => {
   const { skip, limit, count } = titleHistoryStore.paginator
   return skip + limit < count
-})
-
-// Helper to convert raw base64 to data URL
-const getIllustrationSrc = computed(() => {
-  if (!title.value?.illustration_48x48_at_1) return ''
-
-  const illustration = title.value.illustration_48x48_at_1
-
-  if (illustration.startsWith('data:')) {
-    return illustration
-  }
-
-  return `data:image/png;base64,${illustration}`
 })
 
 const currentTab = ref(props.selectedTab)

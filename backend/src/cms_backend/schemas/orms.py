@@ -123,7 +123,7 @@ class BaseTitleSchema(BaseModel):
     publisher: str | None
     description: str | None
     language: str | None
-    illustration_48x48_at_1: str | None
+    illustration_48x48_at_1_hex_digest: str | None
     long_description: str | None
     license: str | None
     relation: str | None

@@ -98,6 +98,17 @@ class Base(MappedAsDataclass, DeclarativeBase):
     pass
 
 
+class Illustration(Base):
+    __tablename__ = "illustration"
+    # Hexadecimal digest of the raw illustration data, computed with xxh3_64.
+    hex_digest: Mapped[str] = mapped_column(primary_key=True)
+    # Base64 encoded illustration data.
+    data: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(
+        default_factory=getnow, server_default=func.now()
+    )
+
+
 class ZimfarmNotification(Base):
     __tablename__ = "zimfarm_notification"
     id: Mapped[UUID] = mapped_column(primary_key=True)
@@ -185,6 +196,14 @@ class Book(Base):
 
     title_id: Mapped[UUID | None] = mapped_column(ForeignKey("title.id"), init=False)
     title: Mapped[Title | None] = relationship(init=False, foreign_keys=[title_id])
+    illustration: Mapped[Illustration | None] = relationship(
+        init=False,
+        viewonly=True,
+        primaryjoin=(
+            "Illustration.hex_digest == "
+            "foreign(Book.zim_metadata['Illustration_48x48@1_hex_digest'].astext)"
+        ),
+    )
 
     zimfarm_notification: Mapped[ZimfarmNotification | None] = relationship(
         back_populates="book"
@@ -293,12 +312,17 @@ class Title(Base):
     publisher: Mapped[str | None] = mapped_column(default=None)
     description: Mapped[str | None] = mapped_column(default=None)
     language: Mapped[str | None] = mapped_column(default=None)
-    illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1_hex_digest: Mapped[str | None] = mapped_column(
+        ForeignKey("illustration.hex_digest"), default=None
+    )
     long_description: Mapped[str | None] = mapped_column(default=None)
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)
     source: Mapped[str | None] = mapped_column(default=None)
     maturity: Mapped[str] = mapped_column(init=False, index=True, default="unstable")
+
+    illustration: Mapped[Illustration | None] = relationship(init=False)
+
     events: Mapped[list[str]] = mapped_column(init=False, default_factory=list)
     archived: Mapped[bool] = mapped_column(default=False, server_default=false())
     popularity: Mapped[int] = mapped_column(init=False, default=1, server_default="1")
@@ -539,7 +563,9 @@ class TitleHistory(Base):
     publisher: Mapped[str | None] = mapped_column(default=None)
     description: Mapped[str | None] = mapped_column(default=None)
     language: Mapped[str | None] = mapped_column(default=None)
-    illustration_48x48_at_1: Mapped[str | None] = mapped_column(default=None)
+    illustration_48x48_at_1_hex_digest: Mapped[str | None] = mapped_column(
+        ForeignKey("illustration.hex_digest"), default=None
+    )
     long_description: Mapped[str | None] = mapped_column(default=None)
     license: Mapped[str | None] = mapped_column(default=None)
     relation: Mapped[str | None] = mapped_column(default=None)

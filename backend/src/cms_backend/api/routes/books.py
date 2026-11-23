@@ -1,4 +1,3 @@
-import base64
 from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Annotated
@@ -22,6 +21,7 @@ from cms_backend.db import book as db_book
 from cms_backend.db import book_actions as db_book_actions
 from cms_backend.db import books as db_books
 from cms_backend.db import gen_dbsession
+from cms_backend.db import illustration as db_illustration
 from cms_backend.db import title as db_title
 from cms_backend.db.exceptions import RecordDoesNotExistError
 from cms_backend.db.models import Account
@@ -39,6 +39,7 @@ from cms_backend.schemas.orms import (
     BookHistorySchema,
     BookLightSchema,
 )
+from cms_backend.utils.zim import ILLUSTRATION_HEX_DIGEST_SUFFIX
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -171,6 +172,23 @@ def get_book_raw_metadata(
         accessible_title_ids=accessible_title_ids,
     )
 
+    if metadata.startswith(ILLUSTRATION_METADATA_PREFIX) and not metadata.endswith(
+        ILLUSTRATION_HEX_DIGEST_SUFFIX
+    ):
+        hex_digest = db_illustration.get_illustration_metadata_hex_digest(
+            book.zim_metadata, metadata
+        )
+        if hex_digest is None:
+            raise RecordDoesNotExistError(
+                f"Book {book_id} has no metadata '{metadata}'"
+            )
+        illustration = db_illustration.get_illustration(session, hex_digest)
+        return Response(
+            content=db_illustration.decode_illustration(illustration.data),
+            media_type="image/png",
+            status_code=HTTPStatus.OK,
+        )
+
     if metadata == "Name":
         value = book.name
     else:
@@ -180,23 +198,9 @@ def get_book_raw_metadata(
     if value is None:
         raise RecordDoesNotExistError(f"Book {book_id} has no metadata '{metadata}'")
 
-    if not metadata.startswith(ILLUSTRATION_METADATA_PREFIX):
-        return Response(
-            content=value,
-            media_type="text/plain; charset=utf-8",
-            status_code=HTTPStatus.OK,
-        )
-
-    try:
-        data = base64.b64decode(value, validate=True)
-    except ValueError as exc:
-        raise BadRequestError(
-            f"Book {book_id} metadata '{metadata}' is not a valid base64 image"
-        ) from exc
-
     return Response(
-        content=data,
-        media_type="image/png",
+        content=value,
+        media_type="text/plain; charset=utf-8",
         status_code=HTTPStatus.OK,
     )
 
