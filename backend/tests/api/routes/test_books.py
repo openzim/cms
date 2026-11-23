@@ -1419,7 +1419,6 @@ def test_promote_book_permissions(
     actions = get_book_promotion_actions(dbsession, book_id=book.id, account=account)
     kinds = {a.kind for a in actions}
     assert "update_title_metadata" in kinds  # creator differs/missing
-    assert "update_title_maturity" in kinds  # default "unstable"
     assert "set_title_collections" in kinds  # no collections
 
     # Build apply actions from the generated ones
@@ -1622,7 +1621,7 @@ def test_reprocess_book(
         language="eng",
         illustration_48x48_at_1=illustration_48x48_at_1,
     )
-    title.maturity = "unstable"
+    title.manual_review = True
 
     book = create_book(
         zim_metadata=metadata,

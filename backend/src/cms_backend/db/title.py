@@ -1,7 +1,7 @@
 import datetime as dt
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 from uuid import UUID
 
 import pycountry
@@ -58,7 +58,10 @@ def create_title_full_schema(title: Title) -> TitleFullSchema:
     return TitleFullSchema(
         id=title.id,
         name=title.name,
-        maturity=title.maturity,
+        manual_review=title.manual_review,
+        temporary_manual_review=any(
+            tf.temporary_manual_review for tf in title.flavours
+        ),
         events=title.events,
         title=title.title,
         creator=title.creator,
@@ -121,7 +124,10 @@ def create_title_light_schema(title: Title) -> TitleLightSchema:
     return TitleLightSchema(
         id=title.id,
         name=title.name,
-        maturity=title.maturity,
+        manual_review=title.manual_review,
+        temporary_manual_review=any(
+            tf.temporary_manual_review for tf in title.flavours
+        ),
         archived=title.archived,
         popularity=title.popularity,
         title=title.title,
@@ -311,7 +317,13 @@ def get_titles(
         select(
             Title.id.label("title_id"),
             Title.name.label("title_name"),
-            Title.maturity.label("title_maturity"),
+            Title.manual_review.label("title_manual_review"),
+            exists()
+            .where(
+                TitleFlavour.title_id == Title.id,
+                TitleFlavour.temporary_manual_review.is_(True),
+            )
+            .label("title_temporary_manual_review"),
             Title.archived.label("title_archived"),
             Title.title.label("title_title"),
             Title.creator.label("title_creator"),
@@ -379,7 +391,8 @@ def get_titles(
             TitleLightSchema(
                 id=title_id,
                 name=title_name,
-                maturity=title_maturity,
+                manual_review=title_manual_review,
+                temporary_manual_review=title_temporary_manual_review,
                 archived=title_archived,
                 popularity=title_popularity,
                 title=title_title,
@@ -398,7 +411,8 @@ def get_titles(
             for (
                 title_id,
                 title_name,
-                title_maturity,
+                title_manual_review,
+                title_temporary_manual_review,
                 title_archived,
                 title_title,
                 title_creator,
@@ -428,8 +442,7 @@ def create_title(
     title = Title(
         name=payload.name,
     )
-    if payload.maturity:
-        title.maturity = payload.maturity
+    title.manual_review = payload.manual_review
     title.title = payload.title
     title.creator = payload.creator
     title.publisher = payload.publisher
@@ -512,12 +525,14 @@ def create_title_history_entry(
         license=title.license,
         relation=title.relation,
         source=title.source,
-        maturity=title.maturity,
+        manual_review=title.manual_review,
         archived=title.archived,
         flavours=[
             {
                 "flavour": tf.flavour,
                 "recipe_id": str(tf.recipe_id) if tf.recipe_id else None,
+                "archived": tf.archived,
+                "temporary_manual_review": tf.temporary_manual_review,
             }
             for tf in title.flavours
         ],
@@ -937,7 +952,10 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
         created_at=entry.created_at,
         archived=entry.archived,
         name=entry.name,
-        maturity=entry.maturity,
+        manual_review=entry.manual_review,
+        temporary_manual_review=any(
+            tf.get("temporary_manual_review", False) for tf in entry.flavours
+        ),
         author=entry.author.display_name,
         title=entry.title,
         creator=entry.creator,
@@ -953,6 +971,8 @@ def create_title_history_schema(entry: TitleHistory) -> TitleHistorySchema:
             BaseTitleFlavourSchema(
                 flavour=tf["flavour"],
                 recipe_id=UUID(tf["recipe_id"]) if tf.get("recipe_id") else None,
+                archived=tf.get("archived", False),
+                temporary_manual_review=tf.get("temporary_manual_review", False),
             )
             for tf in entry.flavours
         ],
@@ -1055,7 +1075,7 @@ def revert_title(
         payload=TitleUpdateSchema(
             comment=comment,
             name=entry.name,
-            maturity=cast(Literal["unstable", "stable"], entry.maturity),
+            manual_review=entry.manual_review,
             collection_titles=[
                 BaseTitleCollectionSchema(
                     collection_name=collection["collection_name"],
