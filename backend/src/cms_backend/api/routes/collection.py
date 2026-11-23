@@ -28,6 +28,7 @@ from cms_backend.schemas.orms import (
     CollectionHistorySchema,
     CollectionLightSchema,
 )
+from cms_backend.utils.demo_page import build_collection_demo_html
 from cms_backend.utils.opds import OPDS_MEDIA_TYPE, build_opds_xml
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -304,6 +305,71 @@ def head_collection_opds_xml(
         status_code=status_code,
         headers={"ETag": f"{etag}"},
         media_type=OPDS_MEDIA_TYPE,
+    )
+
+
+def _get_demo_html_content(
+    collection_id_or_name: str,
+    session: OrmSession,
+    accessible_collection_ids: Sequence[UUID] | None,
+) -> tuple[str, int]:
+    collection = db_collection.get_collection_or_none(
+        session, collection_id_or_name, accessible_collection_ids
+    )
+
+    if collection is None:
+        return (
+            "<!doctype html><html><body><h1>Collection not found</h1></body></html>",
+            HTTPStatus.NOT_FOUND,
+        )
+
+    entries = db_collection.get_latest_books_for_collection(
+        session, collection.id, accessible_collection_ids
+    )
+    html_content = build_collection_demo_html(collection, entries)
+
+    return html_content, HTTPStatus.OK
+
+
+@router.get("/{collection_id_or_name}/demo.html")
+def get_collection_demo_html(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+):
+    """Get a browsable HTML page for the latest books in a collection."""
+    html_content, status_code = _get_demo_html_content(
+        collection_id_or_name, session, accessible_collection_ids
+    )
+    etag = xxhash.xxh64(html_content.encode("utf-8")).hexdigest()
+
+    return Response(
+        content=html_content,
+        status_code=status_code,
+        media_type="text/html; charset=utf-8",
+        headers={"ETag": f"{etag}"},
+    )
+
+
+@router.head("/{collection_id_or_name}/demo.html")
+def head_collection_demo_html(
+    collection_id_or_name: Annotated[str, Path()],
+    session: Annotated[OrmSession, Depends(gen_dbsession)],
+    accessible_collection_ids: Annotated[
+        Sequence[UUID] | None, Depends(get_accessible_collection_ids)
+    ],
+):
+    """Get a browsable HTML page for the latest books in a collection."""
+    html_content, status_code = _get_demo_html_content(
+        collection_id_or_name, session, accessible_collection_ids
+    )
+    etag = xxhash.xxh64(html_content.encode("utf-8")).hexdigest()
+    return Response(
+        status_code=status_code,
+        headers={"ETag": f"{etag}"},
+        media_type="text/html; charset=utf-8",
     )
 
 
